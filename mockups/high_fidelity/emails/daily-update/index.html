@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Daily Update | AI Tutor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-[#0f111a] text-[#0f111a] flex justify-center py-12 px-4 font-['Inter']">
+
+    <!-- Email Wrapper to simulate an inbox view -->
+    <div
+        class="max-w-xl w-full bg-white rounded-2xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-gray-200">
+
+        <!-- Email Header -->
+        <div
+            class="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6 text-white flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-brain"></i>
+                <span class="font-[Outfit] font-bold text-lg tracking-tight">AI Tutor</span>
+            </div>
+            <span class="text-xs text-indigo-200 uppercase tracking-widest font-bold">Daily Brief</span>
+        </div>
+
+        <!-- Email Body -->
+        <div class="p-8 space-y-6">
+            <h1 class="text-2xl font-[Outfit] text-gray-900 font-bold mb-2">Good morning, Alex.</h1>
+            <p class="text-gray-600 leading-relaxed">Your AI Tutor has analyzed your overnight builds and the latest
+                industry developments. Here is your personalized curriculum update for today.</p>
+
+            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5 mt-6">
+                <h3 class="text-sm font-bold text-indigo-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-crosshairs text-indigo-500"></i> Your Priority Task
+                </h3>
+                <p class="text-gray-800 font-medium mb-1">Fix API Gateway Timeout</p>
+                <p class="text-sm text-gray-600 mb-4">The `webhook_handler.py` script timed out 4 times in the last 12
+                    hours. We need to implement a retry decorator.</p>
+                <a href="/dashboard/chat/"
+                    class="inline-block bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded shadow hover:bg-indigo-700 transition">Jump
+                    into Tutor Session</a>
+            </div>
+
+            <div class="mt-8 border-t border-gray-100 pt-6">
+                <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-newspaper text-gray-400"></i> Industry Context
+                </h3>
+
+                <div class="space-y-4">
+                    <div class="flex gap-4 items-start">
+                        <div class="w-2 h-2 mt-2 rounded bg-coral-500 shrink-0"></div>
+                        <div>
+                            <h4 class="font-bold text-gray-900 text-sm">OpenAI DevDay Announcements</h4>
+                            <p class="text-sm text-gray-600 mt-1">New JSON mode enforcement is now standard. Your tutor
+                                has prepared a 5-minute interactive module on how this affects your currently building
+                                apps.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Email Footer -->
+        <div class="bg-gray-50 border-t border-gray-100 p-6 text-center">
+            <p class="text-xs text-gray-400 mb-2">AI Tutor is tracking your progress towards: <strong>Senior PM</strong>
+            </p>
+            <div class="flex justify-center gap-4 text-xs">
+                <a href="/dashboard/" class="text-indigo-600 hover:underline">Dashboard</a>
+                <span class="text-gray-300">|</span>
+                <a href="#" class="text-indigo-600 hover:underline">Unsubscribe</a>
+            </div>
+        </div>
+
+    </div>
+</body>
+
+</html>

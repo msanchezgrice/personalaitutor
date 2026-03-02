@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - AI Tutor Workspace</title>
+  <link rel="stylesheet" href="/assets/styles-v3.css">
+</head>
+<body>
+  <div class="split">
+    <aside class="sidebar">
+      <div class="brand">AI Tutor</div>
+      <ul class="side-links">
+        <li><a href="/dashboard/" class="active">Dashboard</a></li>
+        <li><a href="/dashboard/projects/">Projects</a></li>
+        <li><a href="/dashboard/profile/">Profile</a></li>
+        <li><a href="/dashboard/chat/">AI Tutor Chat</a></li>
+        <li><a href="/dashboard/social/">Social</a></li>
+        <li><a href="/dashboard/updates/">Updates</a></li>
+      </ul>
+    </aside>
+
+    <div class="content">
+      <header class="topbar">
+        <div class="topbar-inner">
+          <nav class="nav">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/assessment/" class="nav-link">Assessment</a>
+            <a href="/dashboard/" class="nav-link active">Dashboard</a>
+            <a href="/employers/" class="nav-link">For Employers</a>
+          </nav>
+          <div class="topbar-cta">
+            <a href="/assessment/" class="btn primary">Get Started</a>
+          </div>
+        </div>
+      </header>
+
+      <main class="main-panel">
+        <div class="container">
+          <h1>Dashboard</h1>
+
+          <div class="kpi-grid">
+            <div class="kpi">
+              <span class="kpi-label">AI-Native Score</span>
+              <span class="kpi-value">64</span>
+            </div>
+            <div class="kpi">
+              <span class="kpi-label">Projects Built</span>
+              <span class="kpi-value">3</span>
+            </div>
+            <div class="kpi">
+              <span class="kpi-label">Verified Skills</span>
+              <span class="kpi-value">7</span>
+            </div>
+            <div class="kpi">
+              <span class="kpi-label">Tokens Used</span>
+              <span class="kpi-value">184K</span>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="panel pad">
+              <h3>Recent Projects</h3>
+              <div class="table-wrap">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Project</th>
+                      <th>Status</th>
+                      <th>Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Customer Support Copilot</td>
+                      <td><span class="tag ok">Built</span></td>
+                      <td>2 days ago</td>
+                    </tr>
+                    <tr>
+                      <td>AI Sales Follow-up Bot</td>
+                      <td><span class="tag warn">In Progress</span></td>
+                      <td>4 hours ago</td>
+                    </tr>
+                    <tr>
+                      <td>Recruiting Outreach Engine</td>
+                      <td><span class="tag">Planned</span></td>
+                      <td>1 week ago</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="panel pad">
+              <h3>Profile Status</h3>
+              <div class="card">
+                <h4>alex-chen-ai</h4>
+                <p>AI researcher & founder exploring applied LLM systems.</p>
+                <div class="stats">
+                  <div class="stat">
+                    <strong>Visibility</strong>
+                    <span style="display: block; color: var(--ink-soft); font-size: 0.9rem; margin-top: 4px;">Public</span>
+                  </div>
+                  <div class="stat">
+                    <strong>Verified</strong>
+                    <span style="display: block; color: var(--ink-soft); font-size: 0.9rem; margin-top: 4px;">Yes</span>
+                  </div>
+                  <div class="stat">
+                    <strong>Updated</strong>
+                    <span style="display: block; color: var(--ink-soft); font-size: 0.9rem; margin-top: 4px;">12h ago</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="panel pad">
+              <h3>Latest Chat</h3>
+              <div class="msg agent">How are you approaching the AI tutor problem?</div>
+              <div class="msg user">Building a multi-modal system that adapts to learning style.</div>
+              <div class="msg agent">That's promising. Have you considered real-time code generation?</div>
+            </div>
+
+            <div class="panel pad">
+              <h3>AI News Feed</h3>
+              <div class="news-item">
+                <strong>New Claude Model Released</strong>
+                <p style="margin-top: 2px; font-size: 0.85rem; color: var(--ink-muted);">Anthropic • 2 hours ago</p>
+              </div>
+              <div class="news-item">
+                <strong>Evaluating LLM Reasoning</strong>
+                <p style="margin-top: 2px; font-size: 0.85rem; color: var(--ink-muted);">OpenAI Research • 6 hours ago</p>
+              </div>
+              <div class="news-item">
+                <strong>Prompt Engineering Best Practices</strong>
+                <p style="margin-top: 2px; font-size: 0.85rem; color: var(--ink-muted);">Dev Community • 8 hours ago</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

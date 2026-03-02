@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Updates | AI Tutor Dashboard</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor Platform</a>
+      <nav class="nav">
+        <a href="/dashboard/">Overview</a>
+        <a href="/dashboard/projects/">Projects</a>
+        <a href="/dashboard/profile/">Profile</a>
+        <a href="/dashboard/chat/">Chat</a>
+        <a href="/dashboard/social/">Social</a>
+        <a href="/dashboard/updates/">Updates</a>
+      </nav>
+      <a class="btn" href="/emails/daily-update/">Email Preview</a>
+    </div>
+  </header>
+
+  <main class="container section">
+    <h1>Daily AI Tutor Updates</h1>
+    <p class="lead">Night-cycle style summary: status, upcoming tasks, relevant AI news, and action links.</p>
+
+    <div class="grid-2" style="margin-top:12px">
+      <article class="panel pad">
+        <h3>Latest Update (March 2, 2026)</h3>
+        <ul class="list">
+          <li>Completed: <span data-bind-text="project_primary">PROJECT_ALPHA_001</span> website draft generated</li>
+          <li>Completed: PPT export created</li>
+          <li>Upcoming: finish module checkpoint 01</li>
+          <li>Upcoming: publish first profile project card</li>
+        </ul>
+        <h3 style="margin-top:10px">Relevant News</h3>
+        <ul class="list">
+          <li>Agent traceability expectations are increasing in hiring evaluations</li>
+          <li>Retrieval eval pipelines are becoming a baseline skill requirement</li>
+        </ul>
+      </article>
+
+      <article class="panel pad">
+        <h3>Delivery Log</h3>
+        <table>
+          <thead><tr><th>Date</th><th>Type</th><th>Status</th><th>Event</th></tr></thead>
+          <tbody>
+            <tr><td>2026-03-02 06:01</td><td>Daily Email</td><td><span class="tag ok">Sent</span></td><td>email.daily_overview.sent</td></tr>
+            <tr><td>2026-03-01 06:00</td><td>Daily Email</td><td><span class="tag ok">Sent</span></td><td>email.daily_overview.sent</td></tr>
+            <tr><td>2026-02-28 06:00</td><td>Daily Email</td><td><span class="tag error">Failed</span></td><td>email.daily_overview.failed</td></tr>
+          </tbody>
+        </table>
+        <div class="fail-box" style="margin-top:10px"><strong>Fail state sample:</strong> SMTP provider unavailable. Next send blocked until provider connectivity check passes.</div>
+      </article>
+    </div>
+  </main>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TEST_USER_0001 | AI-Native Profile</title>
+  <meta name="description" content="Synthetic public AI-native profile mock: projects, build logs, skills, tools, and token usage proof." />
+  <link rel="canonical" href="http://localhost:6396/u/test-user-0001/" />
+  <meta property="og:title" content="TEST_USER_0001 | AI-Native Profile" />
+  <meta property="og:description" content="Synthetic profile with project cards, build logs, and skill evidence." />
+  <meta property="og:type" content="profile" />
+  <meta property="og:url" content="http://localhost:6396/u/test-user-0001/" />
+  <meta property="og:image" content="http://localhost:6396/assets/og-profile-test.svg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="TEST_USER_0001 | AI-Native Profile" />
+  <meta name="twitter:description" content="Synthetic profile with project cards, build logs, and skill evidence." />
+  <meta name="twitter:image" content="http://localhost:6396/assets/og-profile-test.svg" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "TEST_USER_0001",
+    "url": "http://localhost:6396/u/test-user-0001/",
+    "sameAs": ["https://linkedin.example/test-user-0001", "https://x.example/test-user-0001"],
+    "jobTitle": "Synthetic test role"
+  }
+  </script>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor Platform</a>
+      <nav class="nav">
+        <a href="/">Learners</a>
+        <a href="/employers/">Employers</a>
+        <a href="/employers/talent/">Talent</a>
+      </nav>
+      <a class="btn" href="/dashboard/profile/">Edit in Dashboard</a>
+    </div>
+  </header>
+
+  <main class="container section" data-profile-share>
+    <h1 data-bind-text="display_name">TEST_USER_0001</h1>
+    <p class="lead" data-bind-text="bio">Synthetic mock profile for end-to-end testing only.</p>
+
+    <div class="hero-actions">
+      <span class="tag ok">2 Verified Skills</span>
+      <span class="tag warn">1 Built Skill</span>
+      <span class="tag">Private-to-public workflow enabled</span>
+      <button class="btn" data-native-share>Native Share</button>
+    </div>
+    <div data-share-status style="margin-top:10px"></div>
+
+    <div class="grid-2" style="margin-top:12px">
+      <section class="panel pad">
+        <h3>Skills</h3>
+        <p><span class="tag warn">Prompt Engineering</span> <span class="tag">Workflow Design</span> <span class="tag">Agent QA</span></p>
+        <h3 style="margin-top:10px">Tools</h3>
+        <p><span class="tag">OpenAI API</span> <span class="tag">Supabase</span> <span class="tag">Vercel</span> <span class="tag">n8n</span></p>
+        <h3 style="margin-top:10px">Social</h3>
+        <p><a data-bind-value="linkedin_url" href="https://linkedin.example/test-user-0001" target="_blank" rel="noreferrer">LinkedIn (test)</a> · <a data-bind-value="x_url" href="https://x.example/test-user-0001" target="_blank" rel="noreferrer">X/Twitter (test)</a></p>
+      </section>
+
+      <section class="panel pad">
+        <h3>Project Cards</h3>
+        <div class="card">
+          <h3 data-bind-text="project_primary">PROJECT_ALPHA_001</h3>
+          <p>Synthetic artifact card for mock flow validation.</p>
+          <p><span class="tag">Website</span> <span class="tag">PPT</span> <span class="tag">Build Log</span></p>
+          <a class="btn" data-bind-project-link href="/u/test-user-0001/projects/project-alpha-001/">View Project</a>
+        </div>
+        <div class="card" style="margin-top:10px">
+          <h3>PROJECT_BETA_002</h3>
+          <p>Synthetic secondary card for profile layout review.</p>
+          <p><span class="tag">Build Log</span> <span class="tag">Prompt Set</span></p>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel pad" style="margin-top:12px">
+      <h3>Build Log</h3>
+      <table>
+        <thead><tr><th>Date</th><th>Entry</th><th>Outcome</th><th>Proof Link</th></tr></thead>
+        <tbody>
+          <tr><td>2026-03-02</td><td>Added evaluation checkpoint</td><td>Higher consistency</td><td>/projects/project-alpha-001</td></tr>
+          <tr><td>2026-03-01</td><td>Generated presentation deck</td><td>Review-ready narrative</td><td>artifact:pptx</td></tr>
+          <tr><td>2026-02-27</td><td>Published initial artifact page</td><td>Public proof page live</td><td>artifact:landing</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:8px">Token usage (30d): <strong data-bind-text="token_usage_30d">0</strong></p>
+    </section>
+  </main>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

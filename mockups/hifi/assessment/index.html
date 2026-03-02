@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Skills Assessment - AI Tutor</title>
+  <meta name="description" content="Assess your AI skills and baseline knowledge. Get personalized project recommendations.">
+  <meta property="og:title" content="AI Skills Assessment - AI Tutor">
+  <meta property="og:description" content="Assess your AI skills and baseline knowledge. Get personalized project recommendations.">
+  <meta property="og:image" content="http://localhost:6399/og-image.png">
+  <meta property="og:url" content="http://localhost:6399/assessment/">
+  <link rel="canonical" href="http://localhost:6399/assessment/">
+  <link rel="stylesheet" href="/assets/styles-v3.css">
+</head>
+<body>
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="container">
+      <div class="topbar-inner">
+        <div class="brand">AI Tutor</div>
+        <nav class="nav">
+          <a href="/">Dashboard</a>
+          <a href="/">How It Works</a>
+          <a href="/assessment/">Assessment</a>
+          <a href="/">For Employers</a>
+        </nav>
+        <a href="/onboarding/" class="btn primary">Get Started</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO SECTION -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <div class="hero-label">Baseline Assessment</div>
+        <h1>Know Your AI Skills</h1>
+        <p class="lead">Quick assessment to understand your current AI proficiency. We ask about your experience, tools you've used, and challenges you've faced. Takes 10 minutes.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ASSESSMENT LAYOUT -->
+  <section class="section">
+    <div class="container">
+      <div class="grid-2">
+        <!-- LEFT: SITUATION -->
+        <div>
+          <div class="panel pad">
+            <h3>Your Situation</h3>
+            <div class="form-grid" style="margin-top: 20px;">
+              <div>
+                <label>Current Role</label>
+                <input type="text" class="input" placeholder="e.g., Frontend Developer" value="Frontend Developer">
+              </div>
+              <div>
+                <label>Years in Tech</label>
+                <select class="input">
+                  <option>0-1 year</option>
+                  <option selected>2-4 years</option>
+                  <option>5-8 years</option>
+                  <option>8+ years</option>
+                </select>
+              </div>
+              <div>
+                <label>AI Experience</label>
+                <select class="input">
+                  <option selected>I've used ChatGPT/Claude</option>
+                  <option>I've built with APIs</option>
+                  <option>I've fine-tuned models</option>
+                  <option>I'm new to AI</option>
+                </select>
+              </div>
+              <div>
+                <label>Primary Goal</label>
+                <select class="input">
+                  <option selected>Build AI-powered products</option>
+                  <option>Get an AI job</option>
+                  <option>Skill up for my role</option>
+                  <option>Start a side project</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line);">
+              <h4>Career Context</h4>
+              <div class="form-grid" style="margin-top: 16px;">
+                <div>
+                  <label>Looking for</label>
+                  <select class="input">
+                    <option selected>Career growth</option>
+                    <option>Side income</option>
+                    <option>Freelance work</option>
+                    <option>Staying current</option>
+                  </select>
+                </div>
+                <div>
+                  <label>Timeline</label>
+                  <select class="input">
+                    <option>Next month</option>
+                    <option selected>Next 3 months</option>
+                    <option>Next 6 months</option>
+                    <option>No rush</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: QUIZ -->
+        <div>
+          <div class="panel pad" data-assessment>
+            <h3>AI Baseline Quiz</h3>
+            <p style="color: var(--ink-soft); margin-top: 8px; font-size: 0.9rem;">Answer these 3 questions. Each correct answer earns points toward your baseline score.</p>
+
+            <!-- Question 1 -->
+            <div style="margin-top: 28px; padding-top: 28px; border-top: 1px solid var(--line);">
+              <h4>Question 1</h4>
+              <p style="color: var(--ink-soft); margin-top: 8px;">In prompt engineering, what is "temperature" in the context of LLM outputs?</p>
+              <div class="form-grid" style="margin-top: 14px; gap: 8px;">
+                <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="q1" data-points="0"> Controls how verbose the response is
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="q1" data-points="5"> Controls randomness/creativity vs consistency
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="q1" data-points="0"> Controls the model's accuracy on facts
+                </label>
+              </div>
+            </div>
+
+            <!-- Question 2 -->
+            <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line);">
+              <h4>Question 2</h4>
+              <p style="color: var(--ink-soft); margin-top: 8px;">What does "RAG" mean in AI development?</p>
+              <div class="form-grid" style="margin-top: 14px; gap: 8px;">
+                <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="q2" data-points="0"> Random Access Generation
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="q2" data-points="5"> Retrieval-Augmented Generation
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="q2" data-points="0"> Reinforced Automated Guidance
+                </label>
+              </div>
+            </div>
+
+            <!-- Question 3 -->
+            <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line);">
+              <h4>Question 3</h4>
+              <p style="color: var(--ink-soft); margin-top: 8px;">Which of these is NOT a common use case for fine-tuning LLMs?</p>
+              <div class="form-grid" style="margin-top: 14px; gap: 8px;">
+                <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="q3" data-points="5"> Training models on proprietary company data
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="q3" data-points="0"> Teaching models domain-specific terminology
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                  <input type="radio" name="q3" data-points="0"> Adjusting model behavior for specific tasks
+                </label>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button class="btn primary" data-assessment-submit style="margin-top: 28px; width: 100%;">Generate Your Assessment</button>
+
+            <!-- Output Area -->
+            <div data-assessment-output style="margin-top: 24px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT HAPPENS NEXT -->
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-header">
+        <h2>What Happens Next</h2>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <div style="font-size: 2rem; margin-bottom: 12px;">📊</div>
+          <h3>Your Baseline</h3>
+          <p>We score your answers across Foundational, Applied, and Advanced levels. This shows where you stand right now.</p>
+        </div>
+        <div class="card">
+          <div style="font-size: 2rem; margin-bottom: 12px;">🎯</div>
+          <h3>Personalized Path</h3>
+          <p>Your tutor picks your first project based on your baseline and goal. You'll start building in days, not weeks.</p>
+        </div>
+        <div class="card">
+          <div style="font-size: 2rem; margin-bottom: 12px;">📈</div>
+          <h3>Progressive Learning</h3>
+          <p>Each project builds on the last. Your skill stack grows. Your portfolio grows. The evidence is always there.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer-note">
+    <div class="container">
+      <p>&copy; 2024 AI Tutor. Helping you prove your AI skills through real projects.</p>
+    </div>
+  </footer>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

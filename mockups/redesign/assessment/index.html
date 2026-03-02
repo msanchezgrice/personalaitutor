@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Assessment | AI Tutor</title>
+  <meta name="description" content="Assess your AI baseline and generate a custom AI Tutor dashboard." />
+  <link rel="canonical" href="http://localhost:6396/assessment/" />
+  <meta property="og:title" content="AI Assessment" />
+  <meta property="og:description" content="Find your AI baseline and generate your personalized dashboard." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="http://localhost:6396/assessment/" />
+  <link rel="stylesheet" href="/assets/styles-v2.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor</a>
+      <nav class="nav">
+        <a href="/">Learners</a>
+        <a href="/assessment/">Assessment</a>
+        <a href="/onboarding/">Onboarding</a>
+        <a href="/employers/">Employers</a>
+      </nav>
+      <a class="btn" href="/dashboard/">View Dashboard</a>
+    </div>
+  </header>
+
+  <main class="container section" data-assessment>
+    <h1>AI Skills Assessment</h1>
+    <p class="lead">Discover your current AI skill level and get a personalized learning plan built around your goals.</p>
+
+    <div class="grid-2" style="margin-top:14px">
+      <section class="panel pad">
+        <h3>Step 1: Situation</h3>
+        <div class="form-grid cols-2" style="margin-top:10px">
+          <label><input type="radio" name="situation" data-points="2" checked /> Employed</label>
+          <label><input type="radio" name="situation" data-points="2" /> Unemployed</label>
+          <label><input type="radio" name="situation" data-points="1" /> Student</label>
+          <label><input type="radio" name="situation" data-points="3" /> Founder</label>
+        </div>
+
+        <h3 style="margin-top:14px">Step 2: Career Context</h3>
+        <div class="form-grid" style="margin-top:10px">
+          <label>LinkedIn Profile URL
+            <input class="input" placeholder="https://linkedin.com/in/your-handle" />
+          </label>
+          <label>Resume Upload
+            <input type="file" class="input" />
+          </label>
+          <div class="success-box">LinkedIn OAuth (MVP): <a class="btn" href="/onboarding/">Connect LinkedIn</a></div>
+        </div>
+      </section>
+
+      <section class="panel pad">
+        <h3>Step 3: AI Baseline Quiz</h3>
+        <div class="form-grid" style="margin-top:10px">
+          <label>How often do you use AI in your workflow?
+            <select>
+              <option data-points="1">Rarely</option>
+              <option data-points="3">Weekly</option>
+              <option data-points="5">Daily</option>
+            </select>
+          </label>
+
+          <fieldset class="card">
+            <legend><strong>Question A:</strong> Best way to reduce hallucinations?</legend>
+            <label><input type="radio" name="q1" data-points="5" /> Add grounding context + verification checks</label><br />
+            <label><input type="radio" name="q1" data-points="2" /> Ask the model to be concise</label><br />
+            <label><input type="radio" name="q1" data-points="0" /> Use more emojis in prompts</label>
+          </fieldset>
+
+          <fieldset class="card">
+            <legend><strong>Question B:</strong> How do you prove AI skill to employers?</legend>
+            <label><input type="radio" name="q2" data-points="5" /> Public projects + logs + artifact links</label><br />
+            <label><input type="radio" name="q2" data-points="2" /> Bullet points on resume only</label><br />
+            <label><input type="radio" name="q2" data-points="0" /> Keep all work private</label>
+          </fieldset>
+
+          <fieldset class="card">
+            <legend><strong>Question C:</strong> Preferred goal</legend>
+            <label><input type="radio" name="q3" data-points="5" /> Upskill for current role</label><br />
+            <label><input type="radio" name="q3" data-points="5" /> Showcase skills to get hired</label><br />
+            <label><input type="radio" name="q3" data-points="4" /> Build an AI-powered business</label>
+          </fieldset>
+
+          <button class="btn primary" data-assessment-submit>Score Assessment</button>
+          <a class="btn" href="https://careerguard.me/intake" target="_blank" rel="noreferrer">Open External Intake</a>
+        </div>
+
+        <div data-assessment-output style="margin-top:10px"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

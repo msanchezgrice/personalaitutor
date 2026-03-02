@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Hooks | AI Tutor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-[#0f111a] text-white flex h-screen overflow-hidden text-sm">
+
+    <!-- Sidebar -->
+    <aside
+        class="w-64 glass border-y-0 border-l-0 rounded-none flex flex-col h-full bg-black/20 flex-shrink-0 z-20 relative">
+        <div class="p-6">
+            <a href="/" class="flex items-center gap-2 mb-8">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-[0_0_15px_rgba(79,70,229,0.5)]">
+                    <i class="fa-solid fa-brain text-sm"></i>
+                </div>
+                <span class="font-[Outfit] font-bold text-lg tracking-tight text-white">AI Tutor</span>
+            </a>
+
+            <a href="/dashboard/profile/"
+                class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition border border-transparent hover:border-white/10 mb-8 cursor-pointer">
+                <img src="/assets/avatar.png" class="w-10 h-10 rounded-full object-cover border border-white/20"
+                    alt="Alex Chen">
+                <div class="overflow-hidden">
+                    <div class="font-medium text-white truncate">Alex Chen</div>
+                    <div class="text-xs text-indigo-400 truncate">Product Manager</div>
+                </div>
+            </a>
+
+            <nav class="space-y-1">
+                <a href="/dashboard/"
+                    class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition group">
+                    <i class="fa-solid fa-house w-5 text-center group-hover:text-indigo-400 transition-colors"></i> Home
+                </a>
+                <a href="/dashboard/chat/"
+                    class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition group">
+                    <i class="fa-solid fa-message w-5 text-center group-hover:text-amber-400 transition-colors"></i>
+                    Chat Tutor
+                </a>
+                <a href="/dashboard/projects/"
+                    class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition group">
+                    <i class="fa-solid fa-folder-open w-5 text-center group-hover:text-amber-400 transition-colors"></i>
+                    Projects
+                </a>
+                <a href="/dashboard/social/"
+                    class="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-[#0077b5]/20 text-[#0077b5] border border-[#0077b5]/30">
+                    <i
+                        class="fa-brands fa-linkedin w-5 text-center font-bold drop-shadow-[0_0_8px_rgba(0,119,181,0.6)]"></i>
+                    Social Hooks
+                </a>
+                <a href="/dashboard/updates/"
+                    class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition group flex justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-bell w-5 text-center group-hover:text-coral-400 transition-colors"></i>
+                        <span>Updates</span>
+                    </div>
+                    <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">2</span>
+                </a>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col h-full relative overflow-y-auto w-full">
+        <div class="absolute top-0 right-1/4 w-[400px] h-[300px] bg-[#0077b5]/10 blur-[120px] pointer-events-none">
+        </div>
+
+        <header
+            class="h-20 flex items-center justify-between px-10 border-b border-white/5 sticky top-0 bg-[#0f111a]/80 backdrop-blur-xl z-10 flex-shrink-0">
+            <div>
+                <h1 class="text-xl font-[Outfit] font-semibold flex items-center gap-3"><i
+                        class="fa-brands fa-linkedin text-[#0077b5]"></i> Social Hooks</h1>
+                <p class="text-xs text-gray-400">AI-generated content to share your progress and build authority.</p>
+            </div>
+        </header>
+
+        <div class="p-10 max-w-4xl mx-auto w-full pb-24 space-y-8">
+
+            <div class="glass flex flex-row gap-6 p-8 rounded-2xl border-[#0077b5]/30 bg-[#0077b5]/5 relative">
+                <div
+                    class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0077b5] to-blue-600 flex items-center justify-center text-white text-xl shadow-[0_0_15px_rgba(0,119,181,0.4)] flex-shrink-0 mt-1">
+                    <i class="fa-solid fa-pen-nib"></i>
+                </div>
+                <div class="flex-1">
+                    <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
+                        <div>
+                            <span
+                                class="text-[10px] font-bold uppercase tracking-wider bg-transparent text-[#0077b5] border border-[#0077b5]/50 px-2 py-1 rounded">Draft
+                                for LinkedIn</span>
+                            <span class="text-[10px] bg-white/5 text-gray-400 px-2 py-1 rounded ml-2">Context: Project
+                                Completion</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#1f2937] p-5 rounded-xl border border-white/10 mb-6 font-['Helvetica']">
+                        <div class="flex items-center gap-3 mb-4">
+                            <img src="/assets/avatar.png" class="w-10 h-10 rounded-full">
+                            <div>
+                                <div class="font-bold text-sm text-gray-100">Alex Chen</div>
+                                <div class="text-[10px] text-gray-400">Product Manager | AI Builder</div>
+                            </div>
+                            <i class="fa-solid fa-globe text-gray-500 text-xs ml-auto"></i>
+                        </div>
+                        <p class="text-[13px] text-gray-200 leading-relaxed whitespace-pre-wrap">Just finished building
+                            my first automated Lead Scraper using Python and Google Maps APIs! 🚀
+
+                            Huge thanks to my AI Tutor for walking me through the data structures and API rate-limiting
+                            handling. What used to take our SDR team hours of manual Googling and copy-pasting is now a
+                            30-second script run.
+
+                            Tools used:
+                            - Python
+                            - Google Places API
+                            - Pandas
+
+                            AI isn't replacing logic; it's accelerating execution. Check out the build log and source
+                            code on my verified proof profile:
+                            [Link to public profile / project]
+
+                            #BuildInPublic #AI #Python #Productivity</p>
+
+                        <div class="mt-4 border border-white/10 rounded-lg overflow-hidden flex bg-black/40">
+                            <div
+                                class="p-4 bg-[url('/assets/hero.png')] bg-cover bg-center w-32 shrink-0 border-r border-white/10 grayscale opacity-80">
+                            </div>
+                            <div class="p-3">
+                                <h4 class="font-bold text-xs text-white mb-1">Lead Scraper Pro - Alex Chen</h4>
+                                <p class="text-[10px] text-gray-400">Verified Project Build. View the source code,
+                                    prompts, and architecture.</p>
+                                <p class="text-[9px] text-gray-500 mt-2 uppercase tracking-wide">AI TUTOR PUBLIC PROOF
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <button class="btn bg-[#0077b5] text-white hover:bg-[#005582] text-sm"><i
+                                class="fa-brands fa-linkedin-in mr-2"></i> Post to LinkedIn</button>
+                        <button class="btn btn-secondary text-sm"><i class="fa-brands fa-x-twitter text-white mr-2"></i>
+                            Convert to Thread</button>
+                        <button class="text-gray-400 hover:text-white px-3 ml-auto text-sm"><i
+                                class="fa-solid fa-rotate-right mr-2"></i> Regenerate Tone</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</body>
+
+</html>

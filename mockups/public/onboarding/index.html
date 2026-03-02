@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Onboarding Wizard | AI Tutor Platform</title>
+  <meta name="description" content="Multi-step onboarding wizard with LinkedIn OAuth, resume intake, and AI quiz." />
+  <link rel="canonical" href="http://localhost:6396/onboarding/" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor Platform</a>
+      <nav class="nav">
+        <a href="/assessment/">Assessment</a>
+        <a href="/onboarding/">Onboarding</a>
+        <a href="/dashboard/">Dashboard</a>
+        <a href="/employers/">Employers</a>
+      </nav>
+      <a class="btn" href="/dashboard/">Skip to Dashboard</a>
+    </div>
+  </header>
+
+  <main class="container section" data-wizard>
+    <h1>Onboarding Wizard</h1>
+    <p class="lead">End-to-end mock test flow: create a synthetic user profile here, then verify it across dashboard and public profile pages.</p>
+
+    <div class="panel pad" style="margin-top:14px">
+      <div class="steps">
+        <div class="step">Situation</div>
+        <div class="step">Career</div>
+        <div class="step">AI Quiz</div>
+        <div class="step">Goals</div>
+        <div class="step">Review</div>
+      </div>
+      <p class="tag" data-wizard-progress>Step 1 of 5</p>
+
+      <section class="wizard-pane active" style="margin-top:14px">
+        <h3>Step 1: Create synthetic test user</h3>
+        <div class="form-grid cols-2" style="margin-top:8px">
+          <label>Test display name
+            <input class="input" data-onboard-field="display_name" data-bind-value="display_name" value="TEST_USER_0001" />
+          </label>
+          <label>Test handle slug
+            <input class="input" data-onboard-field="handle" data-bind-value="handle" value="test-user-0001" />
+          </label>
+          <label>Current situation
+            <div class="form-grid" style="margin-top:6px">
+              <label><input type="radio" name="emp" value="Employed" checked /> Employed</label>
+              <label><input type="radio" name="emp" value="Unemployed" /> Unemployed</label>
+              <label><input type="radio" name="emp" value="Student" /> Student</label>
+              <label><input type="radio" name="emp" value="Founder" /> Founder</label>
+              <label><input type="radio" name="emp" value="Freelancer" /> Freelancer</label>
+              <label><input type="radio" name="emp" value="Career Switcher" /> Career Switcher</label>
+            </div>
+          </label>
+          <label>Role track
+            <select data-onboard-field="role_track" data-bind-value="role_track">
+              <option>Generalist Track</option>
+              <option>Product Manager Track</option>
+              <option>Engineering Track</option>
+              <option>Marketing Track</option>
+              <option>Operations Track</option>
+              <option>Sales Track</option>
+              <option>Founder Track</option>
+            </select>
+          </label>
+        </div>
+        <div class="hero-actions">
+          <button class="btn" data-reset-user>Reset Synthetic User</button>
+          <button class="btn primary" data-next>Continue</button>
+        </div>
+      </section>
+
+      <section class="wizard-pane" style="margin-top:14px">
+        <h3>Step 2: Career import</h3>
+        <div class="grid-2" style="margin-top:10px">
+          <div class="card">
+            <h3>LinkedIn OAuth</h3>
+            <p>Connect LinkedIn account for identity verification and account linking.</p>
+            <div class="hero-actions">
+              <button class="btn brand">Connect LinkedIn (OAuth)</button>
+              <span class="tag ok">Scope: r_liteprofile</span>
+            </div>
+            <label style="margin-top:8px;display:block">LinkedIn URL (test)
+              <input class="input" data-onboard-field="linkedin_url" data-bind-value="linkedin_url" value="https://linkedin.example/test-user-0001" />
+            </label>
+          </div>
+          <div class="card">
+            <h3>Resume Upload</h3>
+            <p>Upload PDF/DOCX for skill extraction.</p>
+            <input type="file" class="input" />
+            <label style="margin-top:8px;display:block">Current AI usage level
+              <select data-onboard-field="ai_level" data-bind-value="ai_level">
+                <option>Foundational</option>
+                <option>Applied</option>
+                <option>Advanced</option>
+                <option>Expert</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="fail-box" style="margin-top:10px"><strong>Fail state sample:</strong> Resume parse failed due to unsupported file format. Accepted: PDF/DOCX.</div>
+        <div class="hero-actions">
+          <button class="btn" data-prev>Back</button>
+          <button class="btn primary" data-next>Continue</button>
+        </div>
+      </section>
+
+      <section class="wizard-pane" style="margin-top:14px">
+        <h3>Step 3: AI baseline profile</h3>
+        <div class="form-grid cols-2" style="margin-top:10px">
+          <label>Tool familiarity
+            <select>
+              <option>Chat interfaces only</option>
+              <option>Prompt + workflow tools</option>
+              <option>API + automation stack</option>
+              <option>Agent orchestration</option>
+            </select>
+          </label>
+          <label>Validation approach
+            <select>
+              <option>Manual spot checks</option>
+              <option>Prompt-level test sets</option>
+              <option>Scored eval pipelines</option>
+              <option>Human + automated QA hybrid</option>
+            </select>
+          </label>
+          <label style="grid-column:1/-1">How do you validate model output quality?
+            <textarea rows="3" placeholder="Briefly describe your process"></textarea>
+          </label>
+        </div>
+        <div class="hero-actions">
+          <button class="btn" data-prev>Back</button>
+          <button class="btn primary" data-next>Continue</button>
+        </div>
+      </section>
+
+      <section class="wizard-pane" style="margin-top:14px">
+        <h3>Step 4: Goals and project target</h3>
+        <div class="form-grid cols-2" style="margin-top:10px">
+          <label>Primary goal
+            <select data-onboard-field="goal_primary" data-bind-value="goal_primary">
+              <option>Upskill for current job</option>
+              <option>Showcase skills to get hired</option>
+              <option>Build an AI business</option>
+              <option>Grow freelance income</option>
+              <option>Transition careers with AI proof</option>
+            </select>
+          </label>
+          <label>Weekly learning hours
+            <select data-onboard-field="weekly_hours" data-bind-value="weekly_hours">
+              <option>1-2</option>
+              <option>3-4</option>
+              <option>5-7</option>
+              <option>8-10</option>
+              <option>10+</option>
+            </select>
+          </label>
+          <label>Primary test project label
+            <input class="input" data-onboard-field="project_primary" data-bind-value="project_primary" value="PROJECT_ALPHA_001" />
+          </label>
+          <label>Audience for public posts
+            <input class="input" data-onboard-field="audience" data-bind-value="audience" value="technical hiring teams" />
+          </label>
+          <label style="grid-column:1/-1">Short synthetic bio
+            <textarea rows="3" data-onboard-field="bio" data-bind-value="bio">Synthetic mock profile for end-to-end testing only.</textarea>
+          </label>
+        </div>
+        <div class="hero-actions">
+          <button class="btn" data-prev>Back</button>
+          <button class="btn primary" data-next>Continue</button>
+        </div>
+      </section>
+
+      <section class="wizard-pane" style="margin-top:14px">
+        <h3>Step 5: Review and generate dashboard</h3>
+        <div class="grid-2" style="margin-top:10px">
+          <div class="card">
+            <h3>Synthetic user</h3>
+            <p><strong data-bind-text="display_name">TEST_USER_0001</strong> · <span data-bind-text="role_track">Generalist Track</span></p>
+            <p>Handle: <span class="code" data-bind-text="handle">test-user-0001</span></p>
+          </div>
+          <div class="card">
+            <h3>Primary project</h3>
+            <p data-bind-text="project_primary">PROJECT_ALPHA_001</p>
+            <p>Goal: <span data-bind-text="goal_primary">Upskill for current job</span></p>
+          </div>
+        </div>
+        <div class="success-box" style="margin-top:10px"><strong>Dashboard generation job queued.</strong> This saves your synthetic mock user in local storage for end-to-end testing.</div>
+        <div class="hero-actions">
+          <button class="btn" data-prev>Back</button>
+          <button class="btn brand" data-finish>Generate Dashboard</button>
+        </div>
+      </section>
+
+      <div class="success-box hide" data-wizard-done style="margin-top:14px">
+        Onboarding complete.
+      </div>
+    </div>
+  </main>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

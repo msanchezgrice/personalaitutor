@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talent Marketplace | AI Tutor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-[#0f111a] text-white flex h-screen overflow-hidden text-sm">
+
+    <aside class="w-64 glass border-y-0 border-l-0 rounded-none flex flex-col h-full bg-black/40 flex-shrink-0 z-20">
+        <div class="p-6">
+            <a href="/employers/" class="flex items-center gap-2 mb-10">
+                <div
+                    class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-[#0f111a] font-bold text-xl">
+                    <i class="fa-solid fa-briefcase text-sm"></i>
+                </div>
+                <span class="font-[Outfit] font-bold text-lg tracking-tight text-white">CareerGuard Recruiter</span>
+            </a>
+
+            <div class="mb-6">
+                <h4 class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-3">Filter by Skill</h4>
+                <div class="space-y-2">
+                    <label class="flex items-center gap-3 text-gray-300 hover:text-white cursor-pointer group">
+                        <input type="checkbox" checked
+                            class="rounded border-gray-600 bg-gray-800 text-emerald-500 focus:ring-emerald-500">
+                        <span class="group-hover:underline">Python Scripting</span>
+                    </label>
+                    <label class="flex items-center gap-3 text-gray-300 hover:text-white cursor-pointer group">
+                        <input type="checkbox" checked
+                            class="rounded border-gray-600 bg-gray-800 text-emerald-500 focus:ring-emerald-500">
+                        <span class="group-hover:underline">API Integrations</span>
+                    </label>
+                    <label class="flex items-center gap-3 text-gray-300 hover:text-white cursor-pointer group">
+                        <input type="checkbox"
+                            class="rounded border-gray-600 bg-gray-800 text-emerald-500 focus:ring-emerald-500">
+                        <span>Cursor IDE</span>
+                    </label>
+                    <label class="flex items-center gap-3 text-gray-300 hover:text-white cursor-pointer group">
+                        <input type="checkbox"
+                            class="rounded border-gray-600 bg-gray-800 text-emerald-500 focus:ring-emerald-500">
+                        <span>RAG Architecture</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="mb-6 border-t border-white/10 pt-6">
+                <h4 class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-3">Verification Level</h4>
+                <div class="space-y-2">
+                    <label class="flex items-center gap-3 text-emerald-400 font-medium cursor-pointer group">
+                        <input type="radio" name="level" checked
+                            class="text-emerald-500 focus:ring-emerald-500 bg-gray-800 border-gray-600">
+                        <i class="fa-solid fa-shield-check"></i> System Verified Only
+                    </label>
+                    <label class="flex items-center gap-3 text-gray-400 cursor-pointer group">
+                        <input type="radio" name="level"
+                            class="text-emerald-500 focus:ring-emerald-500 bg-gray-800 border-gray-600">
+                        <span>All Candidates</span>
+                    </label>
+                </div>
+            </div>
+
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col h-full relative overflow-y-auto w-full">
+        <header
+            class="h-20 flex items-center justify-between px-10 border-b border-white/5 sticky top-0 bg-[#0f111a]/80 backdrop-blur-xl z-10 flex-shrink-0">
+            <div class="relative w-96">
+                <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
+                <input type="text" placeholder="Search by role, name, or exact tool..."
+                    class="w-full bg-black/40 border border-white/10 rounded-full pl-10 pr-4 py-2 text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition text-sm">
+            </div>
+            <div class="flex items-center gap-4 text-gray-400">
+                <span>Sort by: <span class="text-white font-medium">Relevance</span> <i
+                        class="fa-solid fa-chevron-down ml-1 text-xs"></i></span>
+            </div>
+        </header>
+
+        <div class="p-10 max-w-6xl mx-auto w-full pb-24">
+            <div class="flex justify-between items-end mb-6">
+                <h2 class="text-xl font-[Outfit] text-white">24 Candidates Match Criteria</h2>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                <!-- Talent Card -->
+                <a href="/employers/talent/alex-chen-ai/"
+                    class="glass p-6 rounded-2xl hover:bg-white/5 transition border border-white/10 hover:border-emerald-500/40 group relative cursor-pointer">
+                    <div class="flex justify-between items-start mb-4">
+                        <img src="/assets/avatar.png"
+                            class="w-16 h-16 rounded-full object-cover border border-white/20">
+                        <div class="bg-emerald-500/20 text-emerald-400 w-8 h-8 rounded-full flex items-center justify-center border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                            title="Verified Human Builder">
+                            <i class="fa-solid fa-check text-sm font-bold"></i>
+                        </div>
+                    </div>
+
+                    <h3 class="text-lg font-medium text-white group-hover:text-emerald-400 transition mb-1">Alex Chen
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-4">Product Manager</p>
+
+                    <div class="space-y-2 mb-6">
+                        <div class="flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-diagram-project text-gray-500 w-4"></i>
+                            <span class="text-gray-300">3 Verified Projects built</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-code text-gray-500 w-4"></i>
+                            <span class="text-gray-300">Python, APIs, Cursor</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 mt-auto border-t border-white/10 pt-4">
+                        <span
+                            class="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded px-2 py-0.5">Prompt
+                            Engineering</span>
+                        <span
+                            class="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded px-2 py-0.5">API
+                            Auth</span>
+                    </div>
+                </a>
+
+                <!-- Talent Card 2 -->
+                <div
+                    class="glass p-6 rounded-2xl hover:bg-white/5 transition border border-white/10 hover:border-emerald-500/40 relative cursor-pointer grayscale opacity-60">
+                    <div class="flex justify-between items-start mb-4">
+                        <div
+                            class="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center border border-white/20 text-gray-500 text-xl">
+                            <i class="fa-solid fa-user"></i></div>
+                    </div>
+
+                    <h3 class="text-lg font-medium text-white transition mb-1">Sarah J.</h3>
+                    <p class="text-gray-400 text-sm mb-4">Marketing Director</p>
+                    <div class="space-y-2 mb-6">
+                        <div class="flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-diagram-project text-gray-500 w-4"></i>
+                            <span class="text-gray-300">1 Verified Project built</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mt-auto border-t border-white/10 pt-4">
+                        <span
+                            class="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded px-2 py-0.5">Midjourney</span>
+                        <span
+                            class="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded px-2 py-0.5">Prompt
+                            Eng.</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+</body>
+
+</html>

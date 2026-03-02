@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Tutor | Build AI Skills and Public Proof</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="relative min-h-screen flex flex-col">
+  <!-- Background Glows -->
+  <div class="bg-glow top-[-200px] left-[-100px]"></div>
+  <div class="bg-glow top-[20%] right-[-200px]"
+    style="background: radial-gradient(circle, var(--secondary-glow) 0%, rgba(0,0,0,0) 70%);"></div>
+
+  <!-- Navigation -->
+  <header class="glass sticky top-0 z-50 border-x-0 border-t-0 rounded-none bg-opacity-80 backdrop-blur-xl">
+    <div class="container nav">
+      <div class="flex items-center gap-2">
+        <div
+          class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+          <i class="fa-solid fa-brain"></i>
+        </div>
+        <span class="font-[Outfit] font-bold text-xl tracking-tight">AI Tutor</span>
+      </div>
+      <nav class="hidden md:flex nav-links">
+        <a href="#how-it-works" class="nav-link">How it works</a>
+        <a href="#proof" class="nav-link">Public Proof</a>
+        <a href="/employers/" class="nav-link">For Employers</a>
+      </nav>
+      <div class="flex gap-4">
+        <a href="/onboarding/" class="btn btn-secondary hidden sm:flex">Log In</a>
+        <a href="/assessment/" class="btn btn-primary animate-pulse-glow">Start Assessment <i
+            class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main class="flex-grow">
+    <section class="container pt-20 pb-32 grid lg:grid-cols-2 gap-12 items-center relative">
+      <div class="z-10">
+        <div
+          class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-sm font-medium mb-6">
+          <span class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
+          Your dedicated AI copilot for career growth
+        </div>
+        <h1 class="text-5xl lg:text-7xl mb-6">Learn fast and <br><span class="text-gradient">prove it publicly.</span>
+        </h1>
+        <p class="text-xl text-gray-400 mb-8 max-w-lg leading-relaxed">
+          AI will not replace you. Someone with AI skills will. We help you build workflows, verify your skills, and
+          generate a dynamic public profile.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 mb-10">
+          <a href="/assessment/" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>
+          <a href="/employers/talent/" class="btn btn-secondary text-lg px-8 py-4">See Example Profiles</a>
+        </div>
+        <div class="flex items-center gap-4 text-sm text-gray-500">
+          <div class="flex -space-x-2">
+            <img src="/assets/avatar.png" class="w-8 h-8 rounded-full border-2 border-gray-900 object-cover"
+              alt="User" />
+            <div
+              class="w-8 h-8 rounded-full border-2 border-gray-900 bg-indigo-600 flex items-center justify-center text-white text-xs">
+              +2k</div>
+          </div>
+          <p>Professionals already building their AI stack.</p>
+        </div>
+      </div>
+
+      <div class="relative z-10 hidden lg:block perspective-1000">
+        <img src="/assets/hero.png" alt="AI Node Network"
+          class="w-full h-auto animate-float drop-shadow-2xl rounded-2xl border border-white/10"
+          style="transform: rotateY(-5deg) rotateX(5deg);" />
+
+        <!-- Floating Badge -->
+        <div class="absolute bottom-[-20px] left-[-40px] glass-panel p-4 flex items-center gap-4 animate-float"
+          style="animation-delay: 1s;">
+          <img src="/assets/badge.png" class="w-12 h-12 object-cover rounded-lg" alt="Badge" />
+          <div>
+            <p class="text-white font-bold text-sm">Prompt Engineering</p>
+            <p class="text-emerald-400 text-xs font-semibold">Verified Skill</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section id="how-it-works" class="py-24 relative border-t border-white/5 bg-black/20">
+      <div class="container">
+        <div class="text-center mb-16 max-w-2xl mx-auto">
+          <h2 class="text-4xl mb-4">How it works</h2>
+          <p class="text-gray-400">Your AI Tutor guides you from absolute beginner to verified expert through hands-on
+            project building.</p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8">
+          <div class="glass p-8 hover:bg-white/5 transition duration-300">
+            <div
+              class="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl mb-6">
+              <i class="fa-solid fa-compass"></i>
+            </div>
+            <h3 class="text-xl mb-3">1. Tell us your background</h3>
+            <p class="text-gray-400 text-sm">We assess your current level and tailor a custom learning path based on
+              your role and industry.</p>
+          </div>
+          <div class="glass p-8 hover:bg-white/5 transition duration-300">
+            <div
+              class="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xl mb-6">
+              <i class="fa-solid fa-code-branch"></i>
+            </div>
+            <h3 class="text-xl mb-3">2. Build Real Projects</h3>
+            <p class="text-gray-400 text-sm">Learn by doing. Your AI Tutor helps you build workflows and applications
+              that solve real-world problems.</p>
+          </div>
+          <div class="glass p-8 hover:bg-white/5 transition duration-300">
+            <div
+              class="w-12 h-12 rounded-xl bg-coral-500/20 text-coral-400 flex items-center justify-center text-xl mb-6 flex overflow-hidden">
+              <div
+                class="w-full h-full bg-gradient-to-br from-red-400 to-rose-600 flex items-center justify-center text-white">
+                <i class="fa-solid fa-certificate"></i>
+              </div>
+            </div>
+            <h3 class="text-xl mb-3">3. Earn Public Proof</h3>
+            <p class="text-gray-400 text-sm">Automatically generate a portfolio, build logs, and social proof that
+              verifies your new skills to employers.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Features Deep Dive -->
+  <section id="features" class="py-24 relative">
+    <div class="container">
+      <div class="text-center mb-16 max-w-3xl mx-auto">
+        <h2 class="text-4xl mb-4 text-white">Everything you need to master AI</h2>
+        <p class="text-gray-400">Our platform combines an intelligent coding tutor with automated portfolio generation
+          to give you an unfair advantage.</p>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-12 items-center mb-24">
+        <div class="order-2 md:order-1 relative perspective-1000">
+          <div class="glass-panel p-2 rounded-2xl transform rotateY-5 shadow-2xl">
+            <img src="/assets/hero.png" alt="Dashboard" class="w-full h-auto rounded-xl opacity-80" />
+            <div class="absolute inset-0 bg-gradient-to-tr from-indigo-900/40 to-transparent rounded-xl"></div>
+          </div>
+        </div>
+        <div class="order-1 md:order-2">
+          <div
+            class="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl mb-6">
+            <i class="fa-solid fa-graduation-cap"></i>
+          </div>
+          <h3 class="text-3xl mb-4 text-white">Personalized Curriculum</h3>
+          <p class="text-gray-400 mb-6 leading-relaxed">Stop taking generic courses. Your AI Tutor analyzes your resume
+            and current role to generate a custom learning path. Whether you are a marketer learning API integrations or
+            a PM learning Python scripts, you get exactly what you need.</p>
+          <ul class="space-y-3">
+            <li class="flex items-center gap-3 text-sm text-gray-300"><i class="fa-solid fa-check text-emerald-400"></i>
+              Role-specific project recommendations</li>
+            <li class="flex items-center gap-3 text-sm text-gray-300"><i class="fa-solid fa-check text-emerald-400"></i>
+              Adaptive pacing based on your progress</li>
+            <li class="flex items-center gap-3 text-sm text-gray-300"><i class="fa-solid fa-check text-emerald-400"></i>
+              Daily curated AI news affecting your stack</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-12 items-center">
+        <div>
+          <div
+            class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl mb-6">
+            <i class="fa-solid fa-shield-check"></i>
+          </div>
+          <h3 class="text-3xl mb-4 text-white">Cryptographically Verified Proof</h3>
+          <p class="text-gray-400 mb-6 leading-relaxed">Don't just claim you know AI. Prove it. As you build projects
+            with your tutor, our system automatically tracks your telemetry and generates a public build log and
+            verifiable skill badges.</p>
+          <ul class="space-y-3">
+            <li class="flex items-center gap-3 text-sm text-gray-300"><i class="fa-solid fa-check text-emerald-400"></i>
+              Automatically generated public portfolio</li>
+            <li class="flex items-center gap-3 text-sm text-gray-300"><i class="fa-solid fa-check text-emerald-400"></i>
+              Unforgeable proof of execution</li>
+            <li class="flex items-center gap-3 text-sm text-gray-300"><i class="fa-solid fa-check text-emerald-400"></i>
+              Direct visibility to our employer network</li>
+          </ul>
+        </div>
+        <div class="relative perspective-1000">
+          <div class="glass-panel p-2 rounded-2xl transform -rotateY-5 shadow-2xl">
+            <img src="/assets/badge.png" alt="Verified Skills"
+              class="w-full h-auto rounded-xl object-cover border border-white/5 bg-black/40 p-12" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Social Proof / Testimonials -->
+  <section class="py-24 border-y border-white/5 bg-black/40">
+    <div class="container text-center max-w-4xl mx-auto">
+      <i class="fa-solid fa-quote-left text-4xl text-indigo-500/40 mb-6 relative -left-4"></i>
+      <h2 class="text-3xl md:text-5xl font-[Outfit] text-white leading-tight mb-10">"I learned more in two weeks
+        building my first Python automation script with my AI Tutor than I did in a month of watching YouTube
+        tutorials."</h2>
+
+      <div class="flex items-center justify-center gap-4">
+        <img src="/assets/avatar.png" class="w-16 h-16 rounded-full border-2 border-indigo-500 object-cover"
+          alt="Sarah J.">
+        <div class="text-left">
+          <p class="text-white font-bold text-lg">Sarah J.</p>
+          <p class="text-indigo-400 text-sm">Marketing Ops Director</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" class="py-24 relative">
+    <div class="container">
+      <div class="text-center mb-16">
+        <h2 class="text-4xl mb-4 text-white">Invest in your career leverage</h2>
+        <p class="text-gray-400">Choose the plan that fits your ambition.</p>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <!-- Pro Plan -->
+        <div class="glass p-8 rounded-2xl border-white/10 hover:border-indigo-500/50 transition">
+          <h3 class="text-2xl font-bold text-white mb-2">Pro Builder</h3>
+          <p class="text-gray-400 text-sm mb-6">For professionals looking to build their first automations.</p>
+          <div class="mb-6">
+            <span class="text-4xl font-bold text-white">$49</span><span class="text-gray-500">/mo</span>
+          </div>
+          <a href="/onboarding/" class="btn btn-secondary w-full text-center py-3 mb-8">Start Free Trial</a>
+          <ul class="space-y-4">
+            <li class="flex items-center gap-3 text-sm text-gray-300"><i
+                class="fa-solid fa-check text-indigo-400 text-xs"></i> 24/7 AI Coding Tutor Access</li>
+            <li class="flex items-center gap-3 text-sm text-gray-300"><i
+                class="fa-solid fa-check text-indigo-400 text-xs"></i> Unlimited Project Build Logs</li>
+            <li class="flex items-center gap-3 text-sm text-gray-300"><i
+                class="fa-solid fa-check text-indigo-400 text-xs"></i> Standard Verify Badges</li>
+            <li class="flex items-center gap-3 text-sm text-gray-300"><i
+                class="fa-solid fa-check text-indigo-400 text-xs"></i> Public Portfolio SEO</li>
+          </ul>
+        </div>
+
+        <!-- CareerGuard Plan -->
+        <div
+          class="glass-panel p-8 rounded-2xl border-emerald-500/50 relative overflow-hidden transform scale-105 shadow-2xl">
+          <div
+            class="absolute top-0 right-0 bg-emerald-500 text-black text-[10px] font-bold uppercase tracking-widest px-4 py-1 rounded-bl-lg">
+            Recommended</div>
+          <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent pointer-events-none"></div>
+
+          <h3 class="text-2xl font-bold text-white mb-2 relative z-10 flex items-center gap-2"><i
+              class="fa-solid fa-shield-halved text-emerald-400"></i> CareerGuard Network</h3>
+          <p class="text-gray-400 text-sm mb-6 relative z-10">For elite builders seeking immediate hiring visibility.
+          </p>
+          <div class="mb-6 relative z-10">
+            <span class="text-4xl font-bold text-white">$149</span><span class="text-gray-500">/mo</span>
+          </div>
+          <a href="/onboarding/"
+            class="btn btn-accent w-full text-center py-3 mb-8 relative z-10 shadow-[0_4px_14px_0_rgba(16,185,129,0.3)] bg-gradient-to-r from-emerald-500 to-teal-500">Apply
+            to Network</a>
+          <ul class="space-y-4 relative z-10">
+            <li class="flex items-center gap-3 text-sm text-white"><i
+                class="fa-solid fa-check text-emerald-400 text-xs"></i> Everything in Pro Builder</li>
+            <li class="flex items-center gap-3 text-sm text-white"><i
+                class="fa-solid fa-check text-emerald-400 text-xs"></i> Guaranteed Employer Impressions</li>
+            <li class="flex items-center gap-3 text-sm text-white"><i
+                class="fa-solid fa-check text-emerald-400 text-xs"></i> Direct Sourcing Placement</li>
+            <li class="flex items-center gap-3 text-sm text-white"><i
+                class="fa-solid fa-check text-emerald-400 text-xs"></i> 1-on-1 Human Career Coaching</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="py-24 relative overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-b from-transparent to-indigo-900/20"></div>
+    <div class="container relative z-10 text-center max-w-3xl mx-auto">
+      <h2 class="text-5xl font-[Outfit] text-white mb-6">Stop observing. Start building.</h2>
+      <p class="text-xl text-gray-400 mb-10">Join professionals who are future-proofing their careers with verified AI
+        execution skills.</p>
+      <a href="/assessment/" class="btn btn-primary text-xl px-10 py-5 animate-pulse-glow shadow-2xl">Start Your AI
+        Assessment</a>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 py-12 mt-auto">
+    <div class="container flex flex-col md:flex-row justify-between items-center gap-6">
+      <div class="flex items-center gap-2">
+        <div
+          class="w-6 h-6 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">
+          <i class="fa-solid fa-brain"></i>
+        </div>
+        <span class="font-[Outfit] font-bold text-lg">AI Tutor</span>
+      </div>
+      <p class="text-sm text-gray-500">© 2026 AI Tutor. All rights reserved.</p>
+    </div>
+  </footer>
+</body>
+
+</html>

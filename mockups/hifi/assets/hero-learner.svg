@@ -1,0 +1,76 @@
+<svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="learnerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4f46e5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0ea5e9;stop-opacity:1" />
+    </linearGradient>
+    <filter id="blur">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
+    </filter>
+  </defs>
+
+  <!-- Background glow -->
+  <circle cx="400" cy="250" r="300" fill="#4f46e5" opacity="0.08"/>
+
+  <!-- Stacked blocks - learning growth concept -->
+  <g id="blocks">
+    <!-- Bottom block -->
+    <rect x="280" y="340" width="80" height="80" fill="#4f46e5" opacity="0.9"/>
+    <rect x="280" y="340" width="80" height="4" fill="#0ea5e9" opacity="0.6"/>
+
+    <!-- Second block -->
+    <rect x="300" y="270" width="80" height="70" fill="#0ea5e9" opacity="0.85"/>
+    <rect x="300" y="270" width="80" height="3" fill="#4f46e5" opacity="0.7"/>
+
+    <!-- Third block -->
+    <rect x="315" y="200" width="80" height="70" fill="#4f46e5" opacity="0.8"/>
+    <rect x="315" y="200" width="80" height="3" fill="#0ea5e9" opacity="0.6"/>
+
+    <!-- Top block -->
+    <rect x="330" y="130" width="80" height="70" fill="#0ea5e9" opacity="0.9"/>
+    <rect x="330" y="130" width="80" height="3" fill="#4f46e5" opacity="0.8"/>
+  </g>
+
+  <!-- Neural network nodes and connections -->
+  <g id="network" opacity="0.7">
+    <!-- Connecting lines -->
+    <line x1="370" y1="165" x2="480" y2="220" stroke="#0ea5e9" stroke-width="2" opacity="0.5"/>
+    <line x1="380" y1="235" x2="520" y2="200" stroke="#4f46e5" stroke-width="1.5" opacity="0.4"/>
+    <line x1="420" y1="380" x2="550" y2="320" stroke="#0ea5e9" stroke-width="2" opacity="0.45"/>
+    <line x1="430" y1="160" x2="600" y2="140" stroke="#4f46e5" stroke-width="1.5" opacity="0.35"/>
+    <line x1="360" y1="300" x2="550" y2="350" stroke="#0ea5e9" stroke-width="1.5" opacity="0.4"/>
+
+    <!-- Connection nodes -->
+    <circle cx="370" cy="165" r="6" fill="#f59e0b" opacity="0.8"/>
+    <circle cx="480" cy="220" r="5" fill="#f59e0b" opacity="0.7"/>
+    <circle cx="520" cy="200" r="4" fill="#0ea5e9" opacity="0.6"/>
+    <circle cx="550" cy="320" r="6" fill="#f59e0b" opacity="0.75"/>
+    <circle cx="600" cy="140" r="5" fill="#4f46e5" opacity="0.5"/>
+    <circle cx="550" cy="350" r="4" fill="#0ea5e9" opacity="0.55"/>
+  </g>
+
+  <!-- Accent geometric shapes on right -->
+  <g id="accents" opacity="0.85">
+    <!-- Large diamond -->
+    <path d="M 680 120 L 720 160 L 680 200 L 640 160 Z" fill="none" stroke="#f59e0b" stroke-width="2.5" opacity="0.7"/>
+
+    <!-- Small circles -->
+    <circle cx="700" cy="100" r="8" fill="#f59e0b" opacity="0.6"/>
+    <circle cx="660" cy="280" r="6" fill="#0ea5e9" opacity="0.5"/>
+    <circle cx="720" cy="320" r="7" fill="#4f46e5" opacity="0.45"/>
+
+    <!-- Arc -->
+    <path d="M 650 380 A 40 40 0 0 1 700 400" stroke="#0ea5e9" stroke-width="2" fill="none" opacity="0.6"/>
+
+    <!-- Geometric polygon -->
+    <polygon points="720,250 750,270 740,305 710,300" fill="#f59e0b" opacity="0.35"/>
+  </g>
+
+  <!-- Left side accent elements -->
+  <g id="leftAccents" opacity="0.8">
+    <circle cx="80" cy="150" r="5" fill="#0ea5e9" opacity="0.6"/>
+    <circle cx="120" cy="120" r="4" fill="#f59e0b" opacity="0.5"/>
+    <polygon points="100,300 130,310 120,340" fill="#0ea5e9" opacity="0.3"/>
+    <rect x="60" y="380" width="40" height="40" fill="none" stroke="#4f46e5" stroke-width="2" opacity="0.4"/>
+  </g>
+</svg>

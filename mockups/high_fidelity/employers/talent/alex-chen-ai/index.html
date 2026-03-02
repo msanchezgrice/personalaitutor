@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alex Chen - Talent Profile | CareerGuard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-[#0f111a] text-white flex h-screen overflow-hidden text-sm">
+
+    <aside class="w-64 glass border-y-0 border-l-0 rounded-none flex flex-col h-full bg-black/40 flex-shrink-0 z-20">
+        <div class="p-6">
+            <a href="/employers/" class="flex items-center gap-2 mb-10">
+                <div
+                    class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-[#0f111a] font-bold text-xl">
+                    <i class="fa-solid fa-briefcase text-sm"></i>
+                </div>
+                <span class="font-[Outfit] font-bold text-lg tracking-tight text-white">CareerGuard Recruiter</span>
+            </a>
+
+            <a href="/employers/talent/" class="text-gray-400 hover:text-white transition flex items-center gap-2 mb-8">
+                <i class="fa-solid fa-arrow-left"></i> Back to Search
+            </a>
+
+            <div class="mb-6 border-t border-white/10 pt-6">
+                <h4 class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-3">Recruiter Actions</h4>
+                <button
+                    class="btn bg-white text-[#0f111a] hover:bg-gray-200 w-full mb-3 shadow-[0_4px_14px_rgba(255,255,255,0.2)]">Message
+                    Candidate</button>
+                <button class="btn btn-secondary w-full border-gray-600 hover:bg-white/5"><i
+                        class="fa-solid fa-bookmark mr-2"></i> Save Profile</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col h-full relative overflow-y-auto w-full">
+        <div class="absolute top-0 right-1/4 w-[400px] h-[300px] bg-emerald-500/10 blur-[120px] pointer-events-none">
+        </div>
+
+        <header
+            class="h-20 flex items-center justify-between px-10 border-b border-white/5 sticky top-0 bg-[#0f111a]/80 backdrop-blur-xl z-10 flex-shrink-0">
+            <div>
+                <span
+                    class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-2 w-max">
+                    <i class="fa-solid fa-shield-check"></i> Identity & Skills Verified
+                </span>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="/u/alex-chen-ai/" target="_blank"
+                    class="text-indigo-400 hover:text-indigo-300 text-sm font-medium"><i
+                        class="fa-solid fa-up-right-from-square mr-1"></i> View Public Portfolio</a>
+            </div>
+        </header>
+
+        <div class="p-10 max-w-5xl mx-auto w-full pb-24 space-y-8">
+
+            <section class="glass p-8 rounded-2xl flex flex-col md:flex-row gap-8 items-start">
+                <img src="/assets/avatar.png" class="w-32 h-32 rounded-xl object-cover border border-white/20 shrink-0">
+                <div>
+                    <h1 class="text-4xl font-[Outfit] text-white mb-2">Alex Chen</h1>
+                    <p class="text-lg text-gray-400 mb-4">Product Manager based in San Francisco, CA</p>
+                    <p class="text-sm text-gray-300 max-w-2xl leading-relaxed mb-6">
+                        I'm a PM learning how to automate workflows and build prototypes using AI. Building publicly to
+                        track my journey from non-technical to AI-fluent. Demonstrated ability to use Cursor, Python,
+                        and external APIs to build functional prototype workflows.
+                    </p>
+                    <div class="flex gap-2">
+                        <span class="text-xs bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-gray-300"><i
+                                class="fa-solid fa-building text-gray-500 mr-1.5"></i> Open to full-time</span>
+                        <span class="text-xs bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-gray-300"><i
+                                class="fa-solid fa-dollar-sign text-gray-500 mr-1.5"></i> $120k - $150k target</span>
+                    </div>
+                </div>
+            </section>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Verification Data -->
+                <section class="glass p-8 rounded-2xl border-emerald-500/20 relative overflow-hidden">
+                    <div class="absolute right-0 top-0 p-8 opacity-5 -translate-y-4 translate-x-4">
+                        <i class="fa-solid fa-shield-check text-[150px] text-emerald-500"></i>
+                    </div>
+                    <h3
+                        class="text-lg font-[Outfit] text-white flex items-center gap-2 mb-6 border-b border-white/10 pb-3">
+                        <i class="fa-solid fa-microchip text-emerald-400"></i> System Verifications</h3>
+
+                    <div class="space-y-4 relative z-10">
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-black/30 border border-white/5">
+                            <span class="font-medium text-gray-300">Prompt Engineering</span>
+                            <span class="text-emerald-400 text-xs font-bold uppercase tracking-widest"><i
+                                    class="fa-solid fa-check mr-1"></i> Verified High</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-black/30 border border-white/5">
+                            <span class="font-medium text-gray-300">Python Scripting</span>
+                            <span class="text-emerald-400 text-xs font-bold uppercase tracking-widest"><i
+                                    class="fa-solid fa-check mr-1"></i> Verified Med</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-black/30 border border-white/5">
+                            <span class="font-medium text-gray-300">API Architecture</span>
+                            <span class="text-gray-500 text-xs font-bold uppercase tracking-widest">In Progress</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Verified Projects Context -->
+                <section class="space-y-4">
+                    <h3 class="text-lg font-[Outfit] text-white flex items-center gap-2 mb-6"><i
+                            class="fa-solid fa-folder-tree text-amber-400"></i> Verified Work History</h3>
+
+                    <!-- Project Log summary -->
+                    <div
+                        class="glass p-5 rounded-xl border-t-2 border-t-amber-400 hover:bg-white/5 transition flex flex-col items-start gap-4">
+                        <div class="flex justify-between w-full">
+                            <h4 class="font-medium text-white">Customer Support Copilot</h4>
+                            <span class="text-xs text-gray-500">Active Build</span>
+                        </div>
+                        <p class="text-xs text-gray-400">Automated email responder using RAG to fetch CRM context.
+                            System logs show active debugging of JSON payload parsing in Python.</p>
+                        <a href="#" class="btn btn-secondary text-xs px-3 py-1 text-center w-full bg-black/40"><i
+                                class="fa-solid fa-eye mr-2"></i> Audit Build Log</a>
+                    </div>
+
+                    <div
+                        class="glass p-5 rounded-xl border-t-2 border-t-emerald-400 hover:bg-white/5 transition flex flex-col items-start gap-4">
+                        <div class="flex justify-between w-full">
+                            <h4 class="font-medium text-white">Lead Scraper Pro</h4>
+                            <span class="text-xs text-emerald-400 font-medium">Completed</span>
+                        </div>
+                        <p class="text-xs text-gray-400">Python script to map local businesses to a CSV. Successfully
+                            executed against 3 production APIs.</p>
+                        <a href="#" class="btn btn-secondary text-xs px-3 py-1 text-center w-full bg-black/40"><i
+                                class="fa-solid fa-eye mr-2"></i> Audit Build Log</a>
+                    </div>
+                </section>
+            </div>
+
+        </div>
+    </main>
+</body>
+
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Tutor Chat | Dashboard</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="stylesheet" href="/assets/styles-v2.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor</a>
+      <nav class="nav">
+        <a href="/dashboard/">Overview</a>
+        <a href="/dashboard/projects/">Projects</a>
+        <a href="/dashboard/profile/">Profile</a>
+        <a href="/dashboard/chat/">Chat</a>
+        <a href="/dashboard/social/">Social</a>
+      </nav>
+      <a class="btn" href="/dashboard/updates/">Daily Updates</a>
+    </div>
+  </header>
+
+  <main class="container section">
+    <h1>AI Tutor Chat</h1>
+    <p class="lead">Your always-on AI tutor for learning, building, and generating project artifacts.</p>
+
+    <section class="chat-wrap" style="margin-top:12px">
+      <article class="panel pad">
+        <div class="messages">
+          <div class="msg user"><strong>You:</strong> Help me convert my support copilot project into a profile-ready case study and LinkedIn post.</div>
+          <div class="msg agent"><strong>AI Tutor:</strong> I will generate three outputs: case-study summary, profile card update, and LinkedIn draft with OG-compatible share link.</div>
+          <div class="msg agent"><strong>Event:</strong> <span class="code">job.started</span> job_8c9012 · <span class="code">builder.generate_artifact</span></div>
+          <div class="msg agent"><strong>Event:</strong> <span class="code">tool.call</span> summarize_build_log · <span class="code">tool.result</span> success</div>
+          <div class="msg agent"><strong>Artifact:</strong> case-study.md + social-draft-linkedin.txt ready.</div>
+          <div class="msg user"><strong>You:</strong> Great. Also generate a PPT for hiring managers.</div>
+          <div class="msg agent"><strong>AI Tutor:</strong> PPT generation queued. This will add evidence for Communication and Product Storytelling skills.</div>
+        </div>
+
+        <div class="form-grid" style="margin-top:10px">
+          <textarea rows="4" placeholder="Ask your AI Tutor to explain, build, review, or publish..."></textarea>
+          <div class="hero-actions">
+            <button class="btn brand">Explain</button>
+            <button class="btn">Build</button>
+            <button class="btn">Generate Post</button>
+            <button class="btn">Review</button>
+          </div>
+        </div>
+
+      </article>
+
+      <aside class="panel pad">
+        <h3>Live Context</h3>
+        <ul class="list">
+          <li>Goal: Showcase skills for job search</li>
+          <li>Active project: Customer Support Copilot</li>
+          <li>Recent artifact: support-copilot-v4-site</li>
+          <li>Skill gap: Model QA confidence thresholds</li>
+        </ul>
+
+        <h3 style="margin-top:12px">Quick Actions</h3>
+        <div class="form-grid" style="margin-top:8px">
+          <button class="btn">Generate Website Update</button>
+          <button class="btn">Generate Resume AI Section</button>
+          <button class="btn">Generate One-Pager PDF</button>
+          <button class="btn">Generate PPT</button>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

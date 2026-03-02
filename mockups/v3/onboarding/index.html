@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Onboarding Wizard | AI Tutor</title>
+  <meta name="description" content="Multi-step onboarding wizard with LinkedIn OAuth, resume intake, and AI quiz." />
+  <link rel="canonical" href="http://localhost:6398/onboarding/" />
+  <link rel="stylesheet" href="/assets/styles-v3.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor</a>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/assessment/">Assessment</a>
+        <a href="/onboarding/" class="active">Onboarding</a>
+        <a href="/dashboard/">Dashboard</a>
+        <a href="/employers/">Employers</a>
+      </nav>
+      <a class="btn primary sm" href="/dashboard/">Skip to Dashboard</a>
+    </div>
+  </header>
+
+  <main data-wizard>
+    <!-- ===== HERO ===== -->
+    <section class="hero dot-grid">
+      <div class="container">
+        <div class="hero-content animate-in" style="max-width:680px">
+          <span class="eyebrow">Get started</span>
+          <h1>Onboarding <span class="text-gradient">Wizard</span></h1>
+          <p class="lead">This flow creates your AI Tutor context and first dashboard. No fallback behavior: if key steps fail, onboarding pauses with explicit recovery instructions.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== WIZARD BODY ===== -->
+    <section class="section" style="padding-top:40px">
+      <div class="container-narrow">
+        <div class="panel pad animate-in">
+
+          <!-- Step Indicator -->
+          <div class="steps">
+            <div class="step active">Situation</div>
+            <div class="step">Career</div>
+            <div class="step">AI Quiz</div>
+            <div class="step">Goals</div>
+            <div class="step">Review</div>
+          </div>
+          <div style="margin-top:12px;margin-bottom:8px">
+            <span class="tag brand" data-wizard-progress>Step 1 of 5</span>
+          </div>
+
+          <!-- ===== STEP 1: Situation ===== -->
+          <section class="wizard-pane active" style="margin-top:20px">
+            <span class="eyebrow">Step 1</span>
+            <h3>What is your current situation?</h3>
+            <p style="color:var(--ink-soft);font-size:0.92rem;margin-bottom:16px">Select the option that best describes where you are right now.</p>
+            <div class="form-grid cols-2">
+              <label><input type="radio" name="emp" checked /> Employed</label>
+              <label><input type="radio" name="emp" /> Unemployed</label>
+              <label><input type="radio" name="emp" /> Student</label>
+              <label><input type="radio" name="emp" /> Founder</label>
+            </div>
+            <div class="hero-actions" style="margin-top:24px">
+              <button class="btn primary" data-next>Continue</button>
+            </div>
+          </section>
+
+          <!-- ===== STEP 2: Career Import ===== -->
+          <section class="wizard-pane" style="margin-top:20px">
+            <span class="eyebrow">Step 2</span>
+            <h3>Career import</h3>
+            <p style="color:var(--ink-soft);font-size:0.92rem;margin-bottom:16px">Connect your LinkedIn or upload a resume so we can personalize your experience.</p>
+
+            <div class="grid-2" style="margin-top:8px">
+              <div class="card">
+                <h3>LinkedIn OAuth</h3>
+                <p>Connect LinkedIn account for identity verification and account linking.</p>
+                <div class="hero-actions" style="margin-top:14px">
+                  <button class="btn primary sm">Connect LinkedIn (OAuth)</button>
+                  <span class="tag ok">Scope: r_liteprofile</span>
+                </div>
+              </div>
+              <div class="card">
+                <h3>Resume Upload</h3>
+                <p>Upload PDF/DOCX for skill extraction.</p>
+                <div style="margin-top:14px">
+                  <input type="file" class="input" />
+                </div>
+              </div>
+            </div>
+
+            <div class="fail-box" style="margin-top:16px">
+              <strong>Fail state sample:</strong> Resume parse failed due to unsupported file format. Accepted: PDF/DOCX.
+            </div>
+
+            <div class="hero-actions" style="margin-top:24px">
+              <button class="btn" data-prev>Back</button>
+              <button class="btn primary" data-next>Continue</button>
+            </div>
+          </section>
+
+          <!-- ===== STEP 3: AI Baseline Quiz ===== -->
+          <section class="wizard-pane" style="margin-top:20px">
+            <span class="eyebrow">Step 3</span>
+            <h3>AI baseline quiz</h3>
+            <p style="color:var(--ink-soft);font-size:0.92rem;margin-bottom:16px">Help us understand your current AI experience level.</p>
+
+            <div class="form-grid">
+              <label>Have you built AI-assisted workflows before?
+                <select>
+                  <option>No</option>
+                  <option>Some</option>
+                  <option>Many</option>
+                </select>
+              </label>
+              <label>How do you validate model output quality?
+                <textarea rows="3" placeholder="Briefly describe your process"></textarea>
+              </label>
+            </div>
+
+            <div class="hero-actions" style="margin-top:24px">
+              <button class="btn" data-prev>Back</button>
+              <button class="btn primary" data-next>Continue</button>
+            </div>
+          </section>
+
+          <!-- ===== STEP 4: Goals ===== -->
+          <section class="wizard-pane" style="margin-top:20px">
+            <span class="eyebrow">Step 4</span>
+            <h3>Goals</h3>
+            <p style="color:var(--ink-soft);font-size:0.92rem;margin-bottom:16px">Select the goals that matter most to you. We will use these to shape your dashboard.</p>
+
+            <div class="form-grid cols-2">
+              <label><input type="checkbox" checked /> Upskill for my current job</label>
+              <label><input type="checkbox" checked /> Showcase skills to get hired</label>
+              <label><input type="checkbox" /> Build an AI business</label>
+              <label><input type="checkbox" /> Improve freelancing outcomes</label>
+            </div>
+
+            <div class="hero-actions" style="margin-top:24px">
+              <button class="btn" data-prev>Back</button>
+              <button class="btn primary" data-next>Continue</button>
+            </div>
+          </section>
+
+          <!-- ===== STEP 5: Review ===== -->
+          <section class="wizard-pane" style="margin-top:20px">
+            <span class="eyebrow">Step 5</span>
+            <h3>Review and generate dashboard</h3>
+            <p style="color:var(--ink-soft);font-size:0.92rem;margin-bottom:16px">Here is a summary based on your inputs. Confirm to generate your personalized dashboard.</p>
+
+            <div class="grid-2" style="margin-top:8px">
+              <div class="card">
+                <h3>Detected skill seeds</h3>
+                <p>Prompting, Workflow Automation, AI-assisted Documentation</p>
+                <div class="flex-wrap" style="margin-top:12px">
+                  <span class="tag brand">Prompting</span>
+                  <span class="tag brand">Workflow Automation</span>
+                  <span class="tag brand">AI Documentation</span>
+                </div>
+              </div>
+              <div class="card">
+                <h3>Suggested first project</h3>
+                <p>Customer Support Copilot with knowledge retrieval and QA checks.</p>
+                <div class="flex-wrap" style="margin-top:12px">
+                  <span class="tag ok">Beginner-friendly</span>
+                  <span class="tag warn">2-week estimate</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="success-box" style="margin-top:16px">
+              <strong>Dashboard generation job queued.</strong> The AI Tutor will build your initial project board and profile draft.
+            </div>
+
+            <div class="hero-actions" style="margin-top:24px">
+              <button class="btn" data-prev>Back</button>
+              <button class="btn primary" data-finish>Generate Dashboard</button>
+            </div>
+          </section>
+
+          <!-- ===== COMPLETION STATE ===== -->
+          <div class="success-box hide" data-wizard-done style="margin-top:20px">
+            Onboarding complete. Continue to <a href="/dashboard/"><strong>Dashboard</strong></a>.
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CTA BAND ===== -->
+    <section class="section" style="padding-top:0">
+      <div class="container">
+        <div class="cta-band animate-in">
+          <h3>Not sure where to start?</h3>
+          <p style="margin-top:8px;max-width:46ch;margin-left:auto;margin-right:auto">Take the quick AI assessment first to benchmark your skills, then come back to complete onboarding.</p>
+          <div class="hero-actions mt-md">
+            <a class="btn accent" href="/assessment/">Take the Assessment</a>
+            <a class="btn" href="/employers/">I'm an employer</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <p class="footer-brand">AI Tutor</p>
+          <p style="max-width:36ch">Build AI skills and prove them publicly with a dedicated tutor, portfolio, and verified evidence.</p>
+        </div>
+        <div>
+          <h4 style="color:#fff;margin-bottom:12px;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.08em">Learners</h4>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="/assessment/">Assessment</a>
+            <a href="/onboarding/">Onboarding</a>
+            <a href="/dashboard/">Dashboard</a>
+          </div>
+        </div>
+        <div>
+          <h4 style="color:#fff;margin-bottom:12px;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.08em">Employers</h4>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="/employers/">Overview</a>
+            <a href="/employers/talent/">Talent Board</a>
+          </div>
+        </div>
+        <div>
+          <h4 style="color:#fff;margin-bottom:12px;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.08em">Platform</h4>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="/architecture/">Architecture</a>
+            <a href="/emails/daily-update/">Email Samples</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-note" style="border-color:rgba(255,255,255,0.1);margin-top:40px">
+      Mockup v3 for review. Includes fail-state-first UX and Greenlight-style agent architecture parity.
+    </div>
+  </footer>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

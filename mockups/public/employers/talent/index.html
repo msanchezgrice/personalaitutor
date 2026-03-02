@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Talent Marketplace | AI Tutor Employers</title>
+  <meta name="description" content="Search verified AI talent by skills, tools, and project evidence." />
+  <link rel="canonical" href="http://localhost:6396/employers/talent/" />
+  <meta property="og:title" content="AI Talent Marketplace" />
+  <meta property="og:description" content="Search proof-based AI candidates with verified skills." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="http://localhost:6396/employers/talent/" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor Platform</a>
+      <nav class="nav">
+        <a href="/employers/">Employers</a>
+        <a href="/employers/talent/">Talent Board</a>
+      </nav>
+      <a class="btn" href="/">Back to Learner Site</a>
+    </div>
+  </header>
+
+  <main class="container section" data-talent-search>
+    <h1>Talent Marketplace Search</h1>
+    <p class="lead">Employer-facing mock data only. Includes 20 fake users with varying roles, status, and skill mixes.</p>
+
+    <section class="market-layout" style="margin-top:12px">
+      <aside class="panel pad">
+        <h3>Filters</h3>
+        <div class="filter-block">
+          <label>Search query<input class="input" data-filter="query" placeholder="name, role, project" /></label>
+          <label>Skill<input class="input" data-filter="skill" placeholder="prompt engineering" /></label>
+          <label>Tool<input class="input" data-filter="tool" placeholder="openai api" /></label>
+          <p class="tag" data-result-count>0 candidates</p>
+        </div>
+        <div class="card" style="margin-top:10px">
+          <h3>Verification legend</h3>
+          <p><span class="tag">In Progress</span> <span class="tag warn">Built</span> <span class="tag ok">Verified</span></p>
+        </div>
+      </aside>
+
+      <section class="result-grid">
+        <article class="panel pad talent-card" data-card data-type="card" data-name="Candidate 001" data-role="Product Manager" data-skills="prompt engineering,rag,workflow automation" data-tools="openai api,supabase,vercel">
+          <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
+            <h3>Candidate 001</h3>
+            <span class="tag ok">Evidence Score 83</span>
+          </div>
+          <p>Fake marketplace profile: product-oriented AI builder with public proof artifacts.</p>
+          <div class="talent-meta">
+            <span class="tag ok">Prompt Engineering</span>
+            <span class="tag ok">RAG</span>
+            <span class="tag warn">Agent Ops</span>
+            <span class="tag">OpenAI API</span>
+            <span class="tag">Supabase</span>
+          </div>
+          <a class="btn" href="/employers/talent/candidate-001/">View Talent Profile</a>
+        </article>
+
+        <article class="panel pad talent-card" data-card data-type="card" data-name="Candidate 002" data-role="Marketing Lead" data-skills="content automation,prompt engineering,analytics" data-tools="chatgpt,notion ai,hubspot">
+          <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
+            <h3>Candidate 002</h3>
+            <span class="tag ok">Evidence Score 74</span>
+          </div>
+          <p>Fake marketplace profile: lifecycle campaigns and AI-assisted content systems.</p>
+          <div class="talent-meta">
+            <span class="tag ok">Content Automation</span>
+            <span class="tag warn">Prompt Engineering</span>
+            <span class="tag">HubSpot</span>
+            <span class="tag">Notion AI</span>
+          </div>
+          <a class="btn" href="/employers/talent/candidate-001/">View Talent Profile</a>
+        </article>
+
+        <article class="panel pad talent-card" data-card data-type="card" data-name="Candidate 003" data-role="Operations Manager" data-skills="workflow automation,qa process,agent evaluation" data-tools="n8n,zapier,openai api">
+          <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
+            <h3>Candidate 003</h3>
+            <span class="tag warn">Evidence Score 61</span>
+          </div>
+          <p>Fake marketplace profile: operations-focused AI workflow orchestration.</p>
+          <div class="talent-meta">
+            <span class="tag warn">Workflow Automation</span>
+            <span class="tag">n8n</span>
+            <span class="tag">Zapier</span>
+          </div>
+          <a class="btn" href="/employers/talent/candidate-001/">View Talent Profile</a>
+        </article>
+      </section>
+    </section>
+
+    <section class="panel pad" style="margin-top:14px">
+      <h3>20 Fake Users (Varying Types)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Candidate</th><th>Type</th><th>Role</th><th>Status</th><th>Top Skills</th><th>Top Tools</th><th>Score</th></tr></thead>
+          <tbody>
+            <tr data-card data-type="table" data-name="Candidate 001" data-role="Product Manager" data-skills="prompt engineering,rag" data-tools="openai api,supabase"><td>Candidate 001</td><td>Employed</td><td>Product Manager</td><td>Verified</td><td>Prompt Engineering, RAG</td><td>OpenAI API, Supabase</td><td>83</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 002" data-role="Marketing Lead" data-skills="content automation,analytics" data-tools="chatgpt,hubspot"><td>Candidate 002</td><td>Employed</td><td>Marketing Lead</td><td>Verified</td><td>Content Automation</td><td>ChatGPT, HubSpot</td><td>74</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 003" data-role="Operations Manager" data-skills="workflow automation,qa" data-tools="n8n,zapier"><td>Candidate 003</td><td>Employed</td><td>Operations Manager</td><td>Built</td><td>Workflow Automation</td><td>n8n, Zapier</td><td>61</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 004" data-role="Software Engineer" data-skills="agent orchestration,prompt engineering" data-tools="openai api,langgraph"><td>Candidate 004</td><td>Employed</td><td>Software Engineer</td><td>Verified</td><td>Agent Orchestration</td><td>OpenAI API, LangGraph</td><td>79</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 005" data-role="Data Analyst" data-skills="analysis,reporting" data-tools="python,notebook"><td>Candidate 005</td><td>Employed</td><td>Data Analyst</td><td>Built</td><td>AI Reporting</td><td>Python, Notebook</td><td>67</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 006" data-role="Freelancer" data-skills="automation,client delivery" data-tools="make,openai api"><td>Candidate 006</td><td>Freelancer</td><td>Consultant</td><td>In Progress</td><td>Client Automation</td><td>Make, OpenAI API</td><td>54</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 007" data-role="Founder" data-skills="product strategy,ai ops" data-tools="vercel,supabase"><td>Candidate 007</td><td>Founder</td><td>Startup Operator</td><td>Built</td><td>AI Product Strategy</td><td>Vercel, Supabase</td><td>63</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 008" data-role="Student" data-skills="prompt engineering,docs" data-tools="chatgpt,notion ai"><td>Candidate 008</td><td>Student</td><td>CS Student</td><td>In Progress</td><td>Prompting</td><td>ChatGPT, Notion AI</td><td>49</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 009" data-role="Career Switcher" data-skills="workflow design,qa" data-tools="zapier,loom"><td>Candidate 009</td><td>Career Switcher</td><td>Ops to PM</td><td>Built</td><td>Workflow Design</td><td>Zapier, Loom</td><td>58</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 010" data-role="Sales Manager" data-skills="outreach automation,crm ai" data-tools="hubspot,openai api"><td>Candidate 010</td><td>Employed</td><td>Sales Manager</td><td>Built</td><td>Outreach Automation</td><td>HubSpot, OpenAI API</td><td>64</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 011" data-role="Recruiter" data-skills="candidate screening,prompting" data-tools="greenhouse,chatgpt"><td>Candidate 011</td><td>Employed</td><td>Recruiter</td><td>In Progress</td><td>AI Screening</td><td>Greenhouse, ChatGPT</td><td>52</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 012" data-role="Designer" data-skills="ux prompts,prototype generation" data-tools="figma,midjourney"><td>Candidate 012</td><td>Freelancer</td><td>Designer</td><td>Built</td><td>AI Prototype UX</td><td>Figma, Midjourney</td><td>60</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 013" data-role="Support Lead" data-skills="support automation,knowledge qa" data-tools="zendesk,openai api"><td>Candidate 013</td><td>Employed</td><td>Support Lead</td><td>Verified</td><td>Support Copilots</td><td>Zendesk, OpenAI API</td><td>76</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 014" data-role="Finance Analyst" data-skills="report generation,qa" data-tools="excel,python"><td>Candidate 014</td><td>Employed</td><td>Finance Analyst</td><td>In Progress</td><td>AI Reporting</td><td>Excel, Python</td><td>47</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 015" data-role="PMM" data-skills="go-to-market ai,content ops" data-tools="notion ai,hubspot"><td>Candidate 015</td><td>Employed</td><td>Product Marketing</td><td>Built</td><td>AI GTM Ops</td><td>Notion AI, HubSpot</td><td>62</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 016" data-role="Engineer" data-skills="eval pipelines,agent qa" data-tools="langsmith,openai api"><td>Candidate 016</td><td>Employed</td><td>Engineer</td><td>Verified</td><td>Eval Pipelines</td><td>LangSmith, OpenAI API</td><td>81</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 017" data-role="Founder" data-skills="business automation,docs" data-tools="zapier,notion"><td>Candidate 017</td><td>Founder</td><td>Solo Operator</td><td>Built</td><td>AI Ops</td><td>Zapier, Notion</td><td>59</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 018" data-role="Teacher" data-skills="curriculum ai,content" data-tools="chatgpt,canva"><td>Candidate 018</td><td>Career Switcher</td><td>Teacher</td><td>In Progress</td><td>AI Curriculum</td><td>ChatGPT, Canva</td><td>46</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 019" data-role="Consultant" data-skills="workflow audits,automation" data-tools="make,airtable"><td>Candidate 019</td><td>Freelancer</td><td>Consultant</td><td>Built</td><td>Workflow Audits</td><td>Make, Airtable</td><td>66</td></tr>
+            <tr data-card data-type="table" data-name="Candidate 020" data-role="Unemployed" data-skills="portfolio building,prompting" data-tools="chatgpt,vercel"><td>Candidate 020</td><td>Unemployed</td><td>Job Seeker</td><td>In Progress</td><td>Portfolio Proof</td><td>ChatGPT, Vercel</td><td>44</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

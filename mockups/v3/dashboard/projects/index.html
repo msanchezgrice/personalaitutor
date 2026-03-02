@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Projects | AI Tutor Dashboard</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="stylesheet" href="/assets/styles-v3.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor</a>
+      <nav class="nav">
+        <a href="/dashboard/">Dashboard</a>
+        <a class="active" href="/dashboard/projects/">Projects</a>
+        <a href="/dashboard/profile/">Profile</a>
+        <a href="/dashboard/chat/">Chat</a>
+        <a href="/dashboard/social/">Social</a>
+        <a href="/dashboard/updates/">Updates</a>
+      </nav>
+      <a class="btn sm" href="/u/alex-chen-ai/">Public Profile</a>
+    </div>
+  </header>
+
+  <main class="split container">
+    <aside class="sidebar">
+      <h3>AI Tutor Workspace</h3>
+      <p class="lead" style="font-size:.88rem;margin-top:6px">Dedicated agent is always available to explain and build.</p>
+      <div class="side-links">
+        <a href="/dashboard/">Overview</a>
+        <a class="active" href="/dashboard/projects/">My Projects</a>
+        <a href="/dashboard/profile/">My Online Profile</a>
+        <a href="/dashboard/chat/">Chat</a>
+        <a href="/dashboard/social/">LinkedIn/X Posts</a>
+        <a href="/dashboard/updates/">Daily Updates</a>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>Create Asset</h3>
+        <p>Generate: Website, PPT deck, Resume variant, One-pager PDF.</p>
+      </div>
+    </aside>
+
+    <section class="content">
+      <div class="animate-in">
+        <span class="eyebrow">Project Board</span>
+        <h1>My Projects</h1>
+        <p class="lead">Each project maps to skill evidence and public proof cards.</p>
+      </div>
+
+      <div class="grid-3 animate-in">
+        <article class="card">
+          <h3>Customer Support Copilot</h3>
+          <p>Status: <span class="tag ok">Built</span></p>
+          <p style="margin-top:8px">Artifacts: <span class="tag brand">Website</span> <span class="tag brand">PPT</span> <span class="tag brand">Resume PDF</span></p>
+          <p style="margin-top:8px">Skills credited: Prompt Engineering, RAG, QA Workflows.</p>
+          <div class="hero-actions">
+            <button class="btn primary">Generate Website Update</button>
+            <button class="btn">Generate PPT</button>
+            <button class="btn">Generate Resume Variant</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>AI Sales Follow-up Bot</h3>
+          <p>Status: <span class="tag warn">In Progress</span></p>
+          <p style="margin-top:8px">Artifacts: <span class="tag">Build log only</span></p>
+          <p style="margin-top:8px">Skills credited: Automation Design.</p>
+          <div class="hero-actions">
+            <button class="btn primary">Create First Artifact</button>
+            <button class="btn">Log Build Session</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>Recruiting Outreach Engine</h3>
+          <p>Status: <span class="tag">Planned</span></p>
+          <p style="margin-top:8px">Artifacts: none</p>
+          <p style="margin-top:8px">Skills potential: Agent Ops, Prompt QA, Reporting.</p>
+          <div class="hero-actions">
+            <button class="btn primary">Start Project</button>
+          </div>
+        </article>
+      </div>
+
+      <article class="panel pad animate-in">
+        <h3>Build Log (latest)</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Project</th><th>Action</th><th>Evidence</th><th>Skill Impact</th></tr></thead>
+            <tbody>
+              <tr><td>2026-03-02</td><td>Support Copilot</td><td>Added confidence scoring gate</td><td><span class="code">artifact:v4-site</span></td><td>Prompt Engineering +1</td></tr>
+              <tr><td>2026-03-01</td><td>Support Copilot</td><td>Exported stakeholder PPT</td><td><span class="code">artifact:deck-phase2</span></td><td>Communication +1</td></tr>
+              <tr><td>2026-02-28</td><td>Sales Follow-up</td><td>Built first prompt set</td><td><span class="code">log:session-11</span></td><td>Automation +1</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <div class="fail-box animate-in"><strong>Fail state sample:</strong> Artifact generation failed due to worker timeout. Job ID <span class="code">job_7af91d</span>. Retry after worker recovers.</div>
+    </section>
+  </main>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

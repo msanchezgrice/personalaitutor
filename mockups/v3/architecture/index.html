@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Architecture Parity | AI Tutor Platform</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="stylesheet" href="/assets/styles-v3.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor</a>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/dashboard/">Dashboard</a>
+        <a href="/architecture/" class="active">Architecture</a>
+      </nav>
+      <a class="btn sm" href="/dashboard/projects/">Artifacts</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- ===== HERO ===== -->
+    <section class="hero dot-grid" style="padding:60px 0 40px">
+      <div class="container">
+        <span class="eyebrow">Technical Reference</span>
+        <h1 class="animate-in">Greenlight Architecture <span class="text-gradient">Parity Check</span></h1>
+        <p class="lead animate-in" style="animation-delay:0.1s">This mockup set assumes direct parity with Greenlight's queue-worker-memory architecture, with role rename from CEO Agent to AI Tutor.</p>
+      </div>
+    </section>
+
+    <!-- ===== COMPARISON TABLE ===== -->
+    <section class="section">
+      <div class="container">
+        <div class="panel pad animate-in">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+            <div>
+              <span class="eyebrow">Mapping</span>
+              <h3 style="margin-top:4px">Architecture Pattern Parity</h3>
+            </div>
+            <span class="tag ok">7 / 7 patterns included</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Greenlight Pattern</th>
+                  <th>AI Tutor Mapping</th>
+                  <th style="text-align:center">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="code">agent_jobs</span> queue + worker claim</td>
+                  <td>Same queue pattern for tutoring, build, and verify jobs</td>
+                  <td style="text-align:center"><span class="tag ok">Included</span></td>
+                </tr>
+                <tr>
+                  <td><span class="code">agent_job_events</span> live stream</td>
+                  <td>Chat + dashboard live status events</td>
+                  <td style="text-align:center"><span class="tag ok">Included</span></td>
+                </tr>
+                <tr>
+                  <td>Company context + memory refresh</td>
+                  <td>Learner context + memory refresh</td>
+                  <td style="text-align:center"><span class="tag ok">Included</span></td>
+                </tr>
+                <tr>
+                  <td><span class="code">tech_news_refresh</span> recurring</td>
+                  <td><span class="code">ai_news_refresh</span> recurring</td>
+                  <td style="text-align:center"><span class="tag ok">Included</span></td>
+                </tr>
+                <tr>
+                  <td>Nightshift daily updates + email</td>
+                  <td>Daily tutor update + digest emails</td>
+                  <td style="text-align:center"><span class="tag ok">Included</span></td>
+                </tr>
+                <tr>
+                  <td>Landing/page asset generation</td>
+                  <td>Personal website + profile pages generation</td>
+                  <td style="text-align:center"><span class="tag ok">Included</span></td>
+                </tr>
+                <tr>
+                  <td>PPT/PDF asset generation</td>
+                  <td>PPT, PDF, resume variants for proof artifacts</td>
+                  <td style="text-align:center"><span class="tag ok">Included</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ===== ASSET GENERATION + FAIL-STATE PANELS ===== -->
+        <div class="grid-2 mt-lg">
+          <article class="panel pad animate-in">
+            <span class="eyebrow">Generation</span>
+            <h3>Asset Generation Logic</h3>
+            <p style="color:var(--ink-soft);font-size:0.92rem;margin:8px 0 16px">Every project milestone triggers asset generation. These artifacts are what make profiles employer-ready.</p>
+            <ul class="list">
+              <li>Project website update generation</li>
+              <li>PPT stakeholder deck generation</li>
+              <li>Resume bullet exports and resume variants</li>
+              <li>One-pager PDF summary export</li>
+              <li>Social post content with OG metadata</li>
+            </ul>
+            <div class="success-box mt-md">
+              <strong>Trigger:</strong> Asset generation fires on project card publish, module completion, and profile update events.
+            </div>
+          </article>
+          <article class="panel pad animate-in" style="animation-delay:0.1s">
+            <span class="eyebrow" style="color:var(--error)">Safety</span>
+            <h3>Hard Fail-State Policy</h3>
+            <p style="color:var(--ink-soft);font-size:0.92rem;margin:8px 0 16px">The platform enforces a strict no-silent-fallback policy. Every failure is surfaced, never swallowed.</p>
+            <ul class="list">
+              <li>No silent fallback behavior in any pipeline</li>
+              <li>Blocked action states shown in UI and email alerts</li>
+              <li>Recovery action required before state transition</li>
+              <li>Failure audit trail persisted for every blocked action</li>
+            </ul>
+            <div class="fail-box mt-md">
+              <strong>Policy:</strong> If a publish, generation, or verification action fails, the system halts that pipeline and notifies the user. No automatic retry. No degraded output.
+            </div>
+          </article>
+        </div>
+
+        <!-- ===== VERIFICATION PIPELINE ===== -->
+        <div class="panel pad mt-lg animate-in">
+          <span class="eyebrow">Verification</span>
+          <h3 style="margin-bottom:6px">Proof Verification Pipeline</h3>
+          <p style="color:var(--ink-soft);font-size:0.92rem;margin-bottom:16px">The four-stage pipeline that transforms learning activity into employer-verifiable proof.</p>
+          <div class="verify-pipeline">
+            <div class="verify-stage">
+              <div class="badge">1</div>
+              <h4>Module</h4>
+              <p style="font-size:0.82rem;color:var(--ink-soft);margin-top:6px">Complete checkpoint with tutor</p>
+            </div>
+            <div class="verify-stage">
+              <div class="badge">2</div>
+              <h4>Build</h4>
+              <p style="font-size:0.82rem;color:var(--ink-soft);margin-top:6px">Ship a project artifact</p>
+            </div>
+            <div class="verify-stage">
+              <div class="badge">3</div>
+              <h4>Score</h4>
+              <p style="font-size:0.82rem;color:var(--ink-soft);margin-top:6px">Evidence evaluated by rubric</p>
+            </div>
+            <div class="verify-stage">
+              <div class="badge" style="background:var(--ok)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <h4>Verified</h4>
+              <p style="font-size:0.82rem;color:var(--ink-soft);margin-top:6px">Audit trail created</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== ROLE MAPPING ===== -->
+        <div class="panel pad mt-lg animate-in">
+          <span class="eyebrow">Role Mapping</span>
+          <h3 style="margin-bottom:16px">Greenlight to AI Tutor Rename</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Greenlight Role</th>
+                  <th>AI Tutor Role</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>CEO Agent</td>
+                  <td>AI Tutor</td>
+                  <td style="color:var(--ink-soft)">Primary orchestrator, manages all learner interactions</td>
+                </tr>
+                <tr>
+                  <td>Company</td>
+                  <td>Learner</td>
+                  <td style="color:var(--ink-soft)">Entity receiving service, owns profile and data</td>
+                </tr>
+                <tr>
+                  <td>Investor / Board</td>
+                  <td>Employer</td>
+                  <td style="color:var(--ink-soft)">External party reviewing verified outputs</td>
+                </tr>
+                <tr>
+                  <td>Landing Page</td>
+                  <td>Personal Website</td>
+                  <td style="color:var(--ink-soft)">Public-facing generated asset</td>
+                </tr>
+                <tr>
+                  <td>Stakeholder Deck</td>
+                  <td>Proof Portfolio</td>
+                  <td style="color:var(--ink-soft)">Exportable evidence package</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <p class="footer-brand">AI Tutor</p>
+          <p style="max-width:36ch">Build AI skills and prove them publicly with a dedicated tutor, portfolio, and verified evidence.</p>
+        </div>
+        <div>
+          <h4 style="color:#fff;margin-bottom:12px;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.08em">Learners</h4>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="/assessment/">Assessment</a>
+            <a href="/onboarding/">Onboarding</a>
+            <a href="/dashboard/">Dashboard</a>
+          </div>
+        </div>
+        <div>
+          <h4 style="color:#fff;margin-bottom:12px;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.08em">Employers</h4>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="/employers/">Overview</a>
+            <a href="/employers/talent/">Talent Board</a>
+          </div>
+        </div>
+        <div>
+          <h4 style="color:#fff;margin-bottom:12px;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.08em">Platform</h4>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="/architecture/">Architecture</a>
+            <a href="/emails/daily-update/">Email Samples</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-note" style="border-color:rgba(255,255,255,0.1);margin-top:40px">
+      Mockup v3 for review on localhost:6398. Architecture parity with Greenlight agent system.
+    </div>
+  </footer>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

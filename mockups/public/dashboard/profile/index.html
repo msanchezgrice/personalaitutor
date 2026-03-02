@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Online Profile | AI Tutor Dashboard</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor Platform</a>
+      <nav class="nav">
+        <a href="/dashboard/">Overview</a>
+        <a href="/dashboard/projects/">Projects</a>
+        <a href="/dashboard/profile/">Profile</a>
+        <a href="/dashboard/chat/">Chat</a>
+        <a href="/dashboard/social/">Social</a>
+      </nav>
+      <a class="btn" data-bind-profile-link href="/u/test-user-0001/">Public Preview</a>
+    </div>
+  </header>
+
+  <main class="split container">
+    <aside class="sidebar">
+      <h3>Profile Controls</h3>
+      <div class="side-links">
+        <a class="active" href="/dashboard/profile/">Editor</a>
+        <a data-bind-profile-link href="/u/test-user-0001/">Public Page</a>
+      </div>
+      <div class="card" style="margin-top:10px">
+        <h3>Visibility</h3>
+        <p><span class="tag">Private by default</span></p>
+        <button class="btn brand">Publish Selected Projects</button>
+      </div>
+    </aside>
+
+    <section class="content">
+      <h1>My Online Profile</h1>
+      <p class="lead">Synthetic test profile editor. Values come from onboarding so you can validate end-to-end flow.</p>
+
+      <article class="panel pad">
+        <h3>Profile Info</h3>
+        <div class="form-grid cols-2" style="margin-top:10px">
+          <label>Name<input class="input" data-bind-value="display_name" value="TEST_USER_0001" /></label>
+          <label>Handle<input class="input" data-bind-value="handle" value="test-user-0001" /></label>
+          <label>Role track<input class="input" data-bind-value="role_track" value="Generalist Track" /></label>
+          <label>Situation<input class="input" data-bind-value="situation" value="Employed" /></label>
+          <label style="grid-column:1/-1">Bio<textarea rows="3" data-bind-value="bio">Synthetic mock profile for end-to-end testing only.</textarea></label>
+        </div>
+      </article>
+
+      <div class="grid-2">
+        <article class="panel pad">
+          <h3>Skill Matrix</h3>
+          <table>
+            <thead><tr><th>Skill</th><th>Status</th><th>Evidence</th></tr></thead>
+            <tbody>
+              <tr><td>Prompt Engineering</td><td><span class="tag warn">Built</span></td><td>1 project</td></tr>
+              <tr><td>Workflow Design</td><td><span class="tag">In Progress</span></td><td>module underway</td></tr>
+              <tr><td>Agent QA</td><td><span class="tag">In Progress</span></td><td>pending artifact</td></tr>
+            </tbody>
+          </table>
+        </article>
+
+        <article class="panel pad">
+          <h3>Tool Stack (Upwork-style)</h3>
+          <p><span class="tag">OpenAI API</span> <span class="tag">n8n</span> <span class="tag">Supabase</span> <span class="tag">Vercel</span> <span class="tag">Cursor</span></p>
+          <h3 style="margin-top:10px">Social and links</h3>
+          <div class="form-grid" style="margin-top:8px">
+            <label>LinkedIn<input class="input" data-bind-value="linkedin_url" value="https://linkedin.example/test-user-0001" /></label>
+            <label>X / Twitter<input class="input" data-bind-value="x_url" value="https://x.example/test-user-0001" /></label>
+            <label>Website<input class="input" data-bind-value="website_url" value="https://portfolio.example/test-user-0001" /></label>
+          </div>
+          <h3 style="margin-top:10px">Token usage transparency</h3>
+          <p>Last 30 days: <strong data-bind-text="token_usage_30d">0</strong> tokens</p>
+        </article>
+      </div>
+
+      <article class="panel pad">
+        <h3>SEO + OG Preview</h3>
+        <div class="grid-2" style="margin-top:10px">
+          <div class="card">
+            <h3>Search Snippet</h3>
+            <p><strong data-bind-text="display_name">TEST_USER_0001</strong> | AI-Native Proof Profile<br />localhost:6396/u/test-user-0001/<br />Synthetic profile mock with project cards and build logs.</p>
+          </div>
+          <div class="card">
+            <h3>Open Graph Card</h3>
+            <p><strong data-bind-text="display_name">TEST_USER_0001</strong> - AI profile<br />Proof cards, build logs, and skill evidence.</p>
+          </div>
+        </div>
+        <div class="fail-box" style="margin-top:10px"><strong>Fail state sample:</strong> OG image generation failed. Public publish blocked until metadata assets are regenerated.</div>
+      </article>
+    </section>
+  </main>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

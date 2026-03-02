@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Updates | AI Tutor Dashboard</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="stylesheet" href="/assets/styles-v3.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor</a>
+      <nav class="nav">
+        <a href="/dashboard/">Dashboard</a>
+        <a href="/dashboard/projects/">Projects</a>
+        <a href="/dashboard/profile/">Profile</a>
+        <a href="/dashboard/chat/">Chat</a>
+        <a href="/dashboard/social/">Social</a>
+        <a class="active" href="/dashboard/updates/">Updates</a>
+      </nav>
+      <a class="btn sm" href="/u/alex-chen-ai/">Public Profile</a>
+    </div>
+  </header>
+
+  <main class="split container">
+    <aside class="sidebar">
+      <h3>AI Tutor Workspace</h3>
+      <p class="lead" style="font-size:.88rem;margin-top:6px">Dedicated agent is always available to explain and build.</p>
+      <div class="side-links">
+        <a href="/dashboard/">Overview</a>
+        <a href="/dashboard/projects/">My Projects</a>
+        <a href="/dashboard/profile/">My Online Profile</a>
+        <a href="/dashboard/chat/">Chat</a>
+        <a href="/dashboard/social/">LinkedIn/X Posts</a>
+        <a class="active" href="/dashboard/updates/">Daily Updates</a>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>Email Preview</h3>
+        <p>See how your daily update looks as an email delivery.</p>
+        <a class="btn sm" href="/emails/daily-update/" style="margin-top:10px">View Email Sample</a>
+      </div>
+    </aside>
+
+    <section class="content">
+      <div class="animate-in">
+        <span class="eyebrow">Daily Briefing</span>
+        <h1>Daily AI Tutor Updates</h1>
+        <p class="lead">Mirrors Greenlight nightshift behavior: status summary, upcoming tasks, relevant AI news, and actionable links.</p>
+      </div>
+
+      <article class="panel pad animate-in">
+        <h3>Latest Update (March 2, 2026)</h3>
+        <ul class="list">
+          <li>Completed: Support copilot website v4 deployed</li>
+          <li>Completed: PPT export for stakeholder review</li>
+          <li>Upcoming: finish model QA module checkpoint</li>
+          <li>Upcoming: publish profile project card</li>
+        </ul>
+        <h3 style="margin-top:16px">Relevant News</h3>
+        <ul class="list">
+          <li>Agent traceability standards now emphasized in enterprise hiring rubrics</li>
+          <li>Retrieval pipeline eval best practices published by major AI tooling vendors</li>
+        </ul>
+      </article>
+
+      <article class="panel pad animate-in">
+        <h3>Delivery Log</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Type</th><th>Status</th><th>Event</th></tr></thead>
+            <tbody>
+              <tr><td>2026-03-02 06:01</td><td>Daily Email</td><td><span class="tag ok">Sent</span></td><td><span class="code">email.daily_overview.sent</span></td></tr>
+              <tr><td>2026-03-01 06:00</td><td>Daily Email</td><td><span class="tag ok">Sent</span></td><td><span class="code">email.daily_overview.sent</span></td></tr>
+              <tr><td>2026-02-28 06:00</td><td>Daily Email</td><td><span class="tag error">Failed</span></td><td><span class="code">email.daily_overview.failed</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="fail-box" style="margin-top:12px"><strong>Fail state sample:</strong> SMTP provider unavailable. Next send blocked until provider connectivity check passes.</div>
+      </article>
+    </section>
+  </main>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

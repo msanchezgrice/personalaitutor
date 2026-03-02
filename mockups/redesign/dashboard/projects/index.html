@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Projects | AI Tutor Dashboard</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="stylesheet" href="/assets/styles-v2.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor</a>
+      <nav class="nav">
+        <a href="/dashboard/">Overview</a>
+        <a href="/dashboard/projects/">Projects</a>
+        <a href="/dashboard/profile/">Profile</a>
+        <a href="/dashboard/chat/">Chat</a>
+        <a href="/dashboard/social/">Social</a>
+      </nav>
+      <a class="btn" href="/u/alex-chen-ai/">Public Profile</a>
+    </div>
+  </header>
+
+  <main class="split container">
+    <aside class="sidebar">
+      <h3>Project Actions</h3>
+      <div class="side-links">
+        <a class="active" href="/dashboard/projects/">Project Board</a>
+        <a href="/dashboard/chat/">Ask AI Tutor</a>
+      </div>
+      <div class="card" style="margin-top:10px">
+        <h3>Create Asset</h3>
+        <p>Generate: Website, PPT deck, Resume variant, One-pager PDF.</p>
+      </div>
+    </aside>
+
+    <section class="content">
+      <h1>My Projects</h1>
+      <p class="lead">Each project maps to skill evidence and public proof cards.</p>
+
+      <div class="grid-3">
+        <article class="card">
+          <h3>Customer Support Copilot</h3>
+          <p>Status: <span class="tag ok">Built</span></p>
+          <p>Artifacts: <span class="tag">Website</span> <span class="tag">PPT</span> <span class="tag">Resume PDF</span></p>
+          <p>Skills credited: Prompt Engineering, RAG, QA Workflows.</p>
+          <div class="hero-actions">
+            <button class="btn">Generate Website Update</button>
+            <button class="btn">Generate PPT</button>
+            <button class="btn">Generate Resume Variant</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>AI Sales Follow-up Bot</h3>
+          <p>Status: <span class="tag warn">In Progress</span></p>
+          <p>Artifacts: <span class="tag">Build log only</span></p>
+          <p>Skills credited: Automation Design.</p>
+          <div class="hero-actions">
+            <button class="btn">Create First Artifact</button>
+            <button class="btn">Log Build Session</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>Recruiting Outreach Engine</h3>
+          <p>Status: <span class="tag">Planned</span></p>
+          <p>Artifacts: none</p>
+          <p>Skills potential: Agent Ops, Prompt QA, Reporting.</p>
+          <div class="hero-actions">
+            <button class="btn">Start Project</button>
+          </div>
+        </article>
+      </div>
+
+      <article class="panel pad">
+        <h3>Build Log (latest)</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Project</th><th>Action</th><th>Evidence</th><th>Skill Impact</th></tr></thead>
+            <tbody>
+              <tr><td>2026-03-02</td><td>Support Copilot</td><td>Added confidence scoring gate</td><td>artifact:v4-site</td><td>Prompt Engineering +1</td></tr>
+              <tr><td>2026-03-01</td><td>Support Copilot</td><td>Exported stakeholder PPT</td><td>artifact:deck-phase2</td><td>Communication +1</td></tr>
+              <tr><td>2026-02-28</td><td>Sales Follow-up</td><td>Built first prompt set</td><td>log:session-11</td><td>Automation +1</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+    </section>
+  </main>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

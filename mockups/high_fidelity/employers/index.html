@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hire AI Talent | AI Tutor platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="relative min-h-screen flex flex-col bg-[#0f111a]">
+    <!-- Glows -->
+    <div class="bg-glow top-[-200px] left-[-100px] bg-gradient-to-br from-emerald-500/20 to-transparent"></div>
+    <div class="bg-glow top-[40%] right-[-200px] bg-gradient-to-br from-cyan-500/20 to-transparent"></div>
+
+    <!-- Navigation -->
+    <header class="glass sticky top-0 z-50 border-x-0 border-t-0 rounded-none bg-opacity-80 backdrop-blur-xl">
+        <div class="container nav">
+            <div class="flex items-center gap-2">
+                <div
+                    class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-[#0f111a] font-bold text-xl">
+                    <i class="fa-solid fa-briefcase"></i>
+                </div>
+                <span class="font-[Outfit] font-bold text-xl tracking-tight text-white">CareerGuard Networks</span>
+            </div>
+            <nav class="hidden md:flex nav-links">
+                <a href="#how" class="nav-link text-gray-300">How it works</a>
+                <a href="#talent" class="nav-link text-gray-300">Browse Talent</a>
+                <a href="/" class="nav-link text-indigo-400">For Learners Instead?</a>
+            </nav>
+            <div class="flex gap-4">
+                <a href="/employers/talent/" class="btn bg-white text-[#0f111a] hover:bg-gray-200">Start Hiring <i
+                        class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <main class="flex-grow">
+        <section class="container pt-24 pb-32 text-center max-w-5xl mx-auto">
+            <div
+                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-sm font-medium mb-8">
+                <i class="fa-solid fa-shield-check"></i> 100% Cryptographically Verified Skill Proofs
+            </div>
+
+            <h1 class="text-5xl lg:text-7xl mb-8 font-[Outfit] text-white">Hire talent that actually <br>knows how to
+                use AI.</h1>
+            <p class="text-xl text-gray-400 mb-10 max-w-3xl mx-auto">
+                Stop guessing from resumes. We provide access to professionals who have built, deployed, and verified
+                their AI competence through our interactive tutor platform.
+            </p>
+
+            <div class="flex flex-col sm:flex-row justify-center gap-4 mb-20">
+                <a href="/employers/talent/"
+                    class="btn bg-white text-[#0f111a] hover:bg-gray-200 text-lg px-8 py-4">Browse Talent Pool</a>
+                <a href="#" class="btn btn-secondary text-lg px-8 py-4">Post a Role</a>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8 text-left">
+                <div class="glass p-8">
+                    <i class="fa-solid fa-eye text-emerald-400 text-3xl mb-4"></i>
+                    <h3 class="text-xl text-white mb-2">See the Build Log</h3>
+                    <p class="text-gray-400 text-sm">Don't just trust a bullet point. View the exact prompts, bug fixes,
+                        and architectural choices candidates made during real projects.</p>
+                </div>
+                <div class="glass p-8">
+                    <i class="fa-solid fa-check-double text-cyan-400 text-3xl mb-4"></i>
+                    <h3 class="text-xl text-white mb-2">Verified Execution</h3>
+                    <p class="text-gray-400 text-sm">Skills are granted automatically by our AI Tutor only after
+                        successful code compilation and API testing. Completely unforgeable.</p>
+                </div>
+                <div class="glass p-8">
+                    <i class="fa-solid fa-bolt text-amber-400 text-3xl mb-4"></i>
+                    <h3 class="text-xl text-white mb-2">Instant ROI</h3>
+                    <p class="text-gray-400 text-sm">Hire professionals who can already automate their own workflows,
+                        write Python scripts, and leverage LLM APIs from day one.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+
+</html>

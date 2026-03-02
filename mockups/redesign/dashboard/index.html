@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard | AI Tutor</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="stylesheet" href="/assets/styles-v2.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor</a>
+      <nav class="nav">
+        <a href="/dashboard/">Dashboard</a>
+        <a href="/dashboard/projects/">Projects</a>
+        <a href="/dashboard/profile/">Profile</a>
+        <a href="/dashboard/chat/">Chat</a>
+        <a href="/dashboard/social/">Social</a>
+        <a href="/dashboard/updates/">Updates</a>
+      </nav>
+      <a class="btn" href="/u/alex-chen-ai/">Public Profile</a>
+    </div>
+  </header>
+
+  <main class="split container">
+    <aside class="sidebar">
+      <h3>AI Tutor Workspace</h3>
+      <p class="lead" style="font-size:.92rem;margin-top:6px">Dedicated agent is always available to explain and build.</p>
+      <div class="side-links">
+        <a href="/dashboard/">Overview</a>
+        <a href="/dashboard/projects/">My Projects</a>
+        <a href="/dashboard/profile/">My Online Profile</a>
+        <a href="/dashboard/chat/">Chat</a>
+        <a href="/dashboard/social/">LinkedIn/X Posts</a>
+        <a href="/dashboard/updates/">Daily Updates</a>
+      </div>
+      <div class="card" style="margin-top:10px">
+        <h3>Verification Policy</h3>
+        <p>Thresholds configurable. Early momentum still counts as <strong>In Progress</strong> and low-score output can count as <strong>Built</strong>.</p>
+      </div>
+    </aside>
+
+    <section class="content">
+      <div class="kpi-grid">
+        <div class="kpi"><span class="label">AI-Native Score</span><span class="value">64</span></div>
+        <div class="kpi"><span class="label">Projects Built</span><span class="value">3</span></div>
+        <div class="kpi"><span class="label">Verified Skills</span><span class="value">7</span></div>
+        <div class="kpi"><span class="label">Tokens Used</span><span class="value">184K</span></div>
+      </div>
+
+      <div class="grid-2">
+        <article class="panel pad">
+          <h3>My Projects</h3>
+          <table>
+            <thead><tr><th>Project</th><th>Status</th><th>Artifacts</th><th>Skills</th></tr></thead>
+            <tbody>
+              <tr><td>Customer Support Copilot</td><td><span class="tag ok">Built</span></td><td>Website, PPT</td><td>Prompting, RAG</td></tr>
+              <tr><td>AI Sales Follow-up Bot</td><td><span class="tag warn">In Progress</span></td><td>Draft</td><td>Automation</td></tr>
+              <tr><td>Recruiting Outreach Engine</td><td><span class="tag">Planned</span></td><td>None</td><td>Strategy</td></tr>
+            </tbody>
+          </table>
+          <div class="hero-actions">
+            <a class="btn" href="/dashboard/projects/">Open Projects</a>
+          </div>
+        </article>
+
+        <article class="panel pad">
+          <h3>My Online Profile</h3>
+          <p>Private by default. Publish selected projects to your public profile and employer marketplace card.</p>
+          <ul class="list">
+            <li>Headline and role set</li>
+            <li>Skills matrix drafted</li>
+            <li>OG metadata generated</li>
+            <li>Social links connected</li>
+          </ul>
+          <div class="hero-actions">
+            <a class="btn brand" href="/dashboard/profile/">Edit Profile</a>
+            <a class="btn" href="/u/alex-chen-ai/">Preview Public URL</a>
+          </div>
+        </article>
+      </div>
+
+      <div class="grid-2">
+        <article class="panel pad">
+          <h3>AI Tutor Chat Snapshot</h3>
+          <div class="msg agent">You completed 2 modules this week. Next: publish your copilot case study with one before/after metric.</div>
+          <div class="hero-actions">
+            <a class="btn" href="/dashboard/chat/">Open Chat</a>
+          </div>
+        </article>
+
+        <article class="panel pad">
+          <h3>Relevant AI News</h3>
+          <ul class="list">
+            <li>Model context management patterns for enterprise copilots</li>
+            <li>New updates to agent safety and audit standards</li>
+            <li>Hiring trend: proof-based AI portfolios in product roles</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

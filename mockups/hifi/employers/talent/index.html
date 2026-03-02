@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talent Marketplace | AI Tutor</title>
+    <meta name="description" content="Browse verified AI talent. Filter by skills, tools, and experience level. Find the right builder for your team.">
+    <meta property="og:title" content="AI Talent Marketplace">
+    <meta property="og:description" content="Discover verified AI-native builders">
+    <link rel="stylesheet" href="/assets/styles-v3.css">
+</head>
+<body>
+    <div class="topbar">
+        <div class="topbar-inner">
+            <div class="brand">AI Tutor</div>
+            <nav class="nav">
+                <a href="/">Home</a>
+                <a href="/assessment/">Assessment</a>
+                <a href="/dashboard/">Dashboard</a>
+                <a href="/employers/" class="active">For Employers</a>
+            </nav>
+            <a href="/assessment/" class="btn primary">Get Started</a>
+        </div>
+    </div>
+
+    <div class="container" style="padding-top: 24px; padding-bottom: 24px;">
+        <h1>Find Your Next AI Builder</h1>
+        <div style="color: var(--ink-soft); font-size: 0.95rem; margin-top: 0.5rem;">Showing 12 verified talents</div>
+    </div>
+
+    <div class="market-layout">
+        <aside class="sidebar">
+            <div style="font-weight: 600; margin-bottom: 14px;">Search</div>
+            <input type="text" class="input" placeholder="Name, skill, tool..." data-filter="query">
+
+            <div style="font-weight: 600; margin-bottom: 14px; margin-top: 20px;">Primary Skill</div>
+            <select class="input" data-filter="skill">
+                <option value="">All Skills</option>
+                <option value="prompt-engineering">Prompt Engineering</option>
+                <option value="rag-architecture">RAG Architecture</option>
+                <option value="ai-ops">AI Ops</option>
+                <option value="workflow-automation">Workflow Automation</option>
+                <option value="fine-tuning">Fine-tuning</option>
+                <option value="ai-strategy">AI Strategy</option>
+            </select>
+
+            <div style="font-weight: 600; margin-bottom: 14px; margin-top: 20px;">Primary Tool</div>
+            <select class="input" data-filter="tool">
+                <option value="">All Tools</option>
+                <option value="claude">Claude</option>
+                <option value="chatgpt">ChatGPT</option>
+                <option value="langchain">LangChain</option>
+                <option value="pinecone">Pinecone</option>
+                <option value="cursor">Cursor</option>
+                <option value="midjourney">Midjourney</option>
+            </select>
+        </aside>
+
+        <div class="result-grid">
+            <a href="/employers/talent/alex-chen-ai" class="card" data-card data-name="Alex Chen" data-role="Product Manager → AI-Native Builder" data-skills="rag-architecture,prompt-engineering" data-tools="claude,langchain">
+                <div style="padding: 20px; background: linear-gradient(135deg, rgba(79,70,229,0.06), rgba(250,250,248,0.5)); text-align: center; border-bottom: 1px solid var(--line);">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; background: var(--brand); color: white; border-radius: 50%; font-weight: 700; margin: 0 auto 12px;">AC</div>
+                    <div style="font-weight: 700; margin-bottom: 4px;">Alex Chen</div>
+                    <div style="color: var(--ink-soft); font-size: 0.85rem;">Product Manager → AI-Native Builder</div>
+                </div>
+                <div style="padding: 16px 20px; border-bottom: 1px solid var(--line);">
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Location</span>
+                        <span style="font-weight: 600; color: var(--ink);">San Francisco, CA</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Projects</span>
+                        <span style="font-weight: 600; color: var(--ink);">3 Shipped</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Skills</span>
+                        <span style="font-weight: 600; color: var(--ink);">7 Verified</span>
+                    </div>
+                </div>
+                <div style="padding: 16px 20px; display: flex; gap: 12px;">
+                    <button class="btn ghost" style="flex: 1;">View Profile</button>
+                    <button class="btn primary" style="flex: 1;">Request</button>
+                </div>
+            </a>
+
+            <div class="card" data-card data-name="Sarah Johnson" data-role="ML Engineer → Prompt Architect" data-skills="prompt-engineering,fine-tuning" data-tools="chatgpt,cursor">
+                <div style="padding: 20px; background: linear-gradient(135deg, rgba(79,70,229,0.06), rgba(250,250,248,0.5)); text-align: center; border-bottom: 1px solid var(--line);">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; background: var(--brand); color: white; border-radius: 50%; font-weight: 700; margin: 0 auto 12px;">SJ</div>
+                    <div style="font-weight: 700; margin-bottom: 4px;">Sarah Johnson</div>
+                    <div style="color: var(--ink-soft); font-size: 0.85rem;">ML Engineer → Prompt Architect</div>
+                </div>
+                <div style="padding: 16px 20px; border-bottom: 1px solid var(--line);">
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Location</span>
+                        <span style="font-weight: 600; color: var(--ink);">New York, NY</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Projects</span>
+                        <span style="font-weight: 600; color: var(--ink);">5 Shipped</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Skills</span>
+                        <span style="font-weight: 600; color: var(--ink);">8 Verified</span>
+                    </div>
+                </div>
+                <div style="padding: 16px 20px; display: flex; gap: 12px;">
+                    <button class="btn ghost" style="flex: 1;">View Profile</button>
+                    <button class="btn primary" style="flex: 1;">Request</button>
+                </div>
+            </div>
+
+            <div class="card" data-card data-name="Marcus Rodriguez" data-role="DevOps → AI Ops Specialist" data-skills="ai-ops,workflow-automation" data-tools="langchain,pinecone">
+                <div style="padding: 20px; background: linear-gradient(135deg, rgba(79,70,229,0.06), rgba(250,250,248,0.5)); text-align: center; border-bottom: 1px solid var(--line);">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; background: var(--brand); color: white; border-radius: 50%; font-weight: 700; margin: 0 auto 12px;">MR</div>
+                    <div style="font-weight: 700; margin-bottom: 4px;">Marcus Rodriguez</div>
+                    <div style="color: var(--ink-soft); font-size: 0.85rem;">DevOps → AI Ops Specialist</div>
+                </div>
+                <div style="padding: 16px 20px; border-bottom: 1px solid var(--line);">
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Location</span>
+                        <span style="font-weight: 600; color: var(--ink);">Austin, TX</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Projects</span>
+                        <span style="font-weight: 600; color: var(--ink);">4 Shipped</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Skills</span>
+                        <span style="font-weight: 600; color: var(--ink);">6 Verified</span>
+                    </div>
+                </div>
+                <div style="padding: 16px 20px; display: flex; gap: 12px;">
+                    <button class="btn ghost" style="flex: 1;">View Profile</button>
+                    <button class="btn primary" style="flex: 1;">Request</button>
+                </div>
+            </div>
+
+            <div class="card" data-card data-name="Emily Zhang" data-role="Product Designer → AI UX Specialist" data-skills="prompt-engineering,ai-strategy" data-tools="claude,midjourney">
+                <div style="padding: 20px; background: linear-gradient(135deg, rgba(79,70,229,0.06), rgba(250,250,248,0.5)); text-align: center; border-bottom: 1px solid var(--line);">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; background: var(--brand); color: white; border-radius: 50%; font-weight: 700; margin: 0 auto 12px;">EZ</div>
+                    <div style="font-weight: 700; margin-bottom: 4px;">Emily Zhang</div>
+                    <div style="color: var(--ink-soft); font-size: 0.85rem;">Product Designer → AI UX Specialist</div>
+                </div>
+                <div style="padding: 16px 20px; border-bottom: 1px solid var(--line);">
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Location</span>
+                        <span style="font-weight: 600; color: var(--ink);">Seattle, WA</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Projects</span>
+                        <span style="font-weight: 600; color: var(--ink);">3 Shipped</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Skills</span>
+                        <span style="font-weight: 600; color: var(--ink);">5 Verified</span>
+                    </div>
+                </div>
+                <div style="padding: 16px 20px; display: flex; gap: 12px;">
+                    <button class="btn ghost" style="flex: 1;">View Profile</button>
+                    <button class="btn primary" style="flex: 1;">Request</button>
+                </div>
+            </div>
+
+            <div class="card" data-card data-name="James Chen" data-role="Data Scientist → RAG Expert" data-skills="rag-architecture,fine-tuning" data-tools="langchain,pinecone,claude">
+                <div style="padding: 20px; background: linear-gradient(135deg, rgba(79,70,229,0.06), rgba(250,250,248,0.5)); text-align: center; border-bottom: 1px solid var(--line);">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; background: var(--brand); color: white; border-radius: 50%; font-weight: 700; margin: 0 auto 12px;">JC</div>
+                    <div style="font-weight: 700; margin-bottom: 4px;">James Chen</div>
+                    <div style="color: var(--ink-soft); font-size: 0.85rem;">Data Scientist → RAG Expert</div>
+                </div>
+                <div style="padding: 16px 20px; border-bottom: 1px solid var(--line);">
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Location</span>
+                        <span style="font-weight: 600; color: var(--ink);">Boston, MA</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Projects</span>
+                        <span style="font-weight: 600; color: var(--ink);">6 Shipped</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Skills</span>
+                        <span style="font-weight: 600; color: var(--ink);">7 Verified</span>
+                    </div>
+                </div>
+                <div style="padding: 16px 20px; display: flex; gap: 12px;">
+                    <button class="btn ghost" style="flex: 1;">View Profile</button>
+                    <button class="btn primary" style="flex: 1;">Request</button>
+                </div>
+            </div>
+
+            <div class="card" data-card data-name="Priya Patel" data-role="Full Stack → AI Native Builder" data-skills="workflow-automation,prompt-engineering" data-tools="cursor,chatgpt,langchain">
+                <div style="padding: 20px; background: linear-gradient(135deg, rgba(79,70,229,0.06), rgba(250,250,248,0.5)); text-align: center; border-bottom: 1px solid var(--line);">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; background: var(--brand); color: white; border-radius: 50%; font-weight: 700; margin: 0 auto 12px;">PP</div>
+                    <div style="font-weight: 700; margin-bottom: 4px;">Priya Patel</div>
+                    <div style="color: var(--ink-soft); font-size: 0.85rem;">Full Stack → AI Native Builder</div>
+                </div>
+                <div style="padding: 16px 20px; border-bottom: 1px solid var(--line);">
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Location</span>
+                        <span style="font-weight: 600; color: var(--ink);">San Jose, CA</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Projects</span>
+                        <span style="font-weight: 600; color: var(--ink);">4 Shipped</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9rem; color: var(--ink-soft);">
+                        <span>Skills</span>
+                        <span style="font-weight: 600; color: var(--ink);">6 Verified</span>
+                    </div>
+                </div>
+                <div style="padding: 16px 20px; display: flex; gap: 12px;">
+                    <button class="btn ghost" style="flex: 1;">View Profile</button>
+                    <button class="btn primary" style="flex: 1;">Request</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer-note">
+        <p>&copy; 2026 AI Tutor. All rights reserved.</p>
+    </footer>
+
+    <script src="/assets/app.js"></script>
+</body>
+</html>

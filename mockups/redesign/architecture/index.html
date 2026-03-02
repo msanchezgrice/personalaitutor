@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>System Architecture | AI Tutor</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="stylesheet" href="/assets/styles-v2.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor</a>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/dashboard/">Dashboard</a>
+        <a href="/architecture/">Architecture</a>
+      </nav>
+      <a class="btn" href="/dashboard/projects/">Artifacts</a>
+    </div>
+  </header>
+
+  <main class="container section">
+    <h1>System Architecture</h1>
+    <p class="lead">Technical reference for the AI Tutor platform’s queue-worker-memory architecture.</p>
+
+    <div class="panel pad" style="margin-top:12px">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Architecture Pattern</th><th>Implementation</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Job queue + worker claim</td><td>Queue pattern for tutoring/build/verify jobs</td><td><span class="tag ok">Included</span></td></tr>
+            <tr><td>Job events live stream</td><td>Chat + dashboard live status events</td><td><span class="tag ok">Included</span></td></tr>
+            <tr><td>User context + memory refresh</td><td>Learner context + memory refresh</td><td><span class="tag ok">Included</span></td></tr>
+            <tr><td>News refresh recurring</td><td>AI news refresh recurring</td><td><span class="tag ok">Included</span></td></tr>
+            <tr><td>Scheduled daily updates + email</td><td>daily tutor update + digest emails</td><td><span class="tag ok">Included</span></td></tr>
+            <tr><td>Landing page asset generation</td><td>Personal website + profile pages generation</td><td><span class="tag ok">Included</span></td></tr>
+            <tr><td>Document asset generation</td><td>PPT, PDF, resume variants for proof artifacts</td><td><span class="tag ok">Included</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top:12px">
+      <article class="panel pad">
+        <h3>Asset Generation Logic</h3>
+        <ul class="list">
+          <li>Project website update generation</li>
+          <li>PPT stakeholder deck generation</li>
+          <li>Resume bullet exports and resume variants</li>
+          <li>One-pager PDF summary export</li>
+        </ul>
+      </article>
+      <article class="panel pad">
+        <h3>Error Handling Policy</h3>
+        <ul class="list">
+          <li>No silent fallback behavior</li>
+          <li>Blocked action states shown in UI and email alerts</li>
+          <li>Recovery action required before state transition</li>
+        </ul>
+      </article>
+    </div>
+  </main>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

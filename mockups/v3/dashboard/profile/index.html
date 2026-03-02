@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Online Profile | AI Tutor Dashboard</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="stylesheet" href="/assets/styles-v3.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor</a>
+      <nav class="nav">
+        <a href="/dashboard/">Dashboard</a>
+        <a href="/dashboard/projects/">Projects</a>
+        <a class="active" href="/dashboard/profile/">Profile</a>
+        <a href="/dashboard/chat/">Chat</a>
+        <a href="/dashboard/social/">Social</a>
+        <a href="/dashboard/updates/">Updates</a>
+      </nav>
+      <a class="btn sm" href="/u/alex-chen-ai/">Public Profile</a>
+    </div>
+  </header>
+
+  <main class="split container">
+    <aside class="sidebar">
+      <h3>AI Tutor Workspace</h3>
+      <p class="lead" style="font-size:.88rem;margin-top:6px">Dedicated agent is always available to explain and build.</p>
+      <div class="side-links">
+        <a href="/dashboard/">Overview</a>
+        <a href="/dashboard/projects/">My Projects</a>
+        <a class="active" href="/dashboard/profile/">My Online Profile</a>
+        <a href="/dashboard/chat/">Chat</a>
+        <a href="/dashboard/social/">LinkedIn/X Posts</a>
+        <a href="/dashboard/updates/">Daily Updates</a>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>Visibility</h3>
+        <p><span class="tag">Private by default</span></p>
+        <button class="btn primary" style="margin-top:10px">Publish Selected Projects</button>
+      </div>
+    </aside>
+
+    <section class="content">
+      <div class="animate-in">
+        <span class="eyebrow">Profile Editor</span>
+        <h1>My Online Profile</h1>
+        <p class="lead">Build your public AI-native proof page with projects, tools, social links, and verified evidence.</p>
+      </div>
+
+      <article class="panel pad animate-in">
+        <h3>Profile Info</h3>
+        <div class="form-grid cols-2" style="margin-top:12px">
+          <label>Name<input class="input" value="Alex Chen" /></label>
+          <label>Handle<input class="input" value="alex-chen-ai" /></label>
+          <label>Headline<input class="input" value="Product Manager becoming AI-Native" /></label>
+          <label>Location<input class="input" value="Austin, TX" /></label>
+          <label style="grid-column:1/-1">Bio<textarea rows="3">I build AI copilots for support and sales workflows. I publish build logs and outcomes to show real AI execution capability.</textarea></label>
+        </div>
+      </article>
+
+      <div class="grid-2 animate-in">
+        <article class="panel pad">
+          <h3>Skill Matrix</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Skill</th><th>Status</th><th>Evidence</th></tr></thead>
+              <tbody>
+                <tr><td>Prompt Engineering</td><td><span class="tag ok">Verified</span></td><td>3 projects</td></tr>
+                <tr><td>RAG Workflow Design</td><td><span class="tag ok">Verified</span></td><td>2 projects</td></tr>
+                <tr><td>Agent Orchestration</td><td><span class="tag warn">Built</span></td><td>1 project</td></tr>
+                <tr><td>Model QA</td><td><span class="tag">In Progress</span></td><td>module underway</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel pad">
+          <h3>Tool Stack (Upwork-style)</h3>
+          <div class="flex-wrap" style="margin-top:8px">
+            <span class="tag brand">OpenAI API</span>
+            <span class="tag brand">n8n</span>
+            <span class="tag brand">Supabase</span>
+            <span class="tag brand">Vercel</span>
+            <span class="tag brand">Notion AI</span>
+          </div>
+          <h3 style="margin-top:16px">Social and links</h3>
+          <div class="form-grid" style="margin-top:8px">
+            <label>LinkedIn<input class="input" value="https://linkedin.com/in/alex-chen" /></label>
+            <label>X / Twitter<input class="input" value="https://x.com/alexbuildsai" /></label>
+            <label>Website<input class="input" value="https://alexchen.ai" /></label>
+          </div>
+          <h3 style="margin-top:16px">Token usage transparency</h3>
+          <p>Last 30 days: <strong>184,000 tokens</strong></p>
+        </article>
+      </div>
+
+      <article class="panel pad animate-in">
+        <h3>SEO + OG Preview</h3>
+        <div class="grid-2" style="margin-top:12px">
+          <div class="card">
+            <h3>Search Snippet</h3>
+            <p><strong>Alex Chen | AI-Native Product Builder</strong><br />localhost:6396/u/alex-chen-ai/<br />Projects, build logs, tools, and verified AI skills.</p>
+          </div>
+          <div class="card">
+            <h3>Open Graph Card</h3>
+            <p><strong>Alex Chen - AI-native profile</strong><br />Proof-based skills with project cards and build logs.</p>
+          </div>
+        </div>
+        <div class="fail-box" style="margin-top:12px"><strong>Fail state sample:</strong> OG image generation failed. Public publish blocked until metadata assets are regenerated.</div>
+      </article>
+    </section>
+  </main>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

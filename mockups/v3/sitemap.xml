@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>http://localhost:6398/</loc></url>
+  <url><loc>http://localhost:6398/assessment/</loc></url>
+  <url><loc>http://localhost:6398/onboarding/</loc></url>
+  <url><loc>http://localhost:6398/dashboard/</loc></url>
+  <url><loc>http://localhost:6398/dashboard/projects/</loc></url>
+  <url><loc>http://localhost:6398/dashboard/profile/</loc></url>
+  <url><loc>http://localhost:6398/dashboard/chat/</loc></url>
+  <url><loc>http://localhost:6398/dashboard/social/</loc></url>
+  <url><loc>http://localhost:6398/dashboard/updates/</loc></url>
+  <url><loc>http://localhost:6398/u/alex-chen-ai/</loc></url>
+  <url><loc>http://localhost:6398/u/alex-chen-ai/projects/customer-support-copilot/</loc></url>
+  <url><loc>http://localhost:6398/employers/</loc></url>
+  <url><loc>http://localhost:6398/employers/talent/</loc></url>
+  <url><loc>http://localhost:6398/employers/talent/alex-chen-ai/</loc></url>
+  <url><loc>http://localhost:6398/emails/daily-update/</loc></url>
+  <url><loc>http://localhost:6398/emails/fail-state-alert/</loc></url>
+  <url><loc>http://localhost:6398/architecture/</loc></url>
+</urlset>

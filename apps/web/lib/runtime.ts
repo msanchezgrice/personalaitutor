@@ -1,0 +1,1474 @@
+import { randomUUID } from "node:crypto";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  CAREER_PATHS,
+  MODULE_TRACKS,
+  addProjectChatMessage as memAddProjectChatMessage,
+  connectOAuth as memConnectOAuth,
+  createDailyUpdate as memCreateDailyUpdate,
+  createEmployerLead as memCreateEmployerLead,
+  createOnboardingSession as memCreateOnboardingSession,
+  createProject as memCreateProject,
+  createSocialDrafts as memCreateSocialDrafts,
+  findOnboardingSession as memFindOnboardingSession,
+  findProjectById as memFindProjectById,
+  findProjectBySlug as memFindProjectBySlug,
+  findUserByHandle as memFindUserByHandle,
+  findUserById as memFindUserById,
+  generateProfileOgSvg,
+  generateProjectOgSvg,
+  getCatalogData,
+  getDashboardSummary as memGetDashboardSummary,
+  getEmployerFacets,
+  getTalentByHandle,
+  getVerificationPolicy,
+  jsonError,
+  jsonOk,
+  listProjectEvents as memListProjectEvents,
+  listProjectsByUser as memListProjectsByUser,
+  listTalent,
+  markOAuthFailure as memMarkOAuthFailure,
+  publishProfile as memPublishProfile,
+  publishSocialDraft as memPublishSocialDraft,
+  refreshRelevantNews as memRefreshRelevantNews,
+  requestArtifactGeneration as memRequestArtifactGeneration,
+  startAssessment as memStartAssessment,
+  submitAssessment as memSubmitAssessment,
+  updateOnboardingCareerImport as memUpdateOnboardingCareerImport,
+  updateOnboardingSituation as memUpdateOnboardingSituation,
+  updateProfile as memUpdateProfile,
+  upsertUserProfile as memUpsertUserProfile,
+  type AssessmentAttempt,
+  type BuildLogEntry,
+  type DailyUpdate,
+  type DashboardSummary,
+  type OnboardingSession,
+  type Project,
+  type PublishMode,
+  type SocialDraft,
+  type SocialPlatform,
+  type UserProfile,
+} from "@aitutor/shared";
+
+const DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001";
+
+type PersistenceMode = "memory" | "supabase";
+
+function mode(): PersistenceMode {
+  return process.env.PERSISTENCE_MODE === "supabase" ? "supabase" : "memory";
+}
+
+let cachedClient: SupabaseClient | null = null;
+
+function getSupabaseAdmin() {
+  if (cachedClient) return cachedClient;
+
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error("SUPABASE_ENV_MISSING");
+  }
+
+  cachedClient = createClient(url, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  return cachedClient;
+}
+
+function isUuid(input: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input);
+}
+
+function safeHandle(input: string) {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
+
+function normalizeUserId(input?: string | null) {
+  if (!input || input === "user_test_0001") return DEFAULT_USER_ID;
+  if (isUuid(input)) return input;
+  return DEFAULT_USER_ID;
+}
+
+function profileFromRow(
+  row: {
+    id: string;
+    handle: string;
+    full_name: string;
+    headline: string;
+    bio: string;
+    career_path_id: string | null;
+    published: boolean;
+    tokens_used: number;
+    goals: string[] | null;
+    tools: string[] | null;
+    social_links: Record<string, string> | null;
+    created_at: string;
+    updated_at: string;
+  },
+  skills: UserProfile["skills"],
+): UserProfile {
+  return {
+    id: row.id,
+    handle: row.handle,
+    name: row.full_name,
+    headline: row.headline,
+    bio: row.bio,
+    careerPathId: row.career_path_id ?? CAREER_PATHS[0].id,
+    skills,
+    tools: row.tools ?? [],
+    socialLinks: row.social_links ?? {},
+    published: row.published,
+    tokensUsed: row.tokens_used,
+    goals: ((row.goals ?? []) as UserProfile["goals"]) || [],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function toSkillRows(rows: Array<{ skill_name: string; status: string; score: number; evidence_count: number }>) {
+  return rows.map((row) => ({
+    skill: row.skill_name,
+    status: row.status as UserProfile["skills"][number]["status"],
+    score: Number(row.score ?? 0),
+    evidenceCount: Number(row.evidence_count ?? 0),
+  }));
+}
+
+async function getProfileRowById(userId: string) {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("learner_profiles")
+    .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,created_at,updated_at")
+    .eq("id", normalizeUserId(userId))
+    .single();
+
+  if (error) {
+    return null;
+  }
+  return data;
+}
+
+async function getSkillsForProfile(profileId: string) {
+  const supabase = getSupabaseAdmin();
+  const { data } = await supabase
+    .from("user_skill_evidence")
+    .select("skill_name,status,score,evidence_count")
+    .eq("learner_profile_id", profileId)
+    .order("updated_at", { ascending: false });
+
+  return toSkillRows(data ?? []);
+}
+
+async function getOrCreateProfile(input: {
+  userId?: string;
+  name?: string;
+  handleBase?: string;
+  careerPathId?: string;
+}) {
+  const supabase = getSupabaseAdmin();
+  const normalizedUserId = normalizeUserId(input.userId);
+
+  const existing = await getProfileRowById(normalizedUserId);
+  if (existing) {
+    const skills = await getSkillsForProfile(existing.id);
+    return profileFromRow(existing, skills);
+  }
+
+  const handleBase = safeHandle(input.handleBase ?? "test-user");
+  let handle = handleBase || "test-user";
+  let suffix = 2;
+
+  while (true) {
+    const { data } = await supabase.from("learner_profiles").select("id").eq("handle", handle).maybeSingle();
+    if (!data) break;
+    handle = `${handleBase}-${suffix}`;
+    suffix += 1;
+  }
+
+  const insert = {
+    id: normalizedUserId,
+    auth_user_id: normalizedUserId,
+    external_user_id: input.userId ?? null,
+    handle,
+    full_name: input.name ?? "TEST_USER_0001",
+    headline: "Synthetic profile for end-to-end verification",
+    bio: "Synthetic user for onboarding and persistence verification.",
+    career_path_id: input.careerPathId ?? CAREER_PATHS[0].id,
+    published: false,
+    tokens_used: 0,
+    goals: ["upskill_current_job", "ship_ai_projects"],
+    tools: ["OpenAI API", "Supabase", "Vercel"],
+    social_links: { website: `http://localhost:6396/u/${handle}` },
+  };
+
+  const { data, error } = await supabase
+    .from("learner_profiles")
+    .insert(insert)
+    .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,created_at,updated_at")
+    .single();
+
+  if (error || !data) {
+    throw new Error("PROFILE_CREATE_FAILED");
+  }
+
+  return profileFromRow(data, []);
+}
+
+async function getProjectArtifacts(projectId: string) {
+  const supabase = getSupabaseAdmin();
+  const { data } = await supabase
+    .from("project_artifacts")
+    .select("kind,url,created_at")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: true });
+  return data ?? [];
+}
+
+async function getBuildLog(projectId: string) {
+  const supabase = getSupabaseAdmin();
+  const { data } = await supabase
+    .from("build_log_entries")
+    .select("id,message,level,created_at,metadata,project_id,learner_profile_id")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: true });
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    projectId: row.project_id,
+    userId: row.learner_profile_id,
+    message: row.message,
+    level: row.level as BuildLogEntry["level"],
+    createdAt: row.created_at,
+    metadata: row.metadata ?? {},
+  }));
+}
+
+async function projectFromRow(row: {
+  id: string;
+  learner_profile_id: string;
+  slug: string;
+  title: string;
+  description: string;
+  state: Project["state"];
+  created_at: string;
+  updated_at: string;
+}): Promise<Project> {
+  const artifacts = await getProjectArtifacts(row.id);
+  const buildLog = await getBuildLog(row.id);
+  return {
+    id: row.id,
+    userId: row.learner_profile_id,
+    slug: row.slug,
+    title: row.title,
+    description: row.description,
+    state: row.state,
+    artifacts: artifacts.map((entry) => ({ kind: entry.kind, url: entry.url, createdAt: entry.created_at })),
+    buildLog,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+async function getProjectsByUserFromDb(userId: string) {
+  const supabase = getSupabaseAdmin();
+  const { data } = await supabase
+    .from("projects")
+    .select("id,learner_profile_id,slug,title,description,state,created_at,updated_at")
+    .eq("learner_profile_id", normalizeUserId(userId))
+    .order("created_at", { ascending: false });
+
+  const rows = data ?? [];
+  const mapped: Project[] = [];
+  for (const row of rows) {
+    mapped.push(await projectFromRow(row));
+  }
+  return mapped;
+}
+
+async function insertJobEvent(input: {
+  jobId: string;
+  userId: string;
+  projectId: string | null;
+  type: string;
+  message: string;
+  payload?: Record<string, unknown>;
+}) {
+  const supabase = getSupabaseAdmin();
+  await supabase.from("agent_job_events").insert({
+    id: randomUUID(),
+    job_id: input.jobId,
+    learner_profile_id: input.userId,
+    project_id: input.projectId,
+    event_type: input.type,
+    message: input.message,
+    payload: input.payload ?? {},
+  });
+}
+
+async function createJob(input: {
+  userId: string;
+  projectId: string | null;
+  type: string;
+  payload: Record<string, unknown>;
+  status?: string;
+}) {
+  const supabase = getSupabaseAdmin();
+  const jobId = randomUUID();
+
+  await supabase.from("agent_jobs").insert({
+    id: jobId,
+    learner_profile_id: input.userId,
+    project_id: input.projectId,
+    type: input.type,
+    payload: input.payload,
+    status: input.status ?? "queued",
+    attempts: 0,
+    max_attempts: 3,
+  });
+
+  await insertJobEvent({
+    jobId,
+    userId: input.userId,
+    projectId: input.projectId,
+    type: "job.queued",
+    message: `${input.type} queued`,
+    payload: input.payload,
+  });
+
+  return jobId;
+}
+
+async function appendBuildLog(input: {
+  projectId: string;
+  userId: string;
+  message: string;
+  level: BuildLogEntry["level"];
+  metadata?: Record<string, unknown>;
+}) {
+  const supabase = getSupabaseAdmin();
+  await supabase.from("build_log_entries").insert({
+    id: randomUUID(),
+    project_id: input.projectId,
+    learner_profile_id: input.userId,
+    message: input.message,
+    level: input.level,
+    metadata: input.metadata ?? {},
+  });
+}
+
+async function touchProfileTokenUsage(userId: string, addTokens: number) {
+  const supabase = getSupabaseAdmin();
+  const existing = await getProfileRowById(userId);
+  if (!existing) return;
+  await supabase
+    .from("learner_profiles")
+    .update({ tokens_used: Number(existing.tokens_used ?? 0) + addTokens })
+    .eq("id", existing.id);
+}
+
+async function upsertSkill(input: {
+  userId: string;
+  skill: string;
+  status: "not_started" | "in_progress" | "built" | "verified";
+  score: number;
+  evidenceDelta: number;
+}) {
+  const supabase = getSupabaseAdmin();
+  const { data } = await supabase
+    .from("user_skill_evidence")
+    .select("id,status,score,evidence_count")
+    .eq("learner_profile_id", input.userId)
+    .eq("skill_name", input.skill)
+    .maybeSingle();
+
+  if (!data) {
+    await supabase.from("user_skill_evidence").insert({
+      id: randomUUID(),
+      learner_profile_id: input.userId,
+      skill_name: input.skill,
+      status: input.status,
+      score: input.score,
+      evidence_count: Math.max(0, input.evidenceDelta),
+    });
+    return;
+  }
+
+  const statusOrder = {
+    not_started: 0,
+    in_progress: 1,
+    built: 2,
+    verified: 3,
+  } as const;
+
+  const nextStatus =
+    statusOrder[input.status] > statusOrder[data.status as keyof typeof statusOrder]
+      ? input.status
+      : (data.status as keyof typeof statusOrder);
+
+  await supabase
+    .from("user_skill_evidence")
+    .update({
+      status: nextStatus,
+      score: Math.max(Number(data.score ?? 0), input.score),
+      evidence_count: Math.max(0, Number(data.evidence_count ?? 0) + input.evidenceDelta),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", data.id);
+}
+
+async function getLatestDailyUpdate(userId: string): Promise<DailyUpdate | null> {
+  const supabase = getSupabaseAdmin();
+  const { data } = await supabase
+    .from("daily_update_emails")
+    .select("id,learner_profile_id,status,summary,upcoming_tasks,news_ids,created_at,failure_code")
+    .eq("learner_profile_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return null;
+
+  return {
+    id: data.id,
+    userId: data.learner_profile_id,
+    status: data.status,
+    summary: data.summary,
+    upcomingTasks: data.upcoming_tasks ?? [],
+    newsIds: data.news_ids ?? [],
+    createdAt: data.created_at,
+    failureCode: data.failure_code ?? null,
+  };
+}
+
+export async function runtimeCreateOnboardingSession(input: {
+  userId?: string;
+  name?: string;
+  handleBase?: string;
+  careerPathId?: string;
+}) {
+  if (mode() === "memory") return memCreateOnboardingSession(input);
+
+  const supabase = getSupabaseAdmin();
+  const profile = await getOrCreateProfile(input);
+  const sessionId = randomUUID();
+
+  const row = {
+    id: sessionId,
+    learner_profile_id: profile.id,
+    situation: null,
+    career_path_id: input.careerPathId ?? profile.careerPathId,
+    linkedin_url: null,
+    resume_filename: null,
+    ai_knowledge_score: null,
+    goals: profile.goals,
+    status: "started",
+  };
+
+  const { data, error } = await supabase.from("onboarding_sessions").insert(row).select("*").single();
+  if (error || !data) {
+    throw new Error("ONBOARDING_SESSION_CREATE_FAILED");
+  }
+
+  await insertJobEvent({
+    jobId: "onboarding",
+    userId: profile.id,
+    projectId: null,
+    type: "onboarding.started",
+    message: `Onboarding session ${sessionId} started`,
+  });
+
+  return {
+    user: profile,
+    session: {
+      id: data.id,
+      userId: data.learner_profile_id,
+      situation: data.situation,
+      careerPathId: data.career_path_id,
+      linkedinUrl: data.linkedin_url,
+      resumeFilename: data.resume_filename,
+      aiKnowledgeScore: data.ai_knowledge_score,
+      goals: data.goals ?? [],
+      status: data.status,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    } as OnboardingSession,
+  };
+}
+
+export async function runtimeFindOnboardingSession(sessionId: string) {
+  if (mode() === "memory") return memFindOnboardingSession(sessionId);
+
+  const supabase = getSupabaseAdmin();
+  const { data } = await supabase.from("onboarding_sessions").select("*").eq("id", sessionId).maybeSingle();
+  if (!data) return null;
+
+  return {
+    id: data.id,
+    userId: data.learner_profile_id,
+    situation: data.situation,
+    careerPathId: data.career_path_id,
+    linkedinUrl: data.linkedin_url,
+    resumeFilename: data.resume_filename,
+    aiKnowledgeScore: data.ai_knowledge_score,
+    goals: data.goals ?? [],
+    status: data.status,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  } as OnboardingSession;
+}
+
+export async function runtimeUpdateOnboardingSituation(input: {
+  sessionId: string;
+  situation: OnboardingSession["situation"];
+  goals: UserProfile["goals"];
+}) {
+  if (mode() === "memory") return memUpdateOnboardingSituation(input);
+
+  const supabase = getSupabaseAdmin();
+  const session = await runtimeFindOnboardingSession(input.sessionId);
+  if (!session) return null;
+
+  await supabase
+    .from("onboarding_sessions")
+    .update({
+      situation: input.situation,
+      goals: input.goals,
+      status: "collecting",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.sessionId);
+
+  await supabase
+    .from("learner_profiles")
+    .update({ goals: input.goals, updated_at: new Date().toISOString() })
+    .eq("id", session.userId);
+
+  return runtimeFindOnboardingSession(input.sessionId);
+}
+
+export async function runtimeUpdateOnboardingCareerImport(input: {
+  sessionId: string;
+  careerPathId: string;
+  linkedinUrl?: string | null;
+  resumeFilename?: string | null;
+}) {
+  if (mode() === "memory") return memUpdateOnboardingCareerImport(input);
+
+  const session = await runtimeFindOnboardingSession(input.sessionId);
+  if (!session) return null;
+
+  const supabase = getSupabaseAdmin();
+  await supabase
+    .from("onboarding_sessions")
+    .update({
+      career_path_id: input.careerPathId,
+      linkedin_url: input.linkedinUrl ?? null,
+      resume_filename: input.resumeFilename ?? null,
+      status: "assessment_pending",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.sessionId);
+
+  await supabase
+    .from("learner_profiles")
+    .update({ career_path_id: input.careerPathId, updated_at: new Date().toISOString() })
+    .eq("id", session.userId);
+
+  return runtimeFindOnboardingSession(input.sessionId);
+}
+
+export async function runtimeStartAssessment(userId: string) {
+  if (mode() === "memory") return memStartAssessment(userId);
+
+  const profile = await runtimeFindUserById(userId);
+  if (!profile) return null;
+
+  const supabase = getSupabaseAdmin();
+  const row = {
+    id: randomUUID(),
+    learner_profile_id: profile.id,
+    score: 0,
+    answers: [],
+    recommended_career_path_ids: [profile.careerPathId],
+    started_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase.from("assessment_attempts").insert(row).select("*").single();
+  if (error || !data) return null;
+
+  return {
+    id: data.id,
+    userId: data.learner_profile_id,
+    score: Number(data.score),
+    startedAt: data.started_at,
+    submittedAt: data.submitted_at,
+    answers: data.answers ?? [],
+    recommendedCareerPathIds: data.recommended_career_path_ids ?? [],
+  } as AssessmentAttempt;
+}
+
+export async function runtimeSubmitAssessment(input: {
+  assessmentId: string;
+  answers: Array<{ questionId: string; value: number }>;
+}) {
+  if (mode() === "memory") return memSubmitAssessment(input);
+
+  const supabase = getSupabaseAdmin();
+  const { data: attempt } = await supabase
+    .from("assessment_attempts")
+    .select("*")
+    .eq("id", input.assessmentId)
+    .maybeSingle();
+  if (!attempt) return null;
+
+  const total = input.answers.reduce((sum, answer) => sum + answer.value, 0);
+  const score = Number((input.answers.length ? total / input.answers.length / 5 : 0).toFixed(2));
+  const pivot = Math.floor(total) % CAREER_PATHS.length;
+  const recommended = [
+    CAREER_PATHS[pivot].id,
+    CAREER_PATHS[(pivot + 1) % CAREER_PATHS.length].id,
+    CAREER_PATHS[(pivot + 2) % CAREER_PATHS.length].id,
+  ];
+
+  await supabase
+    .from("assessment_attempts")
+    .update({
+      score,
+      answers: input.answers,
+      recommended_career_path_ids: recommended,
+      submitted_at: new Date().toISOString(),
+    })
+    .eq("id", input.assessmentId);
+
+  await supabase
+    .from("learner_profiles")
+    .update({
+      career_path_id: recommended[0],
+      tokens_used: Number(attempt.tokens_used ?? 0) + 500,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", attempt.learner_profile_id);
+
+  const firstModules = CAREER_PATHS.find((path) => path.id === recommended[0])?.modules.slice(0, 2) ?? [];
+  for (const moduleName of firstModules) {
+    await upsertSkill({
+      userId: attempt.learner_profile_id,
+      skill: moduleName,
+      status: "in_progress",
+      score: Math.max(0.2, score * 0.8),
+      evidenceDelta: 1,
+    });
+  }
+
+  return {
+    id: attempt.id,
+    userId: attempt.learner_profile_id,
+    score,
+    startedAt: attempt.started_at,
+    submittedAt: new Date().toISOString(),
+    answers: input.answers,
+    recommendedCareerPathIds: recommended,
+  } as AssessmentAttempt;
+}
+
+export async function runtimeFindUserById(userId: string) {
+  if (mode() === "memory") return memFindUserById(userId);
+
+  const row = await getProfileRowById(userId);
+  if (!row) return null;
+  const skills = await getSkillsForProfile(row.id);
+  return profileFromRow(row, skills);
+}
+
+export async function runtimeFindUserByHandle(handle: string) {
+  if (mode() === "memory") return memFindUserByHandle(handle);
+  const supabase = getSupabaseAdmin();
+
+  const { data } = await supabase
+    .from("learner_profiles")
+    .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,created_at,updated_at")
+    .eq("handle", handle)
+    .maybeSingle();
+  if (!data) return null;
+
+  const skills = await getSkillsForProfile(data.id);
+  return profileFromRow(data, skills);
+}
+
+export async function runtimeUpdateProfile(userId: string, patch: Partial<UserProfile>) {
+  if (mode() === "memory") return memUpdateProfile(userId, patch);
+  const supabase = getSupabaseAdmin();
+  const profile = await runtimeFindUserById(userId);
+  if (!profile) return null;
+
+  let handle = profile.handle;
+  if (patch.handle && patch.handle !== profile.handle) {
+    handle = safeHandle(patch.handle);
+    let candidate = handle;
+    let suffix = 2;
+    while (true) {
+      const { data } = await supabase.from("learner_profiles").select("id").eq("handle", candidate).maybeSingle();
+      if (!data || data.id === profile.id) {
+        handle = candidate;
+        break;
+      }
+      candidate = `${handle}-${suffix}`;
+      suffix += 1;
+    }
+  }
+
+  await supabase
+    .from("learner_profiles")
+    .update({
+      handle,
+      full_name: patch.name ?? profile.name,
+      headline: patch.headline ?? profile.headline,
+      bio: patch.bio ?? profile.bio,
+      career_path_id: patch.careerPathId ?? profile.careerPathId,
+      tools: patch.tools ?? profile.tools,
+      social_links: patch.socialLinks ?? profile.socialLinks,
+      goals: patch.goals ?? profile.goals,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", profile.id);
+
+  return runtimeFindUserById(profile.id);
+}
+
+export async function runtimePublishProfile(userId: string) {
+  if (mode() === "memory") return memPublishProfile(userId);
+
+  const supabase = getSupabaseAdmin();
+  const profile = await runtimeFindUserById(userId);
+  if (!profile) return null;
+
+  await supabase
+    .from("learner_profiles")
+    .update({ published: true, updated_at: new Date().toISOString() })
+    .eq("id", profile.id);
+
+  return runtimeFindUserById(profile.id);
+}
+
+export async function runtimeCreateProject(input: {
+  userId: string;
+  title: string;
+  description: string;
+  slug?: string;
+}) {
+  if (mode() === "memory") return memCreateProject(input);
+
+  const supabase = getSupabaseAdmin();
+  const profile = await runtimeFindUserById(input.userId);
+  if (!profile) return null;
+
+  const slugBase = safeHandle(input.slug ?? input.title) || `project-${Date.now()}`;
+  let slug = slugBase;
+  let suffix = 2;
+
+  while (true) {
+    const { data } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("learner_profile_id", profile.id)
+      .eq("slug", slug)
+      .maybeSingle();
+    if (!data) break;
+    slug = `${slugBase}-${suffix}`;
+    suffix += 1;
+  }
+
+  const row = {
+    id: randomUUID(),
+    learner_profile_id: profile.id,
+    slug,
+    title: input.title,
+    description: input.description,
+    state: "planned",
+  };
+
+  const { data, error } = await supabase
+    .from("projects")
+    .insert(row)
+    .select("id,learner_profile_id,slug,title,description,state,created_at,updated_at")
+    .single();
+
+  if (error || !data) return null;
+
+  await appendBuildLog({
+    projectId: data.id,
+    userId: profile.id,
+    level: "info",
+    message: `Project ${data.title} created.`,
+  });
+
+  return projectFromRow(data);
+}
+
+export async function runtimeFindProjectById(projectId: string) {
+  if (mode() === "memory") return memFindProjectById(projectId);
+  const supabase = getSupabaseAdmin();
+  const { data } = await supabase
+    .from("projects")
+    .select("id,learner_profile_id,slug,title,description,state,created_at,updated_at")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (!data) return null;
+  return projectFromRow(data);
+}
+
+export async function runtimeFindProjectBySlug(slug: string) {
+  if (mode() === "memory") return memFindProjectBySlug(slug);
+  const supabase = getSupabaseAdmin();
+  const { data } = await supabase
+    .from("projects")
+    .select("id,learner_profile_id,slug,title,description,state,created_at,updated_at")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (!data) return null;
+  return projectFromRow(data);
+}
+
+export async function runtimeListProjectsByUser(userId: string) {
+  if (mode() === "memory") return memListProjectsByUser(userId);
+  return getProjectsByUserFromDb(userId);
+}
+
+export async function runtimeAddProjectChatMessage(input: {
+  projectId: string;
+  userId: string;
+  message: string;
+  forceFailCode?: string;
+}) {
+  if (mode() === "memory") return memAddProjectChatMessage(input);
+
+  const project = await runtimeFindProjectById(input.projectId);
+  const profile = await runtimeFindUserById(input.userId);
+  if (!project || !profile) return null;
+
+  await appendBuildLog({
+    projectId: project.id,
+    userId: profile.id,
+    level: "info",
+    message: `User message: ${input.message}`,
+  });
+
+  const jobId = await createJob({
+    userId: profile.id,
+    projectId: project.id,
+    type: "project.chat",
+    payload: { message: input.message, forceFailCode: input.forceFailCode ?? null },
+  });
+
+  const supabase = getSupabaseAdmin();
+
+  if (input.forceFailCode) {
+    await supabase
+      .from("agent_jobs")
+      .update({ status: "failed", last_error_code: input.forceFailCode, updated_at: new Date().toISOString() })
+      .eq("id", jobId);
+
+    await insertJobEvent({
+      jobId,
+      userId: profile.id,
+      projectId: project.id,
+      type: "job.failed",
+      message: `project.chat failed (${input.forceFailCode})`,
+      payload: { errorCode: input.forceFailCode },
+    });
+
+    await appendBuildLog({
+      projectId: project.id,
+      userId: profile.id,
+      level: "error",
+      message: `Job project.chat failed with ${input.forceFailCode}`,
+    });
+
+    return {
+      job: { id: jobId, status: "failed", lastErrorCode: input.forceFailCode },
+      result: { ok: false, job: { id: jobId, lastErrorCode: input.forceFailCode } },
+      reply: null,
+    };
+  }
+
+  await supabase
+    .from("agent_jobs")
+    .update({ status: "completed", updated_at: new Date().toISOString() })
+    .eq("id", jobId);
+
+  await insertJobEvent({
+    jobId,
+    userId: profile.id,
+    projectId: project.id,
+    type: "job.completed",
+    message: "project.chat completed",
+  });
+
+  await appendBuildLog({
+    projectId: project.id,
+    userId: profile.id,
+    level: "success",
+    message: `AI Tutor reply generated for: ${input.message.slice(0, 80)}`,
+  });
+
+  return {
+    job: { id: jobId, status: "completed", lastErrorCode: null },
+    result: { ok: true, job: { id: jobId, lastErrorCode: null } },
+    reply: `AI Tutor: focus next on ${CAREER_PATHS.find((p) => p.id === profile.careerPathId)?.modules[0] ?? "core AI module"}.`,
+  };
+}
+
+export async function runtimeRequestArtifactGeneration(input: {
+  projectId: string;
+  userId: string;
+  kind: "website" | "pptx" | "pdf" | "resume_docx" | "resume_pdf";
+  forceFailCode?: string;
+}) {
+  if (mode() === "memory") return memRequestArtifactGeneration(input);
+
+  const project = await runtimeFindProjectById(input.projectId);
+  const profile = await runtimeFindUserById(input.userId);
+  if (!project || !profile) return null;
+
+  const supabase = getSupabaseAdmin();
+
+  await supabase.from("projects").update({ state: "building", updated_at: new Date().toISOString() }).eq("id", project.id);
+
+  const jobId = await createJob({
+    userId: profile.id,
+    projectId: project.id,
+    type: input.kind === "website" ? "project.generate_website" : "project.generate_artifact",
+    payload: { kind: input.kind, forceFailCode: input.forceFailCode ?? null },
+  });
+
+  if (input.forceFailCode) {
+    await supabase
+      .from("agent_jobs")
+      .update({ status: "failed", last_error_code: input.forceFailCode, updated_at: new Date().toISOString() })
+      .eq("id", jobId);
+
+    await insertJobEvent({
+      jobId,
+      userId: profile.id,
+      projectId: project.id,
+      type: "job.failed",
+      message: `${input.kind} generation failed (${input.forceFailCode})`,
+      payload: { errorCode: input.forceFailCode },
+    });
+
+    await appendBuildLog({
+      projectId: project.id,
+      userId: profile.id,
+      level: "error",
+      message: `Artifact generation failed for ${input.kind}: ${input.forceFailCode}`,
+    });
+
+    return {
+      job: { id: jobId, status: "failed", lastErrorCode: input.forceFailCode },
+      result: { ok: false, job: { id: jobId, lastErrorCode: input.forceFailCode } },
+      project: await runtimeFindProjectById(project.id),
+    };
+  }
+
+  const artifactUrl = `/generated/${project.slug}/${input.kind}-${Date.now()}.${
+    input.kind === "website" ? "html" : input.kind === "pptx" ? "pptx" : input.kind === "resume_docx" ? "docx" : "pdf"
+  }`;
+
+  await supabase.from("project_artifacts").insert({
+    id: randomUUID(),
+    project_id: project.id,
+    kind: input.kind,
+    url: artifactUrl,
+  });
+
+  await appendBuildLog({
+    projectId: project.id,
+    userId: profile.id,
+    level: "success",
+    message: `Artifact generated: ${input.kind}`,
+  });
+
+  await supabase.from("projects").update({ state: "built", updated_at: new Date().toISOString() }).eq("id", project.id);
+
+  await supabase
+    .from("agent_jobs")
+    .update({ status: "completed", updated_at: new Date().toISOString() })
+    .eq("id", jobId);
+
+  await insertJobEvent({
+    jobId,
+    userId: profile.id,
+    projectId: project.id,
+    type: "job.completed",
+    message: `${input.kind} generation completed`,
+  });
+
+  await upsertSkill({
+    userId: profile.id,
+    skill: CAREER_PATHS.find((path) => path.id === profile.careerPathId)?.modules[0] ?? "Applied AI",
+    status: "built",
+    score: Math.max(getVerificationPolicy().projectMinScore + 0.1, 0.5),
+    evidenceDelta: 1,
+  });
+
+  await touchProfileTokenUsage(profile.id, 950);
+
+  return {
+    job: { id: jobId, status: "completed", lastErrorCode: null },
+    result: { ok: true, job: { id: jobId, lastErrorCode: null } },
+    project: await runtimeFindProjectById(project.id),
+  };
+}
+
+export async function runtimeListProjectEvents(projectId: string) {
+  if (mode() === "memory") return memListProjectEvents(projectId);
+
+  const supabase = getSupabaseAdmin();
+  const { data } = await supabase
+    .from("agent_job_events")
+    .select("id,job_id,learner_profile_id,project_id,event_type,message,created_at,payload")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: true });
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    jobId: row.job_id,
+    userId: row.learner_profile_id,
+    projectId: row.project_id,
+    type: row.event_type,
+    message: row.message,
+    createdAt: row.created_at,
+    payload: row.payload ?? {},
+  }));
+}
+
+export async function runtimeGetDashboardSummary(userId: string): Promise<DashboardSummary | null> {
+  if (mode() === "memory") return memGetDashboardSummary(userId);
+
+  const profile = await runtimeFindUserById(userId);
+  if (!profile) return null;
+
+  const projects = await runtimeListProjectsByUser(profile.id);
+
+  const supabase = getSupabaseAdmin();
+
+  const { data: jobs } = await supabase
+    .from("agent_jobs")
+    .select("id,type,status,attempts,max_attempts,payload,created_at,updated_at,lease_until,last_error_code,project_id,learner_profile_id")
+    .eq("learner_profile_id", profile.id)
+    .in("status", ["queued", "claimed", "running"])
+    .order("created_at", { ascending: false });
+
+  const { data: events } = await supabase
+    .from("agent_job_events")
+    .select("id,job_id,learner_profile_id,project_id,event_type,message,created_at,payload")
+    .eq("learner_profile_id", profile.id)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  const daily = await getLatestDailyUpdate(profile.id);
+
+  return {
+    user: profile,
+    projects,
+    pendingJobs: (jobs ?? []).map((job) => ({
+      id: job.id,
+      projectId: job.project_id,
+      userId: job.learner_profile_id,
+      type: job.type,
+      payload: job.payload ?? {},
+      status: job.status,
+      attempts: job.attempts,
+      maxAttempts: job.max_attempts,
+      createdAt: job.created_at,
+      updatedAt: job.updated_at,
+      leaseUntil: job.lease_until,
+      lastErrorCode: job.last_error_code,
+    })),
+    latestEvents: (events ?? []).map((event) => ({
+      id: event.id,
+      jobId: event.job_id,
+      userId: event.learner_profile_id,
+      projectId: event.project_id,
+      type: event.event_type,
+      message: event.message,
+      createdAt: event.created_at,
+      payload: event.payload ?? {},
+    })),
+    moduleRecommendations: MODULE_TRACKS.filter((track) => track.careerPathId === profile.careerPathId),
+    dailyUpdate: daily,
+  };
+}
+
+export async function runtimeCreateSocialDrafts(input: {
+  userId: string;
+  projectId?: string | null;
+  forceFailCode?: string;
+}) {
+  if (mode() === "memory") return memCreateSocialDrafts(input);
+  if (input.forceFailCode) {
+    return { ok: false as const, errorCode: input.forceFailCode, drafts: [] as SocialDraft[] };
+  }
+
+  const profile = await runtimeFindUserById(input.userId);
+  if (!profile) return { ok: false as const, errorCode: "USER_NOT_FOUND", drafts: [] as SocialDraft[] };
+
+  const project = input.projectId ? await runtimeFindProjectById(input.projectId) : null;
+  const profileUrl = `http://localhost:6396/u/${profile.handle}`;
+  const targetUrl = project ? `${profileUrl}/projects/${project.slug}` : profileUrl;
+  const ogUrl = project
+    ? `http://localhost:6396/api/og/project/${profile.handle}/${project.slug}`
+    : `http://localhost:6396/api/og/profile/${profile.handle}`;
+
+  const baseText = project
+    ? `Shipped ${project.title} with my AI Tutor. Platform Verified build log + artifacts.`
+    : `Building AI-native skills with my AI Tutor. Platform Verified projects and proof.`;
+
+  const makeDraft = (platform: SocialPlatform, text: string): SocialDraft => ({
+    id: randomUUID(),
+    userId: profile.id,
+    projectId: project?.id ?? null,
+    platform,
+    text,
+    ogUrl,
+    shareUrl:
+      platform === "linkedin"
+        ? `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`
+        : `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
+    status: "draft",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  const drafts = [
+    makeDraft("linkedin", `${baseText} ${targetUrl}`),
+    makeDraft("x", `${baseText} ${targetUrl}`),
+  ];
+
+  const supabase = getSupabaseAdmin();
+  await supabase.from("social_drafts").insert(
+    drafts.map((draft) => ({
+      id: draft.id,
+      learner_profile_id: draft.userId,
+      project_id: draft.projectId,
+      platform: draft.platform,
+      text: draft.text,
+      og_url: draft.ogUrl,
+      share_url: draft.shareUrl,
+      status: draft.status,
+    })),
+  );
+
+  return { ok: true as const, drafts };
+}
+
+export async function runtimePublishSocialDraft(input: {
+  draftId: string;
+  mode: PublishMode;
+  forceFailCode?: string;
+}) {
+  if (mode() === "memory") return memPublishSocialDraft(input);
+
+  const supabase = getSupabaseAdmin();
+  const { data } = await supabase
+    .from("social_drafts")
+    .select("id,learner_profile_id,project_id,platform,text,og_url,share_url,status,created_at,updated_at")
+    .eq("id", input.draftId)
+    .maybeSingle();
+
+  if (!data) return { ok: false as const, errorCode: "DRAFT_NOT_FOUND", draft: null };
+
+  const draft: SocialDraft = {
+    id: data.id,
+    userId: data.learner_profile_id,
+    projectId: data.project_id,
+    platform: data.platform,
+    text: data.text,
+    ogUrl: data.og_url,
+    shareUrl: data.share_url,
+    status: data.status,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+
+  if (input.forceFailCode) {
+    await supabase
+      .from("social_drafts")
+      .update({ status: "failed", updated_at: new Date().toISOString() })
+      .eq("id", draft.id);
+    draft.status = "failed";
+    draft.updatedAt = new Date().toISOString();
+    return { ok: false as const, errorCode: input.forceFailCode, draft };
+  }
+
+  if (input.mode === "api") {
+    const oauthPlatform = draft.platform === "linkedin" ? "linkedin" : "x";
+    const { data: connection } = await supabase
+      .from("oauth_connections")
+      .select("connected")
+      .eq("learner_profile_id", draft.userId)
+      .eq("platform", oauthPlatform)
+      .maybeSingle();
+
+    if (!connection?.connected) {
+      await supabase
+        .from("social_drafts")
+        .update({ status: "failed", updated_at: new Date().toISOString() })
+        .eq("id", draft.id);
+      draft.status = "failed";
+      draft.updatedAt = new Date().toISOString();
+      return { ok: false as const, errorCode: "OAUTH_NOT_CONNECTED", draft };
+    }
+
+    await supabase
+      .from("social_drafts")
+      .update({ status: "published", updated_at: new Date().toISOString() })
+      .eq("id", draft.id);
+
+    draft.status = "published";
+    draft.updatedAt = new Date().toISOString();
+    return { ok: true as const, draft, publishedUrl: draft.shareUrl };
+  }
+
+  draft.updatedAt = new Date().toISOString();
+  return { ok: true as const, draft, composerUrl: draft.shareUrl };
+}
+
+export async function runtimeConnectOAuth(userId: string, platform: "linkedin_profile" | "linkedin" | "x", accountLabel: string) {
+  if (mode() === "memory") return memConnectOAuth(userId, platform, accountLabel);
+  const supabase = getSupabaseAdmin();
+
+  const payload = {
+    learner_profile_id: normalizeUserId(userId),
+    platform,
+    connected: true,
+    account_label: accountLabel,
+    connected_at: new Date().toISOString(),
+    last_error_code: null,
+  };
+
+  const { data, error } = await supabase
+    .from("oauth_connections")
+    .upsert(payload, { onConflict: "learner_profile_id,platform" })
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error("OAUTH_CONNECT_FAILED");
+  }
+  return {
+    userId: data.learner_profile_id,
+    platform: data.platform,
+    connected: data.connected,
+    accountLabel: data.account_label,
+    connectedAt: data.connected_at,
+    lastErrorCode: data.last_error_code,
+  };
+}
+
+export async function runtimeMarkOAuthFailure(userId: string, platform: "linkedin_profile" | "linkedin" | "x", code: string) {
+  if (mode() === "memory") return memMarkOAuthFailure(userId, platform, code);
+  const supabase = getSupabaseAdmin();
+
+  const payload = {
+    learner_profile_id: normalizeUserId(userId),
+    platform,
+    connected: false,
+    account_label: null,
+    connected_at: null,
+    last_error_code: code,
+  };
+
+  const { data } = await supabase
+    .from("oauth_connections")
+    .upsert(payload, { onConflict: "learner_profile_id,platform" })
+    .select("*")
+    .single();
+
+  return {
+    userId: data?.learner_profile_id,
+    platform: data?.platform,
+    connected: data?.connected,
+    accountLabel: data?.account_label,
+    connectedAt: data?.connected_at,
+    lastErrorCode: data?.last_error_code,
+  };
+}
+
+export async function runtimeRefreshRelevantNews(options?: { forceFailCode?: string }) {
+  if (mode() === "memory") return memRefreshRelevantNews(options);
+  if (options?.forceFailCode) {
+    return { ok: false as const, errorCode: options.forceFailCode, insights: [] };
+  }
+
+  const supabase = getSupabaseAdmin();
+  const now = new Date().toISOString();
+
+  const rows = [
+    {
+      id: randomUUID(),
+      title: "AI tooling update: model context windows and eval tooling",
+      url: "https://example.com/ai-news/context-evals",
+      summary: "New eval practices improve reliability for production copilots.",
+      career_path_ids: ["software-engineering", "quality-assurance"],
+      published_at: now,
+    },
+    {
+      id: randomUUID(),
+      title: "Agentic workflows in go-to-market automation",
+      url: "https://example.com/ai-news/gtm-agents",
+      summary: "Marketing and RevOps teams are shipping multi-agent outbound systems.",
+      career_path_ids: ["marketing-seo", "sales-revops"],
+      published_at: now,
+    },
+    {
+      id: randomUUID(),
+      title: "Retrieval best practices for support copilots",
+      url: "https://example.com/ai-news/support-rag",
+      summary: "RAG quality gates and routing now standard for support agents.",
+      career_path_ids: ["customer-support", "operations"],
+      published_at: now,
+    },
+  ];
+
+  await supabase.from("news_insights").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabase.from("news_insights").insert(rows);
+
+  return {
+    ok: true as const,
+    insights: rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      url: row.url,
+      summary: row.summary,
+      careerPathIds: row.career_path_ids,
+      publishedAt: row.published_at,
+    })),
+  };
+}
+
+export async function runtimeCreateDailyUpdate(input: { userId: string; forceFailCode?: string }) {
+  if (mode() === "memory") return memCreateDailyUpdate(input);
+
+  const profile = await runtimeFindUserById(input.userId);
+  if (!profile) return { ok: false as const, errorCode: "USER_NOT_FOUND", update: null };
+
+  const supabase = getSupabaseAdmin();
+  if (input.forceFailCode) {
+    const failed = {
+      id: randomUUID(),
+      learner_profile_id: profile.id,
+      status: "failed",
+      summary: "Daily update failed due to provider error.",
+      upcoming_tasks: [],
+      news_ids: [],
+      failure_code: input.forceFailCode,
+    };
+
+    await supabase.from("daily_update_emails").insert(failed);
+
+    return {
+      ok: false as const,
+      errorCode: input.forceFailCode,
+      update: {
+        id: failed.id,
+        userId: profile.id,
+        status: "failed",
+        summary: failed.summary,
+        upcomingTasks: [],
+        newsIds: [],
+        createdAt: new Date().toISOString(),
+        failureCode: input.forceFailCode,
+      } as DailyUpdate,
+    };
+  }
+
+  const projects = await runtimeListProjectsByUser(profile.id);
+  const { data: news } = await supabase.from("news_insights").select("id").order("published_at", { ascending: false }).limit(3);
+
+  const payload = {
+    id: randomUUID(),
+    learner_profile_id: profile.id,
+    status: "sent",
+    summary: `You have ${projects.length} active projects and ${profile.skills.length} tracked skills.`,
+    upcoming_tasks: [
+      "Complete one module checkpoint",
+      "Generate one new artifact",
+      "Publish one social post draft",
+    ],
+    news_ids: (news ?? []).map((entry) => entry.id),
+    failure_code: null,
+  };
+
+  await supabase.from("daily_update_emails").insert(payload);
+
+  return {
+    ok: true as const,
+    update: {
+      id: payload.id,
+      userId: profile.id,
+      status: "sent",
+      summary: payload.summary,
+      upcomingTasks: payload.upcoming_tasks,
+      newsIds: payload.news_ids,
+      createdAt: new Date().toISOString(),
+      failureCode: null,
+    } as DailyUpdate,
+  };
+}
+
+export async function runtimeListTalent(filters?: Parameters<typeof listTalent>[0]) {
+  return listTalent(filters);
+}
+
+export async function runtimeGetTalentByHandle(handle: string) {
+  return getTalentByHandle(handle);
+}
+
+export async function runtimeCreateEmployerLead(input: {
+  employerName: string;
+  employerEmail: string;
+  handle: string;
+  note: string;
+}) {
+  if (mode() === "memory") return memCreateEmployerLead(input);
+
+  const supabase = getSupabaseAdmin();
+  const row = {
+    id: randomUUID(),
+    employer_name: input.employerName,
+    employer_email: input.employerEmail,
+    handle: input.handle,
+    note: input.note,
+  };
+
+  await supabase.from("employer_leads").insert(row);
+  return {
+    id: row.id,
+    employerName: row.employer_name,
+    employerEmail: row.employer_email,
+    handle: row.handle,
+    note: row.note,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export {
+  getCatalogData,
+  getEmployerFacets,
+  generateProfileOgSvg,
+  generateProjectOgSvg,
+  jsonError,
+  jsonOk,
+};
+
+export function runtimeMode() {
+  return mode();
+}

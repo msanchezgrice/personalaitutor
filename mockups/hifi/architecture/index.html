@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Architecture | AI Tutor</title>
+    <link rel="stylesheet" href="/assets/styles-v3.css">
+</head>
+<body>
+    <nav class="topbar">
+        <div class="container" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div class="brand">AI Tutor</div>
+            <div class="nav">
+                <a href="/">Home</a>
+                <a href="/assessment/">Assessment</a>
+                <a href="/dashboard/">Dashboard</a>
+                <a href="/employers/">For Employers</a>
+                <a href="/assessment/" class="btn primary" style="margin-left: 8px;">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="hero" style="padding: 80px 0 40px;">
+        <div class="container">
+            <div class="hero-content">
+                <div class="section-label">System Architecture</div>
+                <h1>How AI Tutor Works</h1>
+                <p class="lead">A deep dive into our technical architecture, verification pipeline, and how personalized learning is delivered at scale.</p>
+            </div>
+        </div>
+    </div>
+
+    <section class="section">
+        <div class="container">
+            <h2 class="section-header" style="text-align: left; margin-bottom: 32px;">System Layers</h2>
+
+            <div style="display: grid; gap: 16px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; padding: 32px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);">
+                    <div>
+                        <div class="section-label">Layer 1</div>
+                        <h3>User Interface Layer</h3>
+                        <p style="color: var(--ink-soft); margin-top: 12px;">Web and mobile applications where learners interact with assessments, course materials, and project feedback. Real-time progress tracking and personalized recommendations powered by user behavior data.</p>
+                        <div style="margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px;">
+                            <span class="tag">Web App</span>
+                            <span class="tag">Mobile</span>
+                            <span class="tag">Analytics</span>
+                        </div>
+                    </div>
+                    <div style="background: var(--surface-muted); padding: 24px; border-radius: var(--radius-sm); text-align: center;">
+                        <div style="font-size: 2rem; margin-bottom: 12px;">👤</div>
+                        <strong style="display: block; color: var(--brand);">Learner Interaction</strong>
+                        <p style="font-size: 0.85rem; color: var(--ink-soft); margin-top: 8px;">Assessment attempts, project submissions, course engagement</p>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: center; margin: 8px 0;">
+                    <div style="font-size: 1.5rem; color: var(--brand);">↓</div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; padding: 32px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);">
+                    <div>
+                        <div class="section-label">Layer 2</div>
+                        <h3>Application Layer</h3>
+                        <p style="color: var(--ink-soft); margin-top: 12px;">Core API services managing authentication, course delivery, project management, and real-time notifications. Orchestrates requests between user interface and AI processing systems.</p>
+                        <div style="margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px;">
+                            <span class="tag">REST API</span>
+                            <span class="tag">WebSockets</span>
+                            <span class="tag">Auth</span>
+                        </div>
+                    </div>
+                    <div style="background: var(--surface-muted); padding: 24px; border-radius: var(--radius-sm); text-align: center;">
+                        <div style="font-size: 2rem; margin-bottom: 12px;">⚙️</div>
+                        <strong style="display: block; color: var(--brand);">Core Services</strong>
+                        <p style="font-size: 0.85rem; color: var(--ink-soft); margin-top: 8px;">Routing, state management, request validation, response formatting</p>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: center; margin: 8px 0;">
+                    <div style="font-size: 1.5rem; color: var(--brand);">↓</div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; padding: 32px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);">
+                    <div>
+                        <div class="section-label">Layer 3</div>
+                        <h3>AI & Intelligence Layer</h3>
+                        <p style="color: var(--ink-soft); margin-top: 12px;">Large language models, RAG systems, and custom ML models that power personalized feedback, adaptive learning paths, and skill assessment. Integrated with embeddings and vector databases for semantic understanding.</p>
+                        <div style="margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px;">
+                            <span class="tag">LLMs</span>
+                            <span class="tag">RAG</span>
+                            <span class="tag">Embeddings</span>
+                        </div>
+                    </div>
+                    <div style="background: var(--surface-muted); padding: 24px; border-radius: var(--radius-sm); text-align: center;">
+                        <div style="font-size: 2rem; margin-bottom: 12px;">🤖</div>
+                        <strong style="display: block; color: var(--brand);">AI Models</strong>
+                        <p style="font-size: 0.85rem; color: var(--ink-soft); margin-top: 8px;">Claude, code understanding, skill inference, adaptive recommendations</p>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: center; margin: 8px 0;">
+                    <div style="font-size: 1.5rem; color: var(--brand);">↓</div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; padding: 32px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);">
+                    <div>
+                        <div class="section-label">Layer 4</div>
+                        <h3>Data Layer</h3>
+                        <p style="color: var(--ink-soft); margin-top: 12px;">Persistent storage for user profiles, course content, learning analytics, and model embeddings. Includes data warehouse for analytics, vector DB for semantic search, and cache layers for performance.</p>
+                        <div style="margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px;">
+                            <span class="tag">PostgreSQL</span>
+                            <span class="tag">Vector DB</span>
+                            <span class="tag">Cache</span>
+                        </div>
+                    </div>
+                    <div style="background: var(--surface-muted); padding: 24px; border-radius: var(--radius-sm); text-align: center;">
+                        <div style="font-size: 2rem; margin-bottom: 12px;">💾</div>
+                        <strong style="display: block; color: var(--brand);">Storage</strong>
+                        <p style="font-size: 0.85rem; color: var(--ink-soft); margin-top: 8px;">User data, course content, embeddings, analytics events</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section section-alt">
+        <div class="container">
+            <h2 class="section-header" style="text-align: left; margin-bottom: 48px;">Verification Pipeline</h2>
+
+            <div class="verify-pipeline">
+                <div class="verify-stage stage-progress">
+                    <div class="stage-badge">In Progress</div>
+                    <h3>Learning & Development</h3>
+                    <p>Learner completes course modules and builds projects. System tracks progress and collects skill evidence through assignments and real-world practice.</p>
+                    <ul class="evidence-list">
+                        <li>Course completion</li>
+                        <li>Project submissions</li>
+                        <li>Code quality metrics</li>
+                        <li>Assessment scores</li>
+                    </ul>
+                </div>
+
+                <div class="verify-stage stage-built">
+                    <div class="stage-badge">Built</div>
+                    <h3>Skill Verification</h3>
+                    <p>AI models analyze learner artifacts against skill standards. Code review, project evaluation, and competency assessment generate structured skill signals.</p>
+                    <ul class="evidence-list">
+                        <li>Code analysis</li>
+                        <li>Architecture review</li>
+                        <li>AI assessment</li>
+                        <li>Skill extraction</li>
+                    </ul>
+                </div>
+
+                <div class="verify-stage stage-verified">
+                    <div class="stage-badge">Verified</div>
+                    <h3>Credential Issue</h3>
+                    <p>Verified skills are cryptographically signed and issued as portable credentials. Employers can independently verify authenticity through the verification API.</p>
+                    <ul class="evidence-list">
+                        <li>Signature generation</li>
+                        <li>Credential issuance</li>
+                        <li>Verification endpoint</li>
+                        <li>Public registry</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container">
+            <h2 class="section-header" style="text-align: left; margin-bottom: 48px;">Data Flow & Integration</h2>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h3>Learning Events</h3>
+                    <p>Every user action generates structured events: course progress, project submissions, assessment results. These feed into both real-time dashboards and long-term learning analytics.</p>
+                </div>
+                <div class="card">
+                    <h3>AI Processing</h3>
+                    <p>Events trigger AI pipelines that generate personalized feedback, suggest next steps, and extract skill signals. Results flow back to learner interfaces and credential systems.</p>
+                </div>
+                <div class="card">
+                    <h3>Employer Integration</h3>
+                    <p>Verified credentials integrate with employer systems through our API. Companies access learner portfolios, verify credentials, and access skill assessments directly.</p>
+                </div>
+                <div class="card">
+                    <h3>Analytics & Insights</h3>
+                    <p>Aggregated learning data powers platform analytics, cohort insights, and content recommendations. Feedback loops continuously improve AI models and course quality.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section section-alt">
+        <div class="container">
+            <h2 class="section-header" style="text-align: left; margin-bottom: 32px;">Key Features</h2>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h3>Real-time Sync</h3>
+                    <p>Learner progress syncs instantly across all platforms using WebSocket connections and optimistic updates.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🧠</div>
+                    <h3>Intelligent Assessment</h3>
+                    <p>AI models evaluate learner work using semantic understanding, code analysis, and comparative benchmarking.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Adaptive Learning</h3>
+                    <p>Course recommendations and pacing adjust based on learner velocity, comprehension signals, and skill gaps.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-inner">
+                <h2>Ready to Start Your Learning Journey?</h2>
+                <p class="lead">Get personalized AI-powered feedback and build verifiable skills today.</p>
+                <a href="/assessment/" class="btn primary glow">Begin Assessment</a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer-note">
+        <p>&copy; 2026 AI Tutor. All rights reserved. | <a href="#" style="color: var(--brand);">Privacy</a> | <a href="#" style="color: var(--brand);">Terms</a></p>
+    </footer>
+</body>
+</html>

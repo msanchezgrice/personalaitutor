@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ad Video</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #0f111a;
+            font-family: 'Inter', sans-serif;
+            color: white;
+        }
+
+        .stage {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
+        }
+
+        .active {
+            opacity: 1;
+            z-index: 10;
+        }
+
+        .bg-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+            opacity: 0.3;
+            animation: slowZoom 20s linear infinite alternate;
+        }
+
+        @keyframes slowZoom {
+            from {
+                transform: scale(1);
+            }
+
+            to {
+                transform: scale(1.1);
+            }
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .bullet {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.8s ease-out;
+        }
+
+        .bullet.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="scene1" class="stage active">
+        <div
+            class="bg-glow top-[-200px] left-[-100px] bg-gradient-to-br from-emerald-500/20 to-transparent absolute w-[500px] h-[500px] rounded-full blur-[100px] opacity-50">
+        </div>
+        <h1 class="text-5xl md:text-7xl font-bold text-center px-8 transition-opacity duration-1000" id="s1-text1">AI
+            won't replace you.</h1>
+    </div>
+
+    <div id="scene2" class="stage">
+        <img src="/assets/interface_macro_mockup.png" class="bg-image">
+        <div class="absolute inset-0 bg-gradient-to-tr from-[#0f111a] via-[#0f111a]/80 to-transparent -z-10"></div>
+
+        <h1 class="text-4xl md:text-6xl font-bold text-center px-8 text-emerald-400 mb-12 drop-shadow-lg">AI Tutor is
+            your secret weapon.</h1>
+
+        <div class="text-xl md:text-3xl space-y-8 max-w-4xl px-8 font-medium" id="bullets">
+            <div class="bullet flex items-center gap-6">
+                <div class="w-4 h-4 bg-emerald-400 rounded-full shadow-[0_0_15px_rgba(52,211,153,0.8)]"></div>
+                <span>Sends you curated industry news</span>
+            </div>
+            <div class="bullet flex items-center gap-6">
+                <div class="w-4 h-4 bg-emerald-400 rounded-full shadow-[0_0_15px_rgba(52,211,153,0.8)]"></div>
+                <span>Helps you build a tech-forward online presence</span>
+            </div>
+            <div class="bullet flex items-center gap-6">
+                <div class="w-4 h-4 bg-emerald-400 rounded-full shadow-[0_0_15px_rgba(52,211,153,0.8)]"></div>
+                <span>Maps your skills to new AI job opportunities</span>
+            </div>
+            <div class="bullet flex items-center gap-6">
+                <div class="w-4 h-4 bg-emerald-400 rounded-full shadow-[0_0_15px_rgba(52,211,153,0.8)]"></div>
+                <span>Get certifications & surface on our talent marketplace</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="scene3" class="stage">
+        <img src="/assets/og_macbook_dashboard.png" class="bg-image" style="opacity: 0.4;">
+        <div
+            class="bg-[#0f111a]/80 p-16 rounded-3xl backdrop-blur-md text-center max-w-4xl border border-white/10 shadow-2xl">
+            <div
+                class="w-16 h-16 mx-auto bg-emerald-500/20 text-emerald-400 flex flex-col items-center justify-center rounded-2xl mb-6">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                </svg>
+            </div>
+            <h1 class="text-5xl md:text-6xl font-bold mb-6 text-white drop-shadow-md">AI Tutor helps you build your
+                first product.</h1>
+        </div>
+    </div>
+
+    <div id="scene4" class="stage">
+        <img src="/assets/social_media_banner.png" class="bg-image" style="opacity: 0.3;">
+        <div class="absolute inset-0 bg-gradient-to-b from-[#0f111a]/50 to-[#0f111a] -z-10"></div>
+        <div class="text-center px-8">
+            <h1 class="text-6xl md:text-7xl font-bold mb-8 text-emerald-400 drop-shadow-xl">Be more prepared than your
+                peers.</h1>
+            <p class="text-3xl font-medium text-gray-300">Start building your secret weapon today.</p>
+        </div>
+    </div>
+
+    <script>
+        const sleep = ms => new Promise(res => setTimeout(res, ms));
+
+        async function run() {
+            // Scene 1
+            await sleep(3000);
+            const text1 = document.getElementById('s1-text1');
+            text1.style.opacity = 0;
+            await sleep(1000);
+            text1.innerText = "Someone with AI skills will.";
+            text1.style.opacity = 1;
+            await sleep(3500);
+
+            // Scene 2
+            document.getElementById('scene1').classList.remove('active');
+            document.getElementById('scene2').classList.add('active');
+            await sleep(2000);
+            const bullets = document.querySelectorAll('.bullet');
+            for (let b of bullets) {
+                b.classList.add('show');
+                await sleep(1500);
+            }
+            await sleep(3500);
+
+            // Scene 3
+            document.getElementById('scene2').classList.remove('active');
+            document.getElementById('scene3').classList.add('active');
+            await sleep(5500);
+
+            // Scene 4
+            document.getElementById('scene3').classList.remove('active');
+            document.getElementById('scene4').classList.add('active');
+            await sleep(6000);
+
+            // End flag for browser subagent
+            document.title = "DONE";
+        }
+
+        // Start sequence when page loads
+        window.onload = run;
+    </script>
+</body>
+
+</html>

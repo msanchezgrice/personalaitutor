@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Talent Marketplace | AI Tutor Employers</title>
+  <meta name="description" content="Search verified AI talent by skills, tools, and project evidence." />
+  <link rel="canonical" href="http://localhost:6398/employers/talent/" />
+  <meta property="og:title" content="AI Talent Marketplace" />
+  <meta property="og:description" content="Search proof-based AI candidates with verified skills." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="http://localhost:6398/employers/talent/" />
+  <link rel="stylesheet" href="/assets/styles-v3.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor</a>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/employers/">Employers</a>
+        <a href="/employers/talent/">Talent Board</a>
+      </nav>
+      <a class="btn sm" href="/">Back to Learner Site</a>
+    </div>
+  </header>
+
+  <main class="container section" data-talent-search>
+    <div class="animate-in">
+      <span class="eyebrow">Employer Tools</span>
+      <h1>Talent Marketplace Search</h1>
+      <p class="lead">Filter by verified skills, tools, and role context. Results are public profiles with evidence.</p>
+    </div>
+
+    <section class="market-layout" style="margin-top:24px">
+      <!-- Filter Sidebar -->
+      <aside class="panel pad animate-in" style="animation-delay:0.1s;height:fit-content;position:sticky;top:80px">
+        <h3>Filters</h3>
+        <div class="form-grid" style="margin-top:14px">
+          <label>
+            Search query
+            <input class="input" data-filter="query" placeholder="name, role, project" />
+          </label>
+          <label>
+            Skill
+            <input class="input" data-filter="skill" placeholder="prompt engineering" />
+          </label>
+          <label>
+            Tool
+            <input class="input" data-filter="tool" placeholder="openai api" />
+          </label>
+        </div>
+        <p class="tag brand mt-md" data-result-count>0 candidates</p>
+
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line-subtle)">
+          <h4 style="margin-bottom:8px">Verification legend</h4>
+          <div class="flex-wrap">
+            <span class="tag">In Progress</span>
+            <span class="tag warn">Built</span>
+            <span class="tag ok">Verified</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Result Grid -->
+      <section class="result-grid">
+        <!-- Alex Chen -->
+        <article class="panel pad talent-card animate-in" style="animation-delay:0.15s" data-card data-name="Alex Chen" data-role="Product Manager" data-skills="prompt engineering,rag,workflow automation" data-tools="openai api,supabase,vercel">
+          <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
+            <h3>Alex Chen</h3>
+            <span class="tag ok">Evidence Score 83</span>
+          </div>
+          <p style="margin-top:6px">Product Manager becoming AI-native. Built support and sales copilots with public logs.</p>
+          <div class="talent-meta">
+            <span class="tag ok">Prompt Engineering</span>
+            <span class="tag ok">RAG</span>
+            <span class="tag warn">Agent Ops</span>
+            <span class="tag">OpenAI API</span>
+            <span class="tag">Supabase</span>
+          </div>
+          <a class="btn sm primary" href="/employers/talent/alex-chen-ai/">View Talent Profile</a>
+        </article>
+
+        <!-- Maya Patel -->
+        <article class="panel pad talent-card animate-in" style="animation-delay:0.2s" data-card data-name="Maya Patel" data-role="Marketing Lead" data-skills="content automation,prompt engineering,analytics" data-tools="chatgpt,notion ai,hubspot">
+          <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
+            <h3>Maya Patel</h3>
+            <span class="tag ok">Evidence Score 74</span>
+          </div>
+          <p style="margin-top:6px">Marketing lead shipping AI-assisted funnel analysis and lifecycle content systems.</p>
+          <div class="talent-meta">
+            <span class="tag ok">Content Automation</span>
+            <span class="tag warn">Prompt Engineering</span>
+            <span class="tag">HubSpot</span>
+            <span class="tag">Notion AI</span>
+          </div>
+          <a class="btn sm primary" href="/employers/talent/alex-chen-ai/">View Talent Profile</a>
+        </article>
+
+        <!-- Jordan Lee -->
+        <article class="panel pad talent-card animate-in" style="animation-delay:0.25s" data-card data-name="Jordan Lee" data-role="Operations Manager" data-skills="workflow automation,qa process,agent evaluation" data-tools="n8n,zapier,openai api">
+          <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
+            <h3>Jordan Lee</h3>
+            <span class="tag warn">Evidence Score 61</span>
+          </div>
+          <p style="margin-top:6px">Ops-focused builder of AI routing workflows and quality gates.</p>
+          <div class="talent-meta">
+            <span class="tag warn">Workflow Automation</span>
+            <span class="tag">n8n</span>
+            <span class="tag">Zapier</span>
+          </div>
+          <a class="btn sm primary" href="/employers/talent/alex-chen-ai/">View Talent Profile</a>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <p class="footer-brand">AI Tutor</p>
+          <p style="max-width:36ch">Build AI skills and prove them publicly with a dedicated tutor, portfolio, and verified evidence.</p>
+        </div>
+        <div>
+          <h4 style="color:#fff;margin-bottom:12px;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.08em">Learners</h4>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="/assessment/">Assessment</a>
+            <a href="/onboarding/">Onboarding</a>
+            <a href="/dashboard/">Dashboard</a>
+          </div>
+        </div>
+        <div>
+          <h4 style="color:#fff;margin-bottom:12px;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.08em">Employers</h4>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="/employers/">Overview</a>
+            <a href="/employers/talent/">Talent Board</a>
+          </div>
+        </div>
+        <div>
+          <h4 style="color:#fff;margin-bottom:12px;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.08em">Platform</h4>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="/architecture/">Architecture</a>
+            <a href="/emails/daily-update/">Email Samples</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-note" style="border-color:rgba(255,255,255,0.1);margin-top:40px">
+      Mockup v3 for review on localhost:6398. Includes fail-state-first UX and Greenlight-style agent architecture parity.
+    </div>
+  </footer>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

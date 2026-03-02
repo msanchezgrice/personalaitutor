@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture Overview | AI Tutor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-[#0f111a] text-white flex flex-col min-h-screen">
+
+    <header class="glass sticky top-0 z-50 border-x-0 border-t-0 rounded-none bg-opacity-80 backdrop-blur-xl">
+        <div class="container nav py-4 flex justify-between items-center">
+            <a href="/" class="flex items-center gap-2">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+                    <i class="fa-solid fa-brain text-sm"></i>
+                </div>
+                <span class="font-[Outfit] font-bold text-xl tracking-tight text-white">AI Tutor</span>
+            </a>
+            <span class="text-indigo-400 font-mono text-sm">Architecture & Coverage Map</span>
+        </div>
+    </header>
+
+    <main class="flex-grow container max-w-6xl py-12">
+
+        <div class="text-center mb-16 max-w-3xl mx-auto">
+            <h1 class="text-4xl font-[Outfit] text-white mb-4">Greenlight Parity Mapping</h1>
+            <p class="text-gray-400">Mapping the conceptual architecture for the AI Tutor platform against required
+                asset generation coverage.</p>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-12">
+
+            <!-- System Flow -->
+            <div class="glass p-8 rounded-2xl relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-500 to-emerald-500"></div>
+                <h2 class="text-xl font-[Outfit] mb-8 text-white">1. User Journey & Engines</h2>
+
+                <div class="space-y-6">
+                    <!-- Block -->
+                    <div
+                        class="border border-white/10 bg-black/40 p-5 rounded-xl flex gap-4 items-start relative before:absolute before:w-0.5 before:h-6 before:bg-white/20 before:-bottom-6 before:left-10">
+                        <div
+                            class="w-10 h-10 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-door-open"></i></div>
+                        <div>
+                            <h3 class="font-bold text-white mb-1">Intake Engine</h3>
+                            <p class="text-xs text-gray-400 mb-2">Resume parsing + user questionnaire to determine
+                                baseline skills.</p>
+                            <span
+                                class="text-[10px] bg-white/5 border border-white/10 px-2 py-0.5 rounded text-gray-500">Routes:
+                                /assessment/, /onboarding/</span>
+                        </div>
+                    </div>
+
+                    <!-- Block -->
+                    <div
+                        class="border border-white/10 bg-black/40 p-5 rounded-xl flex gap-4 items-start relative before:absolute before:w-0.5 before:h-6 before:bg-white/20 before:-bottom-6 before:left-10">
+                        <div
+                            class="w-10 h-10 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-robot"></i></div>
+                        <div>
+                            <h3 class="font-bold text-white mb-1">Tutor Core (RAG)</h3>
+                            <p class="text-xs text-gray-400 mb-2">LLM wrapper providing guided coding assistance and
+                                tracking telemetry of built projects.</p>
+                            <span
+                                class="text-[10px] bg-white/5 border border-white/10 px-2 py-0.5 rounded text-gray-500">Routes:
+                                /dashboard/chat/</span>
+                        </div>
+                    </div>
+
+                    <!-- Block -->
+                    <div
+                        class="border border-white/10 bg-black/40 p-5 rounded-xl flex gap-4 items-start relative before:absolute before:w-0.5 before:h-6 before:bg-white/20 before:-bottom-6 before:left-10">
+                        <div
+                            class="w-10 h-10 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-gears"></i></div>
+                        <div>
+                            <h3 class="font-bold text-white mb-1">Asset Generation Engine</h3>
+                            <p class="text-xs text-gray-400 mb-2">Compiles telemetry into public proof artifacts.
+                                Generates social hooks and updates profile stack.</p>
+                            <span
+                                class="text-[10px] bg-white/5 border border-white/10 px-2 py-0.5 rounded text-gray-500">Routes:
+                                /u/*, /dashboard/social/</span>
+                        </div>
+                    </div>
+
+                    <!-- Block -->
+                    <div class="border border-emerald-500/30 bg-emerald-500/5 p-5 rounded-xl flex gap-4 items-start">
+                        <div
+                            class="w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-briefcase"></i></div>
+                        <div>
+                            <h3 class="font-bold text-white mb-1">Talent Marketplace</h3>
+                            <p class="text-xs text-gray-400 mb-2">Employer gateway bridging verified artifact generation
+                                to tangible career outcomes.</p>
+                            <span
+                                class="text-[10px] bg-white/5 border border-white/10 px-2 py-0.5 rounded text-gray-500">Routes:
+                                /employers/*</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coverage Map -->
+            <div class="glass p-8 rounded-2xl">
+                <h2 class="text-xl font-[Outfit] mb-8 text-white">2. Asset Generation Coverage Map</h2>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-gray-400">
+                        <thead class="text-xs uppercase bg-white/5 text-gray-300">
+                            <tr>
+                                <th class="px-4 py-3 rounded-tl-lg">Asset Type</th>
+                                <th class="px-4 py-3">Trigger Mechanism</th>
+                                <th class="px-4 py-3 rounded-tr-lg">Mockup Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5">
+                            <tr class="hover:bg-white/5">
+                                <td class="px-4 py-4 font-medium text-white">Public Profile</td>
+                                <td class="px-4 py-4">Assessment completion</td>
+                                <td class="px-4 py-4"><span class="text-emerald-400"><i
+                                            class="fa-solid fa-check mr-1"></i> Covered</span></td>
+                            </tr>
+                            <tr class="hover:bg-white/5">
+                                <td class="px-4 py-4 font-medium text-white">Project Build Log</td>
+                                <td class="px-4 py-4">Tutor session commit</td>
+                                <td class="px-4 py-4"><span class="text-emerald-400"><i
+                                            class="fa-solid fa-check mr-1"></i> Covered</span></td>
+                            </tr>
+                            <tr class="hover:bg-white/5">
+                                <td class="px-4 py-4 font-medium text-white">Social Hook (LinkedIn)</td>
+                                <td class="px-4 py-4">Project marked "Complete"</td>
+                                <td class="px-4 py-4"><span class="text-emerald-400"><i
+                                            class="fa-solid fa-check mr-1"></i> Covered</span></td>
+                            </tr>
+                            <tr class="hover:bg-white/5">
+                                <td class="px-4 py-4 font-medium text-white">Verified Skill Badge</td>
+                                <td class="px-4 py-4">Code/API test passes</td>
+                                <td class="px-4 py-4"><span class="text-emerald-400"><i
+                                            class="fa-solid fa-check mr-1"></i> Covered</span></td>
+                            </tr>
+                            <tr class="hover:bg-white/5">
+                                <td class="px-4 py-4 font-medium text-white">Fail Alert Email</td>
+                                <td class="px-4 py-4">System exception trapped</td>
+                                <td class="px-4 py-4"><span class="text-emerald-400"><i
+                                            class="fa-solid fa-check mr-1"></i> Covered</span></td>
+                            </tr>
+                            <tr class="hover:bg-white/5">
+                                <td class="px-4 py-4 font-medium text-white">Resume PDF Export</td>
+                                <td class="px-4 py-4">Manual User Request</td>
+                                <td class="px-4 py-4"><span class="text-gray-500">Planned for v2</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</body>
+
+</html>

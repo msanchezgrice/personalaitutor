@@ -1,0 +1,107 @@
+<svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="dashboardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4f46e5;stop-opacity:0.9" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background glow -->
+  <circle cx="400" cy="250" r="300" fill="#0ea5e9" opacity="0.06"/>
+
+  <!-- Bar chart abstraction - left side -->
+  <g id="barChart" opacity="0.85">
+    <!-- Bar 1 -->
+    <rect x="120" y="300" width="30" height="150" fill="#4f46e5" opacity="0.8"/>
+    <rect x="120" y="300" width="30" height="8" fill="#0ea5e9" opacity="0.6"/>
+
+    <!-- Bar 2 -->
+    <rect x="170" y="250" width="30" height="200" fill="#0ea5e9" opacity="0.75"/>
+    <rect x="170" y="250" width="30" height="8" fill="#4f46e5" opacity="0.65"/>
+
+    <!-- Bar 3 -->
+    <rect x="220" y="280" width="30" height="170" fill="#4f46e5" opacity="0.7"/>
+    <rect x="220" y="280" width="30" height="8" fill="#0ea5e9" opacity="0.55"/>
+
+    <!-- Bar 4 -->
+    <rect x="270" y="200" width="30" height="250" fill="#0ea5e9" opacity="0.8"/>
+    <rect x="270" y="200" width="30" height="8" fill="#4f46e5" opacity="0.7"/>
+
+    <!-- Bar 5 -->
+    <rect x="320" y="240" width="30" height="210" fill="#4f46e5" opacity="0.75"/>
+    <rect x="320" y="240" width="30" height="8" fill="#f59e0b" opacity="0.65"/>
+  </g>
+
+  <!-- Line graph abstraction - top center -->
+  <g id="lineGraph" opacity="0.8">
+    <polyline points="450,280 500,230 550,260 600,190 650,220"
+              stroke="#0ea5e9" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+
+    <!-- Data points -->
+    <circle cx="450" cy="280" r="4" fill="#f59e0b" opacity="0.8"/>
+    <circle cx="500" cy="230" r="4" fill="#f59e0b" opacity="0.85"/>
+    <circle cx="550" cy="260" r="4" fill="#f59e0b" opacity="0.8"/>
+    <circle cx="600" cy="190" r="4" fill="#f59e0b" opacity="0.9"/>
+    <circle cx="650" cy="220" r="4" fill="#f59e0b" opacity="0.85"/>
+
+    <!-- Area under curve subtle -->
+    <polygon points="450,280 500,230 550,260 600,190 650,220 650,400 450,400"
+             fill="#0ea5e9" opacity="0.08"/>
+  </g>
+
+  <!-- Circular progress indicators - right side -->
+  <g id="progressCircles" opacity="0.85">
+    <!-- Progress 1 -->
+    <circle cx="550" cy="100" r="30" fill="none" stroke="#4f46e5" stroke-width="2" opacity="0.4"/>
+    <circle cx="550" cy="100" r="30" fill="none" stroke="#f59e0b" stroke-width="2.5"
+            stroke-dasharray="47.1 94.2" opacity="0.8" stroke-linecap="round"/>
+    <text x="550" y="108" text-anchor="middle" font-size="16" fill="#4f46e5" opacity="0.7">50%</text>
+
+    <!-- Progress 2 -->
+    <circle cx="680" cy="150" r="25" fill="none" stroke="#0ea5e9" stroke-width="2" opacity="0.4"/>
+    <circle cx="680" cy="150" r="25" fill="none" stroke="#4f46e5" stroke-width="2.5"
+            stroke-dasharray="78.5 157" opacity="0.75" stroke-linecap="round"/>
+    <text x="680" y="157" text-anchor="middle" font-size="14" fill="#4f46e5" opacity="0.6">75%</text>
+
+    <!-- Progress 3 -->
+    <circle cx="720" cy="280" r="28" fill="none" stroke="#4f46e5" stroke-width="2" opacity="0.35"/>
+    <circle cx="720" cy="280" r="28" fill="none" stroke="#0ea5e9" stroke-width="2.5"
+            stroke-dasharray="58.9 176.2" opacity="0.7" stroke-linecap="round"/>
+    <text x="720" y="288" text-anchor="middle" font-size="15" fill="#0ea5e9" opacity="0.6">85%</text>
+  </g>
+
+  <!-- Data network nodes - center bottom -->
+  <g id="dataNetwork" opacity="0.75">
+    <!-- Central hub -->
+    <circle cx="400" cy="380" r="8" fill="#4f46e5" opacity="0.9"/>
+
+    <!-- Surrounding nodes -->
+    <circle cx="340" cy="350" r="5" fill="#0ea5e9" opacity="0.7"/>
+    <circle cx="460" cy="350" r="5" fill="#0ea5e9" opacity="0.7"/>
+    <circle cx="380" cy="420" r="5" fill="#f59e0b" opacity="0.65"/>
+    <circle cx="420" cy="420" r="5" fill="#f59e0b" opacity="0.65"/>
+    <circle cx="360" cy="430" r="4" fill="#0ea5e9" opacity="0.6"/>
+    <circle cx="440" cy="430" r="4" fill="#0ea5e9" opacity="0.6"/>
+
+    <!-- Connection lines -->
+    <line x1="400" y1="380" x2="340" y2="350" stroke="#4f46e5" stroke-width="1.5" opacity="0.5"/>
+    <line x1="400" y1="380" x2="460" y2="350" stroke="#0ea5e9" stroke-width="1.5" opacity="0.5"/>
+    <line x1="400" y1="380" x2="380" y2="420" stroke="#4f46e5" stroke-width="1.5" opacity="0.45"/>
+    <line x1="400" y1="380" x2="420" y2="420" stroke="#0ea5e9" stroke-width="1.5" opacity="0.45"/>
+    <line x1="400" y1="380" x2="360" y2="430" stroke="#4f46e5" stroke-width="1" opacity="0.3"/>
+    <line x1="400" y1="380" x2="440" y2="430" stroke="#0ea5e9" stroke-width="1" opacity="0.3"/>
+  </g>
+
+  <!-- Accent elements - top left -->
+  <g id="topLeftAccents" opacity="0.7">
+    <polygon points="80,80 110,95 95,125" fill="#0ea5e9" opacity="0.4"/>
+    <circle cx="60" cy="50" r="4" fill="#f59e0b" opacity="0.5"/>
+    <rect x="30" y="150" width="25" height="25" fill="none" stroke="#4f46e5" stroke-width="1.5" opacity="0.35"/>
+  </g>
+
+  <!-- Axis lines -->
+  <g id="axes" opacity="0.4">
+    <line x1="100" y1="450" x2="350" y2="450" stroke="#4f46e5" stroke-width="1.5"/>
+    <line x1="100" y1="150" x2="100" y2="450" stroke="#4f46e5" stroke-width="1.5"/>
+  </g>
+</svg>

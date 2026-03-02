@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Failure Alert Email Mockup</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="stylesheet" href="/assets/styles-v2.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor</a>
+      <nav class="nav">
+        <a href="/emails/daily-update/">Daily Email</a>
+        <a href="/emails/fail-state-alert/">Failure Email</a>
+      </nav>
+      <a class="btn" href="/dashboard/updates/">Back to Updates</a>
+    </div>
+  </header>
+
+  <main class="container section">
+    <h1>Failure Alert Email Mockup</h1>
+    <div class="email-frame">
+      <div class="email-head">
+        <strong>Subject:</strong> Action required: LinkedIn publish failed and needs recovery
+      </div>
+      <div class="email-body">
+        <section class="fail-box">
+          <h3 style="margin:0">Failure details</h3>
+          <p>Action: <strong>Publish via LinkedIn API</strong><br />Time: 2026-03-02 10:42 AM CT<br />Reason: OAuth token expired</p>
+        </section>
+
+        <section class="card">
+          <h3>Recovery steps</h3>
+          <ol class="list">
+            <li>Reconnect LinkedIn account from dashboard social settings.</li>
+            <li>Re-open draft and confirm target URL metadata.</li>
+            <li>Retry publish via API or open native composer.</li>
+          </ol>
+          <p><a href="/dashboard/social/">Recover Now</a></p>
+        </section>
+
+        <section class="card">
+          <h3>Fail-safe policy</h3>
+          <p>No silent fallback has been applied. The post remains unpublished until a successful recovery action is completed.</p>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

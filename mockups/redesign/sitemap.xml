@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>http://localhost:6396/</loc></url>
+  <url><loc>http://localhost:6396/assessment/</loc></url>
+  <url><loc>http://localhost:6396/onboarding/</loc></url>
+  <url><loc>http://localhost:6396/employers/</loc></url>
+  <url><loc>http://localhost:6396/employers/talent/</loc></url>
+  <url><loc>http://localhost:6396/employers/talent/alex-chen-ai/</loc></url>
+  <url><loc>http://localhost:6396/u/alex-chen-ai/</loc></url>
+  <url><loc>http://localhost:6396/u/alex-chen-ai/projects/customer-support-copilot/</loc></url>
+</urlset>

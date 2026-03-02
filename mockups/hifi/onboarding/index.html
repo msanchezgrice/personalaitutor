@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Onboarding - AI Tutor</title>
+  <meta name="description" content="Set up your AI Tutor profile and start learning.">
+  <meta property="og:title" content="Onboarding - AI Tutor">
+  <meta property="og:description" content="Set up your AI Tutor profile and start learning.">
+  <meta property="og:image" content="http://localhost:6399/og-image.png">
+  <meta property="og:url" content="http://localhost:6399/onboarding/">
+  <link rel="canonical" href="http://localhost:6399/onboarding/">
+  <link rel="stylesheet" href="/assets/styles-v3.css">
+</head>
+<body>
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="container">
+      <div class="topbar-inner">
+        <div class="brand">AI Tutor</div>
+        <nav class="nav">
+          <a href="/">Dashboard</a>
+        </nav>
+        <a href="/" class="btn ghost">Skip to Dashboard</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- WIZARD CONTAINER -->
+  <section class="section" style="padding: 60px 0;">
+    <div class="container" style="max-width: 700px;">
+      <div data-wizard>
+        <!-- Step Indicators -->
+        <div class="steps">
+          <div class="step active">Your Situation</div>
+          <div class="step">Background</div>
+          <div class="step">Skills Check</div>
+          <div class="step">Your Goals</div>
+          <div class="step">Ready to Go</div>
+        </div>
+        <p style="color: var(--ink-soft); font-size: 0.85rem; margin-top: 12px; margin-bottom: 32px;">
+          <span data-wizard-progress>Step 1 of 5</span>
+        </p>
+
+        <!-- PANE 1: Your Situation -->
+        <div class="wizard-pane active">
+          <h2>Tell us about yourself</h2>
+          <p style="color: var(--ink-soft); margin-top: 8px;">This helps us personalize your learning path.</p>
+
+          <div class="form-grid" style="margin-top: 24px;">
+            <div>
+              <label>First Name</label>
+              <input type="text" class="input" placeholder="Alex">
+            </div>
+            <div>
+              <label>Last Name</label>
+              <input type="text" class="input" placeholder="Chen">
+            </div>
+            <div>
+              <label>Email</label>
+              <input type="email" class="input" placeholder="alex@example.com">
+            </div>
+            <div>
+              <label>Current Role</label>
+              <input type="text" class="input" placeholder="Frontend Developer">
+            </div>
+          </div>
+
+          <div style="margin-top: 24px;">
+            <label>Tell us briefly: why are you interested in AI?</label>
+            <textarea class="input" placeholder="e.g., I want to build AI features in my products..." style="height: 100px; margin-top: 8px;"></textarea>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 32px; justify-content: flex-end;">
+            <button class="btn" data-next style="width: auto;">Next Step →</button>
+          </div>
+        </div>
+
+        <!-- PANE 2: Background -->
+        <div class="wizard-pane">
+          <h2>Your Background</h2>
+          <p style="color: var(--ink-soft); margin-top: 8px;">Help us understand your technical experience.</p>
+
+          <div class="form-grid" style="margin-top: 24px;">
+            <div>
+              <label>Years of experience in tech</label>
+              <select class="input">
+                <option>0-1 year</option>
+                <option>2-4 years</option>
+                <option selected>5-8 years</option>
+                <option>8+ years</option>
+              </select>
+            </div>
+            <div>
+              <label>Primary programming language</label>
+              <select class="input">
+                <option selected>JavaScript/TypeScript</option>
+                <option>Python</option>
+                <option>Java</option>
+                <option>C++/C#</option>
+                <option>Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-top: 24px;">
+            <label>What frameworks/tools do you know? (comma-separated)</label>
+            <input type="text" class="input" placeholder="React, Vue, Node, Django, FastAPI" style="margin-top: 8px;">
+          </div>
+
+          <div style="margin-top: 24px;">
+            <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+              <input type="checkbox" checked>
+              I have shipped production code before
+            </label>
+            <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer; margin-top: 12px;">
+              <input type="checkbox">
+              I have contributed to open source
+            </label>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 32px; justify-content: space-between;">
+            <button class="btn" data-prev style="width: auto;">← Previous</button>
+            <button class="btn" data-next style="width: auto;">Next Step →</button>
+          </div>
+        </div>
+
+        <!-- PANE 3: Skills Check (Assessment) -->
+        <div class="wizard-pane">
+          <h2>Quick Skills Check</h2>
+          <p style="color: var(--ink-soft); margin-top: 8px;">Answer these 3 questions. We use this to recommend your first project.</p>
+
+          <div style="margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--line);">
+            <h4>How comfortable are you with APIs?</h4>
+            <div class="form-grid" style="margin-top: 14px; gap: 8px;">
+              <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                <input type="radio" name="q_api" value="beginner"> Just learned about them
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                <input type="radio" name="q_api" value="intermediate" checked> I've integrated a few
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                <input type="radio" name="q_api" value="advanced"> I've built APIs myself
+              </label>
+            </div>
+          </div>
+
+          <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line);">
+            <h4>Have you used AI tools (ChatGPT, Claude, etc)?</h4>
+            <div class="form-grid" style="margin-top: 14px; gap: 8px;">
+              <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                <input type="radio" name="q_ai" value="no"> Not yet
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                <input type="radio" name="q_ai" value="basic" checked> Light usage (chat, content)
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                <input type="radio" name="q_ai" value="advanced"> Building with them (code, agents)
+              </label>
+            </div>
+          </div>
+
+          <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line);">
+            <h4>What's your comfort level with deployment?</h4>
+            <div class="form-grid" style="margin-top: 14px; gap: 8px;">
+              <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                <input type="radio" name="q_deploy" value="beginner"> Never deployed anything
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                <input type="radio" name="q_deploy" value="intermediate" checked> Deployed once or twice
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer;">
+                <input type="radio" name="q_deploy" value="advanced"> Deploy regularly (CI/CD)
+              </label>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 32px; justify-content: space-between;">
+            <button class="btn" data-prev style="width: auto;">← Previous</button>
+            <button class="btn" data-next style="width: auto;">Next Step →</button>
+          </div>
+        </div>
+
+        <!-- PANE 4: Your Goals -->
+        <div class="wizard-pane">
+          <h2>What do you want to build?</h2>
+          <p style="color: var(--ink-soft); margin-top: 8px;">Your first project will be tailored around this.</p>
+
+          <div style="margin-top: 24px;">
+            <label>Select your primary goal</label>
+            <select class="input" style="margin-top: 8px;">
+              <option>Build an AI-powered web app</option>
+              <option selected>Create a chatbot or assistant</option>
+              <option>Automate a process with AI</option>
+              <option>Build a data analysis tool</option>
+              <option>Create AI-generated content tools</option>
+              <option>Something else</option>
+            </select>
+          </div>
+
+          <div style="margin-top: 24px;">
+            <label>Describe your ideal first project (2-3 sentences)</label>
+            <textarea class="input" placeholder="e.g., I want to build a customer support chatbot that can answer questions about my product..." style="height: 100px; margin-top: 8px;"></textarea>
+          </div>
+
+          <div style="margin-top: 24px;">
+            <label>How much time can you dedicate per week?</label>
+            <select class="input" style="margin-top: 8px;">
+              <option>5-10 hours</option>
+              <option>10-15 hours</option>
+              <option selected>15-20 hours</option>
+              <option>20+ hours</option>
+            </select>
+          </div>
+
+          <div style="margin-top: 24px;">
+            <label>When do you want to ship your first project?</label>
+            <select class="input" style="margin-top: 8px;">
+              <option>2-4 weeks</option>
+              <option selected>4-8 weeks</option>
+              <option>8-12 weeks</option>
+              <option>As long as it takes</option>
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 32px; justify-content: space-between;">
+            <button class="btn" data-prev style="width: auto;">← Previous</button>
+            <button class="btn" data-next style="width: auto;">Next Step →</button>
+          </div>
+        </div>
+
+        <!-- PANE 5: Review & Finish -->
+        <div class="wizard-pane">
+          <h2>You're All Set!</h2>
+          <p style="color: var(--ink-soft); margin-top: 8px;">Your profile is ready. Your AI tutor is waiting.</p>
+
+          <div class="success-box" style="margin-top: 28px;">
+            <strong>✓ Profile Created</strong>
+            <p style="margin-top: 8px;">We've analyzed your background, skills, and goals. Your personalized learning path is ready.</p>
+          </div>
+
+          <div style="margin-top: 24px; padding: 20px; background: var(--surface-muted); border-radius: var(--radius-sm);">
+            <h4>What Happens Next</h4>
+            <ul class="list" style="margin-top: 12px;">
+              <li><strong>Tomorrow:</strong> Your AI tutor will reach out with your first project brief and setup guide.</li>
+              <li><strong>Day 1-2:</strong> You'll set up your development environment and receive your project repository.</li>
+              <li><strong>Week 1:</strong> Start building with real-time tutor guidance. Every step is logged.</li>
+              <li><strong>Week 3-6:</strong> Deploy and publish your verified project to your portfolio website.</li>
+            </ul>
+          </div>
+
+          <div style="margin-top: 32px;">
+            <p style="color: var(--ink-soft); font-size: 0.9rem;">
+              <strong>Questions?</strong> Check our FAQ or email hello@aitutor.example
+            </p>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 32px; justify-content: space-between;">
+            <button class="btn" data-prev style="width: auto;">← Previous</button>
+            <button class="btn primary" data-finish style="width: auto;">Create My Account & Start →</button>
+          </div>
+        </div>
+
+        <!-- Success State (hidden by default) -->
+        <div data-wizard-done class="hide" style="margin-top: 40px;">
+          <div class="success-box">
+            <h3>🎉 Welcome to AI Tutor!</h3>
+            <p style="margin-top: 12px;">Your account is being created. Check your email—your AI tutor will contact you within 24 hours with your first project.</p>
+            <div style="margin-top: 20px;">
+              <a href="/" class="btn primary">Go to Dashboard</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer-note" style="margin-top: 60px;">
+    <div class="container">
+      <p>&copy; 2024 AI Tutor. Helping you prove your AI skills through real projects.</p>
+    </div>
+  </footer>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

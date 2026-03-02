@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat - AI Tutor Workspace</title>
+  <link rel="stylesheet" href="/assets/styles-v3.css">
+</head>
+<body>
+  <div class="split">
+    <aside class="sidebar">
+      <div class="brand">AI Tutor</div>
+      <ul class="side-links">
+        <li><a href="/dashboard/">Dashboard</a></li>
+        <li><a href="/dashboard/projects/">Projects</a></li>
+        <li><a href="/dashboard/profile/">Profile</a></li>
+        <li><a href="/dashboard/chat/" class="active">AI Tutor Chat</a></li>
+        <li><a href="/dashboard/social/">Social</a></li>
+        <li><a href="/dashboard/updates/">Updates</a></li>
+      </ul>
+    </aside>
+
+    <div class="content">
+      <header class="topbar">
+        <div class="topbar-inner">
+          <nav class="nav">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/assessment/" class="nav-link">Assessment</a>
+            <a href="/dashboard/" class="nav-link">Dashboard</a>
+            <a href="/employers/" class="nav-link">For Employers</a>
+          </nav>
+          <div class="topbar-cta">
+            <a href="/assessment/" class="btn primary">Get Started</a>
+          </div>
+        </div>
+      </header>
+
+      <main class="main-panel">
+        <div class="chat-wrap">
+          <div class="messages-column">
+            <div style="height: 60px; background: var(--surface); border-bottom: 1px solid var(--line); display: flex; align-items: center; padding: 0 32px; flex-shrink: 0;">
+              <h3 style="font-size: 1.1rem;">AI Tutor Session</h3>
+            </div>
+
+            <div class="messages-container">
+              <div class="msg agent">
+                <div>
+                  <div class="msg-content">Hi! I'm your AI tutor. What would you like to learn about today?</div>
+                  <div style="font-size: 0.8rem; color: var(--ink-soft); margin-top: 4px;">Tutor • 2:15 PM</div>
+                </div>
+              </div>
+
+              <div class="msg user">
+                <div>
+                  <div class="msg-content">I want to understand how to build LLM applications efficiently. What's the best approach?</div>
+                  <div style="font-size: 0.8rem; color: var(--ink-soft); margin-top: 4px;">You • 2:16 PM</div>
+                </div>
+              </div>
+
+              <div class="msg agent">
+                <div>
+                  <div class="msg-content">Great question! There are three key principles: (1) Start with clear prompts, (2) Use function calling for structure, (3) Implement streaming for UX. Would you like me to dive deeper into any of these?</div>
+                  <div style="font-size: 0.8rem; color: var(--ink-soft); margin-top: 4px;">Tutor • 2:17 PM</div>
+                </div>
+              </div>
+
+              <div class="msg user">
+                <div>
+                  <div class="msg-content">Tell me more about function calling. How does it improve efficiency?</div>
+                  <div style="font-size: 0.8rem; color: var(--ink-soft); margin-top: 4px;">You • 2:18 PM</div>
+                </div>
+              </div>
+
+              <div class="msg agent">
+                <div>
+                  <div class="msg-content">Function calling lets the model request specific actions instead of generating free-form text. This enables reliable tool use, better data extraction, and structured outputs. It's crucial for building production LLM systems because you get predictable, parseable responses.</div>
+                  <div style="font-size: 0.8rem; color: var(--ink-soft); margin-top: 4px;">Tutor • 2:19 PM</div>
+                </div>
+              </div>
+
+              <div class="msg user">
+                <div>
+                  <div class="msg-content">Can you give me a code example?</div>
+                  <div style="font-size: 0.8rem; color: var(--ink-soft); margin-top: 4px;">You • 2:19 PM</div>
+                </div>
+              </div>
+
+              <div class="msg agent">
+                <div>
+                  <div class="msg-content">Sure! Here's a basic pattern using Claude:
+
+```python
+import anthropic
+
+client = anthropic.Anthropic()
+
+tools = [{
+  "name": "get_weather",
+  "description": "Get weather for a location",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "location": {"type": "string"}
+    }
+  }
+}]
+
+response = client.messages.create(
+  model="claude-3-5-sonnet",
+  max_tokens=1024,
+  tools=tools,
+  messages=[{
+    "role": "user",
+    "content": "What's the weather in San Francisco?"
+  }]
+)
+```
+
+This structures the model's output to call your functions reliably.</div>
+                  <div style="font-size: 0.8rem; color: var(--ink-soft); margin-top: 4px;">Tutor • 2:20 PM</div>
+                </div>
+              </div>
+
+              <div class="msg user">
+                <div>
+                  <div class="msg-content">This is really helpful! How do I handle streaming responses for better UX?</div>
+                  <div style="font-size: 0.8rem; color: var(--ink-soft); margin-top: 4px;">You • 2:21 PM</div>
+                </div>
+              </div>
+
+              <div class="msg agent">
+                <div>
+                  <div class="msg-content">Use the `stream=True` parameter with event handlers. This gives you real-time tokens as they're generated, creating a much better user experience. I can show you a complete example if you'd like!</div>
+                  <div style="font-size: 0.8rem; color: var(--ink-soft); margin-top: 4px;">Tutor • 2:22 PM</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="padding: 24px 32px; background: var(--surface); border-top: 1px solid var(--line); flex-shrink: 0;">
+              <div style="display: flex; gap: 12px;">
+                <input type="text" class="form-input" placeholder="Ask a question or type a response..." style="flex: 1; margin: 0;" />
+                <button class="btn primary">Send</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="width: 280px; background: var(--surface); border-left: 1px solid var(--line); padding: 24px 16px; overflow-y: auto; flex-shrink: 0;">
+            <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 16px; letter-spacing: 0.05em;">
+              Streaming Events <span style="display: inline-block; margin-left: 8px; padding: 2px 6px; background-color: rgba(16,185,129,0.06); color: var(--ok); border-radius: 999px; font-size: 0.65rem;">Live</span>
+            </div>
+
+            <div style="padding: 12px; background-color: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line); margin-bottom: 12px; font-size: 0.8rem;">
+              <div style="font-weight: 600; color: var(--ink); margin-bottom: 4px;">Token Generated</div>
+              <div style="font-size: 0.75rem; color: var(--ink-soft);">Just now • chunk 247</div>
+            </div>
+
+            <div style="padding: 12px; background-color: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line); margin-bottom: 12px; font-size: 0.8rem;">
+              <div style="font-weight: 600; color: var(--ink); margin-bottom: 4px;">Tool Call Detected</div>
+              <div style="font-size: 0.75rem; color: var(--ink-soft);">30s ago • function_calling</div>
+            </div>
+
+            <div style="padding: 12px; background-color: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line); margin-bottom: 12px; font-size: 0.8rem;">
+              <div style="font-weight: 600; color: var(--ink); margin-bottom: 4px;">Message Processed</div>
+              <div style="font-size: 0.75rem; color: var(--ink-soft);">1m ago • 1824 tokens</div>
+            </div>
+
+            <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--ink-soft); margin: 24px 0 16px; letter-spacing: 0.05em;">Quick Actions</div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <button style="padding: 8px 12px; background-color: transparent; color: var(--brand); border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 500; cursor: pointer; text-align: left;">📚 Explain Concept</button>
+              <button style="padding: 8px 12px; background-color: transparent; color: var(--brand); border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 500; cursor: pointer; text-align: left;">💡 Show Example</button>
+              <button style="padding: 8px 12px; background-color: transparent; color: var(--brand); border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 500; cursor: pointer; text-align: left;">🧪 Practice Exercise</button>
+              <button style="padding: 8px 12px; background-color: transparent; color: var(--brand); border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 500; cursor: pointer; text-align: left;">📝 Create Summary</button>
+              <button style="padding: 8px 12px; background-color: transparent; color: var(--brand); border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 500; cursor: pointer; text-align: left;">❓ Ask Follow-up</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

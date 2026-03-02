@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fail State Alert | AI Tutor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-[#0f111a] text-[#0f111a] flex justify-center py-12 px-4 font-['Inter']">
+
+    <div
+        class="max-w-xl w-full bg-white rounded-2xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-gray-200 relative">
+        <div class="absolute top-0 left-0 w-full h-2 bg-red-500"></div>
+
+        <div class="px-8 py-6 text-gray-900 flex justify-between items-center border-b border-gray-100 mt-2">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded bg-gray-900 flex items-center justify-center text-white"><i
+                        class="fa-solid fa-brain text-[10px]"></i></div>
+                <span class="font-[Outfit] font-bold text-lg tracking-tight">AI Tutor</span>
+            </div>
+            <span class="text-xs text-red-500 uppercase tracking-widest font-bold flex items-center gap-1"><i
+                    class="fa-solid fa-triangle-exclamation"></i> Action Required</span>
+        </div>
+
+        <div class="p-8 space-y-6">
+            <h1 class="text-2xl font-[Outfit] text-gray-900 font-bold mb-2">Build Pipeline Failed</h1>
+            <p class="text-gray-600 leading-relaxed">Alex, your recent commit to the <strong
+                    class="text-gray-900">Customer Support Copilot</strong> project failed the automated verification
+                checks.</p>
+
+            <div class="bg-red-50 border border-red-100 rounded-xl p-5 mt-6 font-mono text-xs">
+                <span class="text-red-600 font-bold mb-2 block">Traceback (most recent call last):</span>
+                <p class="text-gray-800 mb-1">File "/app/webhook_handler.py", line 42, in process_payload</p>
+                <p class="text-gray-600 ml-4 mb-2">email = data['customer_data']['email']</p>
+                <span class="text-red-600 font-bold">TypeError: string indices must be integers</span>
+            </div>
+
+            <div class="mt-6">
+                <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">Tutor Diagnosis</h3>
+                <p class="text-sm text-gray-600 mb-4">It looks like the API is sending `customer_data` as a stringified
+                    JSON object rather than a parsed dictionary. You need to run `json.loads(data['customer_data'])`
+                    first.</p>
+
+                <a href="/dashboard/chat/"
+                    class="inline-block bg-gray-900 text-white text-sm font-medium px-4 py-2 rounded shadow hover:bg-gray-800 transition">Debug
+                    with Tutor</a>
+            </div>
+        </div>
+
+        <div class="bg-gray-50 border-t border-gray-100 p-6 text-center">
+            <p class="text-xs text-gray-400">This alert was generated automatically by your AI Tutor observer.</p>
+        </div>
+
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Assessment | AI Tutor</title>
+  <meta name="description" content="Assess your AI baseline and generate a custom AI Tutor dashboard." />
+  <link rel="canonical" href="http://localhost:6398/assessment/" />
+  <meta property="og:title" content="AI Assessment" />
+  <meta property="og:description" content="Find your AI baseline and generate your personalized dashboard." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="http://localhost:6398/assessment/" />
+  <link rel="stylesheet" href="/assets/styles-v3.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor</a>
+      <nav class="nav">
+        <a href="/" >Home</a>
+        <a href="/assessment/" class="active">Assessment</a>
+        <a href="/onboarding/">Onboarding</a>
+        <a href="/dashboard/">Dashboard</a>
+        <a href="/employers/">Employers</a>
+      </nav>
+      <a class="btn primary sm" href="/onboarding/">Start Onboarding</a>
+    </div>
+  </header>
+
+  <main data-assessment>
+    <!-- ===== HERO ===== -->
+    <section class="hero dot-grid">
+      <div class="container">
+        <div class="hero-content animate-in" style="max-width:680px">
+          <span class="eyebrow">Baseline check</span>
+          <h1>AI Skills <span class="text-gradient">Assessment</span></h1>
+          <p class="lead">This onboarding intake maps your current level, your work context, and your goals. The result drives your first dashboard and project plan.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ASSESSMENT BODY ===== -->
+    <section class="section" style="padding-top:40px">
+      <div class="container">
+        <div class="grid-2">
+
+          <!-- LEFT COLUMN: Situation + Career Context -->
+          <section class="panel pad animate-in">
+            <span class="eyebrow">Step 1</span>
+            <h3>Your Situation</h3>
+            <p style="color:var(--ink-soft);font-size:0.92rem;margin-bottom:16px">Tell us about your current employment status.</p>
+            <div class="form-grid cols-2">
+              <label><input type="radio" name="situation" data-points="2" checked /> Employed</label>
+              <label><input type="radio" name="situation" data-points="2" /> Unemployed</label>
+              <label><input type="radio" name="situation" data-points="1" /> Student</label>
+              <label><input type="radio" name="situation" data-points="3" /> Founder</label>
+            </div>
+
+            <div style="margin-top:28px">
+              <span class="eyebrow">Step 2</span>
+              <h3>Career Context</h3>
+              <p style="color:var(--ink-soft);font-size:0.92rem;margin-bottom:16px">Import your professional background for personalized recommendations.</p>
+              <div class="form-grid">
+                <label>LinkedIn Profile URL
+                  <input class="input" placeholder="https://linkedin.com/in/your-handle" />
+                </label>
+                <label>Resume Upload
+                  <input type="file" class="input" />
+                </label>
+                <div class="success-box">
+                  <strong>LinkedIn OAuth (MVP):</strong>
+                  <a class="btn sm" href="/onboarding/" style="margin-left:8px">Connect LinkedIn</a>
+                </div>
+                <div class="fail-box">
+                  <strong>Fail state sample:</strong> OAuth scope missing. Required scope: <span class="code">r_liteprofile</span>.
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- RIGHT COLUMN: AI Baseline Quiz -->
+          <section class="panel pad animate-in" style="animation-delay:0.15s">
+            <span class="eyebrow">Step 3</span>
+            <h3>AI Baseline Quiz</h3>
+            <p style="color:var(--ink-soft);font-size:0.92rem;margin-bottom:16px">Answer a few questions so we can gauge your starting point.</p>
+
+            <div class="form-grid">
+              <label>How often do you use AI in your workflow?
+                <select>
+                  <option data-points="1">Rarely</option>
+                  <option data-points="3">Weekly</option>
+                  <option data-points="5">Daily</option>
+                </select>
+              </label>
+
+              <fieldset class="card" style="padding:20px">
+                <legend style="padding:0 8px"><strong>Question A:</strong> Best way to reduce hallucinations?</legend>
+                <div class="form-grid" style="gap:10px;margin-top:8px">
+                  <label><input type="radio" name="q1" data-points="5" /> Add grounding context + verification checks</label>
+                  <label><input type="radio" name="q1" data-points="2" /> Ask the model to be concise</label>
+                  <label><input type="radio" name="q1" data-points="0" /> Use more emojis in prompts</label>
+                </div>
+              </fieldset>
+
+              <fieldset class="card" style="padding:20px">
+                <legend style="padding:0 8px"><strong>Question B:</strong> How do you prove AI skill to employers?</legend>
+                <div class="form-grid" style="gap:10px;margin-top:8px">
+                  <label><input type="radio" name="q2" data-points="5" /> Public projects + logs + artifact links</label>
+                  <label><input type="radio" name="q2" data-points="2" /> Bullet points on resume only</label>
+                  <label><input type="radio" name="q2" data-points="0" /> Keep all work private</label>
+                </div>
+              </fieldset>
+
+              <fieldset class="card" style="padding:20px">
+                <legend style="padding:0 8px"><strong>Question C:</strong> Preferred goal</legend>
+                <div class="form-grid" style="gap:10px;margin-top:8px">
+                  <label><input type="radio" name="q3" data-points="5" /> Upskill for current role</label>
+                  <label><input type="radio" name="q3" data-points="5" /> Showcase skills to get hired</label>
+                  <label><input type="radio" name="q3" data-points="4" /> Build an AI-powered business</label>
+                </div>
+              </fieldset>
+
+              <div class="hero-actions">
+                <button class="btn primary" data-assessment-submit>Score Assessment</button>
+                <a class="btn" href="https://careerguard.me/intake" target="_blank" rel="noreferrer">Open External Intake &rarr;</a>
+              </div>
+            </div>
+
+            <div data-assessment-output style="margin-top:16px"></div>
+          </section>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CTA BAND ===== -->
+    <section class="section" style="padding-top:0">
+      <div class="container">
+        <div class="cta-band animate-in">
+          <h3>Ready to build your AI proof?</h3>
+          <p style="margin-top:8px;max-width:46ch;margin-left:auto;margin-right:auto">Complete the assessment above, then continue to the onboarding wizard to generate your personalized dashboard.</p>
+          <div class="hero-actions mt-md">
+            <a class="btn accent" href="/onboarding/">Continue to Onboarding</a>
+            <a class="btn" href="/employers/">I'm an employer</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <p class="footer-brand">AI Tutor</p>
+          <p style="max-width:36ch">Build AI skills and prove them publicly with a dedicated tutor, portfolio, and verified evidence.</p>
+        </div>
+        <div>
+          <h4 style="color:#fff;margin-bottom:12px;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.08em">Learners</h4>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="/assessment/">Assessment</a>
+            <a href="/onboarding/">Onboarding</a>
+            <a href="/dashboard/">Dashboard</a>
+          </div>
+        </div>
+        <div>
+          <h4 style="color:#fff;margin-bottom:12px;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.08em">Employers</h4>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="/employers/">Overview</a>
+            <a href="/employers/talent/">Talent Board</a>
+          </div>
+        </div>
+        <div>
+          <h4 style="color:#fff;margin-bottom:12px;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.08em">Platform</h4>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="/architecture/">Architecture</a>
+            <a href="/emails/daily-update/">Email Samples</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-note" style="border-color:rgba(255,255,255,0.1);margin-top:40px">
+      Mockup v3 for review. Includes fail-state-first UX and Greenlight-style agent architecture parity.
+    </div>
+  </footer>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

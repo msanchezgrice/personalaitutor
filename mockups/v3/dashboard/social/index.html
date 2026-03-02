@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LinkedIn and X Posts | AI Tutor Dashboard</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="stylesheet" href="/assets/styles-v3.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">AI Tutor</a>
+      <nav class="nav">
+        <a href="/dashboard/">Dashboard</a>
+        <a href="/dashboard/projects/">Projects</a>
+        <a href="/dashboard/profile/">Profile</a>
+        <a href="/dashboard/chat/">Chat</a>
+        <a class="active" href="/dashboard/social/">Social</a>
+        <a href="/dashboard/updates/">Updates</a>
+      </nav>
+      <a class="btn sm" href="/u/alex-chen-ai/">Public Profile</a>
+    </div>
+  </header>
+
+  <main class="split container" data-social>
+    <aside class="sidebar">
+      <h3>AI Tutor Workspace</h3>
+      <p class="lead" style="font-size:.88rem;margin-top:6px">Dedicated agent is always available to explain and build.</p>
+      <div class="side-links">
+        <a href="/dashboard/">Overview</a>
+        <a href="/dashboard/projects/">My Projects</a>
+        <a href="/dashboard/profile/">My Online Profile</a>
+        <a href="/dashboard/chat/">Chat</a>
+        <a class="active" href="/dashboard/social/">LinkedIn/X Posts</a>
+        <a href="/dashboard/updates/">Daily Updates</a>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>Publishing Rules</h3>
+        <ul class="list">
+          <li>Direct API publish requires connected OAuth account and valid scopes.</li>
+          <li>Composer mode opens provider-native desktop compose window.</li>
+          <li>No silent fallback behavior: publish failures remain explicit and blocking until resolved.</li>
+        </ul>
+      </div>
+    </aside>
+
+    <section class="content">
+      <div class="animate-in">
+        <span class="eyebrow">Social Publishing</span>
+        <h1>AI-Generated LinkedIn and X Posts</h1>
+        <p class="lead">Generate post drafts from your project activity. Publish either directly through provider APIs or through native desktop composer links.</p>
+      </div>
+
+      <div class="grid-2 animate-in">
+        <section class="panel pad">
+          <h3>Draft Inputs</h3>
+          <div class="form-grid" style="margin-top:12px">
+            <label>Platform
+              <select data-platform>
+                <option value="linkedin">LinkedIn</option>
+                <option value="x">X (Twitter)</option>
+              </select>
+            </label>
+            <label>Project
+              <select data-project>
+                <option>Customer Support Copilot</option>
+                <option>AI Sales Follow-up Bot</option>
+                <option>Recruiting Outreach Engine</option>
+              </select>
+            </label>
+            <label>Audience
+              <input class="input" data-audience value="Hiring managers looking for AI-native PMs" />
+            </label>
+            <label>OG title
+              <input class="input" data-og-title value="Customer Support Copilot - Project Proof" />
+            </label>
+            <label>OG description
+              <input class="input" data-og-desc value="How I built and validated a support copilot with measurable outcomes." />
+            </label>
+            <label>Target URL
+              <input class="input" data-og-url value="http://localhost:6398/u/alex-chen-ai/projects/customer-support-copilot/" />
+            </label>
+
+            <div class="hero-actions">
+              <button class="btn primary" data-generate-draft>Generate Draft</button>
+              <button class="btn" data-copy-draft>Copy Draft</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel pad">
+          <h3>Draft + OG Preview</h3>
+          <textarea rows="11" class="input" data-draft-text placeholder="Generated post will appear here" style="width:100%"></textarea>
+          <div class="card" style="margin-top:12px">
+            <h3>OG Metadata Preview</h3>
+            <div data-og-preview>
+              <strong>Awaiting generated draft...</strong>
+              <p style="margin:6px 0;color:var(--ink-soft)">The preview updates when draft generation runs.</p>
+            </div>
+          </div>
+
+          <div class="form-grid" style="margin-top:12px">
+            <label><input type="checkbox" data-sim-fail-token /> Simulate token-expired failure</label>
+            <label><input type="checkbox" data-sim-fail-rate /> Simulate rate-limit failure</label>
+          </div>
+
+          <div class="hero-actions" style="margin-top:12px">
+            <button class="btn primary" data-publish-api>Publish via API</button>
+            <button class="btn" data-publish-composer>Open Native Composer</button>
+          </div>
+
+          <div data-social-output style="margin-top:12px"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile - AI Tutor Workspace</title>
+  <link rel="stylesheet" href="/assets/styles-v3.css">
+</head>
+<body>
+  <div class="split">
+    <aside class="sidebar">
+      <div class="brand">AI Tutor</div>
+      <ul class="side-links">
+        <li><a href="/dashboard/">Dashboard</a></li>
+        <li><a href="/dashboard/projects/">Projects</a></li>
+        <li><a href="/dashboard/profile/" class="active">Profile</a></li>
+        <li><a href="/dashboard/chat/">AI Tutor Chat</a></li>
+        <li><a href="/dashboard/social/">Social</a></li>
+        <li><a href="/dashboard/updates/">Updates</a></li>
+      </ul>
+    </aside>
+
+    <div class="content">
+      <header class="topbar">
+        <div class="topbar-inner">
+          <nav class="nav">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/assessment/" class="nav-link">Assessment</a>
+            <a href="/dashboard/" class="nav-link">Dashboard</a>
+            <a href="/employers/" class="nav-link">For Employers</a>
+          </nav>
+          <div class="topbar-cta">
+            <a href="/assessment/" class="btn primary">Get Started</a>
+          </div>
+        </div>
+      </header>
+
+      <main class="main-panel">
+        <div class="container">
+          <h1>Profile</h1>
+
+          <div class="panel pad">
+            <h3>Basic Information</h3>
+
+            <div class="form-group">
+              <label class="form-label">Headline</label>
+              <input type="text" class="form-input" value="AI researcher & LLM systems builder" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Bio</label>
+              <textarea class="form-textarea">Exploring applied LLM systems, prompt engineering, and AI-native product design. Building tools to amplify human creativity and productivity.</textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Role</label>
+              <input type="text" class="form-input" value="Founder" />
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+              <button class="btn primary">Save Changes</button>
+              <button class="btn ghost">Cancel</button>
+            </div>
+          </div>
+
+          <div class="panel pad">
+            <h3>Verified Skills</h3>
+
+            <div class="grid-2">
+              <div style="padding: 16px; background: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line);">
+                <h4 style="margin-bottom: 8px;">Prompt Engineering</h4>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 95%; background: var(--brand);"></div>
+                  </div>
+                  <span>95%</span>
+                </div>
+                <span class="tag ok" style="margin-top: 8px;">Verified</span>
+              </div>
+
+              <div style="padding: 16px; background: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line);">
+                <h4 style="margin-bottom: 8px;">Python</h4>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 88%; background: var(--brand);"></div>
+                  </div>
+                  <span>88%</span>
+                </div>
+                <span class="tag ok" style="margin-top: 8px;">Verified</span>
+              </div>
+
+              <div style="padding: 16px; background: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line);">
+                <h4 style="margin-bottom: 8px;">System Design</h4>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 82%; background: var(--brand);"></div>
+                  </div>
+                  <span>82%</span>
+                </div>
+                <span class="tag ok" style="margin-top: 8px;">Verified</span>
+              </div>
+
+              <div style="padding: 16px; background: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line);">
+                <h4 style="margin-bottom: 8px;">Node.js</h4>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 75%; background: var(--brand);"></div>
+                  </div>
+                  <span>75%</span>
+                </div>
+                <span class="tag brand" style="margin-top: 8px;">Pending</span>
+              </div>
+
+              <div style="padding: 16px; background: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line);">
+                <h4 style="margin-bottom: 8px;">Product Management</h4>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 78%; background: var(--brand);"></div>
+                  </div>
+                  <span>78%</span>
+                </div>
+                <span class="tag ok" style="margin-top: 8px;">Verified</span>
+              </div>
+
+              <div style="padding: 16px; background: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line);">
+                <h4 style="margin-bottom: 8px;">Machine Learning</h4>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 72%; background: var(--brand);"></div>
+                  </div>
+                  <span>72%</span>
+                </div>
+                <span class="tag brand" style="margin-top: 8px;">Pending</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel pad">
+            <h3>Tool Stack</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <span style="display: inline-block; padding: 6px 12px; background: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line); font-size: 0.85rem;">Claude API</span>
+              <span style="display: inline-block; padding: 6px 12px; background: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line); font-size: 0.85rem;">OpenAI</span>
+              <span style="display: inline-block; padding: 6px 12px; background: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line); font-size: 0.85rem;">LangChain</span>
+              <span style="display: inline-block; padding: 6px 12px; background: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line); font-size: 0.85rem;">Supabase</span>
+              <span style="display: inline-block; padding: 6px 12px; background: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line); font-size: 0.85rem;">Vercel</span>
+              <span style="display: inline-block; padding: 6px 12px; background: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line); font-size: 0.85rem;">Next.js</span>
+              <span style="display: inline-block; padding: 6px 12px; background: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line); font-size: 0.85rem;">React</span>
+              <span style="display: inline-block; padding: 6px 12px; background: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line); font-size: 0.85rem;">PostgreSQL</span>
+            </div>
+          </div>
+
+          <div class="panel pad">
+            <h3>Social Links</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+              <a href="https://twitter.com" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--surface-muted); border-radius: var(--radius-sm); text-decoration: none; color: var(--ink); font-weight: 500; font-size: 0.85rem;">𝕏 @alexchen_ai</a>
+              <a href="https://github.com" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--surface-muted); border-radius: var(--radius-sm); text-decoration: none; color: var(--ink); font-weight: 500; font-size: 0.85rem;">GitHub /alexchen</a>
+              <a href="https://linkedin.com" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--surface-muted); border-radius: var(--radius-sm); text-decoration: none; color: var(--ink); font-weight: 500; font-size: 0.85rem;">LinkedIn /in/alexchen</a>
+              <a href="https://bluesky.social" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--surface-muted); border-radius: var(--radius-sm); text-decoration: none; color: var(--ink); font-weight: 500; font-size: 0.85rem;">Bluesky @alexchen.ai</a>
+            </div>
+          </div>
+
+          <div class="panel pad">
+            <h3>Public Profile Preview</h3>
+            <div style="border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; max-width: 400px;">
+              <div style="width: 100%; height: 150px; background: linear-gradient(135deg, var(--brand-subtle), #e0e7ff); display: flex; align-items: center; justify-content: center; color: var(--brand); font-weight: 600;">Profile Preview</div>
+              <div style="padding: 12px;">
+                <div style="font-size: 0.9rem; font-weight: 600; color: var(--ink); margin-bottom: 4px;">alex-chen-ai</div>
+                <div style="font-size: 0.8rem; color: var(--ink-soft); line-height: 1.4; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">AI researcher & LLM systems builder. Exploring applied LLM systems, prompt engineering, and AI-native product design.</div>
+                <div style="font-size: 0.75rem; color: var(--brand-2);">personalai.io/u/alex-chen-ai</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>
