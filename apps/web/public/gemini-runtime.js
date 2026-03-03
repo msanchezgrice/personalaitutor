@@ -49,6 +49,27 @@
 
   var ctx = ensureCtx();
 
+  function applyCtxImmediately() {
+    if (!ctx || !ctx.name) return;
+    var sidebarProfileLink = document.querySelector("aside a[href='/dashboard/profile/'], aside a[href='/dashboard/profile']");
+    if (sidebarProfileLink) {
+      var nameEl = sidebarProfileLink.querySelector(".font-medium");
+      var roleEl = sidebarProfileLink.querySelector(".text-xs");
+      if (nameEl) nameEl.textContent = ctx.name;
+      if (roleEl && ctx.headline) roleEl.textContent = ctx.headline;
+    }
+    if (ctx.handle) {
+      Array.prototype.forEach.call(
+        document.querySelectorAll("a[href='/u/alex-chen-ai/'], a[href='/u/test-user-0001/'], a[href='/u/alex-chen-ai'], a[href='/u/test-user-0001']"),
+        function (node) {
+          node.setAttribute("href", "/u/" + ctx.handle + "/");
+        },
+      );
+    }
+  }
+
+  applyCtxImmediately();
+
   function byText(selector, text) {
     return Array.prototype.find.call(document.querySelectorAll(selector), function (el) {
       return (el.textContent || "").trim().indexOf(text) !== -1;
@@ -156,6 +177,7 @@
     var user = summary.user;
     ctx.handle = user.handle;
     ctx.name = user.name;
+    ctx.headline = headlineForUser(user);
     saveCtx(ctx);
 
     var sidebarProfileLink = document.querySelector("aside a[href='/dashboard/profile/'], aside a[href='/dashboard/profile']");
