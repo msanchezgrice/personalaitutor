@@ -3,8 +3,14 @@ import Script from "next/script";
 import { themeBootScript } from "@/lib/theme-script";
 import "./globals.css";
 
+const appBaseUrl = (
+  process.env.APP_BASE_URL ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:6396")
+).replace(/\/+$/, "");
+
 export const metadata: Metadata = {
-  metadataBase: new URL("http://localhost:6396"),
+  metadataBase: new URL(appBaseUrl),
   title: "AI Tutor Platform",
   description: "Learn AI, build proof artifacts, and publish system-verified skills.",
   openGraph: {

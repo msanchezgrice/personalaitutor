@@ -1,5 +1,11 @@
 import type { MetadataRoute } from "next";
 
+const appBaseUrl = (
+  process.env.APP_BASE_URL ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:6396")
+).replace(/\/+$/, "");
+
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
@@ -9,6 +15,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/dashboard"],
       },
     ],
-    sitemap: "http://localhost:6396/sitemap.xml",
+    sitemap: `${appBaseUrl}/sitemap.xml`,
   };
 }

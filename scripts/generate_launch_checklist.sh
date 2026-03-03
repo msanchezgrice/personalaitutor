@@ -4,6 +4,21 @@ set -euo pipefail
 OUT="docs/launch_checklist.json"
 mkdir -p docs
 
+# Load local env files for checklist generation if they exist.
+if [ -f ".env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env
+  set +a
+fi
+
+if [ -f ".env.local" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env.local
+  set +a
+fi
+
 required=(
   OPENAI_API_KEY
   SUPABASE_URL

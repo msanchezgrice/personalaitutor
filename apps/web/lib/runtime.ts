@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   CAREER_PATHS,
@@ -105,10 +105,18 @@ function safeHandle(input: string) {
     .slice(0, 40);
 }
 
+function uuidFromExternalId(input: string) {
+  const hex = createHash("sha256").update(`personalaitutor:${input}`).digest("hex").slice(0, 32).split("");
+  hex[12] = "4";
+  const nibble = parseInt(hex[16] ?? "0", 16);
+  hex[16] = ((nibble & 0x3) | 0x8).toString(16);
+  return `${hex.slice(0, 8).join("")}-${hex.slice(8, 12).join("")}-${hex.slice(12, 16).join("")}-${hex.slice(16, 20).join("")}-${hex.slice(20, 32).join("")}`;
+}
+
 function normalizeUserId(input?: string | null) {
   if (!input || input === "user_test_0001") return DEFAULT_USER_ID;
   if (isUuid(input)) return input;
-  return DEFAULT_USER_ID;
+  return uuidFromExternalId(input);
 }
 
 function skillStatusRank(status: string) {
@@ -173,16 +181,27 @@ function toSkillRows(rows: Array<{ skill_name: string; status: string; score: nu
 
 async function getProfileRowById(userId: string) {
   const supabase = getSupabaseAdmin();
+  const normalizedUserId = normalizeUserId(userId);
   const { data, error } = await supabase
     .from("learner_profiles")
     .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,created_at,updated_at")
-    .eq("id", normalizeUserId(userId))
+    .eq("id", normalizedUserId)
     .single();
 
-  if (error) {
-    return null;
+  if (!error && data) {
+    return data;
   }
-  return data;
+
+  if (!isUuid(userId)) {
+    const { data: byExternal } = await supabase
+      .from("learner_profiles")
+      .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,created_at,updated_at")
+      .eq("external_user_id", userId)
+      .maybeSingle();
+    if (byExternal) return byExternal;
+  }
+
+  return null;
 }
 
 async function getSkillsForProfile(profileId: string) {
@@ -205,7 +224,7 @@ async function getOrCreateProfile(input: {
   const supabase = getSupabaseAdmin();
   const normalizedUserId = normalizeUserId(input.userId);
 
-  const existing = await getProfileRowById(normalizedUserId);
+  const existing = await getProfileRowById(input.userId ?? normalizedUserId);
   if (existing) {
     const skills = await getSkillsForProfile(existing.id);
     return profileFromRow(existing, skills);
@@ -222,33 +241,50 @@ async function getOrCreateProfile(input: {
     suffix += 1;
   }
 
-  const insert = {
-    id: normalizedUserId,
-    auth_user_id: normalizedUserId,
-    external_user_id: input.userId ?? null,
-    handle,
-    full_name: input.name ?? "TEST_USER_0001",
-    headline: "Synthetic profile for end-to-end verification",
-    bio: "Synthetic user for onboarding and persistence verification.",
-    career_path_id: input.careerPathId ?? CAREER_PATHS[0].id,
-    published: false,
-    tokens_used: 0,
-    goals: ["upskill_current_job", "ship_ai_projects"],
-    tools: ["OpenAI API", "Supabase", "Vercel"],
-    social_links: { website: `${appBaseUrl()}/u/${handle}` },
-  };
+  const selectFields =
+    "id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,created_at,updated_at";
 
-  const { data, error } = await supabase
-    .from("learner_profiles")
-    .insert(insert)
-    .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,created_at,updated_at")
-    .single();
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const insert = {
+      id: normalizedUserId,
+      auth_user_id: normalizedUserId,
+      external_user_id: input.userId ?? null,
+      handle,
+      full_name: input.name ?? "TEST_USER_0001",
+      headline: "Synthetic profile for end-to-end verification",
+      bio: "Synthetic user for onboarding and persistence verification.",
+      career_path_id: input.careerPathId ?? CAREER_PATHS[0].id,
+      published: false,
+      tokens_used: 0,
+      goals: ["upskill_current_job", "ship_ai_projects"],
+      tools: ["OpenAI API", "Supabase", "Vercel"],
+      social_links: { website: `${appBaseUrl()}/u/${handle}` },
+    };
 
-  if (error || !data) {
+    const { data, error } = await supabase.from("learner_profiles").insert(insert).select(selectFields).single();
+    if (!error && data) {
+      return profileFromRow(data, []);
+    }
+
+    if (error?.code === "23505") {
+      const existingRow = await getProfileRowById(input.userId ?? normalizedUserId);
+      if (existingRow) {
+        const skills = await getSkillsForProfile(existingRow.id);
+        return profileFromRow(existingRow, skills);
+      }
+
+      const conflictMessage = error.message?.toLowerCase() ?? "";
+      if (conflictMessage.includes("handle")) {
+        handle = `${handleBase}-${suffix}`;
+        suffix += 1;
+        continue;
+      }
+    }
+
     throw new Error(`PROFILE_CREATE_FAILED:${error?.message ?? "UNKNOWN"}`);
   }
 
-  return profileFromRow(data, []);
+  throw new Error("PROFILE_CREATE_FAILED:HANDLE_CONFLICT_RETRY_EXHAUSTED");
 }
 
 async function getProjectArtifacts(projectId: string) {
@@ -1092,7 +1128,23 @@ export async function runtimeGetDashboardSummary(userId: string): Promise<Dashbo
   }
   if (!profile) return null;
 
-  const projects = await runtimeListProjectsByUser(profile.id);
+  let projects = await runtimeListProjectsByUser(profile.id);
+  if (!projects.length) {
+    const career = CAREER_PATHS.find((path) => path.id === profile.careerPathId);
+    const starterTitle = career ? `${career.name} Starter Build` : "AI Starter Build";
+    const starterDescription = career
+      ? `Starter project generated from your ${career.name} path to begin collecting proof artifacts.`
+      : "Starter project generated from onboarding to begin collecting proof artifacts.";
+
+    await runtimeCreateProject({
+      userId: profile.id,
+      title: starterTitle,
+      description: starterDescription,
+      slug: "starter-build",
+    });
+
+    projects = await runtimeListProjectsByUser(profile.id);
+  }
 
   const supabase = getSupabaseAdmin();
 

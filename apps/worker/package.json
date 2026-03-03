@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@aitutor/shared": "workspace:*"
+    "@aitutor/shared": "workspace:*",
+    "@supabase/supabase-js": "^2.57.4"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

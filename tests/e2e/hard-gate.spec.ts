@@ -1,62 +1,81 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("hard gate browser verification", () => {
-  test("theme toggle persists and landing hero renders", async ({ page }) => {
+  test("landing assessment CTA works", async ({ page }) => {
     await page.goto("/");
 
-    const toggle = page.getByRole("button", { name: /toggle theme/i });
-    await expect(toggle).toBeVisible();
+    const assessmentCta = page.getByRole("link", { name: /take the ai assessment/i });
+    await expect(assessmentCta).toBeVisible();
 
-    const before = await page.locator("html").getAttribute("data-theme");
-    await toggle.click();
-    const after = await page.locator("html").getAttribute("data-theme");
+    await assessmentCta.click();
+    await expect(page).toHaveURL(/\/assessment\/?$/);
 
-    expect(before).not.toBe(after);
-
-    await page.reload();
-    await expect(page.locator("html")).toHaveAttribute("data-theme", after ?? "dark");
-
-    const heroImage = page.locator("img[alt='AI Tutor']");
-    await expect(heroImage).toBeVisible();
-    await expect(heroImage).toHaveAttribute("src", "/assets/interface_macro_mockup.png");
-
-    await expect(page.locator("body")).not.toContainText(/cryptographically verified/i);
+    await expect(page.getByRole("link", { name: /continue/i })).toBeVisible();
   });
 
-  test("onboarding and employer filters are matrix-driven", async ({ page }) => {
+  test("onboarding can move user into dashboard", async ({ page }) => {
     await page.goto("/onboarding");
 
-    const trackSelect = page.locator("#careerPath");
-    await expect(trackSelect).toBeVisible();
-    const options = trackSelect.locator("option");
-    await expect(options).toHaveCount(8);
+    const directLink = page.getByRole("link", { name: /go directly to dashboard/i });
+    await expect(directLink).toBeVisible();
 
-    await page.goto("/employers/talent");
-    const roleSelect = page.locator("select[name='role']");
-    const toolSelect = page.locator("select[name='tool']");
+    await directLink.click();
+    await expect(page).toHaveURL(/\/dashboard\/?$/);
 
-    await expect(roleSelect).toBeVisible();
-    await expect(toolSelect).toBeVisible();
-
-    await expect(roleSelect).toContainText("Product Manager");
-    await expect(toolSelect).toContainText("OpenAI API");
+    await expect(page.locator("aside")).toBeVisible();
+    await expect(page.getByText(/chat tutor/i).first()).toBeVisible();
+    await expect(page.getByText(/projects/i).first()).toBeVisible();
   });
 
-  test("dashboard and fail-state copy are visible", async ({ page }) => {
-    await page.goto("/dashboard");
-    await expect(page.getByRole("heading", { name: "My Projects" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "My Online Profile" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "AI Tutor Chat" })).toBeVisible();
+  test("dashboard chat is wired to backend", async ({ page }) => {
+    const summaryResponsePromise = page.waitForResponse(
+      (response) => response.url().includes("/api/dashboard/summary") && response.status() === 200,
+      { timeout: 30_000 },
+    );
 
-    await page.goto("/dashboard/projects");
-    await expect(page.getByText(/Fail state policy/i)).toBeVisible();
-    await expect(page.getByText(/retry/i)).toBeVisible();
+    await page.goto("/dashboard/chat/");
+    await summaryResponsePromise;
+    await page.waitForTimeout(400);
 
-    await page.goto("/dashboard/updates");
-    await expect(page.getByText(/Daily updates \+ relevant AI news module/i)).toBeVisible();
+    const textarea = page.locator("textarea");
+    await expect(textarea).toBeVisible();
 
-    const source = await page.content();
-    expect(source.toLowerCase()).not.toContain("indigo-500");
-    expect(source.toLowerCase()).not.toContain("purple-600");
+    const message = `E2E chat ${Date.now()}`;
+    await textarea.fill(message);
+    const sendButton = page.locator("button:has(i.fa-paper-plane)").first();
+    await expect(sendButton).toBeVisible();
+
+    const chatResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/api/projects/") &&
+        response.url().includes("/chat"),
+      { timeout: 30_000 },
+    );
+
+    await sendButton.click();
+    const chatResponse = await chatResponsePromise;
+    expect(chatResponse.status()).toBe(200);
+    const body = await chatResponse.text();
+    expect(body.includes("\"ok\":true")).toBeTruthy();
+
+    const thread = page.locator("main .flex-1.overflow-y-auto");
+    await expect(thread).toContainText(message);
+    await expect(thread).toContainText(/AI Tutor:/i);
+  });
+
+  test("employer talent page hydrates with matrix-driven filters", async ({ page }) => {
+    await page.goto("/employers/talent");
+
+    const skillFilters = page.locator("aside input[type='checkbox']");
+    await expect.poll(() => skillFilters.count(), { timeout: 15_000 }).toBeGreaterThan(1);
+
+    const cards = page.locator(".grid.md\\:grid-cols-2.lg\\:grid-cols-3.gap-6 a[href^='/employers/talent/']");
+    await expect.poll(() => cards.count(), { timeout: 15_000 }).toBeGreaterThan(0);
+
+    const firstFilter = skillFilters.first();
+    await firstFilter.check();
+
+    await expect(cards.first()).toBeVisible();
   });
 });

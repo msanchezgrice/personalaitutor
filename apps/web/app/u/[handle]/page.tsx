@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
           description: "View mapped skills, built projects, and verified AI implementation experience.",
           url: "/u/alex-chen-ai",
           type: "profile",
-          images: [{ url: "/assets/hero.png" }],
+          images: [{ url: "/assets/interface_macro_mockup.png" }],
         },
       };
     }
