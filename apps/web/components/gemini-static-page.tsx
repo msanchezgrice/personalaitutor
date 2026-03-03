@@ -9,11 +9,11 @@ type GeminiStaticPageProps = {
 
 function loadTemplate(template: string) {
   const candidates = [
-    path.join(process.cwd(), "mockups", "high_fidelity", template),
-    path.join(process.cwd(), "..", "..", "mockups", "high_fidelity", template),
     path.join(process.cwd(), "Gemini Design", "high_fidelity_mockups", template),
     path.join(process.cwd(), "..", "Gemini Design", "high_fidelity_mockups", template),
     path.join(process.cwd(), "..", "..", "Gemini Design", "high_fidelity_mockups", template),
+    path.join(process.cwd(), "mockups", "high_fidelity", template),
+    path.join(process.cwd(), "..", "..", "mockups", "high_fidelity", template),
   ];
   const fullPath = candidates.find((candidate) => existsSync(candidate));
   if (!fullPath) {
@@ -40,10 +40,13 @@ function loadTemplate(template: string) {
 }
 
 function applyReplacements(input: string, replacements?: Record<string, string>) {
-  if (!replacements) return input;
+  const merged: Record<string, string> = {
+    "/assets/hero.png": "/assets/interface_macro_mockup.png",
+    ...(replacements ?? {}),
+  };
 
   let output = input;
-  for (const [source, target] of Object.entries(replacements)) {
+  for (const [source, target] of Object.entries(merged)) {
     output = output.split(source).join(target);
   }
   return output;

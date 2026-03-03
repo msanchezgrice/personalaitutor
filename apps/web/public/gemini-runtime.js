@@ -33,15 +33,17 @@
 
   function ensureCtx() {
     var existing = readCtx();
-    if (existing && existing.userId) return existing;
+    if (existing && typeof existing === "object") return existing;
 
     var created = {
-      userId: uuidv4(),
+      userId: null,
       name: "New Learner",
       handle: null,
       sessionId: null,
       projectId: null,
       careerPathId: "product-management",
+      avatarUrl: null,
+      email: null,
     };
     saveCtx(created);
     return created;
@@ -65,6 +67,11 @@
           node.setAttribute("href", "/u/" + ctx.handle + "/");
         },
       );
+    }
+    if (ctx.avatarUrl) {
+      Array.prototype.forEach.call(document.querySelectorAll("img[src='/assets/avatar.png']"), function (node) {
+        node.setAttribute("src", ctx.avatarUrl);
+      });
     }
   }
 
@@ -107,23 +114,70 @@
 
   function requestHeaders(json) {
     var headers = {
-      "x-user-id": ctx.userId,
       "cache-control": "no-store",
     };
+    if (ctx.userId) {
+      headers["x-user-id"] = ctx.userId;
+    }
     if (json) headers["content-type"] = "application/json";
     return headers;
   }
 
   function pathWithUserId(path) {
+    if (!ctx.userId) return path;
     var delimiter = path.indexOf("?") === -1 ? "?" : "&";
     return path + delimiter + "userId=" + encodeURIComponent(ctx.userId);
   }
 
+  var authRequiredPaths = [
+    "/onboarding",
+    "/assessment",
+    "/dashboard",
+    "/dashboard/chat",
+    "/dashboard/projects",
+    "/dashboard/social",
+    "/dashboard/updates",
+    "/dashboard/profile",
+  ];
+
+  function needsAuth() {
+    return authRequiredPaths.indexOf(currentPath) !== -1;
+  }
+
+  async function syncAuthContext() {
+    if (!needsAuth()) return null;
+    var data = await getJson("/api/auth/session");
+    if (!data || !data.auth) return null;
+    ctx.userId = data.auth.userId || ctx.userId;
+    if (data.auth.name) ctx.name = data.auth.name;
+    if (data.auth.avatarUrl) ctx.avatarUrl = data.auth.avatarUrl;
+    if (data.auth.email) ctx.email = data.auth.email;
+    if (data.summary && data.summary.user && data.summary.user.handle) {
+      ctx.handle = data.summary.user.handle;
+      ctx.headline = headlineForUser(data.summary.user);
+      if (data.summary.user.avatarUrl) ctx.avatarUrl = data.summary.user.avatarUrl;
+    }
+    saveCtx(ctx);
+    applyCtxImmediately();
+    return data;
+  }
+
   async function postJson(url, body) {
+    var payload = body || {};
+    if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+      var cleaned = {};
+      Object.keys(payload).forEach(function (key) {
+        var value = payload[key];
+        if (value !== null && value !== undefined) {
+          cleaned[key] = value;
+        }
+      });
+      payload = cleaned;
+    }
     var res = await fetch(url, {
       method: "POST",
       headers: requestHeaders(true),
-      body: JSON.stringify(body || {}),
+      body: JSON.stringify(payload),
     });
     var data = await res.json().catch(function () {
       return {};
@@ -178,6 +232,7 @@
     ctx.handle = user.handle;
     ctx.name = user.name;
     ctx.headline = headlineForUser(user);
+    if (user.avatarUrl) ctx.avatarUrl = user.avatarUrl;
     saveCtx(ctx);
 
     var sidebarProfileLink = document.querySelector("aside a[href='/dashboard/profile/'], aside a[href='/dashboard/profile']");
@@ -187,7 +242,10 @@
       setText(nameEl, user.name);
       setText(roleEl, headlineForUser(user));
       var avatar = sidebarProfileLink.querySelector("img");
-      if (avatar) avatar.setAttribute("alt", user.name);
+      if (avatar) {
+        avatar.setAttribute("alt", user.name);
+        if (ctx.avatarUrl) avatar.setAttribute("src", ctx.avatarUrl);
+      }
     }
 
     var publicProfileLinks = document.querySelectorAll("a[href='/u/alex-chen-ai/'], a[href='/u/test-user-0001/'], a[href='/u/alex-chen-ai'], a[href='/u/test-user-0001']");
@@ -204,6 +262,13 @@
       var firstName = user.name.split(" ")[0] || user.name;
       greeting.textContent = "Good Morning, " + firstName + " 👋";
     }
+
+    if (ctx.avatarUrl) {
+      Array.prototype.forEach.call(document.querySelectorAll("img[src='/assets/avatar.png']"), function (node) {
+        node.setAttribute("src", ctx.avatarUrl);
+        if (!node.getAttribute("alt")) node.setAttribute("alt", user.name);
+      });
+    }
   }
 
   async function ensureSession() {
@@ -216,15 +281,17 @@
       .slice(0, 32) || "learner";
 
     var data = await postJson("/api/onboarding/start", {
-      userId: ctx.userId,
       name: ctx.name,
       handleBase: baseHandle,
       careerPathId: ctx.careerPathId || "product-management",
+      avatarUrl: ctx.avatarUrl || null,
     });
 
     ctx.sessionId = data.session.id;
+    if (data.user && data.user.id) ctx.userId = data.user.id;
     if (data.user && data.user.handle) ctx.handle = data.user.handle;
     if (data.user && data.user.name) ctx.name = data.user.name;
+    if (data.user && data.user.avatarUrl) ctx.avatarUrl = data.user.avatarUrl;
     saveCtx(ctx);
 
     return data.session;
@@ -437,12 +504,16 @@
   async function hydrateChatPage() {
     var summary = await getDashboardSummary();
     updateSharedUserUi(summary);
-    var project = await ensurePrimaryProject(summary);
+    var projectPromise = ensurePrimaryProject(summary);
 
     var subtitle = document.querySelector("header .text-xs.text-gray-400");
-    if (subtitle && project) {
-      subtitle.textContent = project.title + " • Active Build";
-    }
+    projectPromise.then(function (project) {
+      if (subtitle && project) {
+        subtitle.textContent = project.title + " • Active Build";
+      }
+    }).catch(function () {
+      return null;
+    });
 
     var history = document.querySelector("main .flex-1.overflow-y-auto");
     var textarea = document.querySelector("textarea");
@@ -450,7 +521,7 @@
       return btn.querySelector(".fa-paper-plane");
     });
 
-    if (!history || !textarea || !sendBtn || !project) return;
+    if (!history || !textarea || !sendBtn) return;
 
     var sending = false;
 
@@ -467,6 +538,10 @@
       textarea.value = "";
 
       try {
+        var project = await projectPromise;
+        if (!project || !project.id) {
+          throw new Error("Project context unavailable");
+        }
         var result = await postJson("/api/projects/" + encodeURIComponent(project.id) + "/chat", {
           message: text,
         });
@@ -667,6 +742,22 @@
     if (roleInput) roleInput.value = summary.user.headline || "";
     if (bioInput) bioInput.value = summary.user.bio || "";
     if (linkedInInput) linkedInInput.value = (summary.user.socialLinks && summary.user.socialLinks.linkedin) || "";
+    if (ctx.email) {
+      var emailNode = Array.prototype.find.call(document.querySelectorAll("p.text-sm"), function (node) {
+        return (node.textContent || "").indexOf("@") !== -1;
+      });
+      if (emailNode) emailNode.textContent = ctx.email;
+    }
+
+    var avatarElements = document.querySelectorAll("img[src='/assets/avatar.png']");
+    if (ctx.avatarUrl) {
+      Array.prototype.forEach.call(avatarElements, function (img) {
+        img.setAttribute("src", ctx.avatarUrl);
+        if (summary.user && summary.user.name) {
+          img.setAttribute("alt", summary.user.name);
+        }
+      });
+    }
 
     var publicBtn = Array.prototype.find.call(document.querySelectorAll("a"), function (node) {
       return (node.textContent || "").indexOf("View Public Profile") !== -1;
@@ -682,10 +773,12 @@
     if (saveButton) {
       saveButton.addEventListener("click", async function () {
         try {
+          var nextAvatar = ctx.avatarUrl || summary.user.avatarUrl || null;
           var payload = {
             name: nameInput ? nameInput.value.trim() : summary.user.name,
             headline: roleInput ? roleInput.value.trim() : summary.user.headline,
             bio: bioInput ? bioInput.value.trim() : summary.user.bio,
+            avatarUrl: nextAvatar,
             socialLinks: {
               linkedin: linkedInInput && linkedInInput.value ? linkedInInput.value.trim() : undefined,
             },
@@ -706,6 +799,7 @@
 
           if (data.profile && data.profile.handle) {
             ctx.handle = data.profile.handle;
+            if (data.profile.avatarUrl) ctx.avatarUrl = data.profile.avatarUrl;
             saveCtx(ctx);
             if (publicBtn) setHref(publicBtn, "/u/" + data.profile.handle + "/");
           }
@@ -713,6 +807,49 @@
           toast("Profile saved.", false);
         } catch (err) {
           toast(err instanceof Error ? err.message : "Profile save failed", true);
+        }
+      });
+    }
+
+    var avatarButton = Array.prototype.find.call(document.querySelectorAll("button"), function (node) {
+      return (node.textContent || "").trim() === "Change Avatar";
+    });
+    if (avatarButton) {
+      avatarButton.addEventListener("click", async function () {
+        var current = ctx.avatarUrl || summary.user.avatarUrl || "";
+        var next = window.prompt("Paste avatar image URL", current);
+        if (next === null) return;
+        var trimmed = (next || "").trim();
+        if (!trimmed) {
+          toast("Avatar URL cannot be empty.", true);
+          return;
+        }
+        try {
+          new URL(trimmed);
+        } catch {
+          toast("Avatar URL must be valid.", true);
+          return;
+        }
+        try {
+          var res = await fetch("/api/profile", {
+            method: "PATCH",
+            headers: requestHeaders(true),
+            body: JSON.stringify({ avatarUrl: trimmed }),
+          });
+          var data = await res.json().catch(function () {
+            return {};
+          });
+          if (!res.ok || !data.ok) {
+            throw new Error(data && data.error && data.error.message ? data.error.message : "Avatar update failed");
+          }
+          ctx.avatarUrl = trimmed;
+          saveCtx(ctx);
+          Array.prototype.forEach.call(document.querySelectorAll("img[src='/assets/avatar.png'], img[src='" + current + "']"), function (img) {
+            img.setAttribute("src", trimmed);
+          });
+          toast("Avatar updated.", false);
+        } catch (err) {
+          toast(err instanceof Error ? err.message : "Avatar update failed", true);
         }
       });
     }
@@ -728,7 +865,9 @@
       candidate.handle +
       '/" class="glass p-6 rounded-2xl hover:bg-white/5 transition border border-white/10 hover:border-emerald-500/40 group relative cursor-pointer">' +
       '<div class="flex justify-between items-start mb-4">' +
-      '<img src="/assets/avatar.png" class="w-16 h-16 rounded-full object-cover border border-white/20" alt="' +
+      '<img src="' +
+      (candidate.avatarUrl || "/assets/avatar.png") +
+      '" class="w-16 h-16 rounded-full object-cover border border-white/20" alt="' +
       candidate.name +
       '">' +
       '<div class="bg-emerald-500/20 text-emerald-400 w-8 h-8 rounded-full flex items-center justify-center border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]" title="Verified Human Builder"><i class="fa-solid fa-check text-sm font-bold"></i></div>' +
@@ -854,7 +993,21 @@
     await loadRows();
   }
 
+  function ensureEmailButton(container, redirectPath) {
+    if (!container) return;
+    if (container.querySelector("[data-email-auth='1']")) return;
+    var btn = document.createElement("a");
+    btn.href = "/sign-in?redirect_url=" + encodeURIComponent(redirectPath);
+    btn.dataset.emailAuth = "1";
+    btn.className = "w-full flex items-center justify-center gap-3 p-3 rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/10 transition-all font-medium";
+    btn.innerHTML = '<i class="fa-regular fa-envelope text-lg"></i><span>Continue with Email</span>';
+    container.appendChild(btn);
+  }
+
   if (currentPath === "/onboarding") {
+    var socialContainer = document.querySelector(".space-y-4");
+    ensureEmailButton(socialContainer, "/onboarding/");
+
     var linkedInBtn = byText("button", "Continue with LinkedIn");
     if (linkedInBtn) {
       linkedInBtn.addEventListener("click", async function () {
@@ -926,6 +1079,17 @@
   }
 
   if (currentPath === "/assessment") {
+    var assessmentCard = document.querySelector(".glass-panel");
+    if (assessmentCard) {
+      var row = assessmentCard.querySelector(".mb-8 .space-y-4");
+      if (row && row.parentElement) {
+        var emailWrap = document.createElement("div");
+        emailWrap.className = "mt-5";
+        ensureEmailButton(emailWrap, "/assessment/");
+        row.parentElement.insertBefore(emailWrap, row);
+      }
+    }
+
     var continueLink = byText("a", "Continue");
     if (continueLink) {
       continueLink.addEventListener("click", async function (event) {
@@ -969,31 +1133,43 @@
     }
   }
 
-  if (currentPath === "/dashboard") {
-    void hydrateDashboardHome();
+  async function boot() {
+    try {
+      await syncAuthContext();
+    } catch (err) {
+      if (needsAuth()) {
+        toast(err instanceof Error ? err.message : "Authentication required", true);
+      }
+    }
+
+    if (currentPath === "/dashboard") {
+      await hydrateDashboardHome();
+    }
+
+    if (currentPath === "/dashboard/projects") {
+      await hydrateProjectsPage();
+    }
+
+    if (currentPath === "/dashboard/chat") {
+      await hydrateChatPage();
+    }
+
+    if (currentPath === "/dashboard/social") {
+      await hydrateSocialPage();
+    }
+
+    if (currentPath === "/dashboard/updates") {
+      await hydrateUpdatesPage();
+    }
+
+    if (currentPath === "/dashboard/profile") {
+      await hydrateProfilePage();
+    }
+
+    if (currentPath === "/employers/talent") {
+      await hydrateEmployerTalentPage();
+    }
   }
 
-  if (currentPath === "/dashboard/projects") {
-    void hydrateProjectsPage();
-  }
-
-  if (currentPath === "/dashboard/chat") {
-    void hydrateChatPage();
-  }
-
-  if (currentPath === "/dashboard/social") {
-    void hydrateSocialPage();
-  }
-
-  if (currentPath === "/dashboard/updates") {
-    void hydrateUpdatesPage();
-  }
-
-  if (currentPath === "/dashboard/profile") {
-    void hydrateProfilePage();
-  }
-
-  if (currentPath === "/employers/talent") {
-    void hydrateEmployerTalentPage();
-  }
+  void boot();
 })();

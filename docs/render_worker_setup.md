@@ -65,3 +65,12 @@ If Render API calls return `401 Unauthorized`, the key is invalid or revoked. Re
 2. Confirm rows appear in `agent_jobs` and `agent_job_events`.
 3. Confirm job transitions to `completed` (or `failed` with `last_error_code`).
 4. Confirm new `build_log_entries` and `project_artifacts` rows for artifact jobs.
+
+## CLI Deploy Trigger
+Use the helper script to trigger a background worker deploy:
+
+```bash
+RENDER_API_KEY=... scripts/render_worker_deploy.sh srv-d6jfa7fkijhs73c5rhng
+```
+
+If the key is invalid, the script returns the Render API error payload and exits non-zero.

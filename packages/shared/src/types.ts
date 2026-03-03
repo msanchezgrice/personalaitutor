@@ -49,6 +49,7 @@ export type UserProfile = {
   id: string;
   handle: string;
   name: string;
+  avatarUrl?: string | null;
   headline: string;
   bio: string;
   careerPathId: string;
@@ -194,6 +195,7 @@ export type OAuthConnection = {
 export type TalentCard = {
   handle: string;
   name: string;
+  avatarUrl?: string | null;
   careerType: string;
   role: string;
   status: SkillStatus;

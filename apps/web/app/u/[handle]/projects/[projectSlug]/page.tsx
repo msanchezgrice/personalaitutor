@@ -65,6 +65,10 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
     "An automated email responder using RAG to fetch CRM context before drafting replies. Designed to reduce manual ticket triaging time by 60%.": project.description,
   };
 
+  if (profile.avatarUrl) {
+    replacements["/assets/avatar.png"] = profile.avatarUrl;
+  }
+
   const creativeWorkLd = {
     "@context": "https://schema.org",
     "@type": "CreativeWork",

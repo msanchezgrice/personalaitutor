@@ -15,7 +15,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   }
 
   const { id } = await context.params;
-  const userId = parsed.data.userId ?? getUserId(req);
+  const userId = getUserId(req);
   const result = await runtimeAddProjectChatMessage({
     projectId: id,
     userId,

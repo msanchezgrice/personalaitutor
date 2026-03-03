@@ -9,9 +9,6 @@ function resolveRedirectUri(req: NextRequest, configured: string | undefined, fa
   if (!configured) return fallback;
   try {
     const parsed = new URL(configured);
-    if (parsed.origin !== req.nextUrl.origin) {
-      return fallback;
-    }
     return parsed.toString();
   } catch {
     return fallback;
@@ -37,7 +34,7 @@ export async function GET(req: NextRequest) {
     authorizeUrl.searchParams.set("response_type", "code");
     authorizeUrl.searchParams.set("client_id", clientId);
     authorizeUrl.searchParams.set("redirect_uri", redirectUri);
-    authorizeUrl.searchParams.set("scope", "openid profile email w_member_social");
+    authorizeUrl.searchParams.set("scope", "r_liteprofile r_emailaddress w_member_social");
     authorizeUrl.searchParams.set("state", state);
 
     return NextResponse.redirect(authorizeUrl);

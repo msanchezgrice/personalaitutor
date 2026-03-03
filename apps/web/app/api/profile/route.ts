@@ -14,6 +14,7 @@ const goals = z.enum([
 const schema = z.object({
   handle: z.string().min(2).max(64).optional(),
   name: z.string().min(2).max(80).optional(),
+  avatarUrl: z.string().url().optional().nullable(),
   headline: z.string().min(4).max(140).optional(),
   bio: z.string().min(8).max(1200).optional(),
   careerPathId: z.string().min(1).optional(),

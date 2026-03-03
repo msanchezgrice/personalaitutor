@@ -152,16 +152,23 @@ function profileFromRow(
   },
   skills: UserProfile["skills"],
 ): UserProfile {
+  const links = row.social_links ?? {};
   return {
     id: row.id,
     handle: row.handle,
     name: row.full_name,
+    avatarUrl: typeof links.avatar === "string" ? links.avatar : null,
     headline: row.headline,
     bio: row.bio,
     careerPathId: row.career_path_id ?? CAREER_PATHS[0].id,
     skills,
     tools: row.tools ?? [],
-    socialLinks: row.social_links ?? {},
+    socialLinks: {
+      linkedin: typeof links.linkedin === "string" ? links.linkedin : undefined,
+      x: typeof links.x === "string" ? links.x : undefined,
+      website: typeof links.website === "string" ? links.website : undefined,
+      github: typeof links.github === "string" ? links.github : undefined,
+    },
     published: row.published,
     tokensUsed: row.tokens_used,
     goals: ((row.goals ?? []) as UserProfile["goals"]) || [],
@@ -218,6 +225,7 @@ async function getSkillsForProfile(profileId: string) {
 async function getOrCreateProfile(input: {
   userId?: string;
   name?: string;
+  avatarUrl?: string | null;
   handleBase?: string;
   careerPathId?: string;
 }) {
@@ -226,6 +234,35 @@ async function getOrCreateProfile(input: {
 
   const existing = await getProfileRowById(input.userId ?? normalizedUserId);
   if (existing) {
+    if (input.name && input.name.trim() && existing.full_name !== input.name.trim()) {
+      await supabase
+        .from("learner_profiles")
+        .update({
+          full_name: input.name.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+      existing.full_name = input.name.trim();
+    }
+    if (input.avatarUrl) {
+      const links = existing.social_links ?? {};
+      if (links.avatar !== input.avatarUrl) {
+        await supabase
+          .from("learner_profiles")
+          .update({
+            social_links: {
+              ...links,
+              avatar: input.avatarUrl,
+            },
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id);
+        existing.social_links = {
+          ...links,
+          avatar: input.avatarUrl,
+        };
+      }
+    }
     const skills = await getSkillsForProfile(existing.id);
     return profileFromRow(existing, skills);
   }
@@ -258,7 +295,10 @@ async function getOrCreateProfile(input: {
       tokens_used: 0,
       goals: ["upskill_current_job", "ship_ai_projects"],
       tools: ["OpenAI API", "Supabase", "Vercel"],
-      social_links: { website: `${appBaseUrl()}/u/${handle}` },
+      social_links: {
+        website: `${appBaseUrl()}/u/${handle}`,
+        ...(input.avatarUrl ? { avatar: input.avatarUrl } : {}),
+      },
     };
 
     const { data, error } = await supabase.from("learner_profiles").insert(insert).select(selectFields).single();
@@ -516,6 +556,7 @@ async function getLatestDailyUpdate(userId: string): Promise<DailyUpdate | null>
 export async function runtimeCreateOnboardingSession(input: {
   userId?: string;
   name?: string;
+  avatarUrl?: string | null;
   handleBase?: string;
   careerPathId?: string;
 }) {
@@ -790,6 +831,31 @@ export async function runtimeUpdateProfile(userId: string, patch: Partial<UserPr
     }
   }
 
+  const mergedSocialLinks = {
+    ...profile.socialLinks,
+    ...(patch.socialLinks ?? {}),
+  };
+
+  if (!mergedSocialLinks.website) {
+    mergedSocialLinks.website = `${appBaseUrl()}/u/${handle}`;
+  }
+
+  const socialLinksPayload: Record<string, string> = {};
+  for (const [key, value] of Object.entries(mergedSocialLinks)) {
+    if (typeof value === "string" && value.trim().length) {
+      socialLinksPayload[key] = value.trim();
+    }
+  }
+  if (patch.avatarUrl !== undefined) {
+    if (patch.avatarUrl) {
+      socialLinksPayload.avatar = patch.avatarUrl;
+    } else {
+      delete socialLinksPayload.avatar;
+    }
+  } else if (profile.avatarUrl) {
+    socialLinksPayload.avatar = profile.avatarUrl;
+  }
+
   await supabase
     .from("learner_profiles")
     .update({
@@ -799,7 +865,7 @@ export async function runtimeUpdateProfile(userId: string, patch: Partial<UserPr
       bio: patch.bio ?? profile.bio,
       career_path_id: patch.careerPathId ?? profile.careerPathId,
       tools: patch.tools ?? profile.tools,
-      social_links: patch.socialLinks ?? profile.socialLinks,
+      social_links: socialLinksPayload,
       goals: patch.goals ?? profile.goals,
       updated_at: new Date().toISOString(),
     })
@@ -907,6 +973,61 @@ export async function runtimeListProjectsByUser(userId: string) {
   return getProjectsByUserFromDb(userId);
 }
 
+async function generateTutorReply(input: {
+  profile: UserProfile;
+  project: Project;
+  message: string;
+}) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY_MISSING");
+  }
+
+  const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
+  const prompt = [
+    "You are AI Tutor, a practical coding tutor.",
+    `Learner name: ${input.profile.name}`,
+    `Learner role: ${input.profile.headline || "AI Builder"}`,
+    `Project: ${input.project.title}`,
+    `Project description: ${input.project.description}`,
+    "Respond in <= 6 sentences with concrete next steps and one verification check.",
+    `Learner message: ${input.message}`,
+  ].join("\n");
+
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      input: prompt,
+      temperature: 0.2,
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`OPENAI_RESPONSE_FAILED:${response.status}:${detail.slice(0, 200)}`);
+  }
+
+  const data = (await response.json()) as {
+    output_text?: string;
+    output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
+  };
+
+  const fromOutputText = typeof data.output_text === "string" ? data.output_text.trim() : "";
+  if (fromOutputText) return fromOutputText;
+
+  const firstText = data.output
+    ?.flatMap((entry) => entry.content ?? [])
+    .find((entry) => entry.type === "output_text" || entry.type === "text")?.text;
+
+  if (firstText?.trim()) return firstText.trim();
+  throw new Error("OPENAI_EMPTY_RESPONSE");
+}
+
 export async function runtimeAddProjectChatMessage(input: {
   projectId: string;
   userId: string;
@@ -964,31 +1085,82 @@ export async function runtimeAddProjectChatMessage(input: {
     };
   }
 
-  await supabase
-    .from("agent_jobs")
-    .update({ status: "completed", updated_at: new Date().toISOString() })
-    .eq("id", jobId);
+  try {
+    const reply = await generateTutorReply({
+      profile,
+      project,
+      message: input.message,
+    });
+    const normalizedReply = /^ai tutor:/i.test(reply.trim()) ? reply.trim() : `AI Tutor: ${reply.trim()}`;
 
-  await insertJobEvent({
-    jobId,
-    userId: profile.id,
-    projectId: project.id,
-    type: "job.completed",
-    message: "project.chat completed",
-  });
+    await supabase
+      .from("agent_jobs")
+      .update({ status: "completed", updated_at: new Date().toISOString() })
+      .eq("id", jobId);
 
-  await appendBuildLog({
-    projectId: project.id,
-    userId: profile.id,
-    level: "success",
-    message: `AI Tutor reply generated for: ${input.message.slice(0, 80)}`,
-  });
+    await insertJobEvent({
+      jobId,
+      userId: profile.id,
+      projectId: project.id,
+      type: "job.completed",
+      message: "project.chat completed",
+    });
 
-  return {
-    job: { id: jobId, status: "completed", lastErrorCode: null },
-    result: { ok: true, job: { id: jobId, lastErrorCode: null } },
-    reply: `AI Tutor: focus next on ${CAREER_PATHS.find((p) => p.id === profile.careerPathId)?.modules[0] ?? "core AI module"}.`,
-  };
+    await appendBuildLog({
+      projectId: project.id,
+      userId: profile.id,
+      level: "success",
+      message: `AI Tutor reply generated for: ${input.message.slice(0, 80)}`,
+      metadata: {
+        model: process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
+      },
+    });
+
+    await touchProfileTokenUsage(profile.id, Math.max(80, Math.min(1200, Math.round(input.message.length * 1.8))));
+
+    return {
+      job: { id: jobId, status: "completed", lastErrorCode: null },
+      result: { ok: true, job: { id: jobId, lastErrorCode: null } },
+      reply: normalizedReply,
+    };
+  } catch (error) {
+    const failureCode = error instanceof Error && error.message.startsWith("OPENAI_API_KEY_MISSING")
+      ? "OPENAI_CONFIG_MISSING"
+      : "OPENAI_CHAT_FAILED";
+
+    await supabase
+      .from("agent_jobs")
+      .update({ status: "failed", last_error_code: failureCode, updated_at: new Date().toISOString() })
+      .eq("id", jobId);
+
+    await insertJobEvent({
+      jobId,
+      userId: profile.id,
+      projectId: project.id,
+      type: "job.failed",
+      message: `project.chat failed (${failureCode})`,
+      payload: {
+        failureCode,
+        reason: error instanceof Error ? error.message : "UNKNOWN",
+      },
+    });
+
+    await appendBuildLog({
+      projectId: project.id,
+      userId: profile.id,
+      level: "error",
+      message: `AI Tutor response failed: ${failureCode}`,
+      metadata: {
+        reason: error instanceof Error ? error.message : "UNKNOWN",
+      },
+    });
+
+    return {
+      job: { id: jobId, status: "failed", lastErrorCode: failureCode },
+      result: { ok: false, job: { id: jobId, lastErrorCode: failureCode } },
+      reply: null,
+    };
+  }
 }
 
 export async function runtimeRequestArtifactGeneration(input: {
@@ -1115,18 +1287,33 @@ export async function runtimeListProjectEvents(projectId: string) {
   }));
 }
 
-export async function runtimeGetDashboardSummary(userId: string): Promise<DashboardSummary | null> {
+export async function runtimeGetDashboardSummary(
+  userId: string,
+  seed?: {
+    name?: string;
+    handleBase?: string;
+    avatarUrl?: string | null;
+  },
+): Promise<DashboardSummary | null> {
   if (mode() === "memory") return memGetDashboardSummary(userId);
 
   let profile = await runtimeFindUserById(userId);
   if (!profile) {
     profile = await getOrCreateProfile({
       userId,
-      name: "Alex Chen",
-      handleBase: "alex-chen-ai",
+      name: seed?.name ?? "Alex Chen",
+      avatarUrl: seed?.avatarUrl ?? null,
+      handleBase: seed?.handleBase ?? "alex-chen-ai",
     });
   }
   if (!profile) return null;
+
+  if (seed?.avatarUrl && seed.avatarUrl !== profile.avatarUrl) {
+    const refreshed = await runtimeUpdateProfile(profile.id, { avatarUrl: seed.avatarUrl });
+    if (refreshed) {
+      profile = refreshed;
+    }
+  }
 
   let projects = await runtimeListProjectsByUser(profile.id);
   if (!projects.length) {
@@ -1522,7 +1709,7 @@ export async function runtimeListTalent(filters?: Parameters<typeof listTalent>[
 
   const { data: profiles, error } = await supabase
     .from("learner_profiles")
-    .select("id,handle,full_name,headline,career_path_id,published,tools,goals,updated_at")
+    .select("id,handle,full_name,headline,career_path_id,published,tools,goals,social_links,updated_at")
     .order("updated_at", { ascending: false })
     .limit(200);
 
@@ -1591,6 +1778,10 @@ export async function runtimeListTalent(filters?: Parameters<typeof listTalent>[
       return {
         handle: profile.handle,
         name: profile.full_name,
+        avatarUrl:
+          typeof profile.social_links?.avatar === "string"
+            ? profile.social_links.avatar
+            : null,
         careerType: careerTypeMap[situation ?? ""] ?? "Employed",
         role,
         status: topStatus,
@@ -1641,6 +1832,7 @@ export async function runtimeGetTalentByHandle(handle: string) {
     return {
       handle: profile.handle,
       name: profile.name,
+      avatarUrl: profile.avatarUrl ?? null,
       careerType: profile.goals.includes("showcase_for_job") ? "Job Seeker" : "Employed",
       role: profile.headline || "AI Builder",
       status,

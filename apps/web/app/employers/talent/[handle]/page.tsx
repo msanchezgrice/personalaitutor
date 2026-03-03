@@ -10,6 +10,7 @@ export default async function TalentDetailPage({ params }: { params: Promise<{ h
       ? {
           handle: "alex-chen-ai",
           name: "Alex Chen",
+          avatarUrl: "/assets/avatar.png",
           careerType: "Employed",
           role: "Product Manager",
           status: "verified" as const,
@@ -33,6 +34,10 @@ export default async function TalentDetailPage({ params }: { params: Promise<{ h
     "Alex Chen": candidate.name,
     "Product Manager based in San Francisco, CA": `${candidate.role} (${candidate.careerType})`,
   };
+
+  if (candidate.avatarUrl) {
+    replacements["/assets/avatar.png"] = candidate.avatarUrl;
+  }
 
   if (candidate.topSkills[0]) {
     replacements["Prompt Engineering"] = candidate.topSkills[0];

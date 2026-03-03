@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 
     const candidateUserId = parsed.data?.sessionId
       ? (await runtimeFindOnboardingSession(parsed.data.sessionId))?.userId
-      : parsed.data?.userId ?? getUserId(req);
+      : getUserId(req);
 
     if (!candidateUserId) {
       return jsonError("USER_NOT_FOUND", "Assessment cannot start without a valid user", 404);

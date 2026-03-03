@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@aitutor/shared": "workspace:*",
+    "@clerk/nextjs": "^6.39.0",
+    "@clerk/themes": "^2.4.57",
     "@supabase/supabase-js": "^2.57.4",
     "next": "16.1.6",
     "react": "19.1.0",

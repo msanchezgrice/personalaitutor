@@ -9,9 +9,6 @@ function resolveRedirectUri(req: NextRequest, configured: string | undefined, fa
   if (!configured) return fallback;
   try {
     const parsed = new URL(configured);
-    if (parsed.origin !== req.nextUrl.origin) {
-      return fallback;
-    }
     return parsed.toString();
   } catch {
     return fallback;

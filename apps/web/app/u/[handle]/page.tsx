@@ -70,6 +70,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     "/u/alex-chen-ai/": `/u/${profile.handle}/`,
     "Alex Chen": profile.name,
     "Product Manager": profile.headline || "AI Builder",
+    "I'm a PM learning how to automate workflows and build prototypes using AI. Building publicly to track my journey from non-technical to AI-fluent. Demonstrated ability to use Cursor, Python, and external APIs to build functional prototype workflows.": profile.bio,
   };
 
   if (firstProject) {
@@ -79,6 +80,16 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   if (secondProject) {
     replacements["Lead Scraper Pro"] = secondProject.title;
+  }
+
+  if (profile.avatarUrl) {
+    replacements["/assets/avatar.png"] = profile.avatarUrl;
+  }
+
+  if (profile.socialLinks.linkedin) {
+    replacements[
+      'href="#" class="hover:text-white transition"><i class="fa-brands fa-linkedin text-[#0077b5] mr-1"></i> LinkedIn</a>'
+    ] = `href="${profile.socialLinks.linkedin}" target="_blank" rel="noreferrer" class="hover:text-white transition"><i class="fa-brands fa-linkedin text-[#0077b5] mr-1"></i> LinkedIn</a>`;
   }
 
   const personLd = {

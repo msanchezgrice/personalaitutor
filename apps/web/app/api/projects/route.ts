@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     return jsonError("INVALID_BODY", "Invalid project payload", 400, { issues: parsed.error.issues });
   }
 
-  const userId = parsed.data.userId ?? getUserId(req);
+  const userId = getUserId(req);
   const project = await runtimeCreateProject({
     userId,
     title: parsed.data.title,

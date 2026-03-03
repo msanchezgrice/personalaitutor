@@ -46,6 +46,7 @@ const defaultUser: UserProfile = {
   id: defaultUserId,
   handle: "test-user-0001",
   name: "TEST_USER_0001",
+  avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=256&q=80&fit=crop",
   headline: "Synthetic profile for end-to-end verification",
   bio: "Synthetic user for onboarding, dashboard, profile publish, and employer search verification.",
   careerPathId: CAREER_PATHS[0].id,
@@ -262,6 +263,7 @@ export function findUserById(userId: string) {
 export function createUser(input: {
   handleBase: string;
   name: string;
+  avatarUrl?: string | null;
   headline?: string;
   bio?: string;
   careerPathId?: string;
@@ -271,6 +273,7 @@ export function createUser(input: {
     id: id("user"),
     handle: uniqueHandle(input.handleBase),
     name: input.name,
+    avatarUrl: input.avatarUrl ?? null,
     headline: input.headline ?? "AI learner building public proof",
     bio: input.bio ?? "Synthetic user generated through onboarding flow.",
     careerPathId: input.careerPathId && getCareerPath(input.careerPathId) ? input.careerPathId : CAREER_PATHS[0].id,
@@ -313,6 +316,7 @@ export function upsertUserProfile(input: Partial<UserProfile> & Pick<UserProfile
 export function createOnboardingSession(input: {
   userId?: string;
   name?: string;
+  avatarUrl?: string | null;
   handleBase?: string;
   careerPathId?: string;
 }) {
@@ -321,6 +325,7 @@ export function createOnboardingSession(input: {
     createUser({
       handleBase: input.handleBase ?? "test-user",
       name: input.name ?? "TEST_USER_ONBOARDING",
+      avatarUrl: input.avatarUrl ?? null,
       careerPathId: input.careerPathId,
     });
 
@@ -841,6 +846,7 @@ export function updateProfile(userId: string, patch: Partial<UserProfile>) {
 
   const allowList: Array<keyof UserProfile> = [
     "name",
+    "avatarUrl",
     "headline",
     "bio",
     "careerPathId",
