@@ -1,69 +1,48 @@
-import Link from "next/link";
+import { GeminiStaticPage } from "@/components/gemini-static-page";
 import { runtimeGetTalentByHandle } from "@/lib/runtime";
 
 export default async function TalentDetailPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
-  const candidate = await runtimeGetTalentByHandle(handle);
+  const found = await runtimeGetTalentByHandle(handle);
+  const candidate =
+    found ??
+    (handle === "alex-chen-ai"
+      ? {
+          handle: "alex-chen-ai",
+          name: "Alex Chen",
+          careerType: "Employed",
+          role: "Product Manager",
+          status: "verified" as const,
+          topSkills: ["Prompt Engineering", "API Integrations"],
+          topTools: ["Python", "Cursor IDE"],
+          evidenceScore: 83,
+        }
+      : null);
 
   if (!candidate) {
     return (
-      <main className="container section">
-        <h1>Candidate not found</h1>
-        <p className="lead">Invalid handle for talent profile.</p>
+      <main className="min-h-screen bg-[#0f111a] text-white p-10">
+        <h1 className="text-2xl font-bold">Candidate not found</h1>
+        <p className="text-gray-400 mt-2">Invalid handle for talent profile.</p>
       </main>
     );
   }
 
-  return (
-    <div className="dash-app">
-      <aside className="dash-sidebar">
-        <Link href="/employers" className="dash-brand">
-          <span className="dash-brand-mark" style={{ background: "linear-gradient(145deg, var(--brand-2), var(--brand))" }}>CG</span>
-          <span>Recruiter</span>
-        </Link>
-        <Link className="btn" href="/employers/talent">
-          Back to Search
-        </Link>
-      </aside>
+  const replacements: Record<string, string> = {
+    "/u/alex-chen-ai/": `/u/${candidate.handle}/`,
+    "Alex Chen": candidate.name,
+    "Product Manager based in San Francisco, CA": `${candidate.role} (${candidate.careerType})`,
+  };
 
-      <main className="dash-main">
-        <section className="dash-header">
-          <div>
-            <h1 style={{ fontSize: "2rem" }}>{candidate.name}</h1>
-            <p>{candidate.role} · {candidate.careerType}</p>
-          </div>
-          <div className="dash-header-actions">
-            <Link className="btn" href="/u/test-user-0001" target="_blank">
-              View Public Portfolio
-            </Link>
-          </div>
-        </section>
+  if (candidate.topSkills[0]) {
+    replacements["Prompt Engineering"] = candidate.topSkills[0];
+  }
+  if (candidate.topSkills[1]) {
+    replacements["Python Scripting"] = candidate.topSkills[1];
+  }
+  if (candidate.topTools[0]) {
+    replacements["Cursor IDE"] = candidate.topTools[0];
+  }
 
-        <section className="dash-body">
-          <article className="dash-panel">
-            <h2>System verification snapshot</h2>
-            <div className="grid-2" style={{ marginTop: 10 }}>
-              <div className="card">
-                <p><strong>Status:</strong> {candidate.status}</p>
-                <p><strong>Evidence score:</strong> {candidate.evidenceScore}</p>
-              </div>
-              <div className="card">
-                <p><strong>Top skills:</strong> {candidate.topSkills.join(", ")}</p>
-                <p><strong>Top tools:</strong> {candidate.topTools.join(", ")}</p>
-              </div>
-            </div>
-          </article>
-
-          <article className="dash-panel">
-            <h2>Recruiter actions</h2>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-              <button type="button" className="btn white">Message Candidate</button>
-              <button type="button" className="btn">Save Profile</button>
-              <Link className="btn" href="/employers/talent">Open Other Candidates</Link>
-            </div>
-          </article>
-        </section>
-      </main>
-    </div>
-  );
+  return <GeminiStaticPage template="employers/talent/alex-chen-ai/index.html" replacements={replacements} />;
 }

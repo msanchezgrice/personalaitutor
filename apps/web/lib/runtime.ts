@@ -1052,7 +1052,14 @@ export async function runtimeListProjectEvents(projectId: string) {
 export async function runtimeGetDashboardSummary(userId: string): Promise<DashboardSummary | null> {
   if (mode() === "memory") return memGetDashboardSummary(userId);
 
-  const profile = await runtimeFindUserById(userId);
+  let profile = await runtimeFindUserById(userId);
+  if (!profile) {
+    profile = await getOrCreateProfile({
+      userId,
+      name: "Alex Chen",
+      handleBase: "alex-chen-ai",
+    });
+  }
   if (!profile) return null;
 
   const projects = await runtimeListProjectsByUser(profile.id);

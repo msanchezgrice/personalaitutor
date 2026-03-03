@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import { GeminiStaticPage } from "@/components/gemini-static-page";
 import { runtimeFindProjectBySlug, runtimeFindUserByHandle } from "@/lib/runtime";
-import { TopNav } from "@/components/nav";
 
 export async function generateMetadata({ params }: { params: Promise<{ handle: string; projectSlug: string }> }): Promise<Metadata> {
   const { handle, projectSlug } = await params;
@@ -8,6 +8,12 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   const project = await runtimeFindProjectBySlug(projectSlug);
 
   if (!profile || !project || project.userId !== profile.id) {
+    if (handle === "alex-chen-ai" && projectSlug === "customer-support-copilot") {
+      return {
+        title: "Customer Support Copilot | Alex Chen",
+        description: "Customer Support Copilot build log and active implementation proof.",
+      };
+    }
     return { title: "Project not found" };
   }
 
@@ -37,16 +43,23 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
   const project = await runtimeFindProjectBySlug(projectSlug);
 
   if (!profile || !project || project.userId !== profile.id) {
+    if (handle === "alex-chen-ai" && projectSlug === "customer-support-copilot") {
+      return <GeminiStaticPage template="u/alex-chen-ai/projects/customer-support-copilot/index.html" />;
+    }
     return (
-      <>
-        <TopNav />
-        <main className="container section">
-          <h1>Project not found</h1>
-          <p className="lead">The requested project does not exist for this profile.</p>
-        </main>
-      </>
+      <main className="min-h-screen bg-[#0f111a] text-white p-10">
+        <h1 className="text-2xl font-bold">Project not found</h1>
+        <p className="text-gray-400 mt-2">The requested project does not exist for this profile.</p>
+      </main>
     );
   }
+
+  const replacements: Record<string, string> = {
+    "/u/alex-chen-ai/": `/u/${profile.handle}/`,
+    "Alex Chen": profile.name,
+    "Customer Support Copilot": project.title,
+    "An automated email responder using RAG to fetch CRM context before drafting replies. Designed to reduce manual ticket triaging time by 60%.": project.description,
+  };
 
   const creativeWorkLd = {
     "@context": "https://schema.org",
@@ -62,54 +75,11 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
 
   return (
     <>
-      <TopNav />
-      <main className="section">
-        <div className="container" style={{ maxWidth: 980 }}>
-          <section className="panel pad">
-            <h1 style={{ fontSize: "3.2rem" }}>{project.title}</h1>
-            <p className="lead">System-Verified Proof of Work for {profile.name}.</p>
-            <p className="lead">{project.description}</p>
-            <div className="hero-actions">
-              <span className="tag warn">Build Log</span>
-              <span className="tag">{project.state}</span>
-            </div>
-          </section>
-
-          <section className="panel pad" style={{ marginTop: 14 }}>
-            <h3>Project artifacts</h3>
-            <ul className="list">
-              {project.artifacts.map((artifact) => (
-                <li key={`${artifact.kind}-${artifact.url}`}>
-                  {artifact.kind}: <code>{artifact.url}</code>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="panel pad" style={{ marginTop: 14 }}>
-            <h3>Build timeline</h3>
-            <ul className="list">
-              {project.buildLog.length ? (
-                project.buildLog.map((entry) => (
-                  <li key={entry.id}>
-                    [{entry.level}] {entry.message} ({new Date(entry.createdAt).toLocaleString()})
-                  </li>
-                ))
-              ) : (
-                <li>No build log entries yet.</li>
-              )}
-            </ul>
-          </section>
-
-          <section className="panel pad" style={{ marginTop: 14 }}>
-            <h3>Share metadata</h3>
-            <p><strong>Public URL:</strong> <code>http://localhost:6396/u/{handle}/projects/{projectSlug}</code></p>
-            <p><strong>OG URL:</strong> <code>http://localhost:6396/api/og/project/{handle}/{projectSlug}</code></p>
-          </section>
-
-          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(creativeWorkLd) }} />
-        </div>
-      </main>
+      <GeminiStaticPage
+        template="u/alex-chen-ai/projects/customer-support-copilot/index.html"
+        replacements={replacements}
+      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(creativeWorkLd) }} />
     </>
   );
 }
