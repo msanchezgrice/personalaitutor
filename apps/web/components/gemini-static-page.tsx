@@ -10,11 +10,11 @@ type GeminiStaticPageProps = {
 
 function loadTemplate(template: string) {
   const candidates = [
+    path.join(process.cwd(), "mockups", "high_fidelity", template),
+    path.join(process.cwd(), "..", "..", "mockups", "high_fidelity", template),
     path.join(process.cwd(), "Gemini Design", "high_fidelity_mockups", template),
     path.join(process.cwd(), "..", "Gemini Design", "high_fidelity_mockups", template),
     path.join(process.cwd(), "..", "..", "Gemini Design", "high_fidelity_mockups", template),
-    path.join(process.cwd(), "mockups", "high_fidelity", template),
-    path.join(process.cwd(), "..", "..", "mockups", "high_fidelity", template),
   ];
   const fullPath = candidates.find((candidate) => existsSync(candidate));
   if (!fullPath) {
@@ -42,7 +42,6 @@ function loadTemplate(template: string) {
 
 function applyReplacements(input: string, replacements?: Record<string, string>) {
   const merged: Record<string, string> = {
-    "/assets/hero.png": "/assets/interface_macro_mockup.png",
     "CareerGuard Networks": BRAND_NAME,
     "CareerGuard Network": `${BRAND_NAME} Network`,
     "CareerGuard Plan": `${BRAND_NAME} Plan`,

@@ -49,8 +49,8 @@ This document lists every environment variable required or recommended for `myai
 | `DEFAULT_USER_ID` | Optional | Fallback user id for scripts | `user_test_0001` |
 
 ## Exact Redirect URI Values (Production)
-- `LINKEDIN_REDIRECT_URI=https://mypersonalaitutor.com/api/auth/linkedin/callback`
-- `X_REDIRECT_URI=https://mypersonalaitutor.com/api/auth/x/callback`
+- `LINKEDIN_REDIRECT_URI=https://myaiskilltutor.com/api/auth/linkedin/callback`
+- `X_REDIRECT_URI=https://myaiskilltutor.com/api/auth/x/callback`
 
 ## Validation Checklist
 1. `PERSISTENCE_MODE=supabase` in Vercel for all environments.

@@ -1,6 +1,6 @@
 export const BRAND_NAME = "My AI Skill Tutor";
 export const BRAND_DOMAIN = "myaiskilltutor.com";
-export const DEFAULT_CANONICAL_URL = "https://mypersonalaitutor.com";
+export const DEFAULT_CANONICAL_URL = "https://myaiskilltutor.com";
 
 export function getSiteUrl() {
   return (
@@ -9,4 +9,3 @@ export function getSiteUrl() {
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : DEFAULT_CANONICAL_URL)
   ).replace(/\/+$/, "");
 }
-

@@ -149,10 +149,10 @@
 
   function readTheme() {
     try {
-      var explicit = window.localStorage.getItem("ai_theme");
-      if (explicit === "light" || explicit === "dark") return explicit;
       var legacy = window.localStorage.getItem("theme");
       if (legacy === "light" || legacy === "dark") return legacy;
+      var explicit = window.localStorage.getItem("ai_theme");
+      if (explicit === "light" || explicit === "dark") return explicit;
     } catch {
       return "dark";
     }
@@ -175,9 +175,16 @@
     icon.classList.add(theme === "light" ? "fa-moon" : "fa-sun");
   }
 
-  function wireThemeToggle() {
+  function wireThemeToggle(attempt) {
     var themeToggle = document.getElementById("theme-toggle");
-    if (!themeToggle) return;
+    if (!themeToggle) {
+      if ((attempt || 0) < 6) {
+        window.setTimeout(function () {
+          wireThemeToggle((attempt || 0) + 1);
+        }, 120);
+      }
+      return;
+    }
 
     var current = readTheme();
     document.documentElement.setAttribute("data-theme", current);

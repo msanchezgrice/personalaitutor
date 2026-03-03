@@ -1309,7 +1309,9 @@ export async function runtimeGetDashboardSummary(
   }
   if (!profile) return null;
 
-  if (seed?.avatarUrl && seed.avatarUrl !== profile.avatarUrl) {
+  // Avoid swapping frequently-changing provider avatar URLs on every request,
+  // which can cause visual flicker on dashboard refresh/navigation.
+  if (!profile.avatarUrl && seed?.avatarUrl) {
     const refreshed = await runtimeUpdateProfile(profile.id, { avatarUrl: seed.avatarUrl });
     if (refreshed) {
       profile = refreshed;
