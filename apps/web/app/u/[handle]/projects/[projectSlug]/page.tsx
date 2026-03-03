@@ -3,6 +3,8 @@ import { GeminiStaticPage } from "@/components/gemini-static-page";
 import { runtimeFindProjectBySlug, runtimeFindUserByHandle } from "@/lib/runtime";
 import { BRAND_NAME, getSiteUrl } from "@/lib/site";
 
+export const dynamic = "force-dynamic";
+
 function appBaseUrl() {
   return getSiteUrl();
 }

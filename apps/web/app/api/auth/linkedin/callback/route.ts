@@ -25,8 +25,15 @@ function resolveRedirectUri(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const error = req.nextUrl.searchParams.get("error");
   const state = parseState(req.nextUrl.searchParams.get("state"));
-  const userId = req.headers.get("x-user-id") ?? state?.userId ?? "00000000-0000-0000-0000-000000000001";
+  const userId = req.headers.get("x-user-id") ?? state?.userId ?? null;
   const shouldRedirect = req.nextUrl.searchParams.get("redirect") === "1" || state?.redirect;
+
+  if (!userId) {
+    if (shouldRedirect) {
+      return NextResponse.redirect(new URL("/dashboard/social?oauth=linkedin_denied", req.nextUrl.origin));
+    }
+    return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+  }
 
   if (error) {
     await runtimeMarkOAuthFailure(userId, "linkedin_profile", "LINKEDIN_OAUTH_DENIED");

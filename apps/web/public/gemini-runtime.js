@@ -99,6 +99,19 @@
     node.setAttribute("href", value);
   }
 
+  function normalizeUrl(value) {
+    var raw = typeof value === "string" ? value.trim() : "";
+    if (!raw) return "";
+    if (!/^https?:\/\//i.test(raw)) {
+      raw = "https://" + raw;
+    }
+    try {
+      return new URL(raw).toString();
+    } catch {
+      return "";
+    }
+  }
+
   function toast(message, isError) {
     var node = document.createElement("div");
     node.textContent = message;
@@ -262,12 +275,6 @@
 
   async function trySyncLandingAuth() {
     if (currentPath !== "/") return;
-    var cookie = document.cookie || "";
-    var hasClerkSessionCookie = cookie.indexOf("__session=") !== -1 || cookie.indexOf("__client_uat=") !== -1;
-    if (!hasClerkSessionCookie) {
-      applyLandingAuthUi(null);
-      return;
-    }
     try {
       var data = await getJson("/api/auth/session");
       if (data && data.summary) {
@@ -613,6 +620,7 @@
 
   function createBubble(html, isUser) {
     var wrapper = document.createElement("div");
+    var theme = document.documentElement.getAttribute("data-theme") || "dark";
     wrapper.className = isUser
       ? "flex items-start justify-end gap-4 max-w-4xl ml-auto"
       : "flex items-start gap-4 max-w-4xl";
@@ -621,14 +629,20 @@
       var userAvatar = ctx.avatarUrl || "/assets/avatar.png";
       var userAlt = ctx.name || "Learner";
       wrapper.innerHTML =
-        '<div class="bg-emerald-600 text-white p-5 rounded-2xl rounded-tr-sm text-sm shadow-[0_5px_15px_rgba(16,185,129,0.2)]"></div>' +
+        '<div class="chat-user-bubble bg-emerald-600 text-white p-5 rounded-2xl rounded-tr-sm text-sm shadow-[0_5px_15px_rgba(16,185,129,0.2)]"></div>' +
         '<img src="' + userAvatar + '" class="w-8 h-8 rounded-full object-cover border border-white/20 flex-shrink-0 mt-1" alt="' + userAlt + '">';
       wrapper.querySelector("div").innerHTML = html;
+      if (theme === "light") {
+        wrapper.querySelector(".chat-user-bubble").classList.add("chat-user-bubble-light");
+      }
     } else {
       wrapper.innerHTML =
         '<div class="w-8 h-8 rounded-full bg-gradient-to-b from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 mt-1 shadow-[0_0_10px_rgba(16,185,129,0.3)]"><i class="fa-solid fa-robot text-white text-[10px]"></i></div>' +
-        '<div class="glass p-5 rounded-2xl rounded-tl-sm text-sm border-emerald-500/20 bg-emerald-500/5"></div>';
+        '<div class="chat-ai-bubble glass p-5 rounded-2xl rounded-tl-sm text-sm border-emerald-500/20 bg-emerald-500/5"></div>';
       wrapper.querySelector("div.glass").innerHTML = html;
+      if (theme === "light") {
+        wrapper.querySelector(".chat-ai-bubble").classList.add("chat-ai-bubble-light");
+      }
     }
 
     return wrapper;
@@ -913,9 +927,13 @@
             bio: bioInput ? bioInput.value.trim() : summary.user.bio,
             avatarUrl: nextAvatar,
             socialLinks: {
-              linkedin: linkedInInput && linkedInInput.value ? linkedInInput.value.trim() : undefined,
+              linkedin: linkedInInput && linkedInInput.value ? normalizeUrl(linkedInInput.value) : undefined,
             },
           };
+
+          if (linkedInInput && linkedInInput.value && !payload.socialLinks.linkedin) {
+            throw new Error("LinkedIn URL is invalid");
+          }
 
           var response = await fetch("/api/profile", {
             method: "PATCH",
@@ -1138,7 +1156,10 @@
   }
 
   if (currentPath === "/onboarding") {
-    var socialContainer = document.querySelector(".space-y-4");
+    var socialContainer = Array.prototype.find.call(document.querySelectorAll(".space-y-4"), function (node) {
+      var text = (node.textContent || "").toLowerCase();
+      return text.indexOf("continue with linkedin") !== -1 && text.indexOf("continue with google") !== -1;
+    });
     var selectedResumeFilename = null;
     var uploadLabel = byText("p", "Upload Resume (PDF)");
     var uploadCard = uploadLabel ? uploadLabel.closest("div.border-2") : null;
@@ -1180,7 +1201,8 @@
     }
 
     var shortcut = Array.prototype.find.call(document.querySelectorAll("a"), function (node) {
-      return (node.textContent || "").indexOf("Go directly to Dashboard") !== -1;
+      var text = (node.textContent || "").toLowerCase();
+      return text.indexOf("go directly to dashboard") !== -1 || text.indexOf("go to dashboard") !== -1;
     });
     if (shortcut) {
       var shortcutSection = shortcut.closest("div");
@@ -1190,8 +1212,35 @@
         shortcut.remove();
       }
     }
+    var shortcutHeading = Array.prototype.find.call(document.querySelectorAll("p"), function (node) {
+      return (node.textContent || "").toLowerCase().indexOf("prototype shortcut navigation") !== -1;
+    });
+    if (shortcutHeading) {
+      var shortcutRoot = shortcutHeading.closest("div");
+      if (shortcutRoot && shortcutRoot.parentElement) {
+        shortcutRoot.parentElement.removeChild(shortcutRoot);
+      }
+    }
 
     if (socialContainer) {
+      var linkedInButton = Array.prototype.find.call(socialContainer.querySelectorAll("button"), function (node) {
+        return (node.textContent || "").toLowerCase().indexOf("continue with linkedin") !== -1;
+      });
+      var googleButton = Array.prototype.find.call(socialContainer.querySelectorAll("button"), function (node) {
+        return (node.textContent || "").toLowerCase().indexOf("continue with google") !== -1;
+      });
+
+      if (linkedInButton) {
+        linkedInButton.addEventListener("click", function () {
+          window.location.href = pathWithUserId("/api/auth/linkedin/start?redirect=1");
+        });
+      }
+      if (googleButton) {
+        googleButton.addEventListener("click", function () {
+          window.location.href = "/api/auth/google/start?redirect=1&target=%2Fdashboard%2F%3Fwelcome%3D1";
+        });
+      }
+
       socialContainer.innerHTML =
         '<div class="space-y-3">' +
         '<label class="block text-xs uppercase tracking-wider text-gray-500 font-semibold">Current Situation</label>' +

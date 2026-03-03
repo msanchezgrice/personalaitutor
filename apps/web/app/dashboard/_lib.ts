@@ -22,6 +22,7 @@ export async function dashboardReplacements() {
     "Alex Chen": summary.user.name,
     "Product Manager": summary.user.headline || "AI Builder",
     "Good Morning, Alex 👋": `Good Morning, ${firstName} 👋`,
+    "Welcome back, Alex!": `Welcome back, ${firstName}!`,
     "Lead Scraper Pro - Alex Chen": `Lead Scraper Pro - ${summary.user.name}`,
     "Contact Alex": `Contact ${firstName}`,
     "/u/alex-chen-ai/": publicProfileUrl,

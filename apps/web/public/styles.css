@@ -464,3 +464,51 @@ a {
 :root[data-theme="light"] body[data-path="/dashboard/chat"] textarea {
   color: #0f172a !important;
 }
+
+:root[data-theme="light"] body[data-path="/dashboard/chat"] .chat-user-bubble-light {
+  background: linear-gradient(135deg, #2563eb 0%, #10b981 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.18) !important;
+}
+
+:root[data-theme="light"] body[data-path="/dashboard/chat"] .chat-user-bubble-light pre,
+:root[data-theme="light"] body[data-path="/dashboard/chat"] .chat-user-bubble-light code {
+  background: rgba(248, 250, 252, 0.9) !important;
+  color: #111827 !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+}
+
+:root[data-theme="light"] body[data-path="/dashboard/chat"] .chat-ai-bubble-light {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid rgba(148, 163, 184, 0.28) !important;
+  color: #0f172a !important;
+}
+
+:root[data-theme="light"] body[data-path="/dashboard/chat"] .chat-ai-bubble-light pre,
+:root[data-theme="light"] body[data-path="/dashboard/chat"] .chat-ai-bubble-light code {
+  color: #111827 !important;
+}
+
+:root[data-theme="light"] body[data-path="/dashboard/chat"] .bg-emerald-600.text-white.p-5.rounded-2xl.rounded-tr-sm.text-sm {
+  background: linear-gradient(135deg, #2563eb 0%, #10b981 100%) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="light"] body[data-path="/dashboard/chat"] .glass.p-5.rounded-2xl.rounded-tl-sm.text-sm {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #0f172a !important;
+}
+
+:root[data-theme="light"] body[data-path="/employers"] .container.nav .btn.bg-white,
+:root[data-theme="light"] body[data-path="/employers/talent"] .container.nav .btn.bg-white {
+  color: #0f172a !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(148, 163, 184, 0.45) !important;
+}
+
+:root[data-theme="light"] body[data-path="/"] .container.nav .btn.btn-secondary {
+  color: #0f172a !important;
+  border-color: rgba(148, 163, 184, 0.45) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+}

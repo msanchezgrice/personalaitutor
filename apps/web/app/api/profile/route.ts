@@ -22,13 +22,30 @@ const schema = z.object({
   goals: z.array(goals).max(10).optional(),
   socialLinks: z
     .object({
-      linkedin: z.string().url().optional(),
-      x: z.string().url().optional(),
-      website: z.string().url().optional(),
-      github: z.string().url().optional(),
+      linkedin: z.string().min(1).optional(),
+      x: z.string().min(1).optional(),
+      website: z.string().min(1).optional(),
+      github: z.string().min(1).optional(),
     })
     .optional(),
 });
+
+function normalizeUrl(input?: string) {
+  if (!input) return undefined;
+  const trimmed = input.trim();
+  if (!trimmed) return undefined;
+  const value = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const parsed = new URL(value);
+    return parsed.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function provided(input?: string) {
+  return typeof input === "string" && input.trim().length > 0;
+}
 
 export async function PATCH(req: NextRequest) {
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
@@ -40,7 +57,30 @@ export async function PATCH(req: NextRequest) {
   if (!userId) {
     return jsonError("UNAUTHENTICATED", "Sign in required", 401);
   }
-  const profile = await runtimeUpdateProfile(userId, parsed.data);
+  const payload = parsed.data;
+  const normalizedSocialLinks = payload.socialLinks
+    ? {
+        linkedin: normalizeUrl(payload.socialLinks.linkedin),
+        x: normalizeUrl(payload.socialLinks.x),
+        website: normalizeUrl(payload.socialLinks.website),
+        github: normalizeUrl(payload.socialLinks.github),
+      }
+    : undefined;
+
+  if (
+    payload.socialLinks &&
+    ((provided(payload.socialLinks.linkedin) && !normalizedSocialLinks?.linkedin) ||
+      (provided(payload.socialLinks.x) && !normalizedSocialLinks?.x) ||
+      (provided(payload.socialLinks.website) && !normalizedSocialLinks?.website) ||
+      (provided(payload.socialLinks.github) && !normalizedSocialLinks?.github))
+  ) {
+    return jsonError("INVALID_BODY", "Invalid social link URL", 400);
+  }
+
+  const profile = await runtimeUpdateProfile(userId, {
+    ...payload,
+    socialLinks: normalizedSocialLinks,
+  });
   if (!profile) {
     return jsonError("USER_NOT_FOUND", "Profile update requires a valid user", 404);
   }

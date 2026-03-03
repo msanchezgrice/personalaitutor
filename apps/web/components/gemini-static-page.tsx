@@ -113,6 +113,7 @@ function applyReplacements(input: string, replacements?: Record<string, string>)
     'id="theme-toggle"': 'id="theme-toggle" aria-label="Toggle dark mode"',
     "https://x.com/myaiskilltu": "https://x.com/myaiskilltutor",
     "http://linkedin.com/company/myaiskilltutor": "https://www.linkedin.com/company/myaiskilltutor",
+    "https://linkedin.com/company/myaiskilltutor": "https://www.linkedin.com/company/myaiskilltutor",
     ...(replacements ?? {}),
   };
 
@@ -125,7 +126,14 @@ function applyReplacements(input: string, replacements?: Record<string, string>)
     /href="\/sign-in\?redirect_url=\/onboarding\/?"/g,
     'href="/sign-in?redirect_url=/dashboard/"',
   );
-  output = output.replace(/\\n/g, "\n").replace(/\\1/g, "");
+  output = output.replace(
+    /<div class="mt-8 text-center border-t border-white\/10 pt-6">[\s\S]*?Go directly to\s*Dashboard[\s\S]*?<\/div>/gi,
+    "",
+  );
+  output = output
+    .replace(/\\n/g, "")
+    .replace(/\\1/g, "")
+    .replace(/href="\/sign-in\?redirect_url=(?:%2F)?onboarding\/?"/gi, 'href="/sign-in?redirect_url=/dashboard/"');
   return output;
 }
 

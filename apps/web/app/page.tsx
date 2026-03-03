@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
+import { getAuthSeed } from "@/lib/auth";
+import { runtimeGetDashboardSummary } from "@/lib/runtime";
 import { BRAND_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -25,6 +27,21 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HomePage() {
-  return <GeminiStaticPage template="index.html" />;
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const replacements: Record<string, string> = {};
+  const seed = await getAuthSeed();
+  if (seed?.userId) {
+    const summary = await runtimeGetDashboardSummary(seed.userId, {
+      name: seed.name,
+      handleBase: seed.handleBase,
+      avatarUrl: seed.avatarUrl ?? null,
+    });
+    if (summary?.user?.handle) {
+      replacements['href="/sign-in?redirect_url=/dashboard/" class="btn btn-secondary">Log In</a>'] =
+        'href="/dashboard/?welcome=1" class="btn btn-secondary">Dashboard</a>';
+    }
+  }
+  return <GeminiStaticPage template="index.html" replacements={replacements} />;
 }
