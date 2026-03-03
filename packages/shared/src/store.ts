@@ -1014,9 +1014,9 @@ export function publishSocialDraft(input: {
       return { ok: false as const, errorCode: "OAUTH_NOT_CONNECTED", draft };
     }
 
-    draft.status = "published";
+    draft.status = "failed";
     draft.updatedAt = nowIso();
-    return { ok: true as const, draft, publishedUrl: draft.shareUrl };
+    return { ok: false as const, errorCode: "SOCIAL_API_POST_UNAVAILABLE", draft };
   }
 
   if (input.mode === "composer") {

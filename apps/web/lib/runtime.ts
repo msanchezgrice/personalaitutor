@@ -1319,12 +1319,12 @@ export async function runtimePublishSocialDraft(input: {
 
     await supabase
       .from("social_drafts")
-      .update({ status: "published", updated_at: new Date().toISOString() })
+      .update({ status: "failed", updated_at: new Date().toISOString() })
       .eq("id", draft.id);
 
-    draft.status = "published";
+    draft.status = "failed";
     draft.updatedAt = new Date().toISOString();
-    return { ok: true as const, draft, publishedUrl: draft.shareUrl };
+    return { ok: false as const, errorCode: "SOCIAL_API_POST_UNAVAILABLE", draft };
   }
 
   draft.updatedAt = new Date().toISOString();
