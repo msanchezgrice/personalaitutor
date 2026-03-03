@@ -8,6 +8,10 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/assessment",
   },
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function AssessmentPage() {

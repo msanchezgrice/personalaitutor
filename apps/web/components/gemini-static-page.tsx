@@ -45,11 +45,26 @@ function applyReplacements(input: string, replacements?: Record<string, string>)
     "CareerGuard Networks": BRAND_NAME,
     "CareerGuard Network": `${BRAND_NAME} Network`,
     "CareerGuard Plan": `${BRAND_NAME} Plan`,
+    "CareerGuard Recruiter": `${BRAND_NAME} Recruiter`,
     ">AI Tutor</span>": `>${BRAND_NAME}</span>`,
     "AI Tutor Session": `${BRAND_NAME} Session`,
     "AI Tutor Platform": BRAND_NAME,
     "AI Tutor platform": BRAND_NAME,
     "AI Tutor. All rights reserved.": `${BRAND_NAME}. All rights reserved.`,
+    'href="/sign-in?redirect_url=/onboarding/" class="btn btn-secondary">Log In</a>':
+      'href="/sign-in?redirect_url=/dashboard/" class="btn btn-secondary">Log In</a>',
+    'href="#proof" class="nav-link">Public Proof</a>': 'href="#features" class="nav-link">Public Proof</a>',
+    'href="/employers/talent/" class="btn btn-secondary text-lg px-8 py-4">See Example Profiles</a>':
+      'href="/u/alex-chen-ai/" class="btn btn-secondary text-lg px-8 py-4">See Example Profiles</a>',
+    'href="#how" class="nav-link text-gray-300">How it works</a>':
+      'href="/employers/" class="nav-link text-gray-300">How it works</a>',
+    'href="#talent" class="nav-link text-gray-300">Browse Talent</a>':
+      'href="/employers/talent/" class="nav-link text-gray-300">Browse Talent</a>',
+    'href="#" class="btn btn-secondary text-lg px-8 py-4">Post a Role</a>':
+      'href="/sign-up?redirect_url=/employers/" class="btn btn-secondary text-lg px-8 py-4">Post a Role</a>',
+    'id="theme-toggle"': 'id="theme-toggle" aria-label="Toggle dark mode"',
+    "https://x.com/myaiskilltu": "https://x.com/myaiskilltutor",
+    "http://linkedin.com/company/myaiskilltutor": "https://www.linkedin.com/company/myaiskilltutor",
     ...(replacements ?? {}),
   };
 

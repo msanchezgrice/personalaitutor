@@ -1,6 +1,6 @@
 export const BRAND_NAME = "My AI Skill Tutor";
 export const BRAND_DOMAIN = "myaiskilltutor.com";
-export const DEFAULT_CANONICAL_URL = "https://myaiskilltutor.com";
+export const DEFAULT_CANONICAL_URL = "https://www.myaiskilltutor.com";
 
 export function getSiteUrl() {
   return (
