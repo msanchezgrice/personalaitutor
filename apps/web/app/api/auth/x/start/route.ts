@@ -6,11 +6,28 @@ const required = ["X_CLIENT_ID"];
 
 function resolveRedirectUri(req: NextRequest, configured: string | undefined, fallbackPath: string) {
   const fallback = `${req.nextUrl.origin}${fallbackPath}`;
-  if (!configured) return fallback;
+  const appBase = process.env.APP_BASE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (!configured || !configured.trim()) {
+    if (appBase) {
+      try {
+        return new URL(fallbackPath, appBase).toString();
+      } catch {
+        // Fall back to request origin below.
+      }
+    }
+    return fallback;
+  }
   try {
-    const parsed = new URL(configured);
+    const parsed = new URL(configured.trim());
     return parsed.toString();
   } catch {
+    if (appBase) {
+      try {
+        return new URL(fallbackPath, appBase).toString();
+      } catch {
+        // Fall back to request origin below.
+      }
+    }
     return fallback;
   }
 }

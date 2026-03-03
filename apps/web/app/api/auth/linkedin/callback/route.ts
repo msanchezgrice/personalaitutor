@@ -13,11 +13,28 @@ function parseState(state: string | null) {
 
 function resolveRedirectUri(req: NextRequest) {
   const fallback = `${req.nextUrl.origin}/api/auth/linkedin/callback`;
+  const appBase = process.env.APP_BASE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim();
   const configured = process.env.LINKEDIN_REDIRECT_URI;
-  if (!configured) return fallback;
+  if (!configured || !configured.trim()) {
+    if (appBase) {
+      try {
+        return new URL("/api/auth/linkedin/callback", appBase).toString();
+      } catch {
+        // Fall back to request origin below.
+      }
+    }
+    return fallback;
+  }
   try {
-    return new URL(configured).toString();
+    return new URL(configured.trim()).toString();
   } catch {
+    if (appBase) {
+      try {
+        return new URL("/api/auth/linkedin/callback", appBase).toString();
+      } catch {
+        // Fall back to request origin below.
+      }
+    }
     return fallback;
   }
 }
