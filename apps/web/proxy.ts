@@ -13,12 +13,28 @@ const isPublicRoute = createRouteMatcher([
   "/robots.txt",
   "/sitemap.xml",
 ]);
+const isApiRoute = createRouteMatcher(["/api/(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
   const { userId } = await auth();
 
-  if (!isPublicRoute(req)) {
-    await auth.protect();
+  if (!isPublicRoute(req) && !userId) {
+    if (isApiRoute(req)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            code: "UNAUTHENTICATED",
+            message: "Sign in required",
+          },
+        },
+        { status: 401 },
+      );
+    }
+
+    const signInUrl = new URL("/sign-in", req.url);
+    signInUrl.searchParams.set("redirect_url", req.url);
+    return NextResponse.redirect(signInUrl);
   }
 
   if (!userId) {
