@@ -403,3 +403,25 @@ a {
 :root[data-theme="light"] .to-teal-900\/40 {
   --tw-gradient-to: rgba(20, 184, 166, 0.15) !important;
 }
+
+/* Ensure CTA visibility in light mode */
+:root[data-theme="light"] .btn-secondary,
+:root[data-theme="light"] .btn-secondary * {
+  color: #0f111a !important;
+  border-color: rgba(15, 23, 42, 0.25) !important;
+}
+
+:root[data-theme="light"] .btn-secondary {
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+:root[data-theme="light"] .btn-secondary:hover {
+  background: rgba(241, 245, 249, 1) !important;
+}
+
+:root[data-theme="light"] .btn.bg-white,
+:root[data-theme="light"] .btn.bg-white *,
+:root[data-theme="light"] a.btn.bg-white,
+:root[data-theme="light"] a.btn.bg-white * {
+  color: #0f111a !important;
+}
