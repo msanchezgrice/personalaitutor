@@ -1,10 +1,21 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
-import { BRAND_NAME, BRAND_DOMAIN, getSiteUrl } from "@/lib/site";
+import {
+  BRAND_NAME,
+  BRAND_DOMAIN,
+  BRAND_X_HANDLE,
+  DEFAULT_OG_IMAGE_ALT,
+  DEFAULT_OG_IMAGE_HEIGHT,
+  DEFAULT_OG_IMAGE_PATH,
+  DEFAULT_OG_IMAGE_WIDTH,
+  getSiteUrl,
+} from "@/lib/site";
 import { themeBootScript } from "@/lib/theme-script";
 import "./globals.css";
 const appBaseUrl = getSiteUrl();
+const facebookAppId = process.env.FACEBOOK_APP_ID?.trim() || process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();
+const defaultOgImageUrl = `${appBaseUrl}${DEFAULT_OG_IMAGE_PATH}`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(appBaseUrl),
@@ -26,15 +37,31 @@ export const metadata: Metadata = {
     title: `${BRAND_NAME} | Build AI Skills and Public Proof`,
     description: "Learn AI and publish proof-based profiles.",
     siteName: BRAND_NAME,
+    locale: "en_US",
     type: "website",
     url: "/",
-    images: [{ url: "/assets/social_media_banner.png" }],
+    images: [{
+      url: DEFAULT_OG_IMAGE_PATH,
+      width: DEFAULT_OG_IMAGE_WIDTH,
+      height: DEFAULT_OG_IMAGE_HEIGHT,
+      alt: DEFAULT_OG_IMAGE_ALT,
+      type: "image/png",
+    }],
   },
   twitter: {
     card: "summary_large_image",
+    site: BRAND_X_HANDLE,
+    creator: BRAND_X_HANDLE,
     title: `${BRAND_NAME} | Build AI Skills and Public Proof`,
     description: "Learn AI and publish proof-based profiles.",
-    images: ["/assets/social_media_banner.png"],
+    images: [DEFAULT_OG_IMAGE_PATH],
+  },
+  other: {
+    "og:image:secure_url": defaultOgImageUrl,
+    "og:image:width": String(DEFAULT_OG_IMAGE_WIDTH),
+    "og:image:height": String(DEFAULT_OG_IMAGE_HEIGHT),
+    "og:image:alt": DEFAULT_OG_IMAGE_ALT,
+    ...(facebookAppId ? { "fb:app_id": facebookAppId } : {}),
   },
   keywords: [
     "AI tutor",

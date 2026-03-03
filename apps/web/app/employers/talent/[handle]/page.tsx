@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
 import { runtimeGetTalentByHandle } from "@/lib/runtime";
-import { BRAND_NAME } from "@/lib/site";
+import {
+  BRAND_NAME,
+  BRAND_X_HANDLE,
+  DEFAULT_OG_IMAGE_ALT,
+  DEFAULT_OG_IMAGE_HEIGHT,
+  DEFAULT_OG_IMAGE_PATH,
+  DEFAULT_OG_IMAGE_WIDTH,
+} from "@/lib/site";
 
 export async function generateMetadata({
   params,
@@ -24,6 +31,22 @@ export async function generateMetadata({
   const description = `Verified AI skill profile for ${candidate.name}: ${candidate.topSkills.join(
     ", ",
   )}. Tools: ${candidate.topTools.join(", ")}.`;
+  const images: NonNullable<NonNullable<Metadata["openGraph"]>["images"]> = [{
+    url: DEFAULT_OG_IMAGE_PATH,
+    width: DEFAULT_OG_IMAGE_WIDTH,
+    height: DEFAULT_OG_IMAGE_HEIGHT,
+    alt: DEFAULT_OG_IMAGE_ALT,
+    type: "image/png",
+  }];
+  if (candidate.avatarUrl) {
+    images.push({
+      url: candidate.avatarUrl,
+      width: DEFAULT_OG_IMAGE_WIDTH,
+      height: DEFAULT_OG_IMAGE_HEIGHT,
+      alt: `${candidate.name} profile`,
+    });
+  }
+
   return {
     title,
     description,
@@ -34,13 +57,16 @@ export async function generateMetadata({
       title,
       description,
       url: `/employers/talent/${candidate.handle}`,
-      images: [{ url: candidate.avatarUrl || "/assets/social_media_banner.png" }],
+      type: "profile",
+      images,
     },
     twitter: {
       card: "summary_large_image",
+      site: BRAND_X_HANDLE,
+      creator: BRAND_X_HANDLE,
       title,
       description,
-      images: [candidate.avatarUrl || "/assets/social_media_banner.png"],
+      images: [candidate.avatarUrl || DEFAULT_OG_IMAGE_PATH],
     },
   };
 }

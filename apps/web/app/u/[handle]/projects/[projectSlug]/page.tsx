@@ -1,7 +1,15 @@
 import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
 import { runtimeFindProjectBySlug, runtimeFindUserByHandle } from "@/lib/runtime";
-import { BRAND_NAME, getSiteUrl } from "@/lib/site";
+import {
+  BRAND_NAME,
+  BRAND_X_HANDLE,
+  DEFAULT_OG_IMAGE_ALT,
+  DEFAULT_OG_IMAGE_HEIGHT,
+  DEFAULT_OG_IMAGE_PATH,
+  DEFAULT_OG_IMAGE_WIDTH,
+  getSiteUrl,
+} from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -33,13 +41,30 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
       description: `System-Verified project proof for ${project.title}`,
       url: `/u/${handle}/projects/${projectSlug}`,
       type: "article",
-      images: [{ url: `/api/og/project/${handle}/${projectSlug}` }],
+      images: [
+        {
+          url: DEFAULT_OG_IMAGE_PATH,
+          width: DEFAULT_OG_IMAGE_WIDTH,
+          height: DEFAULT_OG_IMAGE_HEIGHT,
+          alt: DEFAULT_OG_IMAGE_ALT,
+          type: "image/png",
+        },
+        {
+          url: `/api/og/project/${handle}/${projectSlug}`,
+          width: DEFAULT_OG_IMAGE_WIDTH,
+          height: DEFAULT_OG_IMAGE_HEIGHT,
+          alt: `${project.title} project preview`,
+          type: "image/svg+xml",
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
+      site: BRAND_X_HANDLE,
+      creator: BRAND_X_HANDLE,
       title: `${project.title} | project proof`,
       description: project.description,
-      images: [`/api/og/project/${handle}/${projectSlug}`],
+      images: [DEFAULT_OG_IMAGE_PATH],
     },
   };
 }

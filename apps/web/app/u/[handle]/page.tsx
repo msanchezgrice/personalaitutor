@@ -1,7 +1,15 @@
 import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
 import { runtimeFindUserByHandle, runtimeListProjectsByUser } from "@/lib/runtime";
-import { BRAND_NAME, getSiteUrl } from "@/lib/site";
+import {
+  BRAND_NAME,
+  BRAND_X_HANDLE,
+  DEFAULT_OG_IMAGE_ALT,
+  DEFAULT_OG_IMAGE_HEIGHT,
+  DEFAULT_OG_IMAGE_PATH,
+  DEFAULT_OG_IMAGE_WIDTH,
+  getSiteUrl,
+} from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +30,21 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
           description: "View mapped skills, built projects, and verified AI implementation experience.",
           url: "/u/alex-chen-ai",
           type: "profile",
-          images: [{ url: "/assets/interface_macro_mockup.png" }],
+          images: [{
+            url: DEFAULT_OG_IMAGE_PATH,
+            width: DEFAULT_OG_IMAGE_WIDTH,
+            height: DEFAULT_OG_IMAGE_HEIGHT,
+            alt: DEFAULT_OG_IMAGE_ALT,
+            type: "image/png",
+          }],
+        },
+        twitter: {
+          card: "summary_large_image",
+          site: BRAND_X_HANDLE,
+          creator: BRAND_X_HANDLE,
+          title: `Alex Chen - Verified AI Builder Profile | ${BRAND_NAME}`,
+          description: "View mapped skills, built projects, and verified AI implementation experience.",
+          images: [DEFAULT_OG_IMAGE_PATH],
         },
       };
     }
@@ -38,13 +60,30 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
       description: profile.bio,
       url: `/u/${profile.handle}`,
       type: "profile",
-      images: [{ url: `/api/og/profile/${profile.handle}` }],
+      images: [
+        {
+          url: DEFAULT_OG_IMAGE_PATH,
+          width: DEFAULT_OG_IMAGE_WIDTH,
+          height: DEFAULT_OG_IMAGE_HEIGHT,
+          alt: DEFAULT_OG_IMAGE_ALT,
+          type: "image/png",
+        },
+        {
+          url: `/api/og/profile/${profile.handle}`,
+          width: DEFAULT_OG_IMAGE_WIDTH,
+          height: DEFAULT_OG_IMAGE_HEIGHT,
+          alt: `${profile.name} profile preview`,
+          type: "image/svg+xml",
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
+      site: BRAND_X_HANDLE,
+      creator: BRAND_X_HANDLE,
       title: `${profile.name} | ${BRAND_NAME} Profile`,
       description: profile.bio,
-      images: [`/api/og/profile/${profile.handle}`],
+      images: [DEFAULT_OG_IMAGE_PATH],
     },
   };
 }

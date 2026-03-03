@@ -2,7 +2,14 @@ import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
 import { getAuthSeed } from "@/lib/auth";
 import { runtimeGetDashboardSummary } from "@/lib/runtime";
-import { BRAND_NAME } from "@/lib/site";
+import {
+  BRAND_NAME,
+  BRAND_X_HANDLE,
+  DEFAULT_OG_IMAGE_ALT,
+  DEFAULT_OG_IMAGE_HEIGHT,
+  DEFAULT_OG_IMAGE_PATH,
+  DEFAULT_OG_IMAGE_WIDTH,
+} from "@/lib/site";
 
 export const metadata: Metadata = {
   title: `${BRAND_NAME} | Learn Fast and Prove It Publicly`,
@@ -16,14 +23,22 @@ export const metadata: Metadata = {
     description:
       "Build AI workflows, verify your skills, and generate a public profile employers can trust.",
     url: "/",
-    images: [{ url: "/assets/social_media_banner.png" }],
+    images: [{
+      url: DEFAULT_OG_IMAGE_PATH,
+      width: DEFAULT_OG_IMAGE_WIDTH,
+      height: DEFAULT_OG_IMAGE_HEIGHT,
+      alt: DEFAULT_OG_IMAGE_ALT,
+      type: "image/png",
+    }],
   },
   twitter: {
     card: "summary_large_image",
+    site: BRAND_X_HANDLE,
+    creator: BRAND_X_HANDLE,
     title: `${BRAND_NAME} | Learn Fast and Prove It Publicly`,
     description:
       "Build AI workflows, verify your skills, and generate a public profile employers can trust.",
-    images: ["/assets/social_media_banner.png"],
+    images: [DEFAULT_OG_IMAGE_PATH],
   },
 };
 

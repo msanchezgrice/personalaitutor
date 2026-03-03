@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
-import { BRAND_NAME } from "@/lib/site";
+import {
+  BRAND_NAME,
+  BRAND_X_HANDLE,
+  DEFAULT_OG_IMAGE_ALT,
+  DEFAULT_OG_IMAGE_HEIGHT,
+  DEFAULT_OG_IMAGE_PATH,
+  DEFAULT_OG_IMAGE_WIDTH,
+} from "@/lib/site";
 
 export const metadata: Metadata = {
   title: `${BRAND_NAME} | Employer Portal`,
@@ -14,14 +21,22 @@ export const metadata: Metadata = {
     description:
       "Browse and hire AI-native talent with proof-backed skills and project execution history.",
     url: "/employers",
-    images: [{ url: "/assets/social_media_banner.png" }],
+    images: [{
+      url: DEFAULT_OG_IMAGE_PATH,
+      width: DEFAULT_OG_IMAGE_WIDTH,
+      height: DEFAULT_OG_IMAGE_HEIGHT,
+      alt: DEFAULT_OG_IMAGE_ALT,
+      type: "image/png",
+    }],
   },
   twitter: {
     card: "summary_large_image",
+    site: BRAND_X_HANDLE,
+    creator: BRAND_X_HANDLE,
     title: `${BRAND_NAME} | Employer Portal`,
     description:
       "Browse and hire AI-native talent with proof-backed skills and project execution history.",
-    images: ["/assets/social_media_banner.png"],
+    images: [DEFAULT_OG_IMAGE_PATH],
   },
 };
 
