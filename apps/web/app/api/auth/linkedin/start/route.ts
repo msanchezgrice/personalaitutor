@@ -49,12 +49,13 @@ export async function GET(req: NextRequest) {
     const clientId = process.env.LINKEDIN_CLIENT_ID as string;
     const redirectUri = resolveRedirectUri(req, process.env.LINKEDIN_REDIRECT_URI, "/api/auth/linkedin/callback");
     const state = Buffer.from(JSON.stringify({ userId, ts: Date.now(), redirect })).toString("base64url");
+    const scope = process.env.LINKEDIN_OAUTH_SCOPE?.trim() || "openid profile email";
 
     const authorizeUrl = new URL("https://www.linkedin.com/oauth/v2/authorization");
     authorizeUrl.searchParams.set("response_type", "code");
     authorizeUrl.searchParams.set("client_id", clientId);
     authorizeUrl.searchParams.set("redirect_uri", redirectUri);
-    authorizeUrl.searchParams.set("scope", "r_liteprofile r_emailaddress w_member_social");
+    authorizeUrl.searchParams.set("scope", scope);
     authorizeUrl.searchParams.set("state", state);
 
     return NextResponse.redirect(authorizeUrl);
