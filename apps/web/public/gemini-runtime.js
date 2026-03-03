@@ -262,6 +262,12 @@
 
   async function trySyncLandingAuth() {
     if (currentPath !== "/") return;
+    var cookie = document.cookie || "";
+    var hasClerkSessionCookie = cookie.indexOf("__session=") !== -1 || cookie.indexOf("__client_uat=") !== -1;
+    if (!hasClerkSessionCookie) {
+      applyLandingAuthUi(null);
+      return;
+    }
     try {
       var data = await getJson("/api/auth/session");
       if (data && data.summary) {
