@@ -36,15 +36,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Prevent stale template flashes before runtime hydration replaces placeholder data. */
-html[data-runtime-ready="0"][data-path^="/dashboard"] body>aside,
-html[data-runtime-ready="0"][data-path^="/dashboard"] body>main,
+/* Prevent stale template flashes before runtime hydration replaces placeholder data.
+   NOTE: GeminiStaticPage wraps template body in a <div>, so aside/main are NOT
+   direct children of <body>. Use descendant combinators, not child combinators. */
+html[data-runtime-ready="0"][data-path^="/dashboard"] aside,
+html[data-runtime-ready="0"][data-path^="/dashboard"] main,
 html[data-runtime-ready="0"][data-path^="/u/"] main {
   opacity: 0;
 }
 
-html[data-runtime-ready="1"][data-path^="/dashboard"] body>aside,
-html[data-runtime-ready="1"][data-path^="/dashboard"] body>main,
+html[data-runtime-ready="1"][data-path^="/dashboard"] aside,
+html[data-runtime-ready="1"][data-path^="/dashboard"] main,
 html[data-runtime-ready="1"][data-path^="/u/"] main {
   opacity: 1;
   transition: opacity 120ms ease-out;
@@ -691,31 +693,43 @@ a {
 /* Landing lockup visibility */
 html[data-path="/"] .container.nav > a img[src="/assets/branding/brand_wordmark_logo.png"],
 body[data-path="/"] .container.nav > a img[src="/assets/branding/brand_wordmark_logo.png"] {
-  height: 3rem !important;
-  width: auto !important;
-  max-width: 280px !important;
+  display: none !important;
 }
 
 html[data-path="/"] .container.nav > a img[src="/assets/branding/brand_logo_icon.png"],
 body[data-path="/"] .container.nav > a img[src="/assets/branding/brand_logo_icon.png"] {
-  width: 2.75rem !important;
-  height: 2.75rem !important;
+  width: 3rem !important;
+  height: 3rem !important;
+}
+
+html[data-path="/"] .container.nav > a img[src="/assets/branding/brand_brain_icon.svg"],
+body[data-path="/"] .container.nav > a img[src="/assets/branding/brand_brain_icon.svg"] {
+  width: 3rem !important;
+  height: 3rem !important;
+}
+
+html[data-path="/"] .container.nav > a span,
+body[data-path="/"] .container.nav > a span {
+  color: var(--text-main) !important;
+  font-size: 1.85rem !important;
+  line-height: 1 !important;
 }
 
 /* Mobile layout hardening */
 @media (max-width: 1024px) {
-  html[data-path^="/dashboard"] body,
-  body[data-path^="/dashboard"] {
+  html[data-path^="/dashboard"] body > div:first-child,
+  body[data-path^="/dashboard"] > div:first-child {
     display: block !important;
-    height: auto !important;
+    width: 100% !important;
     min-height: 100vh !important;
-    overflow-y: auto !important;
+    overflow-x: hidden !important;
   }
 
-  html[data-path^="/dashboard"] body>aside,
-  body[data-path^="/dashboard"]>aside {
+  html[data-path^="/dashboard"] body > div:first-child > aside,
+  body[data-path^="/dashboard"] > div:first-child > aside {
     width: 100% !important;
     height: auto !important;
+    max-width: 100% !important;
     border-right: 0 !important;
     border-left: 0 !important;
     border-bottom: 1px solid rgba(148, 163, 184, 0.28) !important;
@@ -724,52 +738,53 @@ body[data-path="/"] .container.nav > a img[src="/assets/branding/brand_logo_icon
     z-index: 30 !important;
   }
 
-  html[data-path^="/dashboard"] body>aside .p-6,
-  body[data-path^="/dashboard"]>aside .p-6 {
+  html[data-path^="/dashboard"] body > div:first-child > aside .p-6,
+  body[data-path^="/dashboard"] > div:first-child > aside .p-6 {
     padding: 1rem !important;
   }
 
-  html[data-path^="/dashboard"] body>aside nav.space-y-1,
-  body[data-path^="/dashboard"]>aside nav.space-y-1 {
+  html[data-path^="/dashboard"] body > div:first-child > aside nav.space-y-1,
+  body[data-path^="/dashboard"] > div:first-child > aside nav.space-y-1 {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 0.5rem !important;
   }
 
-  html[data-path^="/dashboard"] body>aside nav.space-y-1>a,
-  body[data-path^="/dashboard"]>aside nav.space-y-1>a {
+  html[data-path^="/dashboard"] body > div:first-child > aside nav.space-y-1>a,
+  body[data-path^="/dashboard"] > div:first-child > aside nav.space-y-1>a {
     padding: 0.65rem 0.75rem !important;
     font-size: 0.85rem !important;
   }
 
-  html[data-path^="/dashboard"] body>aside .mt-auto,
-  body[data-path^="/dashboard"]>aside .mt-auto {
+  html[data-path^="/dashboard"] body > div:first-child > aside .mt-auto,
+  body[data-path^="/dashboard"] > div:first-child > aside .mt-auto {
     display: none !important;
   }
 
-  html[data-path^="/dashboard"] body>main,
-  body[data-path^="/dashboard"]>main {
+  html[data-path^="/dashboard"] body > div:first-child > main,
+  body[data-path^="/dashboard"] > div:first-child > main {
     width: 100% !important;
-    min-height: calc(100vh - 240px) !important;
+    max-width: 100% !important;
+    min-height: auto !important;
   }
 
-  html[data-path^="/dashboard"] body>main>header,
-  body[data-path^="/dashboard"]>main>header {
+  html[data-path^="/dashboard"] body > div:first-child > main > header,
+  body[data-path^="/dashboard"] > div:first-child > main > header {
     height: auto !important;
     min-height: 72px !important;
     padding: 1rem !important;
   }
 
-  html[data-path^="/dashboard"] body>main .p-10,
-  body[data-path^="/dashboard"]>main .p-10 {
+  html[data-path^="/dashboard"] body > div:first-child > main .p-10,
+  body[data-path^="/dashboard"] > div:first-child > main .p-10 {
     padding: 1rem !important;
     max-width: 100% !important;
   }
 
-  html[data-path^="/dashboard"] body>main .grid.lg\:grid-cols-3,
-  body[data-path^="/dashboard"]>main .grid.lg\:grid-cols-3,
-  html[data-path^="/dashboard"] body>main .grid.md\:grid-cols-2,
-  body[data-path^="/dashboard"]>main .grid.md\:grid-cols-2 {
+  html[data-path^="/dashboard"] body > div:first-child > main .grid.lg\:grid-cols-3,
+  body[data-path^="/dashboard"] > div:first-child > main .grid.lg\:grid-cols-3,
+  html[data-path^="/dashboard"] body > div:first-child > main .grid.md\:grid-cols-2,
+  body[data-path^="/dashboard"] > div:first-child > main .grid.md\:grid-cols-2 {
     grid-template-columns: 1fr !important;
   }
 
@@ -795,13 +810,13 @@ body[data-path="/"] .container.nav > a img[src="/assets/branding/brand_logo_icon
 }
 
 @media (max-width: 768px) {
-  html[data-path^="/dashboard"] body>aside nav.space-y-1,
-  body[data-path^="/dashboard"]>aside nav.space-y-1 {
+  html[data-path^="/dashboard"] body > div:first-child > aside nav.space-y-1,
+  body[data-path^="/dashboard"] > div:first-child > aside nav.space-y-1 {
     grid-template-columns: 1fr !important;
   }
 
-  html[data-path^="/dashboard"] body>main .p-4.md\:p-6,
-  body[data-path^="/dashboard"]>main .p-4.md\:p-6 {
+  html[data-path^="/dashboard"] body > div:first-child > main .p-4.md\:p-6,
+  body[data-path^="/dashboard"] > div:first-child > main .p-4.md\:p-6 {
     padding: 0.75rem !important;
   }
 
@@ -833,4 +848,22 @@ body[data-path="/"] .container.nav > a img[src="/assets/branding/brand_logo_icon
   body[data-path="/"] .container.nav > div.flex.gap-4 {
     gap: 0.5rem !important;
   }
+}
+
+/* Onboarding readability in light mode */
+:root[data-theme="light"] body[data-path="/onboarding"] h1,
+:root[data-theme="light"] body[data-path="/onboarding"] h2 {
+  color: #0f172a !important;
+}
+
+:root[data-theme="light"] body[data-path="/onboarding"] .text-gradient {
+  background-image: linear-gradient(135deg, #10b981 0%, #06b6d4 100%) !important;
+}
+
+:root[data-theme="light"] body[data-path="/onboarding"] .text-gray-400 {
+  color: #475569 !important;
+}
+
+:root[data-theme="light"] body[data-path="/onboarding"] .text-gray-500 {
+  color: #64748b !important;
 }

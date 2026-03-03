@@ -42,10 +42,5 @@ export const metadata: Metadata = {
 };
 
 export default function AssessmentPage() {
-  return (
-    <GeminiStaticPage
-      template="assessment/index.html"
-      className="relative min-h-screen bg-[#0f111a] text-white flex items-center justify-center py-12 px-6 overflow-hidden"
-    />
-  );
+  return <GeminiStaticPage template="assessment/index.html" />;
 }

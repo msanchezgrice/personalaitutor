@@ -89,11 +89,19 @@ function replaceWithWhitespaceTolerance(input: string, source: string, target: s
 }
 
 function applyReplacements(input: string, replacements?: Record<string, string>) {
+  const brandLockup =
+    '<span class="inline-flex items-center gap-2">' +
+    '<img src="/assets/branding/brand_brain_icon.svg" alt="My AI Skill Tutor" class="h-11 w-11 object-contain" />' +
+    '<span class="font-[Outfit] font-bold text-[1.9rem] leading-none tracking-tight text-[var(--text-main)]">My AI Skill Tutor</span>' +
+    "</span>";
+
   const merged: Record<string, string> = {
     "CareerGuard Networks": BRAND_NAME,
     "CareerGuard Network": `${BRAND_NAME} Network`,
     "CareerGuard Plan": `${BRAND_NAME} Plan`,
     "CareerGuard Recruiter": `${BRAND_NAME} Recruiter`,
+    '<img src="/assets/branding/brand_wordmark_logo.png" alt="My AI Skill Tutor" class="h-8 w-auto object-contain" />':
+      brandLockup,
     ">AI Tutor</span>": `>${BRAND_NAME}</span>`,
     "AI Tutor Session": `${BRAND_NAME} Session`,
     "AI Tutor Platform": BRAND_NAME,
@@ -130,6 +138,8 @@ function applyReplacements(input: string, replacements?: Record<string, string>)
     /<div class="mt-8 text-center border-t border-white\/10 pt-6">[\s\S]*?Go directly to\s*Dashboard[\s\S]*?<\/div>/gi,
     "",
   );
+  output = output.replace(/<img[^>]+src="\/assets\/branding\/brand_wordmark_logo\.png"[^>]*>/gi, brandLockup);
+  output = output.replace(/\/assets\/branding\/brand_logo_icon\.png/g, "/assets/branding/brand_brain_icon.svg");
   output = output
     .replace(/\\n/g, "")
     .replace(/\\1/g, "")

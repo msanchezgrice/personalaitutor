@@ -21,9 +21,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(appBaseUrl),
   applicationName: BRAND_NAME,
   icons: {
-    icon: "/assets/branding/brand_logo_icon.png",
-    shortcut: "/assets/branding/brand_logo_icon.png",
-    apple: "/assets/branding/brand_logo_icon.png",
+    icon: "/assets/branding/brand_brain_icon.svg",
+    shortcut: "/assets/branding/brand_brain_icon.svg",
+    apple: "/assets/branding/brand_brain_icon.svg",
   },
   title: {
     default: `${BRAND_NAME} | Build AI Skills and Public Proof`,
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     type: "website",
     url: "/",
     images: [{
-      url: DEFAULT_OG_IMAGE_PATH,
+      url: defaultOgImageUrl,
       width: DEFAULT_OG_IMAGE_WIDTH,
       height: DEFAULT_OG_IMAGE_HEIGHT,
       alt: DEFAULT_OG_IMAGE_ALT,
@@ -54,13 +54,16 @@ export const metadata: Metadata = {
     creator: BRAND_X_HANDLE,
     title: `${BRAND_NAME} | Build AI Skills and Public Proof`,
     description: "Learn AI and publish proof-based profiles.",
-    images: [DEFAULT_OG_IMAGE_PATH],
+    images: [defaultOgImageUrl],
   },
   other: {
+    "og:url": appBaseUrl,
+    "og:image": defaultOgImageUrl,
     "og:image:secure_url": defaultOgImageUrl,
     "og:image:width": String(DEFAULT_OG_IMAGE_WIDTH),
     "og:image:height": String(DEFAULT_OG_IMAGE_HEIGHT),
     "og:image:alt": DEFAULT_OG_IMAGE_ALT,
+    "twitter:image": defaultOgImageUrl,
     ...(facebookAppId ? { "fb:app_id": facebookAppId } : {}),
   },
   keywords: [
@@ -80,7 +83,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
         <script id="theme-boot" dangerouslySetInnerHTML={{ __html: themeBootScript }} />
-        <link rel="icon" href="/assets/branding/brand_logo_icon.png" />
+        <link rel="icon" href="/assets/branding/brand_brain_icon.svg" />
         <link rel="stylesheet" href="/styles.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       </head>

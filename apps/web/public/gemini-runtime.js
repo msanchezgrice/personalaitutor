@@ -89,7 +89,12 @@
         },
       );
     }
+    renameSocialNavLabels();
   }
+
+  // Patch sidebar from cached ctx immediately (before any async API calls)
+  // so users don't see placeholder "Alex Chen" flash on tab switch.
+  applyCtxImmediately();
 
   function byText(selector, text) {
     return Array.prototype.find.call(document.querySelectorAll(selector), function (el) {
@@ -105,6 +110,17 @@
   function setHref(node, value) {
     if (!node || !value) return;
     node.setAttribute("href", value);
+  }
+
+  function renameSocialNavLabels() {
+    Array.prototype.forEach.call(
+      document.querySelectorAll("a[href='/dashboard/social/'], a[href='/dashboard/social']"),
+      function (node) {
+        if (typeof node.innerHTML === "string" && node.innerHTML.indexOf("Social Hooks") !== -1) {
+          node.innerHTML = node.innerHTML.replace(/Social Hooks/g, "Social Media");
+        }
+      },
+    );
   }
 
   function normalizeUrl(value) {
@@ -168,7 +184,6 @@
   }
 
   var authRequiredPaths = [
-    "/onboarding",
     "/dashboard",
     "/dashboard/chat",
     "/dashboard/projects",
@@ -434,6 +449,103 @@
           if (!node.getAttribute("alt")) node.setAttribute("alt", user.name);
         },
       );
+    }
+
+    if (isDashboardPath) {
+      renameSocialNavLabels();
+      ensureDashboardSettingsMenu();
+      ensureSidebarSettingsMenu();
+    }
+  }
+
+  function ensureDashboardSettingsMenu() {
+    if (!isDashboardPath) return;
+    if (document.getElementById("dashboard-settings-menu")) return;
+
+    var header = document.querySelector("main header");
+    if (!header) return;
+
+    var rightControls = header.querySelector(".flex.items-center.gap-4") || header.querySelector(".flex.items-center.gap-2");
+    if (!rightControls) {
+      rightControls = document.createElement("div");
+      rightControls.className = "flex items-center gap-2";
+      header.appendChild(rightControls);
+    }
+
+    var menu = document.createElement("div");
+    menu.id = "dashboard-settings-menu";
+    menu.className = "relative";
+    menu.innerHTML =
+      '<button type="button" class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-gray-300" data-settings-toggle="1">' +
+      '<i class="fa-solid fa-gear"></i><span class="hidden md:inline">Settings</span></button>' +
+      '<div class="hidden absolute right-0 top-full mt-2 min-w-[170px] rounded-xl border border-white/10 bg-[#0f111a]/95 backdrop-blur-xl shadow-2xl p-1 z-40" data-settings-panel="1">' +
+      '<a href="/dashboard/profile/" class="block px-3 py-2 text-sm text-gray-200 rounded-lg hover:bg-white/10"><i class="fa-regular fa-user mr-2"></i>Profile Settings</a>' +
+      '<button type="button" class="w-full text-left px-3 py-2 text-sm text-red-300 rounded-lg hover:bg-red-500/20" data-sign-out="1"><i class="fa-solid fa-right-from-bracket mr-2"></i>Sign Out</button>' +
+      "</div>";
+
+    rightControls.appendChild(menu);
+    var toggle = menu.querySelector("[data-settings-toggle='1']");
+    var panel = menu.querySelector("[data-settings-panel='1']");
+    var signOut = menu.querySelector("[data-sign-out='1']");
+
+    if (toggle && panel) {
+      toggle.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        panel.classList.toggle("hidden");
+      });
+
+      document.addEventListener("click", function (event) {
+        if (!menu.contains(event.target)) {
+          panel.classList.add("hidden");
+        }
+      });
+    }
+
+    if (signOut) {
+      signOut.addEventListener("click", async function () {
+        try {
+          if (window.Clerk && typeof window.Clerk.signOut === "function") {
+            await window.Clerk.signOut({ redirectUrl: "/" });
+            return;
+          }
+        } catch {
+          // Fallback redirect below.
+        }
+        window.location.href = "/";
+      });
+    }
+  }
+
+  function ensureSidebarSettingsMenu() {
+    if (!isDashboardPath) return;
+    if (document.getElementById("dashboard-sidebar-settings")) return;
+    var aside = document.querySelector("aside");
+    if (!aside) return;
+    var nav = aside.querySelector("nav.space-y-1");
+    if (!nav) return;
+
+    var row = document.createElement("div");
+    row.id = "dashboard-sidebar-settings";
+    row.className = "mt-3 pt-3 border-t border-white/10";
+    row.innerHTML =
+      '<button type="button" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-gray-300" data-sidebar-sign-out="1">' +
+      '<i class="fa-solid fa-right-from-bracket"></i><span>Sign Out</span></button>';
+    nav.appendChild(row);
+
+    var signOut = row.querySelector("[data-sidebar-sign-out='1']");
+    if (signOut) {
+      signOut.addEventListener("click", async function () {
+        try {
+          if (window.Clerk && typeof window.Clerk.signOut === "function") {
+            await window.Clerk.signOut({ redirectUrl: "/" });
+            return;
+          }
+        } catch {
+          // fallback below
+        }
+        window.location.href = "/";
+      });
     }
   }
 
@@ -758,121 +870,239 @@
     updateSharedUserUi(summary);
     var primaryProject = await ensurePrimaryProject(summary);
 
-    var linkedInPostButton = byText("button", "Post to LinkedIn");
-    var convertThreadButton = byText("button", "Convert to Thread");
-    var regenerateButton = byText("button", "Regenerate Tone");
-    var draftBody = document.querySelector("p.whitespace-pre-wrap");
-    var authorName = Array.prototype.find.call(document.querySelectorAll(".font-bold.text-sm.text-gray-100"), function () {
-      return true;
-    });
-    var authorRole = Array.prototype.find.call(document.querySelectorAll(".text-\\[10px\\].text-gray-400"), function (el) {
-      return (el.textContent || "").indexOf("Product Manager") !== -1 || (el.textContent || "").indexOf("AI Builder") !== -1;
-    });
+    renameSocialNavLabels();
 
-    if (authorName) setText(authorName, summary.user.name);
-    if (authorRole) setText(authorRole, summary.user.headline || "AI Builder");
+    var socialHeading = document.querySelector("header h1");
+    if (socialHeading) {
+      socialHeading.innerHTML = '<i class="fa-solid fa-share-nodes text-[#0077b5]"></i> Social Media';
+    }
+    var socialSubheading = document.querySelector("header p.text-xs.text-gray-400");
+    if (socialSubheading) {
+      socialSubheading.textContent = "AI-generated LinkedIn + Tweet ideas based on your current learner memory.";
+    }
+    if (typeof document.title === "string" && document.title.indexOf("Social Hooks") !== -1) {
+      document.title = document.title.replace(/Social Hooks/g, "Social Media");
+    }
 
-    var draftState = { linkedin: null, x: null };
+    var contentWrap = document.querySelector("main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-8");
+    if (!contentWrap) return;
 
-    async function generateDrafts() {
-      var result = await postJson("/api/social/drafts/generate", {
-        userId: ctx.userId,
-        projectId: primaryProject ? primaryProject.id : null,
-      });
-      var drafts = result.drafts || [];
-      draftState.linkedin = drafts.find(function (entry) {
-        return entry.platform === "linkedin";
-      }) || null;
-      draftState.x = drafts.find(function (entry) {
-        return entry.platform === "x";
-      }) || null;
+    contentWrap.innerHTML =
+      '<section class="glass p-6 md:p-8 rounded-2xl border border-white/10 bg-white/5">' +
+      '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">' +
+      '<div><h2 class="text-lg font-[Outfit] font-semibold text-white">Social Media Drafts</h2>' +
+      '<p class="text-xs text-gray-400">Edit and share native drafts for LinkedIn and X/Twitter.</p>' +
+      '<p class="text-[11px] text-gray-500 mt-1">Voice: <span data-social-author="1"></span></p></div>' +
+      '<button type="button" data-social-refresh="1" class="btn btn-secondary text-sm whitespace-nowrap"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh Ideas</button>' +
+      "</div>" +
+      '<div class="grid gap-4 md:grid-cols-2">' +
+      '<article class="rounded-xl border border-[#0a66c2]/35 bg-[#0a66c2]/10 p-4">' +
+      '<div class="flex items-center justify-between mb-3"><span class="text-[11px] uppercase tracking-wider text-[#53a9ff] font-semibold">LinkedIn</span><span class="text-[10px] text-gray-300">Native share</span></div>' +
+      '<textarea data-social-input="linkedin" class="w-full min-h-[180px] rounded-lg border border-white/10 bg-[#0f172a]/70 p-3 text-[13px] text-gray-100 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-[#0a66c2]/50" readonly></textarea>' +
+      '<div class="flex items-center gap-2 mt-3">' +
+      '<button type="button" data-social-edit="linkedin" class="btn btn-secondary text-xs"><i class="fa-solid fa-pen mr-2"></i>Edit</button>' +
+      '<button type="button" data-social-share="linkedin" class="btn bg-[#0a66c2] text-white hover:bg-[#095592] text-xs"><i class="fa-brands fa-linkedin-in mr-2"></i>Share</button>' +
+      "</div></article>" +
+      '<article class="rounded-xl border border-white/15 bg-black/30 p-4">' +
+      '<div class="flex items-center justify-between mb-3"><span class="text-[11px] uppercase tracking-wider text-white font-semibold">Tweet</span><span class="text-[10px] text-gray-300">Native composer</span></div>' +
+      '<textarea data-social-input="x" class="w-full min-h-[180px] rounded-lg border border-white/10 bg-[#0f172a]/70 p-3 text-[13px] text-gray-100 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-white/30" readonly></textarea>' +
+      '<div class="flex items-center gap-2 mt-3">' +
+      '<button type="button" data-social-edit="x" class="btn btn-secondary text-xs"><i class="fa-solid fa-pen mr-2"></i>Edit</button>' +
+      '<button type="button" data-social-share="x" class="btn bg-white text-[#111827] hover:bg-gray-200 text-xs"><i class="fa-brands fa-x-twitter mr-2"></i>Tweet</button>' +
+      "</div></article>" +
+      "</div>" +
+      '<div class="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-gray-500">' +
+      '<span data-social-context="1">Context: loading...</span>' +
+      '<span>•</span>' +
+      '<span data-social-source="1">Generating...</span>' +
+      "</div>" +
+      "</section>";
 
-      if (draftBody && draftState.linkedin) {
-        draftBody.textContent = draftState.linkedin.text;
+    var linkedInInput = contentWrap.querySelector("textarea[data-social-input='linkedin']");
+    var xInput = contentWrap.querySelector("textarea[data-social-input='x']");
+    var linkedInEditButton = contentWrap.querySelector("button[data-social-edit='linkedin']");
+    var xEditButton = contentWrap.querySelector("button[data-social-edit='x']");
+    var linkedInShareButton = contentWrap.querySelector("button[data-social-share='linkedin']");
+    var xShareButton = contentWrap.querySelector("button[data-social-share='x']");
+    var refreshButton = contentWrap.querySelector("button[data-social-refresh='1']");
+    var contextNode = contentWrap.querySelector("[data-social-context='1']");
+    var sourceNode = contentWrap.querySelector("[data-social-source='1']");
+    var authorNode = contentWrap.querySelector("[data-social-author='1']");
+
+    if (authorNode) {
+      authorNode.textContent = summary.user.name + " · " + (summary.user.headline || "AI Builder");
+    }
+
+    var draftState = {
+      linkedin: "",
+      x: "",
+      contextLabel: primaryProject ? "Project: " + primaryProject.title : "Profile momentum",
+    };
+
+    function normalizeDraftText(value) {
+      return String(value || "")
+        .replace(/[ \t]+\n/g, "\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+    }
+
+    function shareUrl(platform, text) {
+      if (platform === "linkedin") {
+        return "https://www.linkedin.com/feed/?shareActive=true&text=" + encodeURIComponent(text);
       }
-
-      return draftState;
+      return "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text);
     }
 
+    function readDraft(platform) {
+      var input = platform === "linkedin" ? linkedInInput : xInput;
+      if (!input) return "";
+      return normalizeDraftText(input.value);
+    }
+
+    function updateDraftInputs() {
+      if (linkedInInput) linkedInInput.value = draftState.linkedin || "";
+      if (xInput) xInput.value = draftState.x || "";
+      if (contextNode) contextNode.textContent = "Context: " + (draftState.contextLabel || "Fresh ideas");
+    }
+
+    function setEditMode(platform, editing) {
+      var input = platform === "linkedin" ? linkedInInput : xInput;
+      var button = platform === "linkedin" ? linkedInEditButton : xEditButton;
+      if (!input || !button) return;
+      input.readOnly = !editing;
+      button.setAttribute("data-editing", editing ? "1" : "0");
+      button.innerHTML = editing
+        ? '<i class="fa-solid fa-check mr-2"></i>Save'
+        : '<i class="fa-solid fa-pen mr-2"></i>Edit';
+      if (editing) {
+        input.focus();
+        input.selectionStart = input.value.length;
+      }
+    }
+
+    function lockAllEdits() {
+      setEditMode("linkedin", false);
+      setEditMode("x", false);
+    }
+
+    async function loadIdeas(showToastOnSuccess) {
+      try {
+        var ideasResult = await postJson("/api/social/drafts/ideas", {
+          userId: ctx.userId,
+          projectId: primaryProject ? primaryProject.id : null,
+        });
+        var ideas = ideasResult.ideas || {};
+        draftState.linkedin = normalizeDraftText(ideas.linkedin || "");
+        draftState.x = normalizeDraftText(ideas.x || "");
+        draftState.contextLabel = normalizeDraftText(ideas.contextLabel || draftState.contextLabel || "Fresh ideas");
+        if (!draftState.linkedin || !draftState.x) {
+          throw new Error("Generated ideas were empty");
+        }
+        updateDraftInputs();
+        if (sourceNode) {
+          sourceNode.textContent = ideasResult.source === "llm" ? "Personalized with user memory" : "Generated from profile context";
+        }
+        if (showToastOnSuccess) {
+          toast(ideasResult.source === "llm" ? "Fresh social ideas ready." : "Fallback social ideas ready.", false);
+        }
+        return;
+      } catch {
+        var fallback = await postJson("/api/social/drafts/generate", {
+          userId: ctx.userId,
+          projectId: primaryProject ? primaryProject.id : null,
+        });
+        var drafts = fallback.drafts || [];
+        var linkedInDraft = drafts.find(function (entry) {
+          return entry.platform === "linkedin";
+        });
+        var xDraft = drafts.find(function (entry) {
+          return entry.platform === "x";
+        });
+        draftState.linkedin = normalizeDraftText(linkedInDraft ? linkedInDraft.text : "");
+        draftState.x = normalizeDraftText(xDraft ? xDraft.text : "");
+        draftState.contextLabel = primaryProject ? "Project: " + primaryProject.title : "Profile momentum";
+        updateDraftInputs();
+        if (sourceNode) {
+          sourceNode.textContent = "Generated from template drafts";
+        }
+        if (showToastOnSuccess) {
+          toast("Drafts refreshed.", false);
+        }
+      }
+    }
+
+    if (linkedInEditButton) {
+      linkedInEditButton.addEventListener("click", function () {
+        var editing = linkedInEditButton.getAttribute("data-editing") === "1";
+        if (editing) {
+          draftState.linkedin = readDraft("linkedin");
+          setEditMode("linkedin", false);
+          toast("LinkedIn draft updated.", false);
+          return;
+        }
+        setEditMode("linkedin", true);
+      });
+    }
+
+    if (xEditButton) {
+      xEditButton.addEventListener("click", function () {
+        var editing = xEditButton.getAttribute("data-editing") === "1";
+        if (editing) {
+          draftState.x = readDraft("x");
+          setEditMode("x", false);
+          toast("Tweet draft updated.", false);
+          return;
+        }
+        setEditMode("x", true);
+      });
+    }
+
+    if (linkedInShareButton) {
+      linkedInShareButton.addEventListener("click", function () {
+        draftState.linkedin = readDraft("linkedin");
+        if (!draftState.linkedin) {
+          toast("LinkedIn draft is empty.", true);
+          return;
+        }
+        window.open(shareUrl("linkedin", draftState.linkedin), "_blank", "noopener,noreferrer");
+        toast("Opening LinkedIn share.", false);
+      });
+    }
+
+    if (xShareButton) {
+      xShareButton.addEventListener("click", function () {
+        draftState.x = readDraft("x");
+        if (!draftState.x) {
+          toast("Tweet draft is empty.", true);
+          return;
+        }
+        window.open(shareUrl("x", draftState.x), "_blank", "noopener,noreferrer");
+        toast("Opening native Tweet composer.", false);
+      });
+    }
+
+    if (refreshButton) {
+      refreshButton.addEventListener("click", async function () {
+        var original = refreshButton.innerHTML;
+        refreshButton.disabled = true;
+        refreshButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Refreshing';
+        try {
+          lockAllEdits();
+          await loadIdeas(true);
+        } catch (err) {
+          toast(err instanceof Error ? err.message : "Unable to refresh social ideas", true);
+        } finally {
+          refreshButton.disabled = false;
+          refreshButton.innerHTML = original;
+        }
+      });
+    }
+
+    lockAllEdits();
     try {
-      await generateDrafts();
+      await loadIdeas(false);
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Failed to generate drafts", true);
-    }
-
-    if (regenerateButton) {
-      regenerateButton.addEventListener("click", async function () {
-        try {
-          await generateDrafts();
-          toast("Draft regenerated.", false);
-        } catch (err) {
-          toast(err instanceof Error ? err.message : "Draft generation failed", true);
-        }
-      });
-    }
-
-    if (linkedInPostButton) {
-      linkedInPostButton.addEventListener("click", async function () {
-        try {
-          if (!draftState.linkedin) await generateDrafts();
-          if (!draftState.linkedin) throw new Error("LinkedIn draft unavailable");
-
-          try {
-            var apiPublish = await postJson("/api/social/drafts/" + draftState.linkedin.id + "/publish?mode=api", {});
-            if (apiPublish.publishedUrl) {
-              window.open(apiPublish.publishedUrl, "_blank", "noopener,noreferrer");
-              toast("Published via LinkedIn OAuth.", false);
-              return;
-            }
-          } catch (err) {
-            var code = err && err.details ? err.details.failureCode : null;
-            if (code === "OAUTH_NOT_CONNECTED") {
-              window.location.href = pathWithUserId("/api/auth/linkedin/start?redirect=1");
-              return;
-            }
-          }
-
-          var composer = await postJson("/api/social/drafts/" + draftState.linkedin.id + "/publish?mode=composer", {});
-          if (composer.composerUrl) {
-            window.open(composer.composerUrl, "_blank", "noopener,noreferrer");
-          }
-          toast("Opening LinkedIn composer.", false);
-        } catch (err) {
-          toast(err instanceof Error ? err.message : "LinkedIn publish failed", true);
-        }
-      });
-    }
-
-    if (convertThreadButton) {
-      convertThreadButton.addEventListener("click", async function () {
-        try {
-          if (!draftState.x) await generateDrafts();
-          if (!draftState.x) throw new Error("X draft unavailable");
-
-          try {
-            var apiPublish = await postJson("/api/social/drafts/" + draftState.x.id + "/publish?mode=api", {});
-            if (apiPublish.publishedUrl) {
-              window.open(apiPublish.publishedUrl, "_blank", "noopener,noreferrer");
-              toast("Published via X OAuth.", false);
-              return;
-            }
-          } catch (err) {
-            var code = err && err.details ? err.details.failureCode : null;
-            if (code === "OAUTH_NOT_CONNECTED") {
-              window.location.href = pathWithUserId("/api/auth/x/start?redirect=1");
-              return;
-            }
-          }
-
-          var composer = await postJson("/api/social/drafts/" + draftState.x.id + "/publish?mode=composer", {});
-          if (composer.composerUrl) {
-            window.open(composer.composerUrl, "_blank", "noopener,noreferrer");
-          }
-          toast("Opening X composer.", false);
-        } catch (err) {
-          toast(err instanceof Error ? err.message : "X publish failed", true);
-        }
-      });
+      toast(err instanceof Error ? err.message : "Failed to generate social ideas", true);
     }
 
     var params = new URLSearchParams(window.location.search);
@@ -1128,13 +1358,18 @@
     if (!grid) return;
 
     var selectedSkill = null;
-    var selectedStatus = "verified";
+    var selectedStatus = "";
 
     var skillSection = Array.prototype.find.call(document.querySelectorAll("aside .mb-6"), function (node) {
       return (node.textContent || "").indexOf("Filter by Skill") !== -1;
     });
 
     async function loadRows() {
+      if (!grid.dataset.initialized) {
+        grid.dataset.initialized = "1";
+        grid.innerHTML =
+          '<div class="glass p-6 rounded-2xl border border-white/10 text-gray-400">Loading talent profiles...</div>';
+      }
       var params = new URLSearchParams();
       if (selectedSkill) params.set("skill", selectedSkill);
       if (selectedStatus) params.set("status", selectedStatus);
@@ -1143,6 +1378,14 @@
       var data = await getJson("/api/employers/talent" + (params.toString() ? "?" + params.toString() : ""));
       var rows = data.rows || [];
       var facets = data.facets || {};
+      var isDefaultView = !selectedSkill && !selectedStatus && !(search && search.value.trim());
+      if (isDefaultView) {
+        rows = rows
+          .filter(function (candidate) {
+            return /^candidate-\d{3}$/i.test(candidate.handle || "");
+          })
+          .slice(0, 20);
+      }
 
       if (header) {
         header.textContent = rows.length + " Candidates Match Criteria";
@@ -1164,8 +1407,7 @@
               '<span class="group-hover:underline"></span>';
             setText(label.querySelector("span"), skill);
             var checkbox = label.querySelector("input");
-            checkbox.checked = index === 0;
-            if (index === 0) selectedSkill = skill;
+            checkbox.checked = false;
             checkbox.addEventListener("change", function () {
               selectedSkill = checkbox.checked ? skill : null;
               Array.prototype.forEach.call(list.querySelectorAll("input[type='checkbox']"), function (node) {
@@ -1196,6 +1438,18 @@
     }
 
     var radios = document.querySelectorAll("input[type='radio'][name='level']");
+    var allCandidatesRadio = Array.prototype.find.call(radios, function (radio) {
+      var label = radio.closest("label");
+      var text = label ? (label.textContent || "").toLowerCase() : "";
+      return text.indexOf("all") !== -1;
+    });
+    if (allCandidatesRadio) {
+      allCandidatesRadio.checked = true;
+      selectedStatus = "";
+    } else if (radios.length > 1) {
+      radios[1].checked = true;
+      selectedStatus = "";
+    }
     Array.prototype.forEach.call(radios, function (radio, index) {
       radio.addEventListener("change", function () {
         if (!radio.checked) return;
@@ -1229,13 +1483,35 @@
   }
 
   if (currentPath === "/onboarding") {
-    var socialContainer = Array.prototype.find.call(document.querySelectorAll(".space-y-4"), function (node) {
-      var text = (node.textContent || "").toLowerCase();
-      return text.indexOf("continue with linkedin") !== -1 && text.indexOf("continue with google") !== -1;
-    });
     var selectedResumeFilename = null;
     var uploadLabel = byText("p", "Upload Resume (PDF)");
     var uploadCard = uploadLabel ? uploadLabel.closest("div.border-2") : null;
+    var careerPathSelect = document.getElementById("onboarding-career-path");
+    var linkedinInput = document.getElementById("onboarding-linkedin-url");
+    var situationSelect = document.getElementById("onboarding-situation");
+    var beginButton = document.getElementById("onboarding-start-assessment");
+    var scoreButtons = document.querySelectorAll("button.onboarding-score");
+    var chosenScore = Number((ctx && ctx.aiKnowledgeScore) || 3);
+
+    function applySelectedScore() {
+      Array.prototype.forEach.call(scoreButtons, function (button) {
+        var score = Number(button.getAttribute("data-ai-score") || "3");
+        if (score === chosenScore) {
+          button.classList.add("bg-emerald-500", "border-emerald-500/50", "text-white");
+        } else {
+          button.classList.remove("bg-emerald-500", "border-emerald-500/50", "text-white");
+        }
+      });
+    }
+
+    Array.prototype.forEach.call(scoreButtons, function (button) {
+      button.addEventListener("click", function () {
+        chosenScore = Number(button.getAttribute("data-ai-score") || "3");
+        applySelectedScore();
+      });
+    });
+    applySelectedScore();
+
     if (uploadCard) {
       var uploader = document.createElement("input");
       uploader.type = "file";
@@ -1252,203 +1528,83 @@
         if (!file) return;
         selectedResumeFilename = file.name;
         var subtitle = uploadCard.querySelector("p.text-xs");
-        if (subtitle) {
-          subtitle.textContent = "Selected: " + file.name;
+        if (subtitle) subtitle.textContent = "Selected: " + file.name;
+      });
+    }
+
+    ensureSession()
+      .then(function (bootstrap) {
+        var options = (bootstrap && bootstrap.onboardingOptions) || [];
+        if (!careerPathSelect) return;
+        careerPathSelect.innerHTML = "";
+        if (!options.length) {
+          options = [{ id: ctx.careerPathId || "product-management", name: "Product Management" }];
         }
+        options.forEach(function (option) {
+          var item = document.createElement("option");
+          item.value = option.id;
+          item.textContent = option.name;
+          if (option.id === (ctx.careerPathId || "product-management")) item.selected = true;
+          careerPathSelect.appendChild(item);
+        });
+
+        if (linkedinInput && ctx.linkedinUrl) {
+          linkedinInput.value = ctx.linkedinUrl;
+        }
+      })
+      .catch(function (err) {
+        toast(err instanceof Error ? err.message : "Unable to initialize onboarding", true);
+      });
+
+    if (beginButton) {
+      beginButton.addEventListener("click", async function () {
+        if (beginButton.dataset.busy === "1") return;
+        beginButton.dataset.busy = "1";
+        beginButton.setAttribute("disabled", "true");
         try {
+          var goals = Array.prototype.map.call(
+            document.querySelectorAll('input[name="onboarding-goal"]:checked'),
+            function (node) {
+              return node.value;
+            },
+          );
+          if (!goals.length) {
+            toast("Select at least one goal.", true);
+            return;
+          }
+
+          var selectedCareerPath = careerPathSelect && careerPathSelect.value ? careerPathSelect.value : "product-management";
+          var selectedSituation = situationSelect && situationSelect.value ? situationSelect.value : "employed";
+          var selectedLinkedIn = linkedinInput && linkedinInput.value ? linkedinInput.value.trim() : "";
+          ctx.careerPathId = selectedCareerPath;
+          ctx.aiKnowledgeScore = chosenScore;
+          ctx.onboardingGoals = goals;
+          if (selectedLinkedIn) ctx.linkedinUrl = selectedLinkedIn;
+          saveCtx(ctx);
+
           var session = await ensureSession();
           await postJson("/api/onboarding/career-import", {
             sessionId: session.id,
-            careerPathId: ctx.careerPathId || "product-management",
-            resumeFilename: file.name,
+            careerPathId: selectedCareerPath,
+            linkedinUrl: selectedLinkedIn || null,
+            resumeFilename: selectedResumeFilename,
           });
-          toast("Resume imported and onboarding context created.", false);
+
+          await postJson("/api/onboarding/situation", {
+            sessionId: session.id,
+            situation: selectedSituation,
+            goals: goals,
+          });
+
+          toast("Onboarding saved. Continue to assessment.", false);
+          window.location.href = "/assessment/?sessionId=" + encodeURIComponent(session.id);
         } catch (err) {
-          if (isUnauthenticatedError(err)) {
-            redirectToSignIn("/onboarding/");
-            return;
-          }
-          toast(err instanceof Error ? err.message : "Resume import failed", true);
+          toast(err instanceof Error ? err.message : "Failed to complete onboarding", true);
+        } finally {
+          beginButton.dataset.busy = "0";
+          beginButton.removeAttribute("disabled");
         }
       });
-    }
-
-    var shortcut = Array.prototype.find.call(document.querySelectorAll("a"), function (node) {
-      var text = (node.textContent || "").toLowerCase();
-      return text.indexOf("go directly to dashboard") !== -1 || text.indexOf("go to dashboard") !== -1;
-    });
-    if (shortcut) {
-      var shortcutSection = shortcut.closest("div");
-      if (shortcutSection && shortcutSection.parentElement) {
-        shortcutSection.parentElement.removeChild(shortcutSection);
-      } else {
-        shortcut.remove();
-      }
-    }
-    var shortcutHeading = Array.prototype.find.call(document.querySelectorAll("p"), function (node) {
-      return (node.textContent || "").toLowerCase().indexOf("prototype shortcut navigation") !== -1;
-    });
-    if (shortcutHeading) {
-      var shortcutRoot = shortcutHeading.closest("div");
-      if (shortcutRoot && shortcutRoot.parentElement) {
-        shortcutRoot.parentElement.removeChild(shortcutRoot);
-      }
-    }
-
-    if (socialContainer) {
-      var linkedInButton = Array.prototype.find.call(socialContainer.querySelectorAll("button"), function (node) {
-        return (node.textContent || "").toLowerCase().indexOf("continue with linkedin") !== -1;
-      });
-      var googleButton = Array.prototype.find.call(socialContainer.querySelectorAll("button"), function (node) {
-        return (node.textContent || "").toLowerCase().indexOf("continue with google") !== -1;
-      });
-
-      if (linkedInButton) {
-        linkedInButton.addEventListener("click", function () {
-          window.location.href = pathWithUserId("/api/auth/linkedin/start?redirect=1");
-        });
-      }
-      if (googleButton) {
-        googleButton.addEventListener("click", function () {
-          window.location.href = "/api/auth/google/start?redirect=1&target=%2Fdashboard%2F%3Fwelcome%3D1";
-        });
-      }
-
-      socialContainer.innerHTML =
-        '<div class="space-y-3">' +
-        '<label class="block text-xs uppercase tracking-wider text-gray-500 font-semibold">Current Situation</label>' +
-        '<select id="onboarding-situation" class="w-full p-3 rounded-lg border border-white/10 bg-white/5 text-white">' +
-        '<option value="employed">Employed</option>' +
-        '<option value="unemployed">Unemployed</option>' +
-        '<option value="student">Student</option>' +
-        '<option value="founder">Founder</option>' +
-        '<option value="freelancer">Freelancer</option>' +
-        '<option value="career_switcher">Career Switcher</option>' +
-        "</select>" +
-        "</div>" +
-        '<div class="space-y-3">' +
-        '<label class="block text-xs uppercase tracking-wider text-gray-500 font-semibold">Career Path</label>' +
-        '<select id="onboarding-career-path" class="w-full p-3 rounded-lg border border-white/10 bg-white/5 text-white"></select>' +
-        "</div>" +
-        '<div class="space-y-3">' +
-        '<label class="block text-xs uppercase tracking-wider text-gray-500 font-semibold">LinkedIn URL</label>' +
-        '<input id="onboarding-linkedin-url" type="url" placeholder="https://linkedin.com/in/your-name" class="w-full p-3 rounded-lg border border-white/10 bg-white/5 text-white placeholder-gray-500" />' +
-        "</div>" +
-        '<div class="space-y-3">' +
-        '<label class="block text-xs uppercase tracking-wider text-gray-500 font-semibold">Primary Goals</label>' +
-        '<label class="flex items-center gap-2 text-sm text-gray-300"><input type="checkbox" name="onboarding-goal" value="build_business"> Build a business</label>' +
-        '<label class="flex items-center gap-2 text-sm text-gray-300"><input type="checkbox" name="onboarding-goal" value="upskill_current_job" checked> Upskill for current job</label>' +
-        '<label class="flex items-center gap-2 text-sm text-gray-300"><input type="checkbox" name="onboarding-goal" value="showcase_for_job"> Showcase skills for a new role</label>' +
-        '<label class="flex items-center gap-2 text-sm text-gray-300"><input type="checkbox" name="onboarding-goal" value="ship_ai_projects"> Ship AI projects</label>' +
-        '<label class="flex items-center gap-2 text-sm text-gray-300"><input type="checkbox" name="onboarding-goal" value="learn_foundations"> Learn foundations</label>' +
-        "</div>" +
-        '<div class="space-y-3">' +
-        '<label class="block text-xs uppercase tracking-wider text-gray-500 font-semibold">How comfortable are you with AI tools today?</label>' +
-        '<div class="grid grid-cols-3 gap-2">' +
-        '<button type="button" data-ai-score="2" class="onboarding-score btn btn-secondary py-2">Beginner</button>' +
-        '<button type="button" data-ai-score="3" class="onboarding-score btn btn-secondary py-2">Intermediate</button>' +
-        '<button type="button" data-ai-score="5" class="onboarding-score btn btn-secondary py-2">Advanced</button>' +
-        "</div>" +
-        "</div>" +
-        '<button type="button" id="onboarding-start-assessment" class="w-full btn btn-primary mt-3 py-3">Start Assessment <i class="fa-solid fa-arrow-right ml-2 text-xs"></i></button>';
-
-      var chosenScore = 3;
-      var scoreButtons = socialContainer.querySelectorAll("button.onboarding-score");
-      Array.prototype.forEach.call(scoreButtons, function (button) {
-        if ((button.getAttribute("data-ai-score") || "") === "3") {
-          button.classList.add("bg-emerald-500", "border-emerald-500/50");
-        }
-        button.addEventListener("click", function () {
-          chosenScore = Number(button.getAttribute("data-ai-score") || "3");
-          Array.prototype.forEach.call(scoreButtons, function (node) {
-            node.classList.remove("bg-emerald-500", "border-emerald-500/50");
-          });
-          button.classList.add("bg-emerald-500", "border-emerald-500/50");
-        });
-      });
-
-      var beginButton = document.getElementById("onboarding-start-assessment");
-      var careerPathSelect = document.getElementById("onboarding-career-path");
-      var linkedinInput = document.getElementById("onboarding-linkedin-url");
-      var situationSelect = document.getElementById("onboarding-situation");
-
-      ensureSession()
-        .then(function (bootstrap) {
-          var options = (bootstrap && bootstrap.onboardingOptions) || [];
-          if (!careerPathSelect) return;
-          if (!options.length) {
-            options = [{ id: ctx.careerPathId || "product-management", name: "Product Management" }];
-          }
-          options.forEach(function (option) {
-            var item = document.createElement("option");
-            item.value = option.id;
-            item.textContent = option.name;
-            if (option.id === (ctx.careerPathId || "product-management")) {
-              item.selected = true;
-            }
-            careerPathSelect.appendChild(item);
-          });
-        })
-        .catch(function (err) {
-          if (isUnauthenticatedError(err)) {
-            redirectToSignIn("/onboarding/");
-            return;
-          }
-          toast(err instanceof Error ? err.message : "Unable to initialize onboarding", true);
-        });
-
-      if (beginButton) {
-        beginButton.addEventListener("click", async function () {
-          try {
-            var goals = Array.prototype.map.call(
-              document.querySelectorAll('input[name="onboarding-goal"]:checked'),
-              function (node) {
-                return node.value;
-              },
-            );
-            if (!goals.length) {
-              toast("Select at least one goal.", true);
-              return;
-            }
-
-            var selectedCareerPath = careerPathSelect && careerPathSelect.value ? careerPathSelect.value : "product-management";
-            ctx.careerPathId = selectedCareerPath;
-            saveCtx(ctx);
-
-            var session = await ensureSession();
-            await postJson("/api/onboarding/career-import", {
-              sessionId: session.id,
-              careerPathId: selectedCareerPath,
-              linkedinUrl: linkedinInput && linkedinInput.value ? linkedinInput.value.trim() : null,
-              resumeFilename: selectedResumeFilename,
-            });
-
-            await postJson("/api/onboarding/situation", {
-              sessionId: session.id,
-              situation: situationSelect && situationSelect.value ? situationSelect.value : "employed",
-              goals: goals,
-            });
-
-            var start = await postJson("/api/assessment/start", { sessionId: session.id });
-            await postJson("/api/assessment/submit", {
-              assessmentId: start.assessment.id,
-              answers: [
-                { questionId: "ai_comfort", value: chosenScore },
-                { questionId: "goal_intent", value: Math.min(5, 1 + goals.length) },
-              ],
-            });
-
-            toast("Onboarding complete. Welcome to your dashboard.", false);
-            window.location.href = "/dashboard/?welcome=1";
-          } catch (err) {
-            if (isUnauthenticatedError(err)) {
-              redirectToSignIn("/onboarding/");
-              return;
-            }
-            toast(err instanceof Error ? err.message : "Failed to complete onboarding", true);
-          }
-        });
-      }
     }
   }
 

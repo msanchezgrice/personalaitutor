@@ -3,6 +3,7 @@ import { z } from "zod";
 import { NextRequest } from "next/server";
 import { getUserId } from "@/lib/api";
 import { getAuthSeed } from "@/lib/auth";
+import { randomUUID } from "node:crypto";
 
 const bodySchema = z
   .object({
@@ -11,6 +12,7 @@ const bodySchema = z
     avatarUrl: z.string().url().optional().nullable(),
     handleBase: z.string().min(1).max(80).optional(),
     careerPathId: z.string().min(1).optional(),
+    email: z.string().email().optional().nullable(),
   })
   .optional();
 
@@ -22,16 +24,13 @@ export async function POST(req: NextRequest) {
     }
 
     const seed = await getAuthSeed(req);
-    const requestUserId = seed?.userId ?? getUserId(req);
-    if (!requestUserId) {
-      return jsonError("UNAUTHENTICATED", "Sign in required", 401);
-    }
+    const requestUserId = seed?.userId ?? getUserId(req) ?? `visitor_${randomUUID()}`;
     const { user, session } = await runtimeCreateOnboardingSession({
       ...(payload.data ?? {}),
       userId: requestUserId,
       name: payload.data?.name ?? seed?.name,
       avatarUrl: payload.data?.avatarUrl ?? seed?.avatarUrl ?? null,
-      email: seed?.email ?? null,
+      email: seed?.email ?? payload.data?.email ?? null,
       handleBase: payload.data?.handleBase ?? seed?.handleBase,
     });
     const catalog = getCatalogData();

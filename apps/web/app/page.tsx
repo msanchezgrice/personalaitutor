@@ -9,7 +9,11 @@ import {
   DEFAULT_OG_IMAGE_HEIGHT,
   DEFAULT_OG_IMAGE_PATH,
   DEFAULT_OG_IMAGE_WIDTH,
+  getSiteUrl,
 } from "@/lib/site";
+
+const appBaseUrl = getSiteUrl();
+const ogImageUrl = `${appBaseUrl}${DEFAULT_OG_IMAGE_PATH}`;
 
 export const metadata: Metadata = {
   title: `${BRAND_NAME} | Learn Fast and Prove It Publicly`,
@@ -22,9 +26,9 @@ export const metadata: Metadata = {
     title: `${BRAND_NAME} | Learn Fast and Prove It Publicly`,
     description:
       "Build AI workflows, verify your skills, and generate a public profile employers can trust.",
-    url: "/",
+    url: appBaseUrl,
     images: [{
-      url: DEFAULT_OG_IMAGE_PATH,
+      url: ogImageUrl,
       width: DEFAULT_OG_IMAGE_WIDTH,
       height: DEFAULT_OG_IMAGE_HEIGHT,
       alt: DEFAULT_OG_IMAGE_ALT,
@@ -38,7 +42,11 @@ export const metadata: Metadata = {
     title: `${BRAND_NAME} | Learn Fast and Prove It Publicly`,
     description:
       "Build AI workflows, verify your skills, and generate a public profile employers can trust.",
-    images: [DEFAULT_OG_IMAGE_PATH],
+    images: [ogImageUrl],
+  },
+  other: {
+    "og:image": ogImageUrl,
+    "twitter:image": ogImageUrl,
   },
 };
 
@@ -60,6 +68,6 @@ export default async function HomePage() {
     }
   }
   replacements['<img src="/assets/branding/brand_wordmark_logo.png" alt="My AI Skill Tutor" class="h-8 w-auto object-contain" />'] =
-    '<img src="/assets/branding/brand_logo_icon.png" alt="My AI Skill Tutor" class="h-12 w-12 object-contain" /><span class="font-[Outfit] font-bold text-xl tracking-tight text-white">My AI Skill Tutor</span>';
+    '<img src="/assets/branding/brand_brain_icon.svg" alt="My AI Skill Tutor" class="h-11 w-11 object-contain" /><span class="font-[Outfit] font-bold text-[1.9rem] leading-none tracking-tight text-[var(--text-main)]">My AI Skill Tutor</span>';
   return <GeminiStaticPage template="index.html" replacements={replacements} />;
 }

@@ -12,10 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function OnboardingPage() {
-  return (
-    <GeminiStaticPage
-      template="onboarding/index.html"
-      className="relative min-h-screen flex items-center justify-center py-12 px-6 overflow-hidden bg-[var(--bg-dark)] text-[var(--text-main)]"
-    />
-  );
+  return <GeminiStaticPage template="onboarding/index.html" />;
 }
