@@ -11,23 +11,29 @@ const schema = z
   .optional();
 
 export async function POST(req: NextRequest) {
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
-  if (!parsed.success) {
-    return jsonError("INVALID_BODY", "Invalid assessment start payload", 400, { issues: parsed.error.issues });
+  try {
+    const parsed = schema.safeParse(await req.json().catch(() => ({})));
+    if (!parsed.success) {
+      return jsonError("INVALID_BODY", "Invalid assessment start payload", 400, { issues: parsed.error.issues });
+    }
+
+    const candidateUserId = parsed.data?.sessionId
+      ? (await runtimeFindOnboardingSession(parsed.data.sessionId))?.userId
+      : parsed.data?.userId ?? getUserId(req);
+
+    if (!candidateUserId) {
+      return jsonError("USER_NOT_FOUND", "Assessment cannot start without a valid user", 404);
+    }
+
+    const assessment = await runtimeStartAssessment(candidateUserId);
+    if (!assessment) {
+      return jsonError("USER_NOT_FOUND", "Assessment cannot start without a valid user", 404);
+    }
+
+    return jsonOk({ assessment });
+  } catch (error) {
+    return jsonError("ASSESSMENT_START_FAILED", "Failed to start assessment", 500, {
+      reason: error instanceof Error ? error.message : "UNKNOWN",
+    });
   }
-
-  const candidateUserId = parsed.data?.sessionId
-    ? (await runtimeFindOnboardingSession(parsed.data.sessionId))?.userId
-    : parsed.data?.userId ?? getUserId(req);
-
-  if (!candidateUserId) {
-    return jsonError("USER_NOT_FOUND", "Assessment cannot start without a valid user", 404);
-  }
-
-  const assessment = await runtimeStartAssessment(candidateUserId);
-  if (!assessment) {
-    return jsonError("USER_NOT_FOUND", "Assessment cannot start without a valid user", 404);
-  }
-
-  return jsonOk({ assessment });
 }

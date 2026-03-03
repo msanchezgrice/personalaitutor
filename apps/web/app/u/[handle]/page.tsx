@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
 import { runtimeFindUserByHandle, runtimeListProjectsByUser } from "@/lib/runtime";
 
+function appBaseUrl() {
+  return (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:6396")).replace(/\/+$/, "");
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
   const { handle } = await params;
   const profile = await runtimeFindUserByHandle(handle);
@@ -82,7 +86,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     "@type": "Person",
     name: profile.name,
     description: profile.headline,
-    url: `http://localhost:6396/u/${profile.handle}`,
+    url: `${appBaseUrl()}/u/${profile.handle}`,
     sameAs: Object.values(profile.socialLinks).filter(Boolean),
     knowsAbout: profile.skills.map((entry) => entry.skill),
   };

@@ -4,6 +4,20 @@ import { getUserId, missingEnv } from "@/lib/api";
 
 const required = ["X_CLIENT_ID"];
 
+function resolveRedirectUri(req: NextRequest, configured: string | undefined, fallbackPath: string) {
+  const fallback = `${req.nextUrl.origin}${fallbackPath}`;
+  if (!configured) return fallback;
+  try {
+    const parsed = new URL(configured);
+    if (parsed.origin !== req.nextUrl.origin) {
+      return fallback;
+    }
+    return parsed.toString();
+  } catch {
+    return fallback;
+  }
+}
+
 export async function GET(req: NextRequest) {
   const userId = getUserId(req);
   const mock = req.nextUrl.searchParams.get("mock") === "1";
@@ -16,7 +30,7 @@ export async function GET(req: NextRequest) {
     }
 
     const clientId = process.env.X_CLIENT_ID as string;
-    const redirectUri = process.env.X_REDIRECT_URI ?? `${req.nextUrl.origin}/api/auth/x/callback`;
+    const redirectUri = resolveRedirectUri(req, process.env.X_REDIRECT_URI, "/api/auth/x/callback");
     const state = Buffer.from(JSON.stringify({ userId, ts: Date.now(), redirect })).toString("base64url");
 
     const authorizeUrl = new URL("https://twitter.com/i/oauth2/authorize");

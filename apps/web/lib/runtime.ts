@@ -47,6 +47,7 @@ import {
   type PublishMode,
   type SocialDraft,
   type SocialPlatform,
+  type TalentCard,
   type UserProfile,
 } from "@aitutor/shared";
 
@@ -55,7 +56,13 @@ const DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001";
 type PersistenceMode = "memory" | "supabase";
 
 function mode(): PersistenceMode {
-  return process.env.PERSISTENCE_MODE === "supabase" ? "supabase" : "memory";
+  const explicit = process.env.PERSISTENCE_MODE?.toLowerCase();
+  if (explicit === "supabase" || explicit === "memory") return explicit;
+  const hasSupabaseCreds = Boolean(
+    (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+      (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY),
+  );
+  return hasSupabaseCreds ? "supabase" : "memory";
 }
 
 let cachedClient: SupabaseClient | null = null;
@@ -63,8 +70,8 @@ let cachedClient: SupabaseClient | null = null;
 function getSupabaseAdmin() {
   if (cachedClient) return cachedClient;
 
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
   if (!url || !serviceRoleKey) {
     throw new Error("SUPABASE_ENV_MISSING");
@@ -75,6 +82,14 @@ function getSupabaseAdmin() {
   });
 
   return cachedClient;
+}
+
+function appBaseUrl() {
+  const explicit = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL;
+  if (explicit) return explicit.replace(/\/+$/, "");
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl) return `https://${vercelUrl.replace(/\/+$/, "")}`;
+  return "http://localhost:6396";
 }
 
 function isUuid(input: string) {
@@ -94,6 +109,21 @@ function normalizeUserId(input?: string | null) {
   if (!input || input === "user_test_0001") return DEFAULT_USER_ID;
   if (isUuid(input)) return input;
   return DEFAULT_USER_ID;
+}
+
+function skillStatusRank(status: string) {
+  switch (status) {
+    case "not_started":
+      return 0;
+    case "in_progress":
+      return 1;
+    case "built":
+      return 2;
+    case "verified":
+      return 3;
+    default:
+      return 0;
+  }
 }
 
 function profileFromRow(
@@ -205,7 +235,7 @@ async function getOrCreateProfile(input: {
     tokens_used: 0,
     goals: ["upskill_current_job", "ship_ai_projects"],
     tools: ["OpenAI API", "Supabase", "Vercel"],
-    social_links: { website: `http://localhost:6396/u/${handle}` },
+    social_links: { website: `${appBaseUrl()}/u/${handle}` },
   };
 
   const { data, error } = await supabase
@@ -215,7 +245,7 @@ async function getOrCreateProfile(input: {
     .single();
 
   if (error || !data) {
-    throw new Error("PROFILE_CREATE_FAILED");
+    throw new Error(`PROFILE_CREATE_FAILED:${error?.message ?? "UNKNOWN"}`);
   }
 
   return profileFromRow(data, []);
@@ -473,7 +503,7 @@ export async function runtimeCreateOnboardingSession(input: {
 
   const { data, error } = await supabase.from("onboarding_sessions").insert(row).select("*").single();
   if (error || !data) {
-    throw new Error("ONBOARDING_SESSION_CREATE_FAILED");
+    throw new Error(`ONBOARDING_SESSION_CREATE_FAILED:${error?.message ?? "UNKNOWN"}`);
   }
 
   await insertJobEvent({
@@ -1128,11 +1158,12 @@ export async function runtimeCreateSocialDrafts(input: {
   if (!profile) return { ok: false as const, errorCode: "USER_NOT_FOUND", drafts: [] as SocialDraft[] };
 
   const project = input.projectId ? await runtimeFindProjectById(input.projectId) : null;
-  const profileUrl = `http://localhost:6396/u/${profile.handle}`;
+  const baseUrl = appBaseUrl();
+  const profileUrl = `${baseUrl}/u/${profile.handle}`;
   const targetUrl = project ? `${profileUrl}/projects/${project.slug}` : profileUrl;
   const ogUrl = project
-    ? `http://localhost:6396/api/og/project/${profile.handle}/${project.slug}`
-    : `http://localhost:6396/api/og/profile/${profile.handle}`;
+    ? `${baseUrl}/api/og/project/${profile.handle}/${project.slug}`
+    : `${baseUrl}/api/og/profile/${profile.handle}`;
 
   const baseText = project
     ? `Shipped ${project.title} with my AI Tutor. Platform Verified build log + artifacts.`
@@ -1432,10 +1463,141 @@ export async function runtimeCreateDailyUpdate(input: { userId: string; forceFai
 }
 
 export async function runtimeListTalent(filters?: Parameters<typeof listTalent>[0]) {
-  return listTalent(filters);
+  if (mode() === "memory") return listTalent(filters);
+
+  const supabase = getSupabaseAdmin();
+  const synthetic = listTalent();
+
+  const { data: profiles, error } = await supabase
+    .from("learner_profiles")
+    .select("id,handle,full_name,headline,career_path_id,published,tools,goals,updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(200);
+
+  if (error || !profiles?.length) {
+    return listTalent(filters);
+  }
+
+  const profileIds = profiles.map((profile) => profile.id);
+  const { data: skills } = await supabase
+    .from("user_skill_evidence")
+    .select("learner_profile_id,skill_name,status,score,evidence_count")
+    .in("learner_profile_id", profileIds);
+
+  const { data: situations } = await supabase
+    .from("onboarding_sessions")
+    .select("learner_profile_id,situation,updated_at")
+    .in("learner_profile_id", profileIds)
+    .order("updated_at", { ascending: false });
+
+  const skillMap = new Map<string, Array<{ skill_name: string; status: string; score: number; evidence_count: number }>>();
+  for (const skill of skills ?? []) {
+    const list = skillMap.get(skill.learner_profile_id) ?? [];
+    list.push(skill);
+    skillMap.set(skill.learner_profile_id, list);
+  }
+
+  const situationMap = new Map<string, string | null>();
+  for (const row of situations ?? []) {
+    if (!situationMap.has(row.learner_profile_id)) {
+      situationMap.set(row.learner_profile_id, row.situation);
+    }
+  }
+
+  const careerTypeMap: Record<string, string> = {
+    employed: "Employed",
+    unemployed: "Unemployed",
+    student: "Student",
+    founder: "Founder",
+    freelancer: "Freelancer",
+    career_switcher: "Career Switcher",
+  };
+
+  const real: TalentCard[] = profiles
+    .filter((profile) => profile.published)
+    .map((profile) => {
+      const candidateSkills = skillMap.get(profile.id) ?? [];
+      const sortedSkills = [...candidateSkills].sort(
+        (a, b) => Number(b.score ?? 0) - Number(a.score ?? 0) || Number(b.evidence_count ?? 0) - Number(a.evidence_count ?? 0),
+      );
+
+      const topSkills = sortedSkills.slice(0, 3).map((entry) => entry.skill_name);
+      const topTools = (profile.tools ?? []).slice(0, 3);
+      const topStatus = sortedSkills.reduce<TalentCard["status"]>((current, entry) => {
+        const next = entry.status as TalentCard["status"];
+        return skillStatusRank(next) > skillStatusRank(current) ? next : current;
+      }, "not_started");
+
+      const scoreBasis = sortedSkills.length
+        ? sortedSkills.reduce((sum, entry) => sum + Number(entry.score ?? 0), 0) / sortedSkills.length
+        : 0;
+
+      const careerPathName = getCatalogData().careerPaths.find((path) => path.id === profile.career_path_id)?.name;
+      const role = profile.headline?.trim() || careerPathName || "AI Builder";
+      const situation = situationMap.get(profile.id);
+
+      return {
+        handle: profile.handle,
+        name: profile.full_name,
+        careerType: careerTypeMap[situation ?? ""] ?? "Employed",
+        role,
+        status: topStatus,
+        topSkills: topSkills.length ? topSkills : ["AI Foundations"],
+        topTools: topTools.length ? topTools : ["AI Tutor"],
+        evidenceScore: Math.max(0, Math.min(100, Math.round(scoreBasis * 100))),
+      };
+    });
+
+  const mergedByHandle = new Map<string, TalentCard>();
+  for (const candidate of synthetic) mergedByHandle.set(candidate.handle, candidate);
+  for (const candidate of real) mergedByHandle.set(candidate.handle, candidate);
+
+  const all = [...mergedByHandle.values()];
+  const query = filters?.q?.toLowerCase().trim();
+
+  return all.filter((candidate) => {
+    if (filters?.role && candidate.role !== filters.role) return false;
+    if (filters?.skill && !candidate.topSkills.includes(filters.skill)) return false;
+    if (filters?.tool && !candidate.topTools.includes(filters.tool)) return false;
+    if (filters?.status && candidate.status !== filters.status) return false;
+    if (query) {
+      const haystack = `${candidate.handle} ${candidate.name} ${candidate.role} ${candidate.topSkills.join(" ")} ${candidate.topTools.join(" ")}`.toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
+    return true;
+  });
 }
 
 export async function runtimeGetTalentByHandle(handle: string) {
+  if (mode() === "memory") return getTalentByHandle(handle);
+
+  const profile = await runtimeFindUserByHandle(handle);
+  if (profile?.published) {
+    const topSkills = [...profile.skills]
+      .sort((a, b) => b.score - a.score || b.evidenceCount - a.evidenceCount)
+      .slice(0, 3)
+      .map((entry) => entry.skill);
+
+    const status = [...profile.skills].reduce<TalentCard["status"]>((current, entry) => {
+      return skillStatusRank(entry.status) > skillStatusRank(current) ? entry.status : current;
+    }, "not_started");
+
+    const evidenceScore = profile.skills.length
+      ? Math.round((profile.skills.reduce((sum, skill) => sum + skill.score, 0) / profile.skills.length) * 100)
+      : 0;
+
+    return {
+      handle: profile.handle,
+      name: profile.name,
+      careerType: profile.goals.includes("showcase_for_job") ? "Job Seeker" : "Employed",
+      role: profile.headline || "AI Builder",
+      status,
+      topSkills: topSkills.length ? topSkills : ["AI Foundations"],
+      topTools: profile.tools.length ? profile.tools.slice(0, 3) : ["AI Tutor"],
+      evidenceScore: Math.max(0, Math.min(100, evidenceScore)),
+    } as TalentCard;
+  }
+
   return getTalentByHandle(handle);
 }
 

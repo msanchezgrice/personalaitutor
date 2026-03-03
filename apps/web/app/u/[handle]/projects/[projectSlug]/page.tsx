@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
 import { runtimeFindProjectBySlug, runtimeFindUserByHandle } from "@/lib/runtime";
 
+function appBaseUrl() {
+  return (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:6396")).replace(/\/+$/, "");
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ handle: string; projectSlug: string }> }): Promise<Metadata> {
   const { handle, projectSlug } = await params;
   const profile = await runtimeFindUserByHandle(handle);
@@ -66,7 +70,7 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
     "@type": "CreativeWork",
     name: project.title,
     description: project.description,
-    url: `http://localhost:6396/u/${handle}/projects/${projectSlug}`,
+    url: `${appBaseUrl()}/u/${handle}/projects/${projectSlug}`,
     creator: {
       "@type": "Person",
       name: profile.name,
