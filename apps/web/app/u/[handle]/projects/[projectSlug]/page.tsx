@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
 import { runtimeFindProjectBySlug, runtimeFindUserByHandle } from "@/lib/runtime";
+import { BRAND_NAME, getSiteUrl } from "@/lib/site";
 
 function appBaseUrl() {
-  return (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:6396")).replace(/\/+$/, "");
+  return getSiteUrl();
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ handle: string; projectSlug: string }> }): Promise<Metadata> {
@@ -14,7 +15,7 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   if (!profile || !project || project.userId !== profile.id) {
     if (handle === "alex-chen-ai" && projectSlug === "customer-support-copilot") {
       return {
-        title: "Customer Support Copilot | Alex Chen",
+        title: `Customer Support Copilot | Alex Chen | ${BRAND_NAME}`,
         description: "Customer Support Copilot build log and active implementation proof.",
       };
     }

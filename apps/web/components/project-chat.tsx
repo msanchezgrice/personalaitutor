@@ -134,7 +134,7 @@ export function ProjectChat() {
       </div>
 
       <div style={{ marginTop: 10 }}>
-        <label htmlFor="chat-message">Message to AI Tutor</label>
+        <label htmlFor="chat-message">Message to My AI Skill Tutor</label>
         <textarea id="chat-message" className="input" rows={3} value={message} onChange={(e) => setMessage(e.target.value)} />
         <button type="button" className="btn primary" style={{ marginTop: 8 }} onClick={send}>Send</button>
       </div>

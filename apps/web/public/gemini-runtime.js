@@ -1,6 +1,7 @@
 (function () {
   var currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
   var CTX_KEY = "ai_tutor_user_ctx_v1";
+  var isDashboardPath = currentPath === "/dashboard" || currentPath.indexOf("/dashboard/") === 0;
 
   function uuidv4() {
     if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
@@ -52,13 +53,18 @@
   var ctx = ensureCtx();
 
   function applyCtxImmediately() {
-    if (!ctx || !ctx.name) return;
+    if (!ctx || !ctx.name || !isDashboardPath) return;
     var sidebarProfileLink = document.querySelector("aside a[href='/dashboard/profile/'], aside a[href='/dashboard/profile']");
     if (sidebarProfileLink) {
       var nameEl = sidebarProfileLink.querySelector(".font-medium");
       var roleEl = sidebarProfileLink.querySelector(".text-xs");
       if (nameEl) nameEl.textContent = ctx.name;
       if (roleEl && ctx.headline) roleEl.textContent = ctx.headline;
+      var sidebarAvatar = sidebarProfileLink.querySelector("img");
+      if (sidebarAvatar && ctx.avatarUrl) {
+        sidebarAvatar.setAttribute("src", ctx.avatarUrl);
+        sidebarAvatar.setAttribute("alt", ctx.name);
+      }
     }
     if (ctx.handle) {
       Array.prototype.forEach.call(
@@ -68,14 +74,11 @@
         },
       );
     }
-    if (ctx.avatarUrl) {
-      Array.prototype.forEach.call(document.querySelectorAll("img[src='/assets/avatar.png']"), function (node) {
-        node.setAttribute("src", ctx.avatarUrl);
-      });
-    }
   }
 
-  applyCtxImmediately();
+  if (!needsAuth()) {
+    applyCtxImmediately();
+  }
 
   function byText(selector, text) {
     return Array.prototype.find.call(document.querySelectorAll(selector), function (el) {
@@ -142,6 +145,50 @@
 
   function needsAuth() {
     return authRequiredPaths.indexOf(currentPath) !== -1;
+  }
+
+  function readTheme() {
+    try {
+      var explicit = window.localStorage.getItem("ai_theme");
+      if (explicit === "light" || explicit === "dark") return explicit;
+      var legacy = window.localStorage.getItem("theme");
+      if (legacy === "light" || legacy === "dark") return legacy;
+    } catch {
+      return "dark";
+    }
+    return "dark";
+  }
+
+  function persistTheme(theme) {
+    try {
+      window.localStorage.setItem("ai_theme", theme);
+      window.localStorage.setItem("theme", theme);
+    } catch {
+      return null;
+    }
+  }
+
+  function syncThemeToggleUi(theme) {
+    var icon = document.getElementById("theme-icon");
+    if (!icon) return;
+    icon.classList.remove("fa-sun", "fa-moon");
+    icon.classList.add(theme === "light" ? "fa-moon" : "fa-sun");
+  }
+
+  function wireThemeToggle() {
+    var themeToggle = document.getElementById("theme-toggle");
+    if (!themeToggle) return;
+
+    var current = readTheme();
+    document.documentElement.setAttribute("data-theme", current);
+    syncThemeToggleUi(current);
+
+    themeToggle.addEventListener("click", function () {
+      var theme = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", theme);
+      persistTheme(theme);
+      syncThemeToggleUi(theme);
+    });
   }
 
   async function syncAuthContext() {
@@ -263,11 +310,14 @@
       greeting.textContent = "Good Morning, " + firstName + " 👋";
     }
 
-    if (ctx.avatarUrl) {
-      Array.prototype.forEach.call(document.querySelectorAll("img[src='/assets/avatar.png']"), function (node) {
-        node.setAttribute("src", ctx.avatarUrl);
-        if (!node.getAttribute("alt")) node.setAttribute("alt", user.name);
-      });
+    if (ctx.avatarUrl && isDashboardPath) {
+      Array.prototype.forEach.call(
+        document.querySelectorAll("aside img[src='/assets/avatar.png'], aside a[href='/dashboard/profile'] img[src='/assets/avatar.png'], aside a[href='/dashboard/profile/'] img[src='/assets/avatar.png']"),
+        function (node) {
+          node.setAttribute("src", ctx.avatarUrl);
+          if (!node.getAttribute("alt")) node.setAttribute("alt", user.name);
+        },
+      );
     }
   }
 
@@ -487,9 +537,11 @@
       : "flex items-start gap-4 max-w-4xl";
 
     if (isUser) {
+      var userAvatar = ctx.avatarUrl || "/assets/avatar.png";
+      var userAlt = ctx.name || "Learner";
       wrapper.innerHTML =
         '<div class="bg-indigo-600 text-white p-5 rounded-2xl rounded-tr-sm text-sm shadow-[0_5px_15px_rgba(79,70,229,0.2)]"></div>' +
-        '<img src="/assets/avatar.png" class="w-8 h-8 rounded-full object-cover border border-white/20 flex-shrink-0 mt-1" alt="Learner">';
+        '<img src="' + userAvatar + '" class="w-8 h-8 rounded-full object-cover border border-white/20 flex-shrink-0 mt-1" alt="' + userAlt + '">';
       wrapper.querySelector("div").innerHTML = html;
     } else {
       wrapper.innerHTML =
@@ -546,14 +598,14 @@
           message: text,
         });
 
-        var replyText = result.reply || "AI Tutor: I logged this step in your project build log.";
+        var replyText = result.reply || "My AI Skill Tutor: I logged this step in your project build log.";
         var aiBubble = createBubble("<p></p>", false);
         setText(aiBubble.querySelector("p"), replyText);
         history.appendChild(aiBubble);
         history.scrollTop = history.scrollHeight;
       } catch (err) {
         var errorBubble = createBubble("<p></p>", false);
-        setText(errorBubble.querySelector("p"), "AI Tutor failed to respond: " + (err && err.message ? err.message : "Unknown error"));
+        setText(errorBubble.querySelector("p"), "My AI Skill Tutor failed to respond: " + (err && err.message ? err.message : "Unknown error"));
         history.appendChild(errorBubble);
         history.scrollTop = history.scrollHeight;
       } finally {
@@ -1134,6 +1186,8 @@
   }
 
   async function boot() {
+    wireThemeToggle();
+
     try {
       await syncAuthContext();
     } catch (err) {

@@ -28,7 +28,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   }
 
   if (!result.result?.ok) {
-    return jsonError("CHAT_JOB_FAILED", "AI Tutor chat action failed", 409, {
+    return jsonError("CHAT_JOB_FAILED", "My AI Skill Tutor chat action failed", 409, {
       jobId: result.job.id,
       failureCode: result.result?.job.lastErrorCode,
       recoveryAction: "Retry chat after resolving provider or worker issue",

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Route } from "next";
+import { BRAND_NAME } from "@/lib/site";
 import { ThemeToggle } from "./theme-toggle";
 
 const links = [
@@ -21,7 +22,7 @@ export function DashboardSidebar() {
     <aside className="dash-sidebar">
       <Link href="/" className="dash-brand">
         <span className="dash-brand-mark">🧠</span>
-        <span>AI Tutor</span>
+        <span>{BRAND_NAME}</span>
       </Link>
 
       <div className="dash-user">

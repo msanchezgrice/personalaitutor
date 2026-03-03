@@ -17,7 +17,7 @@
         <div class="p-6">
             <a href="/" class="flex items-center gap-2 mb-8">
                 <div
-                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl">
                     <i class="fa-solid fa-brain text-sm"></i>
                 </div>
                 <span class="font-[Outfit] font-bold text-lg tracking-tight text-white">AI Tutor</span>
@@ -29,14 +29,14 @@
                     alt="Alex Chen">
                 <div class="overflow-hidden">
                     <div class="font-medium text-white truncate">Alex Chen</div>
-                    <div class="text-xs text-indigo-400 truncate">Product Manager</div>
+                    <div class="text-xs text-emerald-400 truncate">Product Manager</div>
                 </div>
             </a>
 
             <nav class="space-y-1">
                 <a href="/dashboard/"
                     class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition group">
-                    <i class="fa-solid fa-house w-5 text-center group-hover:text-indigo-400 transition-colors"></i> Home
+                    <i class="fa-solid fa-house w-5 text-center group-hover:text-emerald-400 transition-colors"></i> Home
                 </a>
                 <a href="/dashboard/chat/"
                     class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition group">
@@ -78,7 +78,11 @@
                 <h1 class="text-xl font-[Outfit] font-semibold flex items-center gap-3"><i
                         class="fa-solid fa-inbox text-coral-400"></i> AI Inbox & News</h1>
             </div>
-        </header>
+        <div class="fixed top-4 right-4 z-[100]">
+<button id="theme-toggle" class="btn bg-white/10 hover:bg-white/20 text-white border border-white/10 px-3 py-2 rounded-lg flex items-center justify-center transition-colors">
+  <i class="fa-solid fa-sun" id="theme-icon"></i>
+</button>
+</div>\n</header>
 
         <div class="p-10 max-w-4xl mx-auto w-full pb-24 space-y-4">
 
@@ -98,7 +102,7 @@
                         are significantly improved, handling complex JSON structs better.</p>
                     <div
                         class="bg-black/30 w-full p-4 rounded-lg border border-white/5 flex items-center justify-between">
-                        <span class="text-xs text-indigo-300"><i class="fa-solid fa-bolt mr-2 text-amber-400"></i> Tutor
+                        <span class="text-xs text-emerald-300"><i class="fa-solid fa-bolt mr-2 text-amber-400"></i> Tutor
                             Recommendation: Switch standard model to Claude 3.5 for the "Customer Support"
                             project.</span>
                         <button class="btn hover:bg-white/10 text-xs px-3 py-1.5 border border-white/10">Apply to
@@ -112,7 +116,7 @@
                 class="glass p-5 rounded-xl border border-coral-500/30 bg-coral-500/5 hover:bg-white/5 transition flex gap-4 cursor-pointer relative overflow-hidden">
                 <div class="absolute left-0 top-0 bottom-0 w-1 bg-coral-500"></div>
                 <div
-                    class="w-10 h-10 rounded shrink-0 bg-indigo-500/20 flex items-center justify-center text-indigo-400 mt-1">
+                    class="w-10 h-10 rounded shrink-0 bg-emerald-500/20 flex items-center justify-center text-emerald-400 mt-1">
                     <i class="fa-solid fa-list-check"></i></div>
                 <div>
                     <div class="flex items-center justify-between mb-1">
@@ -121,7 +125,7 @@
                     </div>
                     <p class="text-sm text-gray-300 mb-3">Your tutor has setup a review task for the unresolved webhook
                         errors. Do you have 10 minutes to pair program?</p>
-                    <a href="/dashboard/chat/" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">Open
+                    <a href="/dashboard/chat/" class="text-xs text-emerald-400 hover:text-emerald-300 font-medium">Open
                         Tutor Session &rarr;</a>
                 </div>
             </div>
@@ -143,6 +147,43 @@
 
         </div>
     </main>
-</body>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    
+    // Check local storage for theme
+    const currentTheme = localStorage.getItem('theme') || 'dark';
+    if (currentTheme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+      themeIcon.classList.replace('fa-sun', 'fa-moon');
+      if (themeToggle) {
+        themeToggle.classList.replace('text-white', 'text-gray-800');
+        themeToggle.classList.replace('border-white/10', 'border-gray-300');
+      }
+    }
+    
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        let theme = document.documentElement.getAttribute('data-theme');
+        if (theme === 'light') {
+          document.documentElement.removeAttribute('data-theme');
+          localStorage.setItem('theme', 'dark');
+          themeIcon.classList.replace('fa-moon', 'fa-sun');
+          themeToggle.classList.replace('text-gray-800', 'text-white');
+          themeToggle.classList.replace('border-gray-300', 'border-white/10');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'light');
+          localStorage.setItem('theme', 'light');
+          themeIcon.classList.replace('fa-sun', 'fa-moon');
+          themeToggle.classList.replace('text-white', 'text-gray-800');
+          themeToggle.classList.replace('border-white/10', 'border-gray-300');
+        }
+      });
+    }
+  });
+</script>
+\n</body>
 
 </html>

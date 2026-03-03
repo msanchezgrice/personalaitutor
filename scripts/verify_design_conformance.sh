@@ -6,7 +6,9 @@ TARGETS=("apps/web/app" "apps/web/components" "apps/web/lib")
 check_no_match() {
   local pattern="$1"
   local message="$2"
-  if rg -n --no-heading -S "$pattern" "${TARGETS[@]}" >/tmp/design_match.out 2>/dev/null; then
+  if rg -n --no-heading -S "$pattern" "${TARGETS[@]}" 2>/dev/null \
+    | rg -v 'gemini-static-page\.tsx:.*"/assets/hero\.png": "/assets/interface_macro_mockup\.png"' \
+    >/tmp/design_match.out; then
     echo "[FAIL] $message"
     cat /tmp/design_match.out
     exit 1

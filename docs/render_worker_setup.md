@@ -1,7 +1,7 @@
 # Render Worker Setup (Background Worker)
 
 ## Purpose
-`apps/worker` is the async runtime for AI Tutor. It handles queue and scheduler work that should not block web requests.
+`apps/worker` is the async runtime for My AI Skill Tutor. It handles queue and scheduler work that should not block web requests.
 
 Current responsibilities:
 1. Claim queued jobs from Supabase using `claim_agent_jobs`.

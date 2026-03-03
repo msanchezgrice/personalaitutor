@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
 import { runtimeFindUserByHandle, runtimeListProjectsByUser } from "@/lib/runtime";
+import { BRAND_NAME, getSiteUrl } from "@/lib/site";
 
 function appBaseUrl() {
-  return (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:6396")).replace(/\/+$/, "");
+  return getSiteUrl();
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
@@ -12,10 +13,10 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   if (!profile) {
     if (handle === "alex-chen-ai") {
       return {
-        title: "Alex Chen | Verified AI Builder Profile",
+        title: `Alex Chen | Verified AI Builder Profile | ${BRAND_NAME}`,
         description: "View mapped skills, built projects, and verified AI implementation experience.",
         openGraph: {
-          title: "Alex Chen - Verified AI Builder Profile",
+          title: `Alex Chen - Verified AI Builder Profile | ${BRAND_NAME}`,
           description: "View mapped skills, built projects, and verified AI implementation experience.",
           url: "/u/alex-chen-ai",
           type: "profile",
@@ -27,11 +28,11 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   }
 
   return {
-    title: `${profile.name} | AI Tutor Profile`,
+    title: `${profile.name} | ${BRAND_NAME} Profile`,
     description: profile.bio,
     alternates: { canonical: `/u/${profile.handle}` },
     openGraph: {
-      title: `${profile.name} | AI Tutor Profile`,
+      title: `${profile.name} | ${BRAND_NAME} Profile`,
       description: profile.bio,
       url: `/u/${profile.handle}`,
       type: "profile",
@@ -39,7 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
     },
     twitter: {
       card: "summary_large_image",
-      title: `${profile.name} | AI Tutor Profile`,
+      title: `${profile.name} | ${BRAND_NAME} Profile`,
       description: profile.bio,
       images: [`/api/og/profile/${profile.handle}`],
     },

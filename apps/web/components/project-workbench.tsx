@@ -28,7 +28,7 @@ export function ProjectWorkbench() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
 
   const [title, setTitle] = useState("PROJECT_DELTA_004");
-  const [description, setDescription] = useState("An AI Tutor-powered workflow project to generate artifacts and public proof.");
+  const [description, setDescription] = useState("A My AI Skill Tutor workflow project to generate artifacts and public proof.");
 
   const selected = useMemo(() => projects.find((entry) => entry.id === selectedProjectId) ?? null, [projects, selectedProjectId]);
 

@@ -17,7 +17,7 @@
         <div class="p-6">
             <a href="/" class="flex items-center gap-2 mb-8">
                 <div
-                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl">
                     <i class="fa-solid fa-brain text-sm"></i>
                 </div>
                 <span class="font-[Outfit] font-bold text-lg tracking-tight text-white">AI Tutor</span>
@@ -25,11 +25,11 @@
 
             <a href="/dashboard/profile/"
                 class="flex items-center gap-3 p-3 rounded-lg border border-white/20 bg-white/5 mb-8 cursor-pointer shadow-[0_0_15px_rgba(255,255,255,0.05)]">
-                <img src="/assets/avatar.png" class="w-10 h-10 rounded-full object-cover border border-indigo-500"
+                <img src="/assets/avatar.png" class="w-10 h-10 rounded-full object-cover border border-emerald-500"
                     alt="Alex Chen">
                 <div class="overflow-hidden">
                     <div class="font-medium text-white truncate">Alex Chen</div>
-                    <div class="text-xs text-indigo-400 truncate">Product Manager</div>
+                    <div class="text-xs text-emerald-400 truncate">Product Manager</div>
                 </div>
             </a>
 
@@ -37,7 +37,7 @@
             <nav class="space-y-1">
                 <a href="/dashboard/"
                     class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition group">
-                    <i class="fa-solid fa-house w-5 text-center group-hover:text-indigo-400 transition-colors"></i> Home
+                    <i class="fa-solid fa-house w-5 text-center group-hover:text-emerald-400 transition-colors"></i> Home
                 </a>
                 <a href="/dashboard/chat/"
                     class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition group">
@@ -69,13 +69,17 @@
             class="h-20 flex items-center justify-between px-10 border-b border-white/5 sticky top-0 bg-[#0f111a]/80 backdrop-blur-xl z-10 flex-shrink-0">
             <div>
                 <h1 class="text-xl font-[Outfit] font-semibold flex items-center gap-3"><i
-                        class="fa-solid fa-user text-indigo-400"></i> Profile Settings</h1>
+                        class="fa-solid fa-user text-emerald-400"></i> Profile Settings</h1>
             </div>
             <div>
                 <a href="/u/alex-chen-ai/" class="btn btn-primary text-xs px-4 py-2"><i
                         class="fa-solid fa-globe mr-1"></i> View Public Profile</a>
             </div>
-        </header>
+        <div class="fixed top-4 right-4 z-[100]">
+<button id="theme-toggle" class="btn bg-white/10 hover:bg-white/20 text-white border border-white/10 px-3 py-2 rounded-lg flex items-center justify-center transition-colors">
+  <i class="fa-solid fa-sun" id="theme-icon"></i>
+</button>
+</div>\n</header>
 
         <div class="p-10 max-w-3xl mx-auto w-full pb-24 space-y-8">
 
@@ -87,13 +91,13 @@
                         <img src="/assets/avatar.png"
                             class="w-24 h-24 rounded-full object-cover border-4 border-black box-content shadow-[0_0_20px_rgba(79,70,229,0.3)]">
                         <div
-                            class="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition border-4 border-indigo-500">
+                            class="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition border-4 border-emerald-500">
                             <i class="fa-solid fa-camera text-xl text-white"></i>
                         </div>
                     </div>
                     <div>
                         <h3 class="text-white text-lg font-medium">Alex Chen</h3>
-                        <p class="text-sm text-gray-400 text-indigo-400 mb-2">alex@example.com</p>
+                        <p class="text-sm text-gray-400 text-emerald-400 mb-2">alex@example.com</p>
                         <button class="btn btn-secondary text-xs px-3 py-1.5 rounded">Change Avatar</button>
                     </div>
                 </div>
@@ -104,14 +108,14 @@
                             <label class="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">Full
                                 Name</label>
                             <input type="text"
-                                class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition"
+                                class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition"
                                 value="Alex Chen">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">Current
                                 Role</label>
                             <input type="text"
-                                class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition"
+                                class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition"
                                 value="Product Manager">
                         </div>
                     </div>
@@ -119,7 +123,7 @@
                         <label class="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">Public
                             Bio</label>
                         <textarea
-                            class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition resize-none custom-scrollbar"
+                            class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition resize-none custom-scrollbar"
                             rows="4">I'm a PM learning how to automate workflows and build prototypes using AI. Building publicly to track my journey from non-technical to AI-fluent.</textarea>
                     </div>
                     <div>
@@ -130,7 +134,7 @@
                                 <i class="fa-brands fa-linkedin text-gray-500"></i>
                             </div>
                             <input type="text"
-                                class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition"
+                                class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition"
                                 value="https://linkedin.com/in/alex-chen">
                         </div>
                     </div>
@@ -143,6 +147,43 @@
 
         </div>
     </main>
-</body>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    
+    // Check local storage for theme
+    const currentTheme = localStorage.getItem('theme') || 'dark';
+    if (currentTheme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+      themeIcon.classList.replace('fa-sun', 'fa-moon');
+      if (themeToggle) {
+        themeToggle.classList.replace('text-white', 'text-gray-800');
+        themeToggle.classList.replace('border-white/10', 'border-gray-300');
+      }
+    }
+    
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        let theme = document.documentElement.getAttribute('data-theme');
+        if (theme === 'light') {
+          document.documentElement.removeAttribute('data-theme');
+          localStorage.setItem('theme', 'dark');
+          themeIcon.classList.replace('fa-moon', 'fa-sun');
+          themeToggle.classList.replace('text-gray-800', 'text-white');
+          themeToggle.classList.replace('border-gray-300', 'border-white/10');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'light');
+          localStorage.setItem('theme', 'light');
+          themeIcon.classList.replace('fa-sun', 'fa-moon');
+          themeToggle.classList.replace('text-white', 'text-gray-800');
+          themeToggle.classList.replace('border-white/10', 'border-gray-300');
+        }
+      });
+    }
+  });
+</script>
+\n</body>
 
 </html>

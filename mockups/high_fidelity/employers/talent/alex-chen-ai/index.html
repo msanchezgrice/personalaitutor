@@ -52,10 +52,14 @@
             </div>
             <div class="flex items-center gap-4">
                 <a href="/u/alex-chen-ai/" target="_blank"
-                    class="text-indigo-400 hover:text-indigo-300 text-sm font-medium"><i
+                    class="text-emerald-400 hover:text-emerald-300 text-sm font-medium"><i
                         class="fa-solid fa-up-right-from-square mr-1"></i> View Public Portfolio</a>
             </div>
-        </header>
+        <div class="fixed top-4 right-4 z-[100]">
+<button id="theme-toggle" class="btn bg-white/10 hover:bg-white/20 text-white border border-white/10 px-3 py-2 rounded-lg flex items-center justify-center transition-colors">
+  <i class="fa-solid fa-sun" id="theme-icon"></i>
+</button>
+</div>\n</header>
 
         <div class="p-10 max-w-5xl mx-auto w-full pb-24 space-y-8">
 
@@ -140,6 +144,43 @@
 
         </div>
     </main>
-</body>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    
+    // Check local storage for theme
+    const currentTheme = localStorage.getItem('theme') || 'dark';
+    if (currentTheme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+      themeIcon.classList.replace('fa-sun', 'fa-moon');
+      if (themeToggle) {
+        themeToggle.classList.replace('text-white', 'text-gray-800');
+        themeToggle.classList.replace('border-white/10', 'border-gray-300');
+      }
+    }
+    
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        let theme = document.documentElement.getAttribute('data-theme');
+        if (theme === 'light') {
+          document.documentElement.removeAttribute('data-theme');
+          localStorage.setItem('theme', 'dark');
+          themeIcon.classList.replace('fa-moon', 'fa-sun');
+          themeToggle.classList.replace('text-gray-800', 'text-white');
+          themeToggle.classList.replace('border-gray-300', 'border-white/10');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'light');
+          localStorage.setItem('theme', 'light');
+          themeIcon.classList.replace('fa-sun', 'fa-moon');
+          themeToggle.classList.replace('text-white', 'text-gray-800');
+          themeToggle.classList.replace('border-white/10', 'border-gray-300');
+        }
+      });
+    }
+  });
+</script>
+\n</body>
 
 </html>

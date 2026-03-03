@@ -21,7 +21,7 @@
     <div class="container nav">
       <div class="flex items-center gap-2">
         <div
-          class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+          class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl">
           <i class="fa-solid fa-brain"></i>
         </div>
         <span class="font-[Outfit] font-bold text-xl tracking-tight">AI Tutor</span>
@@ -37,6 +37,12 @@
             class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>
       </div>
     </div>
+    <div class="fixed top-4 right-4 z-[100]">
+      <button id="theme-toggle"
+        class="btn bg-white/10 hover:bg-white/20 text-white border border-white/10 px-3 py-2 rounded-lg flex items-center justify-center transition-colors">
+        <i class="fa-solid fa-sun" id="theme-icon"></i>
+      </button>
+    </div>\n
   </header>
 
   <!-- Hero Section -->
@@ -44,8 +50,8 @@
     <section class="container pt-20 pb-32 grid lg:grid-cols-2 gap-12 items-center relative">
       <div class="z-10">
         <div
-          class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-sm font-medium mb-6">
-          <span class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
+          class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-sm font-medium mb-6">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
           Your dedicated AI copilot for career growth
         </div>
         <h1 class="text-5xl lg:text-7xl mb-6">Learn fast and <br><span class="text-gradient">prove it publicly.</span>
@@ -63,7 +69,7 @@
             <img src="/assets/avatar.png" class="w-8 h-8 rounded-full border-2 border-gray-900 object-cover"
               alt="User" />
             <div
-              class="w-8 h-8 rounded-full border-2 border-gray-900 bg-indigo-600 flex items-center justify-center text-white text-xs">
+              class="w-8 h-8 rounded-full border-2 border-gray-900 bg-emerald-600 flex items-center justify-center text-white text-xs">
               +2k</div>
           </div>
           <p>Professionals already building their AI stack.</p>
@@ -71,9 +77,11 @@
       </div>
 
       <div class="relative z-10 hidden lg:block perspective-1000">
-        <img src="/assets/hero.png" alt="AI Node Network"
-          class="w-full h-auto animate-float drop-shadow-2xl rounded-2xl border border-white/10"
-          style="transform: rotateY(-5deg) rotateX(5deg);" />
+        <div
+          class="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl transform -rotate-y-5 rotate-x-5 perspective-1000 origin-center bg-[#0f111a] border border-gray-200 dark:border-white/20">
+          <div class="absolute inset-0 bg-transparent z-10"></div><iframe src="/dashboard/"
+            class="w-[150%] h-[150%] origin-top-left scale-[0.66] pointer-events-none border-none"></iframe>
+        </div>
 
         <!-- Floating Badge -->
         <div class="absolute bottom-[-20px] left-[-40px] glass-panel p-4 flex items-center gap-4 animate-float"
@@ -99,7 +107,7 @@
         <div class="grid md:grid-cols-3 gap-8">
           <div class="glass p-8 hover:bg-white/5 transition duration-300">
             <div
-              class="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl mb-6">
+              class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl mb-6">
               <i class="fa-solid fa-compass"></i>
             </div>
             <h3 class="text-xl mb-3">1. Tell us your background</h3>
@@ -144,14 +152,16 @@
 
       <div class="grid md:grid-cols-2 gap-12 items-center mb-24">
         <div class="order-2 md:order-1 relative perspective-1000">
-          <div class="glass-panel p-2 rounded-2xl transform rotateY-5 shadow-2xl">
-            <img src="/assets/hero.png" alt="Dashboard" class="w-full h-auto rounded-xl opacity-80" />
-            <div class="absolute inset-0 bg-gradient-to-tr from-indigo-900/40 to-transparent rounded-xl"></div>
+          <div
+            class="glass-panel p-2 rounded-2xl transform rotateY-5 shadow-2xl overflow-hidden aspect-[4/3] bg-white/5 border border-gray-200 dark:border-white/20">
+            <div class="absolute inset-0 bg-transparent z-10"></div>
+            <iframe src="/dashboard/"
+              class="w-[150%] h-[150%] origin-top-left scale-[0.66] pointer-events-none border-none"></iframe>
           </div>
         </div>
         <div class="order-1 md:order-2">
           <div
-            class="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl mb-6">
+            class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl mb-6">
             <i class="fa-solid fa-graduation-cap"></i>
           </div>
           <h3 class="text-3xl mb-4 text-white">Personalized Curriculum</h3>
@@ -175,7 +185,7 @@
             class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl mb-6">
             <i class="fa-solid fa-shield-check"></i>
           </div>
-          <h3 class="text-3xl mb-4 text-white">Cryptographically Verified Proof</h3>
+          <h3 class="text-3xl mb-4 text-white">System Verified Proof</h3>
           <p class="text-gray-400 mb-6 leading-relaxed">Don't just claim you know AI. Prove it. As you build projects
             with your tutor, our system automatically tracks your telemetry and generates a public build log and
             verifiable skill badges.</p>
@@ -189,29 +199,96 @@
           </ul>
         </div>
         <div class="relative perspective-1000">
-          <div class="glass-panel p-2 rounded-2xl transform -rotateY-5 shadow-2xl">
-            <img src="/assets/badge.png" alt="Verified Skills"
-              class="w-full h-auto rounded-xl object-cover border border-white/5 bg-black/40 p-12" />
+          <div
+            class="glass-panel p-2 rounded-2xl transform -rotateY-5 shadow-2xl overflow-hidden aspect-[4/3] bg-white/5 border border-gray-200 dark:border-white/20">
+            <div class="absolute inset-0 bg-transparent z-10"></div>
+            <iframe src="/dashboard/profile/"
+              class="w-[150%] h-[150%] origin-top-left scale-[0.66] pointer-events-none border-none"></iframe>
           </div>
         </div>
       </div>
     </div>
   </section>
 
+  <!-- More Features Deep Dive -->
+  <section class="py-24 relative bg-black/20 border-t border-white/5">
+    <div class="container">
+
+      <div class="grid md:grid-cols-2 gap-12 items-center">
+        <div class="order-2 md:order-1 relative perspective-1000">
+          <div
+            class="glass-panel p-2 rounded-2xl transform rotateY-5 shadow-2xl overflow-hidden aspect-[4/3] bg-white/5 border border-gray-200 dark:border-white/20">
+            <div class="absolute inset-0 bg-transparent z-10"></div>
+            <iframe src="/dashboard/chat/"
+              class="w-[150%] h-[150%] origin-top-left scale-[0.66] pointer-events-none border-none"></iframe>
+          </div>
+        </div>
+        <div class="order-1 md:order-2">
+          <div class="w-12 h-12 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center text-xl mb-6">
+            <i class="fa-solid fa-message"></i>
+          </div>
+          <h3 class="text-3xl mb-4 text-white">Always-On Interactive Tutor</h3>
+          <p class="text-gray-400 mb-6 leading-relaxed">Stuck on a problem or confused by an error? Your AI Tutor sits
+            right alongside your code, proactively analyzing errors, suggesting fixes, and walking you through complex
+            ideas step-by-step without simply handing you the answer. It's like having a senior engineer pairing with
+            you 24/7.</p>
+          <ul class="space-y-3">
+            <li class="flex items-center gap-3 text-sm text-gray-300"><i class="fa-solid fa-check text-teal-400"></i>
+              Context-aware debugging</li>
+            <li class="flex items-center gap-3 text-sm text-gray-300"><i class="fa-solid fa-check text-teal-400"></i>
+              Step-by-step logic breakdowns</li>
+            <li class="flex items-center gap-3 text-sm text-gray-300"><i class="fa-solid fa-check text-teal-400"></i>
+              Code snippet auto-injection</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-12 items-center mt-24">
+        <div>
+          <div
+            class="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center text-xl mb-6">
+            <i class="fa-solid fa-folder-open"></i>
+          </div>
+          <h3 class="text-3xl mb-4 text-white">Project Portfolios</h3>
+          <p class="text-gray-400 mb-6 leading-relaxed">Turn everything you build into leverage. The platform
+            automatically tracks your active builds and formats completed jobs into public, interactive portfolios you
+            can share directly to LinkedIn or with recruiters. Prove what you can do.</p>
+          <ul class="space-y-3">
+            <li class="flex items-center gap-3 text-sm text-gray-300"><i class="fa-solid fa-check text-amber-500"></i>
+              Real-time build tracking</li>
+            <li class="flex items-center gap-3 text-sm text-gray-300"><i class="fa-solid fa-check text-amber-500"></i>
+              Exportable technical resumes</li>
+            <li class="flex items-center gap-3 text-sm text-gray-300"><i class="fa-solid fa-check text-amber-500"></i>
+              Public verification links</li>
+          </ul>
+        </div>
+        <div class="relative perspective-1000">
+          <div
+            class="glass-panel p-2 rounded-2xl transform -rotateY-5 shadow-2xl overflow-hidden aspect-[4/3] bg-white/5 border border-gray-200 dark:border-white/20">
+            <div class="absolute inset-0 bg-transparent z-10"></div>
+            <iframe src="/dashboard/projects/"
+              class="w-[150%] h-[150%] origin-top-left scale-[0.66] pointer-events-none border-none"></iframe>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
   <!-- Social Proof / Testimonials -->
   <section class="py-24 border-y border-white/5 bg-black/40">
     <div class="container text-center max-w-4xl mx-auto">
-      <i class="fa-solid fa-quote-left text-4xl text-indigo-500/40 mb-6 relative -left-4"></i>
+      <i class="fa-solid fa-quote-left text-4xl text-emerald-500/40 mb-6 relative -left-4"></i>
       <h2 class="text-3xl md:text-5xl font-[Outfit] text-white leading-tight mb-10">"I learned more in two weeks
         building my first Python automation script with my AI Tutor than I did in a month of watching YouTube
         tutorials."</h2>
 
       <div class="flex items-center justify-center gap-4">
-        <img src="/assets/avatar.png" class="w-16 h-16 rounded-full border-2 border-indigo-500 object-cover"
+        <img src="/assets/avatar.png" class="w-16 h-16 rounded-full border-2 border-emerald-500 object-cover"
           alt="Sarah J.">
         <div class="text-left">
           <p class="text-white font-bold text-lg">Sarah J.</p>
-          <p class="text-indigo-400 text-sm">Marketing Ops Director</p>
+          <p class="text-emerald-400 text-sm">Marketing Ops Director</p>
         </div>
       </div>
     </div>
@@ -227,7 +304,7 @@
 
       <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
         <!-- Pro Plan -->
-        <div class="glass p-8 rounded-2xl border-white/10 hover:border-indigo-500/50 transition">
+        <div class="glass p-8 rounded-2xl border-white/10 hover:border-emerald-500/50 transition">
           <h3 class="text-2xl font-bold text-white mb-2">Pro Builder</h3>
           <p class="text-gray-400 text-sm mb-6">For professionals looking to build their first automations.</p>
           <div class="mb-6">
@@ -236,13 +313,13 @@
           <a href="/onboarding/" class="btn btn-secondary w-full text-center py-3 mb-8">Start Free Trial</a>
           <ul class="space-y-4">
             <li class="flex items-center gap-3 text-sm text-gray-300"><i
-                class="fa-solid fa-check text-indigo-400 text-xs"></i> 24/7 AI Coding Tutor Access</li>
+                class="fa-solid fa-check text-emerald-400 text-xs"></i> 24/7 AI Coding Tutor Access</li>
             <li class="flex items-center gap-3 text-sm text-gray-300"><i
-                class="fa-solid fa-check text-indigo-400 text-xs"></i> Unlimited Project Build Logs</li>
+                class="fa-solid fa-check text-emerald-400 text-xs"></i> Unlimited Project Build Logs</li>
             <li class="flex items-center gap-3 text-sm text-gray-300"><i
-                class="fa-solid fa-check text-indigo-400 text-xs"></i> Standard Verify Badges</li>
+                class="fa-solid fa-check text-emerald-400 text-xs"></i> Standard Verify Badges</li>
             <li class="flex items-center gap-3 text-sm text-gray-300"><i
-                class="fa-solid fa-check text-indigo-400 text-xs"></i> Public Portfolio SEO</li>
+                class="fa-solid fa-check text-emerald-400 text-xs"></i> Public Portfolio SEO</li>
           </ul>
         </div>
 
@@ -281,7 +358,7 @@
 
   <!-- CTA -->
   <section class="py-24 relative overflow-hidden">
-    <div class="absolute inset-0 bg-gradient-to-b from-transparent to-indigo-900/20"></div>
+    <div class="absolute inset-0 bg-gradient-to-b from-transparent to-emerald-900/20"></div>
     <div class="container relative z-10 text-center max-w-3xl mx-auto">
       <h2 class="text-5xl font-[Outfit] text-white mb-6">Stop observing. Start building.</h2>
       <p class="text-xl text-gray-400 mb-10">Join professionals who are future-proofing their careers with verified AI
@@ -295,7 +372,7 @@
     <div class="container flex flex-col md:flex-row justify-between items-center gap-6">
       <div class="flex items-center gap-2">
         <div
-          class="w-6 h-6 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">
+          class="w-6 h-6 rounded bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xs">
           <i class="fa-solid fa-brain"></i>
         </div>
         <span class="font-[Outfit] font-bold text-lg">AI Tutor</span>
@@ -303,6 +380,44 @@
       <p class="text-sm text-gray-500">© 2026 AI Tutor. All rights reserved.</p>
     </div>
   </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const themeToggle = document.getElementById('theme-toggle');
+      const themeIcon = document.getElementById('theme-icon');
+
+      // Check local storage for theme
+      const currentTheme = localStorage.getItem('theme') || 'dark';
+      if (currentTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        themeIcon.classList.replace('fa-sun', 'fa-moon');
+        if (themeToggle) {
+          themeToggle.classList.replace('text-white', 'text-gray-800');
+          themeToggle.classList.replace('border-white/10', 'border-gray-300');
+        }
+      }
+
+      if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+          let theme = document.documentElement.getAttribute('data-theme');
+          if (theme === 'light') {
+            document.documentElement.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'dark');
+            themeIcon.classList.replace('fa-moon', 'fa-sun');
+            themeToggle.classList.replace('text-gray-800', 'text-white');
+            themeToggle.classList.replace('border-gray-300', 'border-white/10');
+          } else {
+            document.documentElement.setAttribute('data-theme', 'light');
+            localStorage.setItem('theme', 'light');
+            themeIcon.classList.replace('fa-sun', 'fa-moon');
+            themeToggle.classList.replace('text-white', 'text-gray-800');
+            themeToggle.classList.replace('border-white/10', 'border-gray-300');
+          }
+        });
+      }
+    });
+  </script>
+  \n
 </body>
 
 </html>

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { BRAND_NAME } from "@/lib/site";
 
 type GeminiStaticPageProps = {
   template: string;
@@ -42,6 +43,14 @@ function loadTemplate(template: string) {
 function applyReplacements(input: string, replacements?: Record<string, string>) {
   const merged: Record<string, string> = {
     "/assets/hero.png": "/assets/interface_macro_mockup.png",
+    "CareerGuard Networks": BRAND_NAME,
+    "CareerGuard Network": `${BRAND_NAME} Network`,
+    "CareerGuard Plan": `${BRAND_NAME} Plan`,
+    ">AI Tutor</span>": `>${BRAND_NAME}</span>`,
+    "AI Tutor Session": `${BRAND_NAME} Session`,
+    "AI Tutor Platform": BRAND_NAME,
+    "AI Tutor platform": BRAND_NAME,
+    "AI Tutor. All rights reserved.": `${BRAND_NAME}. All rights reserved.`,
     ...(replacements ?? {}),
   };
 

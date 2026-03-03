@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Tutor - Preview</title>
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&display=swap');
+
+:root {
+  --bg: #fafaf8;
+  --surface: #ffffff;
+  --surface-muted: #f2f1ed;
+  --surface-hover: #eae9e4;
+  --ink: #1a1a1a;
+  --ink-soft: #6b6b6b;
+  --ink-muted: #999999;
+  --brand: #4f46e5;
+  --brand-light: #818cf8;
+  --brand-subtle: rgba(79,70,229,0.06);
+  --brand-2: #0ea5e9;
+  --accent: #f59e0b;
+  --ok: #10b981;
+  --warn: #f59e0b;
+  --error: #ef4444;
+  --line: #e5e5e0;
+  --line-light: #f0efe9;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-xs: 6px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+  --shadow: 0 4px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
+  --shadow-brand: 0 4px 20px rgba(79,70,229,0.15);
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: block; }
+
+.container { width: min(1200px, 92vw); margin: 0 auto; }
+
+/* TOPBAR */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(250,250,248,0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--line);
+}
+.topbar-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 12px 0; height: 64px;
+}
+.brand {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-weight: 400; font-size: 1.35rem; letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.nav { display: flex; gap: 4px; flex-wrap: wrap; }
+.nav a {
+  padding: 6px 14px; border-radius: 999px;
+  color: var(--ink-soft); font-size: 0.875rem; font-weight: 500;
+  transition: all var(--transition);
+}
+.nav a:hover { color: var(--ink); background: var(--surface-muted); }
+
+/* TYPOGRAPHY */
+h1, h2, h3, h4 {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-weight: 400; line-height: 1.15; letter-spacing: -0.02em;
+  color: var(--ink);
+}
+h1 { font-size: clamp(2.4rem, 5vw, 3.8rem); }
+h2 { font-size: clamp(1.6rem, 3vw, 2.4rem); }
+h3 { font-size: clamp(1.15rem, 1.8vw, 1.4rem); }
+
+.lead {
+  font-size: 1.1rem; color: var(--ink-soft);
+  margin-top: 16px; max-width: 60ch; line-height: 1.7;
+}
+.highlight {
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; font-style: italic;
+}
+
+/* BUTTONS */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 1px solid var(--line); border-radius: 999px; padding: 10px 22px;
+  font-size: 0.875rem; font-weight: 600; cursor: pointer;
+  background: var(--surface); color: var(--ink); font-family: inherit;
+  transition: all var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+.btn:hover {
+  border-color: #ccc; box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+.btn.primary {
+  background: var(--brand); color: #fff; border-color: var(--brand);
+  box-shadow: var(--shadow-brand);
+}
+.btn.primary:hover {
+  background: #4338ca; border-color: #4338ca;
+  box-shadow: 0 6px 24px rgba(79,70,229,0.25); transform: translateY(-1px);
+}
+.btn.glow { box-shadow: var(--shadow-brand), 0 0 0 3px rgba(79,70,229,0.08); }
+.btn.ghost { background: transparent; border-color: transparent; box-shadow: none; }
+.btn.ghost:hover { background: var(--surface-muted); }
+
+/* HERO */
+.hero {
+  position: relative; padding: 100px 0 80px; overflow: hidden;
+}
+.hero::before {
+  content: ''; position: absolute; inset: -30%;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(79,70,229,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 20%, rgba(14,165,233,0.04) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 80%, rgba(245,158,11,0.03) 0%, transparent 50%);
+  pointer-events: none; animation: mesh-drift 20s ease-in-out infinite alternate;
+}
+.hero::after {
+  content: ''; position: absolute; inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 0H0v60' fill='none' stroke='%23e5e5e0' stroke-width='0.5'/%3E%3C/svg%3E");
+  opacity: 0.3; pointer-events: none;
+}
+.hero-content { position: relative; z-index: 1; max-width: 720px; }
+.hero-label {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 0.82rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--brand); margin-bottom: 20px;
+  padding: 6px 14px; border-radius: 999px;
+  background: var(--brand-subtle); border: 1px solid rgba(79,70,229,0.12);
+}
+.hero-grid {
+  display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px;
+  align-items: start; position: relative; z-index: 1;
+}
+.hero-actions { margin-top: 32px; display: flex; gap: 12px; flex-wrap: wrap; }
+.trust-bar { display: flex; gap: 28px; margin-top: 48px; flex-wrap: wrap; }
+.trust-item {
+  font-size: 0.875rem; color: var(--ink-soft); display: flex; align-items: center; gap: 10px;
+  font-weight: 500;
+}
+.trust-item::before {
+  content: '✓'; display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(16,185,129,0.08); color: var(--ok); font-size: 0.7rem; font-weight: 700;
+  flex-shrink: 0;
+}
+
+.hero-visual {
+  position: relative; z-index: 1;
+  border-radius: var(--radius); overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--line);
+}
+.hero-visual img, .hero-visual svg {
+  width: 100%; height: auto; display: block;
+}
+
+/* SECTIONS */
+.section { padding: 80px 0; }
+.section-alt {
+  background: var(--surface);
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+}
+.section-header { text-align: center; margin-bottom: 48px; }
+.section-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: "Inter", sans-serif; font-size: 0.78rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--brand); margin-bottom: 12px;
+}
+.section-label::before {
+  content: ''; width: 20px; height: 1px; background: var(--brand); opacity: 0.4;
+}
+
+/* STEPS GRID */
+.steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.step-card {
+  padding: 32px 28px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); transition: all var(--transition);
+  position: relative;
+}
+.step-card:hover {
+  border-color: rgba(79,70,229,0.2); box-shadow: var(--shadow);
+  transform: translateY(-3px);
+}
+.step-num {
+  display: flex; align-items: center; justify-content: center;
+  width: 48px; height: 48px; border-radius: 14px;
+  background: var(--brand-subtle); color: var(--brand);
+  font-family: "Instrument Serif", serif; font-size: 1.4rem;
+  margin-bottom: 18px; border: 1px solid rgba(79,70,229,0.1);
+}
+.step-card h3 { margin-bottom: 10px; }
+.step-card p { color: var(--ink-soft); font-size: 0.93rem; line-height: 1.6; }
+
+/* FEATURE GRID */
+.feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.feature-card {
+  padding: 28px 24px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); transition: all var(--transition);
+}
+.feature-card:hover {
+  border-color: rgba(79,70,229,0.15); box-shadow: var(--shadow);
+  transform: translateY(-2px);
+}
+.feature-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 12px;
+  background: var(--brand-subtle); color: var(--brand);
+  font-size: 1.2rem; margin-bottom: 14px;
+  border: 1px solid rgba(79,70,229,0.08);
+}
+.feature-card h3 { margin-bottom: 8px; }
+.feature-card p { color: var(--ink-soft); font-size: 0.92rem; line-height: 1.55; }
+
+/* EMPLOYER CALLOUT */
+.employer-callout {
+  display: flex; align-items: center; justify-content: space-between; gap: 32px;
+  padding: 40px 44px; border-radius: var(--radius);
+  background: linear-gradient(135deg, rgba(79,70,229,0.03), rgba(14,165,233,0.03));
+  border: 1px solid rgba(79,70,229,0.1);
+}
+.employer-callout p {
+  margin: 8px 0 0; color: var(--ink-soft); max-width: 50ch; font-size: 0.95rem;
+}
+
+/* CTA SECTION */
+.cta-section {
+  padding: 100px 0; text-align: center;
+  background: linear-gradient(180deg, var(--bg) 0%, rgba(79,70,229,0.03) 50%, var(--bg) 100%);
+}
+.cta-inner { display: flex; flex-direction: column; align-items: center; }
+.cta-inner .lead { text-align: center; }
+.cta-inner .btn { margin-top: 28px; }
+
+/* TESTIMONIALS */
+.testimonial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.testimonial {
+  padding: 28px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); position: relative;
+}
+.testimonial::before {
+  content: '\201C'; position: absolute; top: 16px; left: 24px;
+  font-family: "Instrument Serif", serif; font-size: 3rem;
+  color: var(--brand); opacity: 0.15; line-height: 1;
+}
+.testimonial p { color: var(--ink-soft); font-size: 0.93rem; line-height: 1.6; margin-top: 20px; }
+.testimonial-author {
+  margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-light);
+  font-size: 0.85rem;
+}
+.testimonial-author strong { color: var(--ink); display: block; }
+.testimonial-author span { color: var(--ink-muted); }
+
+/* FOOTER */
+.footer-note {
+  padding: 32px 0 40px; color: var(--ink-muted); font-size: 0.84rem;
+  text-align: center; border-top: 1px solid var(--line);
+}
+
+/* ANIMATIONS */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes mesh-drift {
+  0% { transform: translate(0,0) scale(1); }
+  100% { transform: translate(-2%,1.5%) scale(1.03); }
+}
+.animate-in > * { animation: fadeInUp 0.5s ease-out both; }
+.animate-in > *:nth-child(1) { animation-delay: 0s; }
+.animate-in > *:nth-child(2) { animation-delay: 0.08s; }
+.animate-in > *:nth-child(3) { animation-delay: 0.14s; }
+
+/* RESPONSIVE */
+@media (max-width: 1040px) {
+  .hero-grid, .steps-grid, .feature-grid, .testimonial-grid { grid-template-columns: 1fr; }
+  .hero { padding: 70px 0 50px; }
+  .hero-content { max-width: 100%; }
+  .employer-callout { flex-direction: column; align-items: flex-start; padding: 24px; }
+  .trust-bar { flex-direction: column; gap: 10px; }
+  .cta-section { padding: 60px 0; }
+  .section { padding: 50px 0; }
+  .topbar-inner { height: auto; padding: 10px 0; flex-wrap: wrap; }
+}
+
+@media (max-width: 640px) {
+  h1 { font-size: 2rem; }
+}
+  </style>
+</head>
+<body>
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="container">
+      <div class="topbar-inner">
+        <div class="brand">AI Tutor</div>
+        <nav class="nav">
+          <a href="#how-it-works">How It Works</a>
+          <a href="#">Assessment</a>
+          <a href="#">Dashboard</a>
+          <a href="#">For Employers</a>
+        </nav>
+        <a href="#" class="btn primary">Get Started</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO SECTION -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-grid animate-in">
+        <div class="hero-content">
+          <div class="hero-label">The AI Skills Platform</div>
+          <h1>Learn AI. Ship projects. <span class="highlight">Get the proof.</span></h1>
+          <p class="lead">Your personal AI tutor guides you through real, portfolio-building projects. Every step is logged and verified — no fake credentials, just genuine proof of what you can do.</p>
+          <div class="hero-actions">
+            <a href="#" class="btn primary glow">Take the Free Assessment</a>
+            <a href="#" class="btn ghost">View Example Portfolio →</a>
+          </div>
+          <div class="trust-bar">
+            <div class="trust-item">12,000+ learners proved their AI skills</div>
+            <div class="trust-item">500+ employers hiring AI-native talent</div>
+            <div class="trust-item">99% complete their first project</div>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="learnerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#4f46e5;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#0ea5e9;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+            <circle cx="400" cy="250" r="300" fill="#4f46e5" opacity="0.08"/>
+            <g id="blocks">
+              <rect x="280" y="340" width="80" height="80" fill="#4f46e5" opacity="0.9"/>
+              <rect x="280" y="340" width="80" height="4" fill="#0ea5e9" opacity="0.6"/>
+              <rect x="300" y="270" width="80" height="70" fill="#0ea5e9" opacity="0.85"/>
+              <rect x="300" y="270" width="80" height="3" fill="#4f46e5" opacity="0.7"/>
+              <rect x="315" y="200" width="80" height="70" fill="#4f46e5" opacity="0.8"/>
+              <rect x="315" y="200" width="80" height="3" fill="#0ea5e9" opacity="0.6"/>
+              <rect x="330" y="130" width="80" height="70" fill="#0ea5e9" opacity="0.9"/>
+              <rect x="330" y="130" width="80" height="3" fill="#4f46e5" opacity="0.8"/>
+            </g>
+            <g id="network" opacity="0.7">
+              <line x1="370" y1="165" x2="480" y2="220" stroke="#0ea5e9" stroke-width="2" opacity="0.5"/>
+              <line x1="380" y1="235" x2="520" y2="200" stroke="#4f46e5" stroke-width="1.5" opacity="0.4"/>
+              <line x1="420" y1="380" x2="550" y2="320" stroke="#0ea5e9" stroke-width="2" opacity="0.45"/>
+              <line x1="430" y1="160" x2="600" y2="140" stroke="#4f46e5" stroke-width="1.5" opacity="0.35"/>
+              <line x1="360" y1="300" x2="550" y2="350" stroke="#0ea5e9" stroke-width="1.5" opacity="0.4"/>
+              <circle cx="370" cy="165" r="6" fill="#f59e0b" opacity="0.8"/>
+              <circle cx="480" cy="220" r="5" fill="#f59e0b" opacity="0.7"/>
+              <circle cx="520" cy="200" r="4" fill="#0ea5e9" opacity="0.6"/>
+              <circle cx="550" cy="320" r="6" fill="#f59e0b" opacity="0.75"/>
+              <circle cx="600" cy="140" r="5" fill="#4f46e5" opacity="0.5"/>
+              <circle cx="550" cy="350" r="4" fill="#0ea5e9" opacity="0.55"/>
+            </g>
+            <g id="accents" opacity="0.85">
+              <path d="M 680 120 L 720 160 L 680 200 L 640 160 Z" fill="none" stroke="#f59e0b" stroke-width="2.5" opacity="0.7"/>
+              <circle cx="700" cy="100" r="8" fill="#f59e0b" opacity="0.6"/>
+              <circle cx="660" cy="280" r="6" fill="#0ea5e9" opacity="0.5"/>
+              <circle cx="720" cy="320" r="7" fill="#4f46e5" opacity="0.45"/>
+              <path d="M 650 380 A 40 40 0 0 1 700 400" stroke="#0ea5e9" stroke-width="2" fill="none" opacity="0.6"/>
+              <polygon points="720,250 750,270 740,305 710,300" fill="#f59e0b" opacity="0.35"/>
+            </g>
+            <g id="leftAccents" opacity="0.8">
+              <circle cx="80" cy="150" r="5" fill="#0ea5e9" opacity="0.6"/>
+              <circle cx="120" cy="120" r="4" fill="#f59e0b" opacity="0.5"/>
+              <polygon points="100,300 130,310 120,340" fill="#0ea5e9" opacity="0.3"/>
+              <rect x="60" y="380" width="40" height="40" fill="none" stroke="#4f46e5" stroke-width="2" opacity="0.4"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="section" id="how-it-works">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-label">The Path</div>
+        <h2>How It Works</h2>
+      </div>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-num">01</div>
+          <h3>Take Assessment</h3>
+          <p>Answer 20 questions about your AI experience and goals. We identify your current level and skill gaps in real-world AI work.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">02</div>
+          <h3>Build with Tutor</h3>
+          <p>Your AI tutor gives you real projects matched to your level. You code, they guide. Every decision is logged—this becomes your proof.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">03</div>
+          <h3>Publish Proof</h3>
+          <p>Deploy your project. Your portfolio website goes live with verified build logs, skill stack, and artifact links. Share with employers confidently.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT YOU GET -->
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-label">Your Assets</div>
+        <h2>What You Get</h2>
+      </div>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">&#127760;</div>
+          <h3>Portfolio Website</h3>
+          <p>Custom domain, live projects, and skill showcase. AI Tutor hosts it, employers view your work instantly.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">&#10003;</div>
+          <h3>Verified Skill Stack</h3>
+          <p>Machine-verified list of AI tools, frameworks, and techniques you've proven through projects. No guessing, no padding.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">&#128221;</div>
+          <h3>Project Build Logs</h3>
+          <p>Timestamped record of every decision, error, and fix. Shows your real problem-solving process to recruiters.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">&#128226;</div>
+          <h3>Social Content Engine</h3>
+          <p>Turn your projects into LinkedIn posts, Twitter threads, and blog content. Build your personal brand while learning.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">&#128196;</div>
+          <h3>Resume & Artifacts</h3>
+          <p>One-click resume generation from your verified skills. Links to your actual code and results, not just descriptions.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">&#128188;</div>
+          <h3>Talent Marketplace</h3>
+          <p>Jobs and contract opportunities from employers actively hiring AI-native talent. Your proof opens doors.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-label">Success Stories</div>
+        <h2>From Our Learners</h2>
+      </div>
+      <div class="testimonial-grid">
+        <div class="testimonial">
+          <p>I was scared AI would make me irrelevant as a frontend dev. AI Tutor turned that anxiety into 3 shipped projects. Recruiters actually care about my build logs—it's the clearest proof I've ever given.</p>
+          <div class="testimonial-author">
+            <strong>Alex Chen</strong>
+            <span>Senior Frontend Developer → AI-Native Role</span>
+          </div>
+        </div>
+        <div class="testimonial">
+          <p>The assessment showed me I was way underestimating my prompt engineering skills. In 6 weeks I deployed a working content automation tool. Now my portfolio website is doing the recruiting for me.</p>
+          <div class="testimonial-author">
+            <strong>Maria García</strong>
+            <span>Content Strategist → Product Manager (AI)</span>
+          </div>
+        </div>
+        <div class="testimonial">
+          <p>My background is biology. I thought AI was for CS majors. The tutor took me from zero to deploying a research assistant. Three companies contacted me. This is the credentials system I always wished existed.</p>
+          <div class="testimonial-author">
+            <strong>Dr. James Wu</strong>
+            <span>Research Scientist → AI Specialist</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EMPLOYER CALLOUT -->
+  <section class="section">
+    <div class="container">
+      <div class="employer-callout">
+        <div>
+          <h3>For Hiring Teams</h3>
+          <p>Stop reading LinkedIn profiles. View actual project evidence, build logs, and verified skill stacks. See exactly what candidates can do in 60 seconds.</p>
+        </div>
+        <a href="#" class="btn primary">Explore Talent Marketplace</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA SECTION -->
+  <section class="cta-section">
+    <div class="container">
+      <div class="cta-inner">
+        <h2>AI won't replace you.</h2>
+        <p class="lead">Someone who proves they use AI will.</p>
+        <a href="#" class="btn primary glow">Start Your Free Assessment</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer-note">
+    <div class="container">
+      <p>&copy; 2026 AI Tutor. Helping you prove your AI skills through real projects.</p>
+    </div>
+  </footer>
+</body>
+</html>

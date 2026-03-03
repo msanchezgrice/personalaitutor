@@ -32,13 +32,17 @@
                 </div>
             </div>
         </div>
-    </header>
+    <div class="fixed top-4 right-4 z-[100]">
+<button id="theme-toggle" class="btn bg-white/10 hover:bg-white/20 text-white border border-white/10 px-3 py-2 rounded-lg flex items-center justify-center transition-colors">
+  <i class="fa-solid fa-sun" id="theme-icon"></i>
+</button>
+</div>\n</header>
 
     <main class="flex-grow container max-w-4xl py-12">
 
         <!-- Project Header -->
         <div class="mb-12">
-            <div class="flex items-center gap-3 text-indigo-400 font-bold uppercase tracking-widest text-[10px] mb-4">
+            <div class="flex items-center gap-3 text-emerald-400 font-bold uppercase tracking-widest text-[10px] mb-4">
                 <i class="fa-solid fa-folder-open text-xs"></i> Project Build Log
             </div>
             <h1 class="text-5xl font-[Outfit] text-white mb-6">Customer Support Copilot</h1>
@@ -121,11 +125,11 @@
                     <!-- Tutor Interaction Snippet -->
                     <div class="bg-[#0f111a]/80 p-4 rounded-xl border border-white/10 relative z-10">
                         <div class="flex items-center gap-2 mb-3 border-b border-white/5 pb-2">
-                            <i class="fa-solid fa-robot text-indigo-400 text-xs text-center w-4"></i>
+                            <i class="fa-solid fa-robot text-emerald-400 text-xs text-center w-4"></i>
                             <span class="text-xs font-bold text-gray-300 uppercase tracking-widest">Tutor Context</span>
                         </div>
                         <code
-                            class="text-xs text-indigo-300 font-mono block mb-2">TypeError: string indices must be integers</code>
+                            class="text-xs text-emerald-300 font-mono block mb-2">TypeError: string indices must be integers</code>
                         <p class="text-[11px] text-gray-400">Working on adding robust `json.loads()` validation to
                             handle malformed stringified JSON within the payload.</p>
                     </div>
@@ -154,6 +158,43 @@
 
         </div>
     </main>
-</body>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    
+    // Check local storage for theme
+    const currentTheme = localStorage.getItem('theme') || 'dark';
+    if (currentTheme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+      themeIcon.classList.replace('fa-sun', 'fa-moon');
+      if (themeToggle) {
+        themeToggle.classList.replace('text-white', 'text-gray-800');
+        themeToggle.classList.replace('border-white/10', 'border-gray-300');
+      }
+    }
+    
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        let theme = document.documentElement.getAttribute('data-theme');
+        if (theme === 'light') {
+          document.documentElement.removeAttribute('data-theme');
+          localStorage.setItem('theme', 'dark');
+          themeIcon.classList.replace('fa-moon', 'fa-sun');
+          themeToggle.classList.replace('text-gray-800', 'text-white');
+          themeToggle.classList.replace('border-gray-300', 'border-white/10');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'light');
+          localStorage.setItem('theme', 'light');
+          themeIcon.classList.replace('fa-sun', 'fa-moon');
+          themeToggle.classList.replace('text-white', 'text-gray-800');
+          themeToggle.classList.replace('border-white/10', 'border-gray-300');
+        }
+      });
+    }
+  });
+</script>
+\n</body>
 
 </html>

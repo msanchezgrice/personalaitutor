@@ -10,7 +10,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
-<body class="bg-[#0f111a] text-[#0f111a] flex justify-center py-12 px-4 font-['Inter']">
+\1
+<div class="fixed top-4 right-4 z-[100]">
+<button id="theme-toggle" class="btn bg-white/10 hover:bg-white/20 text-white border border-white/10 px-3 py-2 rounded-lg flex items-center justify-center transition-colors">
+  <i class="fa-solid fa-sun" id="theme-icon"></i>
+</button>
+</div>
+
 
     <!-- Email Wrapper to simulate an inbox view -->
     <div
@@ -18,12 +24,12 @@
 
         <!-- Email Header -->
         <div
-            class="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6 text-white flex justify-between items-center">
+            class="bg-gradient-to-r from-emerald-600 to-teal-600 px-8 py-6 text-white flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-brain"></i>
                 <span class="font-[Outfit] font-bold text-lg tracking-tight">AI Tutor</span>
             </div>
-            <span class="text-xs text-indigo-200 uppercase tracking-widest font-bold">Daily Brief</span>
+            <span class="text-xs text-emerald-200 uppercase tracking-widest font-bold">Daily Brief</span>
         </div>
 
         <!-- Email Body -->
@@ -32,15 +38,15 @@
             <p class="text-gray-600 leading-relaxed">Your AI Tutor has analyzed your overnight builds and the latest
                 industry developments. Here is your personalized curriculum update for today.</p>
 
-            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5 mt-6">
-                <h3 class="text-sm font-bold text-indigo-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-crosshairs text-indigo-500"></i> Your Priority Task
+            <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-5 mt-6">
+                <h3 class="text-sm font-bold text-emerald-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-crosshairs text-emerald-500"></i> Your Priority Task
                 </h3>
                 <p class="text-gray-800 font-medium mb-1">Fix API Gateway Timeout</p>
                 <p class="text-sm text-gray-600 mb-4">The `webhook_handler.py` script timed out 4 times in the last 12
                     hours. We need to implement a retry decorator.</p>
                 <a href="/dashboard/chat/"
-                    class="inline-block bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded shadow hover:bg-indigo-700 transition">Jump
+                    class="inline-block bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded shadow hover:bg-indigo-700 transition">Jump
                     into Tutor Session</a>
             </div>
 
@@ -68,13 +74,50 @@
             <p class="text-xs text-gray-400 mb-2">AI Tutor is tracking your progress towards: <strong>Senior PM</strong>
             </p>
             <div class="flex justify-center gap-4 text-xs">
-                <a href="/dashboard/" class="text-indigo-600 hover:underline">Dashboard</a>
+                <a href="/dashboard/" class="text-emerald-600 hover:underline">Dashboard</a>
                 <span class="text-gray-300">|</span>
-                <a href="#" class="text-indigo-600 hover:underline">Unsubscribe</a>
+                <a href="#" class="text-emerald-600 hover:underline">Unsubscribe</a>
             </div>
         </div>
 
     </div>
-</body>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    
+    // Check local storage for theme
+    const currentTheme = localStorage.getItem('theme') || 'dark';
+    if (currentTheme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+      themeIcon.classList.replace('fa-sun', 'fa-moon');
+      if (themeToggle) {
+        themeToggle.classList.replace('text-white', 'text-gray-800');
+        themeToggle.classList.replace('border-white/10', 'border-gray-300');
+      }
+    }
+    
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        let theme = document.documentElement.getAttribute('data-theme');
+        if (theme === 'light') {
+          document.documentElement.removeAttribute('data-theme');
+          localStorage.setItem('theme', 'dark');
+          themeIcon.classList.replace('fa-moon', 'fa-sun');
+          themeToggle.classList.replace('text-gray-800', 'text-white');
+          themeToggle.classList.replace('border-gray-300', 'border-white/10');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'light');
+          localStorage.setItem('theme', 'light');
+          themeIcon.classList.replace('fa-sun', 'fa-moon');
+          themeToggle.classList.replace('text-white', 'text-gray-800');
+          themeToggle.classList.replace('border-white/10', 'border-gray-300');
+        }
+      });
+    }
+  });
+</script>
+\n</body>
 
 </html>

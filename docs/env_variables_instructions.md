@@ -1,6 +1,6 @@
 # Environment Variables Instructions
 
-This document lists every environment variable required or recommended for `personalaitutor`.
+This document lists every environment variable required or recommended for `myaiskilltutor`.
 
 ## Where To Set
 - Local development: `.env.local` (do not commit)
@@ -21,7 +21,7 @@ This document lists every environment variable required or recommended for `pers
 | Variable | Required | Used By | Exact Format | How To Obtain |
 |---|---|---|---|---|
 | `CLERK_SECRET_KEY` | Yes (when Clerk enabled) | Auth backend integration | `sk_...` | Clerk dashboard -> API Keys |
-| `CLERK_PUBLISHABLE_KEY` | Yes (when Clerk enabled) | Auth frontend integration | `pk_...` | Clerk dashboard -> API Keys |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Yes (when Clerk enabled) | Auth frontend integration | `pk_...` | Clerk dashboard -> API Keys |
 | `LINKEDIN_CLIENT_ID` | Yes for LinkedIn OAuth | `/api/auth/linkedin/start` | App client id string | LinkedIn Developer App settings |
 | `LINKEDIN_CLIENT_SECRET` | Yes for LinkedIn OAuth | LinkedIn callback token exchange | Secret string | LinkedIn Developer App settings |
 | `LINKEDIN_REDIRECT_URI` | Yes for LinkedIn OAuth | LinkedIn callback validation | `https://<domain>/api/auth/linkedin/callback` | Must exactly match LinkedIn app redirect URI |
@@ -49,8 +49,8 @@ This document lists every environment variable required or recommended for `pers
 | `DEFAULT_USER_ID` | Optional | Fallback user id for scripts | `user_test_0001` |
 
 ## Exact Redirect URI Values (Production)
-- `LINKEDIN_REDIRECT_URI=https://personalaitutor.vercel.app/api/auth/linkedin/callback`
-- `X_REDIRECT_URI=https://personalaitutor.vercel.app/api/auth/x/callback`
+- `LINKEDIN_REDIRECT_URI=https://mypersonalaitutor.com/api/auth/linkedin/callback`
+- `X_REDIRECT_URI=https://mypersonalaitutor.com/api/auth/x/callback`
 
 ## Validation Checklist
 1. `PERSISTENCE_MODE=supabase` in Vercel for all environments.

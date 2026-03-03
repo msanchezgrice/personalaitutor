@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-03-03T04:13:12Z",
+  "generatedAt": "2026-03-03T16:41:23Z",
   "items": [
     { "key": "OPENAI_API_KEY", "status": "present" },
     { "key": "SUPABASE_URL", "status": "present" },
     { "key": "SUPABASE_SERVICE_ROLE_KEY", "status": "present" },
     { "key": "SUPABASE_ANON_KEY", "status": "present" },
     { "key": "CLERK_SECRET_KEY", "status": "present" },
-    { "key": "CLERK_PUBLISHABLE_KEY", "status": "present" },
+    { "key": "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "status": "present" },
     { "key": "LINKEDIN_CLIENT_ID", "status": "present" },
     { "key": "LINKEDIN_CLIENT_SECRET", "status": "present" },
     { "key": "LINKEDIN_REDIRECT_URI", "status": "present" },

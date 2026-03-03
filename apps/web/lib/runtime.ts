@@ -50,6 +50,7 @@ import {
   type TalentCard,
   type UserProfile,
 } from "@aitutor/shared";
+import { BRAND_NAME } from "./site";
 
 const DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -985,7 +986,7 @@ async function generateTutorReply(input: {
 
   const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
   const prompt = [
-    "You are AI Tutor, a practical coding tutor.",
+    `You are ${BRAND_NAME}, a practical coding tutor.`,
     `Learner name: ${input.profile.name}`,
     `Learner role: ${input.profile.headline || "AI Builder"}`,
     `Project: ${input.project.title}`,
@@ -1091,7 +1092,7 @@ export async function runtimeAddProjectChatMessage(input: {
       project,
       message: input.message,
     });
-    const normalizedReply = /^ai tutor:/i.test(reply.trim()) ? reply.trim() : `AI Tutor: ${reply.trim()}`;
+    const normalizedReply = /^my ai skill tutor:/i.test(reply.trim()) ? reply.trim() : `${BRAND_NAME}: ${reply.trim()}`;
 
     await supabase
       .from("agent_jobs")
@@ -1110,7 +1111,7 @@ export async function runtimeAddProjectChatMessage(input: {
       projectId: project.id,
       userId: profile.id,
       level: "success",
-      message: `AI Tutor reply generated for: ${input.message.slice(0, 80)}`,
+      message: `${BRAND_NAME} reply generated for: ${input.message.slice(0, 80)}`,
       metadata: {
         model: process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
       },
@@ -1149,7 +1150,7 @@ export async function runtimeAddProjectChatMessage(input: {
       projectId: project.id,
       userId: profile.id,
       level: "error",
-      message: `AI Tutor response failed: ${failureCode}`,
+      message: `${BRAND_NAME} response failed: ${failureCode}`,
       metadata: {
         reason: error instanceof Error ? error.message : "UNKNOWN",
       },
@@ -1405,8 +1406,8 @@ export async function runtimeCreateSocialDrafts(input: {
     : `${baseUrl}/api/og/profile/${profile.handle}`;
 
   const baseText = project
-    ? `Shipped ${project.title} with my AI Tutor. Platform Verified build log + artifacts.`
-    : `Building AI-native skills with my AI Tutor. Platform Verified projects and proof.`;
+    ? `Shipped ${project.title} with ${BRAND_NAME}. Platform Verified build log + artifacts.`
+    : `Building AI-native skills with ${BRAND_NAME}. Platform Verified projects and proof.`;
 
   const makeDraft = (platform: SocialPlatform, text: string): SocialDraft => ({
     id: randomUUID(),
@@ -1786,7 +1787,7 @@ export async function runtimeListTalent(filters?: Parameters<typeof listTalent>[
         role,
         status: topStatus,
         topSkills: topSkills.length ? topSkills : ["AI Foundations"],
-        topTools: topTools.length ? topTools : ["AI Tutor"],
+        topTools: topTools.length ? topTools : [BRAND_NAME],
         evidenceScore: Math.max(0, Math.min(100, Math.round(scoreBasis * 100))),
       };
     });
@@ -1837,7 +1838,7 @@ export async function runtimeGetTalentByHandle(handle: string) {
       role: profile.headline || "AI Builder",
       status,
       topSkills: topSkills.length ? topSkills : ["AI Foundations"],
-      topTools: profile.tools.length ? profile.tools.slice(0, 3) : ["AI Tutor"],
+      topTools: profile.tools.length ? profile.tools.slice(0, 3) : [BRAND_NAME],
       evidenceScore: Math.max(0, Math.min(100, evidenceScore)),
     } as TalentCard;
   }

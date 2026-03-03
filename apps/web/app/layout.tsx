@@ -1,30 +1,44 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
+import { BRAND_NAME, BRAND_DOMAIN, getSiteUrl } from "@/lib/site";
 import { themeBootScript } from "@/lib/theme-script";
 import "./globals.css";
-
-const appBaseUrl = (
-  process.env.APP_BASE_URL ||
-  process.env.NEXT_PUBLIC_APP_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:6396")
-).replace(/\/+$/, "");
+const appBaseUrl = getSiteUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(appBaseUrl),
-  title: "AI Tutor Platform",
+  applicationName: BRAND_NAME,
+  title: {
+    default: `${BRAND_NAME} | Build AI Skills and Public Proof`,
+    template: `%s | ${BRAND_NAME}`,
+  },
   description: "Learn AI, build proof artifacts, and publish system-verified skills.",
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "AI Tutor Platform",
+    title: `${BRAND_NAME} | Build AI Skills and Public Proof`,
     description: "Learn AI and publish proof-based profiles.",
+    siteName: BRAND_NAME,
     type: "website",
     url: "/",
+    images: [{ url: "/assets/social_media_banner.png" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Tutor Platform",
+    title: `${BRAND_NAME} | Build AI Skills and Public Proof`,
     description: "Learn AI and publish proof-based profiles.",
+    images: ["/assets/social_media_banner.png"],
   },
+  keywords: [
+    "AI tutor",
+    "AI skills",
+    "AI assessment",
+    "AI portfolio",
+    "talent marketplace",
+    BRAND_DOMAIN,
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

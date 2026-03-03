@@ -10,7 +10,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
-<body class="relative min-h-screen flex flex-col justify-center items-center py-12">
+\1
+<div class="fixed top-4 right-4 z-[100]">
+<button id="theme-toggle" class="btn bg-white/10 hover:bg-white/20 text-white border border-white/10 px-3 py-2 rounded-lg flex items-center justify-center transition-colors">
+  <i class="fa-solid fa-sun" id="theme-icon"></i>
+</button>
+</div>
+
     <!-- Background Glows -->
     <div class="bg-glow top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-0 ml-0 opacity-30"></div>
 
@@ -18,7 +24,7 @@
         <div class="text-center mb-10">
             <a href="/" class="inline-flex items-center gap-2 mb-6">
                 <div
-                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl">
                     <i class="fa-solid fa-brain"></i>
                 </div>
                 <span class="font-[Outfit] font-bold text-xl tracking-tight text-white">AI Tutor</span>
@@ -32,57 +38,57 @@
             <!-- Progress Bar -->
             <div class="w-full bg-white/10 h-1.5 rounded-full mb-8 absolute top-0 left-0">
                 <div
-                    class="bg-gradient-to-r from-indigo-500 to-cyan-400 w-1/4 h-full rounded-full shadow-[0_0_10px_rgba(79,70,229,0.5)]">
+                    class="bg-gradient-to-r from-emerald-500 to-cyan-400 w-1/4 h-full rounded-full shadow-[0_0_10px_rgba(79,70,229,0.5)]">
                 </div>
             </div>
 
             <div class="mb-8">
-                <span class="text-indigo-400 text-sm font-semibold tracking-wider uppercase">Question 1 of 4</span>
+                <span class="text-emerald-400 text-sm font-semibold tracking-wider uppercase">Question 1 of 4</span>
                 <h2 class="text-2xl mt-2 mb-6 text-white font-[Outfit]">What is your primary goal with AI?</h2>
 
                 <div class="space-y-4">
                     <!-- Option 1 -->
                     <label
-                        class="group flex items-center p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-indigo-500/50 cursor-pointer transition-all">
+                        class="group flex items-center p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-emerald-500/50 cursor-pointer transition-all">
                         <input type="radio" name="goal"
-                            class="w-5 h-5 text-indigo-500 bg-black/50 border-white/20 focus:ring-indigo-500 focus:ring-offset-gray-900" />
+                            class="w-5 h-5 text-emerald-500 bg-black/50 border-white/20 focus:ring-emerald-500 focus:ring-offset-gray-900" />
                         <div class="ml-4">
                             <span class="block text-white font-medium">Automate daily workflows</span>
                             <span class="block text-gray-500 text-sm mt-0.5">Save time on emails, scheduling, and
                                 repetitive tasks.</span>
                         </div>
                         <div class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                            <i class="fa-solid fa-arrow-right text-indigo-400"></i>
+                            <i class="fa-solid fa-arrow-right text-emerald-400"></i>
                         </div>
                     </label>
 
                     <!-- Option 2 -->
                     <label
-                        class="group flex items-center p-4 rounded-xl border border-indigo-500/50 bg-indigo-500/10 cursor-pointer transition-all shadow-[0_0_15px_rgba(79,70,229,0.15)]">
+                        class="group flex items-center p-4 rounded-xl border border-emerald-500/50 bg-emerald-500/10 cursor-pointer transition-all shadow-[0_0_15px_rgba(79,70,229,0.15)]">
                         <input type="radio" name="goal" checked
-                            class="w-5 h-5 text-indigo-500 bg-black/50 border-white/20 focus:ring-indigo-500 focus:ring-offset-gray-900" />
+                            class="w-5 h-5 text-emerald-500 bg-black/50 border-white/20 focus:ring-emerald-500 focus:ring-offset-gray-900" />
                         <div class="ml-4">
                             <span class="block text-white font-medium">Build simple applications</span>
                             <span class="block text-gray-500 text-sm mt-0.5">Create internal tools or prototypes without
                                 deep coding.</span>
                         </div>
                         <div class="ml-auto">
-                            <i class="fa-solid fa-check-circle text-indigo-400"></i>
+                            <i class="fa-solid fa-check-circle text-emerald-400"></i>
                         </div>
                     </label>
 
                     <!-- Option 3 -->
                     <label
-                        class="group flex items-center p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-indigo-500/50 cursor-pointer transition-all">
+                        class="group flex items-center p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-emerald-500/50 cursor-pointer transition-all">
                         <input type="radio" name="goal"
-                            class="w-5 h-5 text-indigo-500 bg-black/50 border-white/20 focus:ring-indigo-500 focus:ring-offset-gray-900" />
+                            class="w-5 h-5 text-emerald-500 bg-black/50 border-white/20 focus:ring-emerald-500 focus:ring-offset-gray-900" />
                         <div class="ml-4">
                             <span class="block text-white font-medium">Data analysis & visualization</span>
                             <span class="block text-gray-500 text-sm mt-0.5">Use AI to crunch numbers and generate
                                 insights.</span>
                         </div>
                         <div class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                            <i class="fa-solid fa-arrow-right text-indigo-400"></i>
+                            <i class="fa-solid fa-arrow-right text-emerald-400"></i>
                         </div>
                     </label>
                 </div>
@@ -96,6 +102,43 @@
             </div>
         </div>
     </div>
-</body>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    
+    // Check local storage for theme
+    const currentTheme = localStorage.getItem('theme') || 'dark';
+    if (currentTheme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+      themeIcon.classList.replace('fa-sun', 'fa-moon');
+      if (themeToggle) {
+        themeToggle.classList.replace('text-white', 'text-gray-800');
+        themeToggle.classList.replace('border-white/10', 'border-gray-300');
+      }
+    }
+    
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        let theme = document.documentElement.getAttribute('data-theme');
+        if (theme === 'light') {
+          document.documentElement.removeAttribute('data-theme');
+          localStorage.setItem('theme', 'dark');
+          themeIcon.classList.replace('fa-moon', 'fa-sun');
+          themeToggle.classList.replace('text-gray-800', 'text-white');
+          themeToggle.classList.replace('border-gray-300', 'border-white/10');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'light');
+          localStorage.setItem('theme', 'light');
+          themeIcon.classList.replace('fa-sun', 'fa-moon');
+          themeToggle.classList.replace('text-white', 'text-gray-800');
+          themeToggle.classList.replace('border-white/10', 'border-gray-300');
+        }
+      });
+    }
+  });
+</script>
+\n</body>
 
 </html>

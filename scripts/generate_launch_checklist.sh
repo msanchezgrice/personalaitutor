@@ -19,13 +19,20 @@ if [ -f ".env.local" ]; then
   set +a
 fi
 
+if [ -f "apps/web/.env.local" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source apps/web/.env.local
+  set +a
+fi
+
 required=(
   OPENAI_API_KEY
   SUPABASE_URL
   SUPABASE_SERVICE_ROLE_KEY
   SUPABASE_ANON_KEY
   CLERK_SECRET_KEY
-  CLERK_PUBLISHABLE_KEY
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
   LINKEDIN_CLIENT_ID
   LINKEDIN_CLIENT_SECRET
   LINKEDIN_REDIRECT_URI

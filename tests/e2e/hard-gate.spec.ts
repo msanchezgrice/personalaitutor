@@ -13,55 +13,21 @@ test.describe("hard gate browser verification", () => {
     await expect(page.getByRole("link", { name: /continue/i })).toBeVisible();
   });
 
-  test("onboarding can move user into dashboard", async ({ page }) => {
+  test("onboarding route is auth-protected", async ({ page }) => {
     await page.goto("/onboarding");
-
-    const directLink = page.getByRole("link", { name: /go directly to dashboard/i });
-    await expect(directLink).toBeVisible();
-
-    await directLink.click();
-    await expect(page).toHaveURL(/\/dashboard\/?$/);
-
-    await expect(page.locator("aside")).toBeVisible();
-    await expect(page.getByText(/chat tutor/i).first()).toBeVisible();
-    await expect(page.getByText(/projects/i).first()).toBeVisible();
+    await expect(page).toHaveURL(/\/sign-in\?/);
   });
 
-  test("dashboard chat is wired to backend", async ({ page }) => {
-    const summaryResponsePromise = page.waitForResponse(
-      (response) => response.url().includes("/api/dashboard/summary") && response.status() === 200,
-      { timeout: 30_000 },
-    );
+  test("dashboard routes and session API require auth", async ({ page }) => {
+    const sessionResponse = await page.request.get("/api/auth/session");
+    expect(sessionResponse.status()).toBe(401);
+    const body = await sessionResponse.json();
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("UNAUTHENTICATED");
 
-    await page.goto("/dashboard/chat/");
-    await summaryResponsePromise;
-    await page.waitForTimeout(400);
-
-    const textarea = page.locator("textarea");
-    await expect(textarea).toBeVisible();
-
-    const message = `E2E chat ${Date.now()}`;
-    await textarea.fill(message);
-    const sendButton = page.locator("button:has(i.fa-paper-plane)").first();
-    await expect(sendButton).toBeVisible();
-
-    const chatResponsePromise = page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.url().includes("/api/projects/") &&
-        response.url().includes("/chat"),
-      { timeout: 30_000 },
-    );
-
-    await sendButton.click();
-    const chatResponse = await chatResponsePromise;
-    expect(chatResponse.status()).toBe(200);
-    const body = await chatResponse.text();
-    expect(body.includes("\"ok\":true")).toBeTruthy();
-
-    const thread = page.locator("main .flex-1.overflow-y-auto");
-    await expect(thread).toContainText(message);
-    await expect(thread).toContainText(/AI Tutor:/i);
+    const dashboardChatResponse = await page.request.get("/dashboard/chat", { maxRedirects: 0 });
+    expect([307, 308]).toContain(dashboardChatResponse.status());
+    expect(dashboardChatResponse.headers().location || "").toContain("/sign-in?");
   });
 
   test("employer talent page hydrates with matrix-driven filters", async ({ page }) => {

@@ -1,5 +1,49 @@
+import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
 import { runtimeGetTalentByHandle } from "@/lib/runtime";
+import { BRAND_NAME } from "@/lib/site";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ handle: string }>;
+}): Promise<Metadata> {
+  const { handle } = await params;
+  const candidate = await runtimeGetTalentByHandle(handle);
+  if (!candidate) {
+    return {
+      title: `${BRAND_NAME} | Candidate Not Found`,
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
+  }
+
+  const title = `${candidate.name} | ${candidate.role} | ${BRAND_NAME} Talent`;
+  const description = `Verified AI skill profile for ${candidate.name}: ${candidate.topSkills.join(
+    ", ",
+  )}. Tools: ${candidate.topTools.join(", ")}.`;
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: `/employers/talent/${candidate.handle}`,
+    },
+    openGraph: {
+      title,
+      description,
+      url: `/employers/talent/${candidate.handle}`,
+      images: [{ url: candidate.avatarUrl || "/assets/social_media_banner.png" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [candidate.avatarUrl || "/assets/social_media_banner.png"],
+    },
+  };
+}
 
 export default async function TalentDetailPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;

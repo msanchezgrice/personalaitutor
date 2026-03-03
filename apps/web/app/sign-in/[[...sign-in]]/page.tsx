@@ -1,5 +1,15 @@
+import type { Metadata } from "next";
 import { SignIn } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
+import { BRAND_NAME } from "@/lib/site";
+
+export const metadata: Metadata = {
+  title: `${BRAND_NAME} | Sign In`,
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default function SignInPage() {
   return (

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BRAND_NAME } from "@/lib/site";
 import { ThemeToggle } from "./theme-toggle";
 
 export function TopNav() {
@@ -7,7 +8,7 @@ export function TopNav() {
       <div className="container topbar-inner">
         <Link className="brand" href="/">
           <span className="brand-mark">AI</span>
-          <span>AI Tutor</span>
+          <span>{BRAND_NAME}</span>
         </Link>
 
         <nav className="nav">

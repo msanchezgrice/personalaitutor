@@ -33,6 +33,7 @@ import type {
 
 const nowIso = () => new Date().toISOString();
 const id = (prefix: string) => `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+const PLATFORM_NAME = "My AI Skill Tutor";
 
 const verificationPolicy: VerificationPolicy = {
   moduleMinScore: 0.4,
@@ -733,7 +734,7 @@ export function processJob(jobId: string, options?: { forceFailCode?: string }) 
       projectId: job.projectId,
       userId: job.userId,
       level: "info",
-      message: `AI Tutor reply generated for: ${message.slice(0, 80)}`,
+      message: `${PLATFORM_NAME} reply generated for: ${message.slice(0, 80)}`,
     });
   }
 
@@ -812,7 +813,7 @@ export function addProjectChatMessage(input: { projectId: string; userId: string
     result,
     reply:
       result && result.ok
-        ? `AI Tutor: focus next on ${getCareerPath(user.careerPathId)?.modules[0] ?? "core AI module"}.`
+        ? `${PLATFORM_NAME}: focus next on ${getCareerPath(user.careerPathId)?.modules[0] ?? "core AI module"}.`
         : null,
   };
 }
@@ -951,8 +952,8 @@ export function createSocialDrafts(input: {
     : `http://localhost:6396/api/og/profile/${user.handle}`;
 
   const baseText = project
-    ? `Shipped ${project.title} with my AI Tutor. Platform Verified build log + artifacts.`
-    : `Building AI-native skills with my AI Tutor. Platform Verified projects and proof.`;
+    ? `Shipped ${project.title} with ${PLATFORM_NAME}. Platform Verified build log + artifacts.`
+    : `Building AI-native skills with ${PLATFORM_NAME}. Platform Verified projects and proof.`;
 
   const linkedinText = `${baseText} ${targetUrl}`;
   const xText = `${baseText} ${targetUrl}`;
@@ -1212,7 +1213,7 @@ export function generateProfileOgSvg(input: {
   <text x="100" y="240" font-size="34" font-family="Inter,Arial,sans-serif" fill="#34d399">@${handle}</text>
   <text x="100" y="320" font-size="38" font-family="Inter,Arial,sans-serif" fill="#e2e8f0">${headline}</text>
   <text x="100" y="430" font-size="30" font-family="Inter,Arial,sans-serif" fill="#67e8f9">${status}</text>
-  <text x="100" y="520" font-size="24" font-family="Inter,Arial,sans-serif" fill="#94a3b8">AI Tutor Platform | System-Verified Proof of Work</text>
+  <text x="100" y="520" font-size="24" font-family="Inter,Arial,sans-serif" fill="#94a3b8">${PLATFORM_NAME} | System-Verified Proof of Work</text>
 </svg>`;
 }
 
@@ -1241,7 +1242,7 @@ export function generateProjectOgSvg(input: {
   <text x="96" y="250" font-size="64" font-family="Inter,Arial,sans-serif" fill="#f8fafc" font-weight="700">${title}</text>
   <text x="96" y="330" font-size="30" font-family="Inter,Arial,sans-serif" fill="#34d399">/${handle}/projects/${projectSlug}</text>
   <text x="96" y="420" font-size="30" font-family="Inter,Arial,sans-serif" fill="#e2e8f0">State: ${stateValue}</text>
-  <text x="96" y="510" font-size="24" font-family="Inter,Arial,sans-serif" fill="#cbd5e1">System-Verified Proof of Work | AI Tutor</text>
+  <text x="96" y="510" font-size="24" font-family="Inter,Arial,sans-serif" fill="#cbd5e1">System-Verified Proof of Work | ${PLATFORM_NAME}</text>
 </svg>`;
 }
 

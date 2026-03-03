@@ -317,7 +317,7 @@ export function OnboardingWizard() {
           </article>
           <article className="card">
             <p><strong>Assessment ID:</strong> {assessmentId}</p>
-            <p>Your AI Tutor will use this score to generate module recommendations and dashboard focus.</p>
+            <p>Your My AI Skill Tutor agent will use this score to generate module recommendations and dashboard focus.</p>
           </article>
         </div>
       ) : null}
