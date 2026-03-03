@@ -101,7 +101,7 @@ function applyReplacements(input: string, replacements?: Record<string, string>)
     "AI Tutor. All rights reserved.": `${BRAND_NAME}. All rights reserved.`,
     'href="/sign-in?redirect_url=/onboarding/" class="btn btn-secondary">Log In</a>':
       'href="/sign-in?redirect_url=/dashboard/" class="btn btn-secondary">Log In</a>',
-    'href="#proof" class="nav-link">Public Proof</a>': 'href="#features" class="nav-link">Public Proof</a>',
+    'href="#proof" class="nav-link">Public Proof</a>': 'href="#public-proof" class="nav-link">Public Proof</a>',
     'href="/employers/talent/" class="btn btn-secondary text-lg px-8 py-4">See Example Profiles</a>':
       'href="/u/alex-chen-ai/" class="btn btn-secondary text-lg px-8 py-4">See Example Profiles</a>',
     'href="#how" class="nav-link text-gray-300">How it works</a>':

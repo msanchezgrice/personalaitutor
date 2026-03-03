@@ -650,6 +650,38 @@ a {
   border: 1px solid rgba(148, 163, 184, 0.45) !important;
 }
 
+/* Employer pages: stronger green contrast in light mode */
+:root[data-theme="light"] body[data-path="/employers"] .text-emerald-300,
+:root[data-theme="light"] body[data-path="/employers"] .text-emerald-400,
+:root[data-theme="light"] body[data-path="/employers"] .text-emerald-500,
+:root[data-theme="light"] body[data-path^="/employers/talent"] .text-emerald-300,
+:root[data-theme="light"] body[data-path^="/employers/talent"] .text-emerald-400,
+:root[data-theme="light"] body[data-path^="/employers/talent"] .text-emerald-500 {
+  color: #0f766e !important;
+}
+
+:root[data-theme="light"] body[data-path="/employers"] .hover\:text-emerald-300:hover,
+:root[data-theme="light"] body[data-path="/employers"] .hover\:text-emerald-400:hover,
+:root[data-theme="light"] body[data-path^="/employers/talent"] .hover\:text-emerald-300:hover,
+:root[data-theme="light"] body[data-path^="/employers/talent"] .hover\:text-emerald-400:hover {
+  color: #0f5f6d !important;
+}
+
+:root[data-theme="light"] body[data-path="/employers"] .bg-emerald-500\/10,
+:root[data-theme="light"] body[data-path^="/employers/talent"] .bg-emerald-500\/10 {
+  background-color: rgba(15, 118, 110, 0.12) !important;
+}
+
+:root[data-theme="light"] body[data-path="/employers"] .border-emerald-500\/20,
+:root[data-theme="light"] body[data-path="/employers"] .border-emerald-500\/30,
+:root[data-theme="light"] body[data-path="/employers"] .border-emerald-500\/40,
+:root[data-theme="light"] body[data-path^="/employers/talent"] .border-emerald-500\/20,
+:root[data-theme="light"] body[data-path^="/employers/talent"] .border-emerald-500\/30,
+:root[data-theme="light"] body[data-path^="/employers/talent"] .border-emerald-500\/40,
+:root[data-theme="light"] body[data-path^="/employers/talent"] .border-emerald-500\/50 {
+  border-color: rgba(15, 118, 110, 0.35) !important;
+}
+
 :root[data-theme="light"] body[data-path="/"] .container.nav .btn.btn-secondary {
   color: #0f172a !important;
   border-color: rgba(148, 163, 184, 0.45) !important;
