@@ -1516,6 +1516,261 @@ export async function runtimeGetDashboardSummary(
   };
 }
 
+function sanitizeSocialText(text: string, targetUrl: string) {
+  const normalized = String(text ?? "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  if (!normalized) return targetUrl;
+  if (normalized.includes(targetUrl)) return normalized;
+  return `${normalized}\n\n${targetUrl}`;
+}
+
+function socialShareUrl(platform: SocialPlatform, text: string) {
+  return platform === "linkedin"
+    ? `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`
+    : `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+}
+
+function fallbackSocialIdeas(input: {
+  profile: UserProfile;
+  project: Project | null;
+  targetUrl: string;
+}): {
+  linkedin: string;
+  x: string;
+  contextLabel: string;
+} {
+  const headline = input.profile.headline?.trim() || "AI Builder";
+  const firstGoal = input.profile.goals?.[0];
+  const goalText = firstGoal ? ` Goal focus: ${firstGoal.replace(/_/g, " ")}.` : "";
+
+  if (input.project) {
+    return {
+      linkedin: sanitizeSocialText(
+        `Shipped ${input.project.title} with ${BRAND_NAME}. Verified build log + artifacts are now public.${goalText}`,
+        input.targetUrl,
+      ),
+      x: sanitizeSocialText(
+        `Just shipped ${input.project.title} with ${BRAND_NAME}. ${headline} building in public.${goalText}`,
+        input.targetUrl,
+      ),
+      contextLabel: `Project: ${input.project.title}`,
+    };
+  }
+
+  return {
+    linkedin: sanitizeSocialText(
+      `Building AI-native skills with ${BRAND_NAME}. Sharing practical proof, not just claims.${goalText}`,
+      input.targetUrl,
+    ),
+    x: sanitizeSocialText(
+      `Building in public with ${BRAND_NAME}. Shipping real AI work and sharing proof.${goalText}`,
+      input.targetUrl,
+    ),
+    contextLabel: "Profile momentum",
+  };
+}
+
+function extractOpenAiOutputText(data: {
+  output_text?: string;
+  output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
+}) {
+  const fromOutputText = typeof data.output_text === "string" ? data.output_text.trim() : "";
+  if (fromOutputText) return fromOutputText;
+  const firstText = data.output
+    ?.flatMap((entry) => entry.content ?? [])
+    .find((entry) => entry.type === "output_text" || entry.type === "text")?.text;
+  return firstText?.trim() || "";
+}
+
+function parseIdeaPayload(raw: string): { linkedin: string; x: string; contextLabel: string } | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const withoutFence = trimmed
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```$/i, "")
+    .trim();
+
+  try {
+    const parsed = JSON.parse(withoutFence) as {
+      linkedin?: unknown;
+      x?: unknown;
+      contextLabel?: unknown;
+    };
+    if (typeof parsed.linkedin !== "string" || typeof parsed.x !== "string") return null;
+    const contextLabel =
+      typeof parsed.contextLabel === "string" && parsed.contextLabel.trim().length
+        ? parsed.contextLabel.trim().slice(0, 80)
+        : "Fresh idea";
+    return {
+      linkedin: parsed.linkedin,
+      x: parsed.x,
+      contextLabel,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function runtimeGenerateSocialIdeas(input: {
+  userId: string;
+  projectId?: string | null;
+  seed?: {
+    name?: string;
+    handleBase?: string;
+    avatarUrl?: string | null;
+    email?: string | null;
+  };
+}) {
+  const summary =
+    mode() === "memory"
+      ? memGetDashboardSummary(input.userId)
+      : await runtimeGetDashboardSummary(input.userId, input.seed);
+
+  if (!summary) {
+    return { ok: false as const, errorCode: "USER_NOT_FOUND", ideas: null, memorySignals: [] as string[] };
+  }
+
+  const chosenProject =
+    (input.projectId ? summary.projects.find((entry) => entry.id === input.projectId) : null) ??
+    summary.projects.find((entry) => entry.state === "building" || entry.state === "built" || entry.state === "showcased") ??
+    summary.projects[0] ??
+    null;
+
+  const baseUrl = appBaseUrl();
+  const profileUrl = `${baseUrl}/u/${summary.user.handle}`;
+  const targetUrl = chosenProject ? `${profileUrl}/projects/${chosenProject.slug}` : profileUrl;
+  const memorySignals: string[] = [];
+
+  if (summary.user.goals.length) {
+    memorySignals.push(`goals:${summary.user.goals.slice(0, 2).join(",")}`);
+  }
+  if (summary.user.tools.length) {
+    memorySignals.push(`tools:${summary.user.tools.slice(0, 4).join(",")}`);
+  }
+  if (summary.user.skills.length) {
+    const topSkills = summary.user.skills
+      .slice()
+      .sort((a, b) => Number(b.score ?? 0) - Number(a.score ?? 0))
+      .slice(0, 3)
+      .map((entry) => entry.skill);
+    if (topSkills.length) {
+      memorySignals.push(`skills:${topSkills.join(",")}`);
+    }
+  }
+  if (summary.latestEvents.length) {
+    memorySignals.push(`events:${summary.latestEvents.slice(0, 2).map((entry) => entry.message).join(" | ")}`);
+  }
+
+  const fallback = fallbackSocialIdeas({
+    profile: summary.user,
+    project: chosenProject,
+    targetUrl,
+  });
+
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) {
+    return {
+      ok: true as const,
+      source: "fallback" as const,
+      ideas: {
+        linkedin: fallback.linkedin,
+        x: fallback.x,
+        contextLabel: fallback.contextLabel,
+        targetUrl,
+      },
+      memorySignals,
+    };
+  }
+
+  const projectMemory = chosenProject
+    ? [
+      `Project title: ${chosenProject.title}`,
+      `Project description: ${chosenProject.description}`,
+      `Project state: ${chosenProject.state}`,
+      chosenProject.buildLog.length
+        ? `Recent build log: ${chosenProject.buildLog.slice(-2).map((entry) => entry.message).join(" | ")}`
+        : "Recent build log: none",
+    ]
+    : ["No specific project selected."];
+
+  const prompt = [
+    `You are a social media strategist for ${BRAND_NAME}.`,
+    "Create two original post drafts based on this learner memory context.",
+    "Return JSON only with keys: linkedin, x, contextLabel.",
+    "Constraints:",
+    "- linkedin: professional voice, 2-4 short paragraphs, no markdown headings.",
+    "- x: concise tweet-style post, <= 260 characters before URL, no numbering.",
+    "- contextLabel: short 2-5 word label.",
+    `- include this URL exactly once in each post: ${targetUrl}`,
+    `Learner name: ${summary.user.name}`,
+    `Learner headline: ${summary.user.headline || "AI Builder"}`,
+    `Learner goals: ${summary.user.goals.join(", ") || "none"}`,
+    `Learner tools: ${summary.user.tools.join(", ") || "none"}`,
+    `Top skills: ${summary.user.skills
+      .slice(0, 5)
+      .map((entry) => `${entry.skill} (${Math.round((entry.score || 0) * 100)}%)`)
+      .join(", ") || "none"}`,
+    `Recent events: ${summary.latestEvents.slice(0, 4).map((entry) => entry.message).join(" | ") || "none"}`,
+    ...projectMemory,
+    "Avoid cliches and keep the writing specific.",
+  ].join("\n");
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
+        input: prompt,
+        temperature: 0.7,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OPENAI_RESPONSE_FAILED:${response.status}`);
+    }
+
+    const payload = (await response.json()) as {
+      output_text?: string;
+      output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
+    };
+    const outputText = extractOpenAiOutputText(payload);
+    const ideas = parseIdeaPayload(outputText);
+    if (!ideas) {
+      throw new Error("OPENAI_SOCIAL_PARSE_FAILED");
+    }
+
+    return {
+      ok: true as const,
+      source: "llm" as const,
+      ideas: {
+        linkedin: sanitizeSocialText(ideas.linkedin, targetUrl),
+        x: sanitizeSocialText(ideas.x, targetUrl),
+        contextLabel: ideas.contextLabel,
+        targetUrl,
+      },
+      memorySignals,
+    };
+  } catch {
+    return {
+      ok: true as const,
+      source: "fallback" as const,
+      ideas: {
+        linkedin: fallback.linkedin,
+        x: fallback.x,
+        contextLabel: fallback.contextLabel,
+        targetUrl,
+      },
+      memorySignals,
+    };
+  }
+}
+
 export async function runtimeCreateSocialDrafts(input: {
   userId: string;
   projectId?: string | null;
@@ -1548,10 +1803,7 @@ export async function runtimeCreateSocialDrafts(input: {
     platform,
     text,
     ogUrl,
-    shareUrl:
-      platform === "linkedin"
-        ? `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`
-        : `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
+    shareUrl: socialShareUrl(platform, text),
     status: "draft",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
