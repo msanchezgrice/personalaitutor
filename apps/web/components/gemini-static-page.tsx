@@ -122,6 +122,7 @@ function applyReplacements(input: string, replacements?: Record<string, string>)
     "https://x.com/myaiskilltu": "https://x.com/myaiskilltutor",
     "http://linkedin.com/company/myaiskilltutor": "https://www.linkedin.com/company/myaiskilltutor",
     "https://linkedin.com/company/myaiskilltutor": "https://www.linkedin.com/company/myaiskilltutor",
+    "fa-x-twitter": "fa-twitter",
     ...(replacements ?? {}),
   };
 
