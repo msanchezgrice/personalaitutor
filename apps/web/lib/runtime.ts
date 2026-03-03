@@ -652,6 +652,7 @@ export async function runtimeCreateOnboardingSession(input: {
   userId?: string;
   name?: string;
   avatarUrl?: string | null;
+  email?: string | null;
   handleBase?: string;
   careerPathId?: string;
 }) {
@@ -684,6 +685,13 @@ export async function runtimeCreateOnboardingSession(input: {
     projectId: null,
     type: "onboarding.started",
     message: `Onboarding session ${sessionId} started`,
+  });
+
+  await maybeSendWelcomeEmail({
+    profileId: profile.id,
+    email: input.email ?? null,
+    name: profile.name,
+    handle: profile.handle,
   });
 
   return {

@@ -7,28 +7,31 @@ const required = ["LINKEDIN_CLIENT_ID"];
 function resolveRedirectUri(req: NextRequest, configured: string | undefined, fallbackPath: string) {
   const fallback = `${req.nextUrl.origin}${fallbackPath}`;
   const appBase = process.env.APP_BASE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim();
-  if (!configured || !configured.trim()) {
-    if (appBase) {
+  const appBaseUrl = appBase
+    ? (() => {
       try {
-        return new URL(fallbackPath, appBase).toString();
+        return new URL(appBase);
       } catch {
-        // Fall back to request origin below.
+        return null;
       }
-    }
-    return fallback;
+    })()
+    : null;
+
+  const fromAppBase = appBaseUrl ? new URL(fallbackPath, appBaseUrl).toString() : null;
+
+  if (!configured || !configured.trim()) {
+    return fromAppBase ?? fallback;
   }
+
   try {
     const parsed = new URL(configured.trim());
+    // If a stale host is configured, prefer canonical APP_BASE_URL for prod consistency.
+    if (appBaseUrl && parsed.host !== appBaseUrl.host) {
+      return fromAppBase ?? fallback;
+    }
     return parsed.toString();
   } catch {
-    if (appBase) {
-      try {
-        return new URL(fallbackPath, appBase).toString();
-      } catch {
-        // Fall back to request origin below.
-      }
-    }
-    return fallback;
+    return fromAppBase ?? fallback;
   }
 }
 
@@ -49,7 +52,7 @@ export async function GET(req: NextRequest) {
     const clientId = process.env.LINKEDIN_CLIENT_ID as string;
     const redirectUri = resolveRedirectUri(req, process.env.LINKEDIN_REDIRECT_URI, "/api/auth/linkedin/callback");
     const state = Buffer.from(JSON.stringify({ userId, ts: Date.now(), redirect })).toString("base64url");
-    const scope = process.env.LINKEDIN_OAUTH_SCOPE?.trim() || "openid profile email";
+    const scope = process.env.LINKEDIN_OAUTH_SCOPE?.trim() || "r_liteprofile r_emailaddress w_member_social";
 
     const authorizeUrl = new URL("https://www.linkedin.com/oauth/v2/authorization");
     authorizeUrl.searchParams.set("response_type", "code");

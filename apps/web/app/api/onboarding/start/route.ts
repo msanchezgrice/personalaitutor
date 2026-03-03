@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
       userId: requestUserId,
       name: payload.data?.name ?? seed?.name,
       avatarUrl: payload.data?.avatarUrl ?? seed?.avatarUrl ?? null,
+      email: seed?.email ?? null,
       handleBase: payload.data?.handleBase ?? seed?.handleBase,
     });
     const catalog = getCatalogData();

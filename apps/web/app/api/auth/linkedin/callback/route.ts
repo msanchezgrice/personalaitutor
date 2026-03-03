@@ -14,29 +14,43 @@ function parseState(state: string | null) {
 function resolveRedirectUri(req: NextRequest) {
   const fallback = `${req.nextUrl.origin}/api/auth/linkedin/callback`;
   const appBase = process.env.APP_BASE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim();
-  const configured = process.env.LINKEDIN_REDIRECT_URI;
-  if (!configured || !configured.trim()) {
-    if (appBase) {
+  const appBaseUrl = appBase
+    ? (() => {
       try {
-        return new URL("/api/auth/linkedin/callback", appBase).toString();
+        return new URL(appBase);
       } catch {
-        // Fall back to request origin below.
+        return null;
       }
-    }
-    return fallback;
+    })()
+    : null;
+  const configured = process.env.LINKEDIN_REDIRECT_URI;
+  const fromAppBase = appBaseUrl ? new URL("/api/auth/linkedin/callback", appBaseUrl).toString() : null;
+
+  if (!configured || !configured.trim()) {
+    return fromAppBase ?? fallback;
   }
   try {
-    return new URL(configured.trim()).toString();
-  } catch {
-    if (appBase) {
-      try {
-        return new URL("/api/auth/linkedin/callback", appBase).toString();
-      } catch {
-        // Fall back to request origin below.
-      }
+    const parsed = new URL(configured.trim());
+    if (appBaseUrl && parsed.host !== appBaseUrl.host) {
+      return fromAppBase ?? fallback;
     }
-    return fallback;
+    return parsed.toString();
+  } catch {
+    return fromAppBase ?? fallback;
   }
+}
+
+function pickLegacyPictureUrl(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const profilePicture = (payload as { profilePicture?: unknown }).profilePicture;
+  if (!profilePicture || typeof profilePicture !== "object") return null;
+  const displayImage = (profilePicture as { "displayImage~"?: unknown })["displayImage~"];
+  if (!displayImage || typeof displayImage !== "object") return null;
+  const elements = (displayImage as { elements?: unknown }).elements;
+  if (!Array.isArray(elements) || !elements.length) return null;
+  const last = elements[elements.length - 1] as { identifiers?: Array<{ identifier?: string }> };
+  const identifier = last?.identifiers?.[0]?.identifier;
+  return typeof identifier === "string" && identifier.trim() ? identifier.trim() : null;
 }
 
 export async function GET(req: NextRequest) {
@@ -120,6 +134,36 @@ export async function GET(req: NextRequest) {
         accountLabel = info.name?.trim() || info.email?.trim() || accountLabel;
         if (typeof info.picture === "string" && info.picture.trim()) {
           pictureUrl = info.picture.trim();
+        }
+      } else {
+        // Compatibility path for classic LinkedIn scopes (r_liteprofile/r_emailaddress).
+        const meRes = await fetch(
+          "https://api.linkedin.com/v2/me?projection=(id,localizedFirstName,localizedLastName,profilePicture(displayImage~:playableStreams))",
+          { headers: { authorization: `Bearer ${accessToken}` } },
+        );
+        if (meRes.ok) {
+          const me = (await meRes.json()) as {
+            localizedFirstName?: string;
+            localizedLastName?: string;
+            profilePicture?: unknown;
+          };
+          const fullName = `${me.localizedFirstName ?? ""} ${me.localizedLastName ?? ""}`.trim();
+          accountLabel = fullName || accountLabel;
+          pictureUrl = pickLegacyPictureUrl(me) ?? pictureUrl;
+        }
+
+        const emailRes = await fetch(
+          "https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))",
+          { headers: { authorization: `Bearer ${accessToken}` } },
+        );
+        if (emailRes.ok) {
+          const emailPayload = (await emailRes.json()) as {
+            elements?: Array<{ "handle~"?: { emailAddress?: string } }>;
+          };
+          const email = emailPayload.elements?.[0]?.["handle~"]?.emailAddress?.trim();
+          if (email && accountLabel === "LinkedIn Profile") {
+            accountLabel = email;
+          }
         }
       }
     } catch {

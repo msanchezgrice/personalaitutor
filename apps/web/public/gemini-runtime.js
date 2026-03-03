@@ -40,7 +40,15 @@
 
   function ensureCtx() {
     var existing = readCtx();
-    if (existing && typeof existing === "object") return existing;
+    if (existing && typeof existing === "object") {
+      if (!existing.userId) {
+        existing.sessionId = null;
+        existing.projectId = null;
+        existing.handle = null;
+        existing.avatarUrl = null;
+      }
+      return existing;
+    }
 
     var created = {
       userId: null,
@@ -57,6 +65,7 @@
   }
 
   var ctx = ensureCtx();
+  var hasAppliedAuthCtx = false;
 
   function applyCtxImmediately() {
     if (!ctx || !ctx.name || !isDashboardPath) return;
@@ -81,8 +90,6 @@
       );
     }
   }
-
-  applyCtxImmediately();
 
   function byText(selector, text) {
     return Array.prototype.find.call(document.querySelectorAll(selector), function (el) {
@@ -176,10 +183,10 @@
 
   function readTheme() {
     try {
-      var legacy = window.localStorage.getItem("theme");
-      if (legacy === "light" || legacy === "dark") return legacy;
       var explicit = window.localStorage.getItem("ai_theme");
       if (explicit === "light" || explicit === "dark") return explicit;
+      var legacy = window.localStorage.getItem("theme");
+      if (legacy === "light") return "light";
     } catch {
       return "light";
     }
@@ -256,6 +263,7 @@
       if (data.summary.user.avatarUrl) ctx.avatarUrl = data.summary.user.avatarUrl;
     }
     saveCtx(ctx);
+    hasAppliedAuthCtx = true;
     applyCtxImmediately();
     return data;
   }
@@ -292,9 +300,23 @@
         saveCtx(ctx);
         applyLandingAuthUi(data.summary);
       } else {
+        ctx.userId = null;
+        ctx.handle = null;
+        ctx.sessionId = null;
+        ctx.projectId = null;
+        ctx.avatarUrl = null;
+        ctx.email = null;
+        saveCtx(ctx);
         applyLandingAuthUi(null);
       }
     } catch {
+      ctx.userId = null;
+      ctx.handle = null;
+      ctx.sessionId = null;
+      ctx.projectId = null;
+      ctx.avatarUrl = null;
+      ctx.email = null;
+      saveCtx(ctx);
       applyLandingAuthUi(null);
     }
   }
@@ -1490,43 +1512,50 @@
   }
 
   async function boot() {
-    wireThemeToggle();
-    await trySyncLandingAuth();
-
     try {
-      await syncAuthContext();
-    } catch (err) {
-      if (needsAuth()) {
-        toast(err instanceof Error ? err.message : "Authentication required", true);
+      wireThemeToggle();
+      await trySyncLandingAuth();
+
+      try {
+        await syncAuthContext();
+      } catch (err) {
+        if (needsAuth()) {
+          toast(err instanceof Error ? err.message : "Authentication required", true);
+        }
       }
-    }
 
-    if (currentPath === "/dashboard") {
-      await hydrateDashboardHome();
-    }
+      if (currentPath === "/dashboard") {
+        await hydrateDashboardHome();
+      }
 
-    if (currentPath === "/dashboard/projects") {
-      await hydrateProjectsPage();
-    }
+      if (currentPath === "/dashboard/projects") {
+        await hydrateProjectsPage();
+      }
 
-    if (currentPath === "/dashboard/chat") {
-      await hydrateChatPage();
-    }
+      if (currentPath === "/dashboard/chat") {
+        await hydrateChatPage();
+      }
 
-    if (currentPath === "/dashboard/social") {
-      await hydrateSocialPage();
-    }
+      if (currentPath === "/dashboard/social") {
+        await hydrateSocialPage();
+      }
 
-    if (currentPath === "/dashboard/updates") {
-      await hydrateUpdatesPage();
-    }
+      if (currentPath === "/dashboard/updates") {
+        await hydrateUpdatesPage();
+      }
 
-    if (currentPath === "/dashboard/profile") {
-      await hydrateProfilePage();
-    }
+      if (currentPath === "/dashboard/profile") {
+        await hydrateProfilePage();
+      }
 
-    if (currentPath === "/employers/talent") {
-      await hydrateEmployerTalentPage();
+      if (currentPath === "/employers/talent") {
+        await hydrateEmployerTalentPage();
+      }
+    } finally {
+      if (!hasAppliedAuthCtx && !needsAuth()) {
+        applyCtxImmediately();
+      }
+      document.documentElement.setAttribute("data-runtime-ready", "1");
     }
   }
 
