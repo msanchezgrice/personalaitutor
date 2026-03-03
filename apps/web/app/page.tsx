@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { CAREER_PATHS } from "@aitutor/shared";
 import { TopNav } from "@/components/nav";
 
 export default function HomePage() {
@@ -7,109 +6,71 @@ export default function HomePage() {
     <>
       <TopNav />
       <main>
-        <section className="hero">
-          <div className="container hero-grid">
+        <section className="hero" style={{ paddingTop: 84, paddingBottom: 96 }}>
+          <div className="container hero-grid" style={{ alignItems: "center" }}>
             <div>
-              <span className="tag">Your dedicated AI copilot for career growth</span>
-              <h1 className="hero-main-title">
+              <span className="tag" style={{ fontSize: ".95rem", padding: "10px 14px" }}>
+                Your dedicated AI copilot for career growth
+              </span>
+              <h1 className="hero-main-title" style={{ marginTop: 20 }}>
                 Learn fast and <span className="text-gradient">prove it publicly.</span>
               </h1>
-              <p className="lead" style={{ fontSize: "1.22rem" }}>
-                AI is moving fast. Meet your dedicated AI Tutor that teaches you how to build with AI and generates
-                System-Verified Proof of Work across projects, modules, and artifacts.
+              <p className="lead" style={{ fontSize: "1.18rem", marginTop: 18 }}>
+                AI will not replace you. Someone with AI skills will. We help you build workflows, verify your skills,
+                and generate a dynamic public profile.
               </p>
 
-              <div className="hero-actions">
-                <a className="btn primary" href="https://careerguard.me/intake" target="_blank" rel="noreferrer">
+              <div className="hero-actions" style={{ marginTop: 22 }}>
+                <Link href="/assessment" className="btn primary" style={{ fontSize: "1.08rem", padding: "14px 26px" }}>
                   Take the AI Assessment
-                </a>
-                <Link className="btn" href="/employers/talent">
+                </Link>
+                <Link href="/employers/talent" className="btn" style={{ fontSize: "1.08rem", padding: "14px 26px" }}>
                   See Example Profiles
                 </Link>
               </div>
 
-              <div className="hero-foot">
+              <div className="hero-foot" style={{ marginTop: 26 }}>
                 <div className="avatar-stack">
-                  <span>AC</span>
+                  <span style={{ backgroundImage: "url('/assets/avatar.png')", backgroundSize: "cover" }} />
                   <span>+2k</span>
                 </div>
                 <p>Professionals already building their AI stack.</p>
               </div>
             </div>
 
-            <div className="hero-frame">
-              <div className="overlay" />
-              <iframe src="/dashboard/" title="Dashboard preview" />
+            <div className="hero-frame" style={{ transform: "perspective(1200px) rotateY(-5deg) rotateX(5deg)" }}>
+              <img
+                src="/assets/interface_macro_mockup.png"
+                alt="AI Tutor"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
             </div>
           </div>
         </section>
 
-        <section className="section">
-          <div className="container panel pad">
-            <h2>How it works</h2>
-            <ol className="list">
-              <li>Tell us your background and goals.</li>
-              <li>Your dedicated AI Tutor builds a custom dashboard and starts guided execution.</li>
-              <li>Complete modules and explainers to earn badges and skill status updates.</li>
-              <li>Your tutor stays available to explain and build with you 24/7.</li>
-              <li>Receive daily updates with status, upcoming tasks, relevant AI news, and links.</li>
-            </ol>
-          </div>
-        </section>
-
-        <section className="section">
+        <section className="section" style={{ borderTop: "1px solid var(--line)", background: "rgba(0,0,0,.2)" }}>
           <div className="container">
-            <h2>What gets built for you</h2>
-            <p className="lead">Website, build log, profile, project cards, social drafts, and production artifacts.</p>
-            <div className="grid-3" style={{ marginTop: 14 }}>
+            <h2 style={{ textAlign: "center" }}>How it works</h2>
+            <p className="lead" style={{ textAlign: "center", margin: "10px auto 0" }}>
+              Your AI Tutor guides you from beginner to verified builder through project execution.
+            </p>
+            <div className="grid-3" style={{ marginTop: 20 }}>
               <article className="card">
-                <h3>Public profile website</h3>
-                <p>SEO-ready profile page with social links, token usage, and proof-based skills.</p>
+                <h3>1. Tell us your background</h3>
+                <p>We assess your level and build a custom learning path based on your role and goals.</p>
               </article>
               <article className="card">
-                <h3>Build log + project cards</h3>
-                <p>Upwork-style stack details backed by build telemetry and verification events.</p>
+                <h3>2. Build real projects</h3>
+                <p>Your AI Tutor helps you ship workflows and applications that solve real problems.</p>
               </article>
               <article className="card">
-                <h3>Artifact generation</h3>
-                <p>One-click website, pptx, pdf, resume_docx, and resume_pdf generation per project.</p>
+                <h3>3. Earn public proof</h3>
+                <p>Automatically generate portfolio pages, build logs, and skill proof for employers.</p>
               </article>
-            </div>
-          </div>
-        </section>
-
-        <section className="section">
-          <div className="container panel pad">
-            <h2>Career Matrix</h2>
-            <p className="lead">Onboarding options, dashboard skill lists, and talent marketplace filters come from one matrix source.</p>
-            <div className="grid-4" style={{ marginTop: 12 }}>
-              {CAREER_PATHS.map((path) => (
-                <article key={path.id} className="card">
-                  <strong>{path.name}</strong>
-                  <p>{path.coreSkillDomain}</p>
-                </article>
-              ))}
-            </div>
-
-            <div className="cta-band">
-              <h3>This is your secret weapon for staying up to date.</h3>
-              <p className="lead">
-                AI won&apos;t replace you. Someone with AI skills will. Start building public proof now.
-              </p>
-              <div className="hero-actions">
-                <Link className="btn primary" href="/onboarding">
-                  Start Building
-                </Link>
-                <Link className="btn" href="/employers/talent">
-                  Explore Talent Board
-                </Link>
-              </div>
             </div>
           </div>
         </section>
       </main>
-
-      <footer className="container footer">No silent fallback behavior. Every fail-state includes recovery actions.</footer>
     </>
   );
 }

@@ -562,11 +562,8 @@ th {
   width: 46px;
   height: 46px;
   border-radius: 999px;
-  background: linear-gradient(145deg, var(--brand-3), var(--brand));
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
+  border: 1px solid var(--line);
+  display: inline-block;
 }
 
 .dash-user h4 {

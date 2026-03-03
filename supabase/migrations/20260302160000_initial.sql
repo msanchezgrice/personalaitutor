@@ -210,13 +210,16 @@ alter table public.agent_job_events enable row level security;
 alter table public.agent_memory enable row level security;
 alter table public.daily_update_emails enable row level security;
 
-create policy if not exists learner_profiles_owner_select on public.learner_profiles
+drop policy if exists learner_profiles_owner_select on public.learner_profiles;
+create policy learner_profiles_owner_select on public.learner_profiles
   for select using (auth.uid() = auth_user_id);
 
-create policy if not exists learner_profiles_owner_update on public.learner_profiles
+drop policy if exists learner_profiles_owner_update on public.learner_profiles;
+create policy learner_profiles_owner_update on public.learner_profiles
   for update using (auth.uid() = auth_user_id);
 
-create policy if not exists projects_owner_select on public.projects
+drop policy if exists projects_owner_select on public.projects;
+create policy projects_owner_select on public.projects
   for select using (
     exists (
       select 1
@@ -226,7 +229,8 @@ create policy if not exists projects_owner_select on public.projects
     )
   );
 
-create policy if not exists projects_owner_modify on public.projects
+drop policy if exists projects_owner_modify on public.projects;
+create policy projects_owner_modify on public.projects
   for all using (
     exists (
       select 1

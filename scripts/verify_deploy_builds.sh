@@ -8,6 +8,6 @@ fi
 
 pnpm --filter @aitutor/web build
 pnpm --filter @aitutor/worker build
-vercel build --cwd apps/web >/dev/null
+vercel build >/dev/null
 
 echo "[PASS] Deployment dry-run checks passed"

@@ -20,12 +20,12 @@ export function DashboardSidebar() {
   return (
     <aside className="dash-sidebar">
       <Link href="/" className="dash-brand">
-        <span className="dash-brand-mark">AI</span>
+        <span className="dash-brand-mark">🧠</span>
         <span>AI Tutor</span>
       </Link>
 
       <div className="dash-user">
-        <span className="dash-avatar">AC</span>
+        <img className="dash-avatar" src="/assets/avatar.png" alt="Alex Chen" style={{ objectFit: "cover" }} />
         <div>
           <h4>Alex Chen</h4>
           <p>Product Manager</p>

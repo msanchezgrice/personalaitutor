@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("hard gate browser verification", () => {
-  test("theme toggle persists and hero iframe is non-interactive", async ({ page }) => {
+  test("theme toggle persists and landing hero renders", async ({ page }) => {
     await page.goto("/");
 
     const toggle = page.getByRole("button", { name: /toggle theme/i });
@@ -16,11 +16,9 @@ test.describe("hard gate browser verification", () => {
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-theme", after ?? "dark");
 
-    const iframe = page.locator("iframe[title='Dashboard preview']");
-    await expect(iframe).toHaveAttribute("src", "/dashboard/");
-
-    const frameStyle = await iframe.evaluate((el) => getComputedStyle(el).pointerEvents);
-    expect(frameStyle).toBe("none");
+    const heroImage = page.locator("img[alt='AI Tutor']");
+    await expect(heroImage).toBeVisible();
+    await expect(heroImage).toHaveAttribute("src", "/assets/interface_macro_mockup.png");
 
     await expect(page.locator("body")).not.toContainText(/cryptographically verified/i);
   });

@@ -1,3 +1,8 @@
+drop policy if exists learner_profiles_owner_select on public.learner_profiles;
+drop policy if exists learner_profiles_owner_update on public.learner_profiles;
+drop policy if exists projects_owner_select on public.projects;
+drop policy if exists projects_owner_modify on public.projects;
+
 alter table if exists public.learner_profiles
   alter column auth_user_id type text using auth_user_id::text;
 
@@ -95,7 +100,34 @@ alter table public.oauth_connections enable row level security;
 alter table public.social_drafts enable row level security;
 alter table public.employer_leads enable row level security;
 
-create policy if not exists onboarding_sessions_owner_all on public.onboarding_sessions
+create policy learner_profiles_owner_select on public.learner_profiles
+  for select using (auth.uid()::text = auth_user_id);
+
+create policy learner_profiles_owner_update on public.learner_profiles
+  for update using (auth.uid()::text = auth_user_id);
+
+create policy projects_owner_select on public.projects
+  for select using (
+    exists (
+      select 1
+      from public.learner_profiles lp
+      where lp.id = learner_profile_id
+        and lp.auth_user_id = auth.uid()::text
+    )
+  );
+
+create policy projects_owner_modify on public.projects
+  for all using (
+    exists (
+      select 1
+      from public.learner_profiles lp
+      where lp.id = learner_profile_id
+        and lp.auth_user_id = auth.uid()::text
+    )
+  );
+
+drop policy if exists onboarding_sessions_owner_all on public.onboarding_sessions;
+create policy onboarding_sessions_owner_all on public.onboarding_sessions
   for all using (
     exists (
       select 1 from public.learner_profiles lp
@@ -103,7 +135,8 @@ create policy if not exists onboarding_sessions_owner_all on public.onboarding_s
     )
   );
 
-create policy if not exists assessment_attempts_owner_all on public.assessment_attempts
+drop policy if exists assessment_attempts_owner_all on public.assessment_attempts;
+create policy assessment_attempts_owner_all on public.assessment_attempts
   for all using (
     exists (
       select 1 from public.learner_profiles lp
@@ -111,7 +144,8 @@ create policy if not exists assessment_attempts_owner_all on public.assessment_a
     )
   );
 
-create policy if not exists build_logs_owner_select on public.build_log_entries
+drop policy if exists build_logs_owner_select on public.build_log_entries;
+create policy build_logs_owner_select on public.build_log_entries
   for select using (
     exists (
       select 1 from public.projects p
@@ -120,7 +154,8 @@ create policy if not exists build_logs_owner_select on public.build_log_entries
     )
   );
 
-create policy if not exists oauth_connections_owner_all on public.oauth_connections
+drop policy if exists oauth_connections_owner_all on public.oauth_connections;
+create policy oauth_connections_owner_all on public.oauth_connections
   for all using (
     exists (
       select 1 from public.learner_profiles lp
@@ -128,7 +163,8 @@ create policy if not exists oauth_connections_owner_all on public.oauth_connecti
     )
   );
 
-create policy if not exists social_drafts_owner_all on public.social_drafts
+drop policy if exists social_drafts_owner_all on public.social_drafts;
+create policy social_drafts_owner_all on public.social_drafts
   for all using (
     exists (
       select 1 from public.learner_profiles lp

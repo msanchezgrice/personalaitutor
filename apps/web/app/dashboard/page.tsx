@@ -6,7 +6,7 @@ export default function DashboardPage() {
     <>
       <section className="dash-header">
         <div>
-          <h1 style={{ fontSize: "2rem" }}>Good Morning, Alex</h1>
+          <h1 style={{ fontSize: "2rem" }}>Good Morning, Alex 👋</h1>
           <p>Ready to build something new today?</p>
         </div>
         <div className="dash-header-actions">

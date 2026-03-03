@@ -24,136 +24,87 @@ export default async function TalentPage({ searchParams }: TalentSearchPageProps
 
   return (
     <div className="dash-app">
-      <aside className="dash-sidebar">
+      <aside className="dash-sidebar" style={{ background: "rgba(0,0,0,.38)" }}>
         <Link href="/employers" className="dash-brand">
-          <span className="dash-brand-mark" style={{ background: "linear-gradient(145deg, var(--brand-2), var(--brand))" }}>CG</span>
+          <span className="dash-brand-mark" style={{ background: "#10b981", color: "#0f111a", boxShadow: "none" }}>CG</span>
           <span>CareerGuard Recruiter</span>
         </Link>
 
-        <form className="dash-panel" style={{ padding: 12 }}>
-          <h3>Search Talent</h3>
-          <input className="input" name="q" placeholder="Search by role, tool, or name" defaultValue={query.q ?? ""} />
-
-          <label htmlFor="role" style={{ marginTop: 10, display: "block" }}>
-            Role
-          </label>
-          <select id="role" className="input" name="role" defaultValue={query.role ?? ""}>
-            <option value="">All roles</option>
-            {facets.roles.map((role) => (
-              <option key={role} value={role}>
-                {role}
-              </option>
-            ))}
-          </select>
-
-          <label htmlFor="tool" style={{ marginTop: 10, display: "block" }}>
-            Tool
-          </label>
-          <select id="tool" className="input" name="tool" defaultValue={query.tool ?? ""}>
-            <option value="">All tools</option>
-            {facets.tools.map((tool) => (
-              <option key={tool} value={tool}>
-                {tool}
-              </option>
-            ))}
-          </select>
-
-          <label htmlFor="status" style={{ marginTop: 10, display: "block" }}>
-            Verification status
-          </label>
-          <select id="status" className="input" name="status" defaultValue={query.status ?? ""}>
-            <option value="">All statuses</option>
-            <option value="not_started">not_started</option>
-            <option value="in_progress">in_progress</option>
-            <option value="built">built</option>
-            <option value="verified">verified</option>
-          </select>
-
-          <label htmlFor="skill" style={{ marginTop: 10, display: "block" }}>
-            Skill/module
-          </label>
-          <select id="skill" className="input" name="skill" defaultValue={query.skill ?? ""}>
-            <option value="">All modules/skills</option>
-            {facets.modules.map((module) => (
-              <option key={module} value={module}>
-                {module}
-              </option>
-            ))}
-          </select>
-
-          <button type="submit" className="btn primary" style={{ marginTop: 10, width: "100%" }}>
-            Apply Filters
-          </button>
-        </form>
+        <section className="dash-panel" style={{ padding: 14 }}>
+          <h3>Filter by Skill</h3>
+          <form style={{ display: "grid", gap: 8, marginTop: 10 }}>
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}><input type="checkbox" defaultChecked />Python Scripting</label>
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}><input type="checkbox" defaultChecked />API Integrations</label>
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}><input type="checkbox" />Cursor IDE</label>
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}><input type="checkbox" />RAG Architecture</label>
+            <hr style={{ borderColor: "var(--line)", width: "100%" }} />
+            <label htmlFor="role">Role</label>
+            <select id="role" className="input" name="role" defaultValue={query.role ?? ""}>
+              <option value="">All roles</option>
+              {facets.roles.map((role) => (
+                <option key={role} value={role}>{role}</option>
+              ))}
+            </select>
+            <label htmlFor="tool">Tool</label>
+            <select id="tool" className="input" name="tool" defaultValue={query.tool ?? ""}>
+              <option value="">All tools</option>
+              {facets.tools.map((tool) => (
+                <option key={tool} value={tool}>{tool}</option>
+              ))}
+            </select>
+            <label htmlFor="status">Verification level</label>
+            <select id="status" className="input" name="status" defaultValue={query.status ?? ""}>
+              <option value="">System Verified Only</option>
+              <option value="verified">verified</option>
+              <option value="built">built</option>
+              <option value="in_progress">in_progress</option>
+              <option value="not_started">not_started</option>
+            </select>
+            <label htmlFor="skill">Module</label>
+            <select id="skill" className="input" name="skill" defaultValue={query.skill ?? ""}>
+              <option value="">All modules</option>
+              {facets.modules.map((module) => (
+                <option key={module} value={module}>{module}</option>
+              ))}
+            </select>
+            <input className="input" name="q" placeholder="Search by role, name, or tool" defaultValue={query.q ?? ""} />
+            <button type="submit" className="btn primary">Apply Filters</button>
+          </form>
+        </section>
       </aside>
 
       <main className="dash-main">
         <section className="dash-header">
           <div>
-            <h1 style={{ fontSize: "2rem" }}>Talent Marketplace</h1>
-            <p>{rows.length} candidates match current filters.</p>
+            <h1 style={{ fontSize: "2rem" }}>{rows.length} Candidates Match Criteria</h1>
+            <p>Matrix-driven search facets and upwork-style skills/tool summaries.</p>
           </div>
           <div className="dash-header-actions">
-            <Link className="btn" href="/employers">
-              Back to Employers
-            </Link>
+            <Link href="/employers" className="btn">Back to Employers</Link>
           </div>
         </section>
 
         <section className="dash-body">
-          <article className="dash-panel">
-            <h2>20 fake users for employer testing</h2>
-            <p className="lead">Use this seeded talent board while testing end-to-end learner onboarding.</p>
-
-            <div className="table-wrap" style={{ marginTop: 12 }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Candidate</th>
-                    <th>Type</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Top skills</th>
-                    <th>Tools</th>
-                    <th>Evidence</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.handle}>
-                      <td>
-                        <Link href={`/employers/talent/${row.handle}`}>{row.name}</Link>
-                      </td>
-                      <td>{row.careerType}</td>
-                      <td>{row.role}</td>
-                      <td>{row.status}</td>
-                      <td>{row.topSkills.join(", ")}</td>
-                      <td>{row.topTools.join(", ")}</td>
-                      <td>{row.evidenceScore}</td>
-                    </tr>
+          <div className="grid-3">
+            {rows.slice(0, 20).map((row) => (
+              <article key={row.handle} className="dash-panel talent-card" style={{ borderColor: "rgba(16,185,129,.2)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                  <img src="/assets/avatar.png" alt={row.name} style={{ width: 56, height: 56, borderRadius: 999, border: "1px solid var(--line)" }} />
+                  <span className="tag ok">Verified</span>
+                </div>
+                <h3 style={{ marginTop: 8 }}>{row.name}</h3>
+                <p className="lead" style={{ marginTop: 0 }}>{row.role}</p>
+                <div style={{ marginTop: 8, display: "grid", gap: 4, fontSize: ".85rem", color: "var(--text-muted)" }}>
+                  <span>{row.evidenceScore} evidence score</span>
+                  <span>{row.topSkills.join(", ")}</span>
+                  <span>{row.topTools.join(", ")}</span>
+                </div>
+                <div className="talent-meta" style={{ marginTop: 10 }}>
+                  {row.topSkills.slice(0, 2).map((skill) => (
+                    <span className="tag" key={`${row.handle}-${skill}`}>{skill}</span>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </article>
-
-          <div className="result-grid">
-            {rows.slice(0, 6).map((row) => (
-              <article key={`card-${row.handle}`} className="dash-panel talent-card">
-                <h3>{row.name}</h3>
-                <p className="lead">{row.role}</p>
-                <div className="talent-meta">
-                  <span className="tag ok">{row.status}</span>
-                  <span className="tag">{row.careerType}</span>
-                  <span className="tag">Evidence {row.evidenceScore}</span>
                 </div>
-                <p><strong>Skills:</strong> {row.topSkills.join(", ")}</p>
-                <p><strong>Tools:</strong> {row.topTools.join(", ")}</p>
-                <div>
-                  <Link className="btn" href={`/employers/talent/${row.handle}`}>
-                    Open Recruiter View
-                  </Link>
-                </div>
+                <Link href={`/employers/talent/${row.handle}`} className="btn" style={{ marginTop: 10 }}>Open Profile</Link>
               </article>
             ))}
           </div>

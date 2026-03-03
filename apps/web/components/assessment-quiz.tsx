@@ -73,7 +73,7 @@ export function AssessmentQuiz() {
   return (
     <section className="panel" style={{ marginTop: 16 }}>
       <h3>AI Capability Assessment</h3>
-      <p className="lead">Linked flow target: <a href="https://careerguard.me/intake" target="_blank" rel="noreferrer">careerguard.me/intake</a></p>
+      <p className="lead">Internal assessment flow used by onboarding and module recommendation logic.</p>
       <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button type="button" className="btn" onClick={start} disabled={loading}>Start Attempt</button>
         <button type="button" className="btn primary" onClick={submit} disabled={loading || !assessmentId}>Submit Attempt</button>

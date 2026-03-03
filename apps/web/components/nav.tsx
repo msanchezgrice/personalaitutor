@@ -21,9 +21,9 @@ export function TopNav() {
           <Link className="btn secondary" href="/onboarding">
             Log In
           </Link>
-          <a className="btn primary" href="https://careerguard.me/intake" target="_blank" rel="noreferrer">
+          <Link className="btn primary" href="/assessment">
             Start Assessment
-          </a>
+          </Link>
           <ThemeToggle />
         </div>
       </div>
