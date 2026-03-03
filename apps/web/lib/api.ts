@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 export function getUserId(req: NextRequest) {
   const fromHeader = req.headers.get("x-user-id");
   const fromQuery = req.nextUrl.searchParams.get("userId");
-  return fromHeader ?? fromQuery ?? "user_test_0001";
+  return fromHeader ?? fromQuery;
 }
 
 export function forcedFailCode(req: NextRequest) {

@@ -23,6 +23,9 @@ export async function POST(req: NextRequest) {
 
     const seed = await getAuthSeed(req);
     const requestUserId = seed?.userId ?? getUserId(req);
+    if (!requestUserId) {
+      return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+    }
     const { user, session } = await runtimeCreateOnboardingSession({
       ...(payload.data ?? {}),
       userId: requestUserId,

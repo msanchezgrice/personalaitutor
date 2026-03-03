@@ -17,11 +17,17 @@ export async function dashboardReplacements() {
 
   const avatar = summary.user.avatarUrl?.trim();
   const publicProfileUrl = `/u/${summary.user.handle}/`;
+  const firstName = summary.user.name.split(" ")[0] || summary.user.name;
   const replacements: Record<string, string> = {
     "Alex Chen": summary.user.name,
     "Product Manager": summary.user.headline || "AI Builder",
+    "Good Morning, Alex 👋": `Good Morning, ${firstName} 👋`,
+    "Lead Scraper Pro - Alex Chen": `Lead Scraper Pro - ${summary.user.name}`,
+    "Contact Alex": `Contact ${firstName}`,
     "/u/alex-chen-ai/": publicProfileUrl,
     "/u/test-user-0001/": publicProfileUrl,
+    "/u/alex-chen-ai": publicProfileUrl,
+    "/u/test-user-0001": publicProfileUrl,
   };
 
   if (avatar) {

@@ -17,6 +17,9 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = getUserId(req);
+  if (!userId) {
+    return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+  }
   const project = await runtimeCreateProject({
     userId,
     title: parsed.data.title,

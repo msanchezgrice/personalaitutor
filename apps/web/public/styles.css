@@ -425,3 +425,42 @@ a {
 :root[data-theme="light"] a.btn.bg-white * {
   color: #0f111a !important;
 }
+
+#theme-toggle {
+  z-index: 120 !important;
+}
+
+:root[data-theme="light"] #theme-toggle {
+  color: #0f172a !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(148, 163, 184, 0.45) !important;
+}
+
+:root[data-theme="light"] body[data-path="/"] .inline-flex.items-center.gap-2.px-3.py-1.rounded-full.border.border-cyan-500\/40.bg-cyan-500\/10.text-cyan-300.text-sm.font-medium.mb-6 {
+  color: #2563eb !important;
+  border-color: rgba(37, 99, 235, 0.35) !important;
+  background: rgba(37, 99, 235, 0.08) !important;
+}
+
+:root[data-theme="light"] body[data-path="/dashboard/chat"] {
+  background: #eef2f7 !important;
+  color: #0f172a !important;
+}
+
+:root[data-theme="light"] body[data-path="/dashboard/chat"] .glass,
+:root[data-theme="light"] body[data-path="/dashboard/chat"] .glass-panel {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(148, 163, 184, 0.25) !important;
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.06) !important;
+}
+
+:root[data-theme="light"] body[data-path="/dashboard/chat"] .bg-\[\#0f111a\]\/80,
+:root[data-theme="light"] body[data-path="/dashboard/chat"] .bg-\[\#0f111a\]\/90,
+:root[data-theme="light"] body[data-path="/dashboard/chat"] .bg-black\/40,
+:root[data-theme="light"] body[data-path="/dashboard/chat"] .bg-black\/30 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+}
+
+:root[data-theme="light"] body[data-path="/dashboard/chat"] textarea {
+  color: #0f172a !important;
+}

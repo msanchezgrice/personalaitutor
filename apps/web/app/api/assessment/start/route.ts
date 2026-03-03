@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       : getUserId(req);
 
     if (!candidateUserId) {
-      return jsonError("USER_NOT_FOUND", "Assessment cannot start without a valid user", 404);
+      return jsonError("UNAUTHENTICATED", "Sign in required", 401);
     }
 
     const assessment = await runtimeStartAssessment(candidateUserId);

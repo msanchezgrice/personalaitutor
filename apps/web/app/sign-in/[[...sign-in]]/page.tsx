@@ -11,13 +11,27 @@ export const metadata: Metadata = {
   },
 };
 
-export default function SignInPage() {
+function safeRedirect(input?: string) {
+  if (!input || typeof input !== "string") return "/dashboard/";
+  if (!input.startsWith("/")) return "/dashboard/";
+  return input;
+}
+
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirect_url?: string }>;
+}) {
+  const params = await searchParams;
+  const forceRedirectUrl = safeRedirect(params?.redirect_url);
+
   return (
     <main className="min-h-screen bg-[#0f111a] text-white flex items-center justify-center px-6 py-10">
       <SignIn
         routing="path"
         path="/sign-in"
-        afterSignInUrl="/dashboard/"
+        forceRedirectUrl={forceRedirectUrl}
+        fallbackRedirectUrl="/dashboard/"
         appearance={{
           baseTheme: dark,
           variables: {

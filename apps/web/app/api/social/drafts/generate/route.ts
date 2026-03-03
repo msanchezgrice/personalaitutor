@@ -16,6 +16,9 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = getUserId(req);
+    if (!userId) {
+      return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+    }
     const result = await runtimeCreateSocialDrafts({
       userId,
       projectId: parsed.data.projectId,

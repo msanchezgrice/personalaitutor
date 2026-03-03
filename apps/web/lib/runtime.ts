@@ -115,7 +115,10 @@ function uuidFromExternalId(input: string) {
 }
 
 function normalizeUserId(input?: string | null) {
-  if (!input || input === "user_test_0001") return DEFAULT_USER_ID;
+  if (!input) {
+    throw new Error("USER_ID_REQUIRED");
+  }
+  if (input === "user_test_0001") return DEFAULT_USER_ID;
   if (isUuid(input)) return input;
   return uuidFromExternalId(input);
 }
@@ -283,19 +286,21 @@ async function getOrCreateProfile(input: {
     "id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,created_at,updated_at";
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
+    const inferredName = input.name?.trim() || input.handleBase?.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) || "New Learner";
+    const inferredBio = "Building practical AI workflows and sharing public proof of execution.";
     const insert = {
       id: normalizedUserId,
       auth_user_id: normalizedUserId,
       external_user_id: input.userId ?? null,
       handle,
-      full_name: input.name ?? "TEST_USER_0001",
-      headline: "Synthetic profile for end-to-end verification",
-      bio: "Synthetic user for onboarding and persistence verification.",
+      full_name: inferredName,
+      headline: "AI Builder",
+      bio: inferredBio,
       career_path_id: input.careerPathId ?? CAREER_PATHS[0].id,
       published: false,
       tokens_used: 0,
-      goals: ["upskill_current_job", "ship_ai_projects"],
-      tools: ["OpenAI API", "Supabase", "Vercel"],
+      goals: [],
+      tools: [],
       social_links: {
         website: `${appBaseUrl()}/u/${handle}`,
         ...(input.avatarUrl ? { avatar: input.avatarUrl } : {}),
@@ -1302,9 +1307,9 @@ export async function runtimeGetDashboardSummary(
   if (!profile) {
     profile = await getOrCreateProfile({
       userId,
-      name: seed?.name ?? "Alex Chen",
+      name: seed?.name ?? "New Learner",
       avatarUrl: seed?.avatarUrl ?? null,
-      handleBase: seed?.handleBase ?? "alex-chen-ai",
+      handleBase: seed?.handleBase ?? "learner",
     });
   }
   if (!profile) return null;

@@ -47,7 +47,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const clerkJsUrl = process.env.NEXT_PUBLIC_CLERK_JS_URL || "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
+  const clerkJsUrl = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
 
   return (
     <html lang="en" data-theme="dark">

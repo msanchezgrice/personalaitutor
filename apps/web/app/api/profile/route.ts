@@ -37,6 +37,9 @@ export async function PATCH(req: NextRequest) {
   }
 
   const userId = getUserId(req);
+  if (!userId) {
+    return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+  }
   const profile = await runtimeUpdateProfile(userId, parsed.data);
   if (!profile) {
     return jsonError("USER_NOT_FOUND", "Profile update requires a valid user", 404);

@@ -4,6 +4,9 @@ import { forcedFailCode, getUserId } from "@/lib/api";
 
 export async function POST(req: NextRequest) {
   const userId = getUserId(req);
+  if (!userId) {
+    return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+  }
   const user = await runtimeFindUserById(userId);
   if (!user) {
     return jsonError("USER_NOT_FOUND", "Cannot send daily update for unknown user", 404);

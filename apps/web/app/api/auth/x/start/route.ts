@@ -17,6 +17,9 @@ function resolveRedirectUri(req: NextRequest, configured: string | undefined, fa
 
 export async function GET(req: NextRequest) {
   const userId = getUserId(req);
+  if (!userId) {
+    return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+  }
   const mock = req.nextUrl.searchParams.get("mock") === "1";
   const redirect = req.nextUrl.searchParams.get("redirect") === "1";
 

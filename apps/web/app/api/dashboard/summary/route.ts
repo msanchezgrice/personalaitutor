@@ -7,6 +7,9 @@ export async function GET(req: NextRequest) {
   try {
     const seed = await getAuthSeed(req);
     const userId = seed?.userId ?? getUserId(req);
+    if (!userId) {
+      return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+    }
     const summary = await runtimeGetDashboardSummary(userId, {
       name: seed?.name,
       handleBase: seed?.handleBase,

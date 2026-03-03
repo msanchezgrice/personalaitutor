@@ -11,13 +11,27 @@ export const metadata: Metadata = {
   },
 };
 
-export default function SignUpPage() {
+function safeRedirect(input?: string) {
+  if (!input || typeof input !== "string") return "/onboarding/";
+  if (!input.startsWith("/")) return "/onboarding/";
+  return input;
+}
+
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirect_url?: string }>;
+}) {
+  const params = await searchParams;
+  const forceRedirectUrl = safeRedirect(params?.redirect_url);
+
   return (
     <main className="min-h-screen bg-[#0f111a] text-white flex items-center justify-center px-6 py-10">
       <SignUp
         routing="path"
         path="/sign-up"
-        afterSignUpUrl="/onboarding/"
+        forceRedirectUrl={forceRedirectUrl}
+        fallbackRedirectUrl="/onboarding/"
         appearance={{
           baseTheme: dark,
           variables: {

@@ -1,5 +1,8 @@
 (function () {
   var currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
+  if (document && document.body) {
+    document.body.setAttribute("data-path", currentPath);
+  }
   var CTX_KEY = "ai_tutor_user_ctx_v1";
   var isDashboardPath = currentPath === "/dashboard" || currentPath.indexOf("/dashboard/") === 0;
 
@@ -115,6 +118,17 @@
     }, 2800);
   }
 
+  function isUnauthenticatedError(err) {
+    if (!err) return false;
+    if (err.code === "UNAUTHENTICATED") return true;
+    if (typeof err.message === "string" && err.message.toLowerCase().indexOf("sign in required") !== -1) return true;
+    return false;
+  }
+
+  function redirectToSignIn(path) {
+    window.location.href = "/sign-in?redirect_url=" + encodeURIComponent(path || "/dashboard/");
+  }
+
   function requestHeaders(json) {
     var headers = {
       "cache-control": "no-store",
@@ -134,7 +148,6 @@
 
   var authRequiredPaths = [
     "/onboarding",
-    "/assessment",
     "/dashboard",
     "/dashboard/chat",
     "/dashboard/projects",
@@ -170,9 +183,20 @@
 
   function syncThemeToggleUi(theme) {
     var icon = document.getElementById("theme-icon");
-    if (!icon) return;
-    icon.classList.remove("fa-sun", "fa-moon");
-    icon.classList.add(theme === "light" ? "fa-moon" : "fa-sun");
+    var toggle = document.getElementById("theme-toggle");
+    if (icon) {
+      icon.classList.remove("fa-sun", "fa-moon");
+      icon.classList.add(theme === "light" ? "fa-moon" : "fa-sun");
+    }
+    if (toggle) {
+      if (theme === "light") {
+        toggle.classList.remove("text-white", "border-white/10", "bg-white/10", "hover:bg-white/20");
+        toggle.classList.add("text-gray-800", "border-gray-300", "bg-white", "hover:bg-gray-100");
+      } else {
+        toggle.classList.remove("text-gray-800", "border-gray-300", "bg-white", "hover:bg-gray-100");
+        toggle.classList.add("text-white", "border-white/10", "bg-white/10", "hover:bg-white/20");
+      }
+    }
   }
 
   function wireThemeToggle(attempt) {
@@ -214,6 +238,45 @@
     saveCtx(ctx);
     applyCtxImmediately();
     return data;
+  }
+
+  function applyLandingAuthUi(summary) {
+    if (currentPath !== "/") return;
+    var navLogIn = Array.prototype.find.call(document.querySelectorAll("a"), function (node) {
+      var text = (node.textContent || "").trim().toLowerCase();
+      var href = node.getAttribute("href") || "";
+      return text === "log in" || href.indexOf("/sign-in") === 0;
+    });
+    if (!navLogIn) return;
+
+    var isSignedIn = Boolean(summary && summary.user && summary.user.handle);
+    if (!isSignedIn) {
+      navLogIn.setAttribute("href", "/sign-in?redirect_url=/dashboard/");
+      navLogIn.textContent = "Log In";
+      return;
+    }
+
+    navLogIn.setAttribute("href", "/dashboard/");
+    navLogIn.textContent = "Dashboard";
+  }
+
+  async function trySyncLandingAuth() {
+    if (currentPath !== "/") return;
+    try {
+      var data = await getJson("/api/auth/session");
+      if (data && data.summary) {
+        if (data.auth && data.auth.userId) ctx.userId = data.auth.userId;
+        if (data.auth && data.auth.name) ctx.name = data.auth.name;
+        if (data.auth && data.auth.avatarUrl) ctx.avatarUrl = data.auth.avatarUrl;
+        if (data.summary.user && data.summary.user.handle) ctx.handle = data.summary.user.handle;
+        saveCtx(ctx);
+        applyLandingAuthUi(data.summary);
+      } else {
+        applyLandingAuthUi(null);
+      }
+    } catch {
+      applyLandingAuthUi(null);
+    }
   }
 
   async function postJson(url, body) {
@@ -329,7 +392,7 @@
   }
 
   async function ensureSession() {
-    if (ctx.sessionId) return { id: ctx.sessionId, userId: ctx.userId };
+    if (ctx.sessionId) return { id: ctx.sessionId, userId: ctx.userId, onboardingOptions: ctx.onboardingOptions || [] };
 
     var baseHandle = ctx.name
       .toLowerCase()
@@ -349,9 +412,14 @@
     if (data.user && data.user.handle) ctx.handle = data.user.handle;
     if (data.user && data.user.name) ctx.name = data.user.name;
     if (data.user && data.user.avatarUrl) ctx.avatarUrl = data.user.avatarUrl;
+    if (Array.isArray(data.onboardingOptions)) ctx.onboardingOptions = data.onboardingOptions;
     saveCtx(ctx);
 
-    return data.session;
+    return {
+      id: data.session.id,
+      userId: data.session.userId || ctx.userId,
+      onboardingOptions: Array.isArray(data.onboardingOptions) ? data.onboardingOptions : [],
+    };
   }
 
   async function getDashboardSummary() {
@@ -547,13 +615,13 @@
       var userAvatar = ctx.avatarUrl || "/assets/avatar.png";
       var userAlt = ctx.name || "Learner";
       wrapper.innerHTML =
-        '<div class="bg-indigo-600 text-white p-5 rounded-2xl rounded-tr-sm text-sm shadow-[0_5px_15px_rgba(79,70,229,0.2)]"></div>' +
+        '<div class="bg-emerald-600 text-white p-5 rounded-2xl rounded-tr-sm text-sm shadow-[0_5px_15px_rgba(16,185,129,0.2)]"></div>' +
         '<img src="' + userAvatar + '" class="w-8 h-8 rounded-full object-cover border border-white/20 flex-shrink-0 mt-1" alt="' + userAlt + '">';
       wrapper.querySelector("div").innerHTML = html;
     } else {
       wrapper.innerHTML =
-        '<div class="w-8 h-8 rounded-full bg-gradient-to-b from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0 mt-1 shadow-[0_0_10px_rgba(79,70,229,0.3)]"><i class="fa-solid fa-robot text-white text-[10px]"></i></div>' +
-        '<div class="glass p-5 rounded-2xl rounded-tl-sm text-sm border-indigo-500/20 bg-indigo-500/5"></div>';
+        '<div class="w-8 h-8 rounded-full bg-gradient-to-b from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 mt-1 shadow-[0_0_10px_rgba(16,185,129,0.3)]"><i class="fa-solid fa-robot text-white text-[10px]"></i></div>' +
+        '<div class="glass p-5 rounded-2xl rounded-tl-sm text-sm border-emerald-500/20 bg-emerald-500/5"></div>';
       wrapper.querySelector("div.glass").innerHTML = html;
     }
 
@@ -1065,32 +1133,7 @@
 
   if (currentPath === "/onboarding") {
     var socialContainer = document.querySelector(".space-y-4");
-    ensureEmailButton(socialContainer, "/onboarding/");
-
-    var linkedInBtn = byText("button", "Continue with LinkedIn");
-    if (linkedInBtn) {
-      linkedInBtn.addEventListener("click", async function () {
-        try {
-          await ensureSession();
-          window.location.href = pathWithUserId("/api/auth/linkedin/start?redirect=1");
-        } catch (err) {
-          toast(err instanceof Error ? err.message : "Unable to start LinkedIn OAuth", true);
-        }
-      });
-    }
-
-    var googleBtn = byText("button", "Continue with Google");
-    if (googleBtn) {
-      googleBtn.addEventListener("click", async function () {
-        try {
-          await ensureSession();
-          window.location.href = pathWithUserId("/api/auth/google/start?redirect=1");
-        } catch (err) {
-          toast(err instanceof Error ? err.message : "Unable to start Google OAuth", true);
-        }
-      });
-    }
-
+    var selectedResumeFilename = null;
     var uploadLabel = byText("p", "Upload Resume (PDF)");
     var uploadCard = uploadLabel ? uploadLabel.closest("div.border-2") : null;
     if (uploadCard) {
@@ -1107,6 +1150,11 @@
       uploader.addEventListener("change", async function () {
         var file = uploader.files && uploader.files[0];
         if (!file) return;
+        selectedResumeFilename = file.name;
+        var subtitle = uploadCard.querySelector("p.text-xs");
+        if (subtitle) {
+          subtitle.textContent = "Selected: " + file.name;
+        }
         try {
           var session = await ensureSession();
           await postJson("/api/onboarding/career-import", {
@@ -1116,6 +1164,10 @@
           });
           toast("Resume imported and onboarding context created.", false);
         } catch (err) {
+          if (isUnauthenticatedError(err)) {
+            redirectToSignIn("/onboarding/");
+            return;
+          }
           toast(err instanceof Error ? err.message : "Resume import failed", true);
         }
       });
@@ -1125,15 +1177,150 @@
       return (node.textContent || "").indexOf("Go directly to Dashboard") !== -1;
     });
     if (shortcut) {
-      shortcut.addEventListener("click", async function (event) {
-        event.preventDefault();
-        try {
-          await ensureSession();
-          window.location.href = "/dashboard/";
-        } catch (err) {
-          toast(err instanceof Error ? err.message : "Unable to open dashboard", true);
+      var shortcutSection = shortcut.closest("div");
+      if (shortcutSection && shortcutSection.parentElement) {
+        shortcutSection.parentElement.removeChild(shortcutSection);
+      } else {
+        shortcut.remove();
+      }
+    }
+
+    if (socialContainer) {
+      socialContainer.innerHTML =
+        '<div class="space-y-3">' +
+        '<label class="block text-xs uppercase tracking-wider text-gray-500 font-semibold">Current Situation</label>' +
+        '<select id="onboarding-situation" class="w-full p-3 rounded-lg border border-white/10 bg-white/5 text-white">' +
+        '<option value="employed">Employed</option>' +
+        '<option value="unemployed">Unemployed</option>' +
+        '<option value="student">Student</option>' +
+        '<option value="founder">Founder</option>' +
+        '<option value="freelancer">Freelancer</option>' +
+        '<option value="career_switcher">Career Switcher</option>' +
+        "</select>" +
+        "</div>" +
+        '<div class="space-y-3">' +
+        '<label class="block text-xs uppercase tracking-wider text-gray-500 font-semibold">Career Path</label>' +
+        '<select id="onboarding-career-path" class="w-full p-3 rounded-lg border border-white/10 bg-white/5 text-white"></select>' +
+        "</div>" +
+        '<div class="space-y-3">' +
+        '<label class="block text-xs uppercase tracking-wider text-gray-500 font-semibold">LinkedIn URL</label>' +
+        '<input id="onboarding-linkedin-url" type="url" placeholder="https://linkedin.com/in/your-name" class="w-full p-3 rounded-lg border border-white/10 bg-white/5 text-white placeholder-gray-500" />' +
+        "</div>" +
+        '<div class="space-y-3">' +
+        '<label class="block text-xs uppercase tracking-wider text-gray-500 font-semibold">Primary Goals</label>' +
+        '<label class="flex items-center gap-2 text-sm text-gray-300"><input type="checkbox" name="onboarding-goal" value="build_business"> Build a business</label>' +
+        '<label class="flex items-center gap-2 text-sm text-gray-300"><input type="checkbox" name="onboarding-goal" value="upskill_current_job" checked> Upskill for current job</label>' +
+        '<label class="flex items-center gap-2 text-sm text-gray-300"><input type="checkbox" name="onboarding-goal" value="showcase_for_job"> Showcase skills for a new role</label>' +
+        '<label class="flex items-center gap-2 text-sm text-gray-300"><input type="checkbox" name="onboarding-goal" value="ship_ai_projects"> Ship AI projects</label>' +
+        '<label class="flex items-center gap-2 text-sm text-gray-300"><input type="checkbox" name="onboarding-goal" value="learn_foundations"> Learn foundations</label>' +
+        "</div>" +
+        '<div class="space-y-3">' +
+        '<label class="block text-xs uppercase tracking-wider text-gray-500 font-semibold">How comfortable are you with AI tools today?</label>' +
+        '<div class="grid grid-cols-3 gap-2">' +
+        '<button type="button" data-ai-score="2" class="onboarding-score btn btn-secondary py-2">Beginner</button>' +
+        '<button type="button" data-ai-score="3" class="onboarding-score btn btn-secondary py-2">Intermediate</button>' +
+        '<button type="button" data-ai-score="5" class="onboarding-score btn btn-secondary py-2">Advanced</button>' +
+        "</div>" +
+        "</div>" +
+        '<button type="button" id="onboarding-start-assessment" class="w-full btn btn-primary mt-3 py-3">Start Assessment <i class="fa-solid fa-arrow-right ml-2 text-xs"></i></button>';
+
+      var chosenScore = 3;
+      var scoreButtons = socialContainer.querySelectorAll("button.onboarding-score");
+      Array.prototype.forEach.call(scoreButtons, function (button) {
+        if ((button.getAttribute("data-ai-score") || "") === "3") {
+          button.classList.add("bg-emerald-500", "border-emerald-500/50");
         }
+        button.addEventListener("click", function () {
+          chosenScore = Number(button.getAttribute("data-ai-score") || "3");
+          Array.prototype.forEach.call(scoreButtons, function (node) {
+            node.classList.remove("bg-emerald-500", "border-emerald-500/50");
+          });
+          button.classList.add("bg-emerald-500", "border-emerald-500/50");
+        });
       });
+
+      var beginButton = document.getElementById("onboarding-start-assessment");
+      var careerPathSelect = document.getElementById("onboarding-career-path");
+      var linkedinInput = document.getElementById("onboarding-linkedin-url");
+      var situationSelect = document.getElementById("onboarding-situation");
+
+      ensureSession()
+        .then(function (bootstrap) {
+          var options = (bootstrap && bootstrap.onboardingOptions) || [];
+          if (!careerPathSelect) return;
+          if (!options.length) {
+            options = [{ id: ctx.careerPathId || "product-management", name: "Product Management" }];
+          }
+          options.forEach(function (option) {
+            var item = document.createElement("option");
+            item.value = option.id;
+            item.textContent = option.name;
+            if (option.id === (ctx.careerPathId || "product-management")) {
+              item.selected = true;
+            }
+            careerPathSelect.appendChild(item);
+          });
+        })
+        .catch(function (err) {
+          if (isUnauthenticatedError(err)) {
+            redirectToSignIn("/onboarding/");
+            return;
+          }
+          toast(err instanceof Error ? err.message : "Unable to initialize onboarding", true);
+        });
+
+      if (beginButton) {
+        beginButton.addEventListener("click", async function () {
+          try {
+            var goals = Array.prototype.map.call(
+              document.querySelectorAll('input[name="onboarding-goal"]:checked'),
+              function (node) {
+                return node.value;
+              },
+            );
+            if (!goals.length) {
+              toast("Select at least one goal.", true);
+              return;
+            }
+
+            var selectedCareerPath = careerPathSelect && careerPathSelect.value ? careerPathSelect.value : "product-management";
+            ctx.careerPathId = selectedCareerPath;
+            saveCtx(ctx);
+
+            var session = await ensureSession();
+            await postJson("/api/onboarding/career-import", {
+              sessionId: session.id,
+              careerPathId: selectedCareerPath,
+              linkedinUrl: linkedinInput && linkedinInput.value ? linkedinInput.value.trim() : null,
+              resumeFilename: selectedResumeFilename,
+            });
+
+            await postJson("/api/onboarding/situation", {
+              sessionId: session.id,
+              situation: situationSelect && situationSelect.value ? situationSelect.value : "employed",
+              goals: goals,
+            });
+
+            var start = await postJson("/api/assessment/start", { sessionId: session.id });
+            await postJson("/api/assessment/submit", {
+              assessmentId: start.assessment.id,
+              answers: [
+                { questionId: "ai_comfort", value: chosenScore },
+                { questionId: "goal_intent", value: Math.min(5, 1 + goals.length) },
+              ],
+            });
+
+            toast("Onboarding complete. Welcome to your dashboard.", false);
+            window.location.href = "/dashboard/?welcome=1";
+          } catch (err) {
+            if (isUnauthenticatedError(err)) {
+              redirectToSignIn("/onboarding/");
+              return;
+            }
+            toast(err instanceof Error ? err.message : "Failed to complete onboarding", true);
+          }
+        });
+      }
     }
   }
 
@@ -1184,8 +1371,12 @@
           });
 
           toast("Assessment submitted.", false);
-          window.location.href = continueLink.getAttribute("href") || "/onboarding/";
+          window.location.href = "/dashboard/?welcome=1";
         } catch (err) {
+          if (isUnauthenticatedError(err)) {
+            redirectToSignIn("/assessment/");
+            return;
+          }
           toast(err instanceof Error ? err.message : "Assessment failed", true);
         }
       });
@@ -1194,6 +1385,7 @@
 
   async function boot() {
     wireThemeToggle();
+    await trySyncLandingAuth();
 
     try {
       await syncAuthContext();

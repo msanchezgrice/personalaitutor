@@ -16,6 +16,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
   const { id } = await context.params;
   const userId = getUserId(req);
+  if (!userId) {
+    return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+  }
   const result = await runtimeAddProjectChatMessage({
     projectId: id,
     userId,

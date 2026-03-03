@@ -8,6 +8,38 @@ type GeminiStaticPageProps = {
   className?: string;
 };
 
+function sanitizeTemplateHtml(input: string) {
+  return input
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u0001/g, "")
+    .replace(/\\1/g, "")
+    .replace(/\\n/g, "\n")
+    .replace(/\\t/g, "\t");
+}
+
+function stripScripts(input: string) {
+  return input.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
+}
+
+function extractFallbackBody(html: string) {
+  const headEnd = html.search(/<\/head>/i);
+  const htmlEnd = html.search(/<\/html>/i);
+
+  let fallback = html;
+  if (headEnd >= 0) {
+    const start = headEnd + "</head>".length;
+    fallback = html.slice(start, htmlEnd >= 0 ? htmlEnd : undefined);
+  }
+
+  return fallback
+    .replace(/<!doctype[^>]*>/gi, "")
+    .replace(/<html[^>]*>/gi, "")
+    .replace(/<\/html>/gi, "")
+    .replace(/<head[\s\S]*?<\/head>/gi, "")
+    .replace(/<body[^>]*>/gi, "")
+    .replace(/<\/body>/gi, "");
+}
+
 function loadTemplate(template: string) {
   const candidates = [
     path.join(process.cwd(), "mockups", "high_fidelity", template),
@@ -20,24 +52,40 @@ function loadTemplate(template: string) {
   if (!fullPath) {
     throw new Error(`GEMINI_TEMPLATE_NOT_FOUND:${template}`);
   }
-  const html = readFileSync(fullPath, "utf8");
+  const html = sanitizeTemplateHtml(readFileSync(fullPath, "utf8"));
   const bodyMatch = html.match(/<body([^>]*)>([\s\S]*?)<\/body>/i);
 
   if (!bodyMatch) {
     return {
       className: "",
-      body: html,
+      body: stripScripts(extractFallbackBody(html)),
     };
   }
 
   const attrs = bodyMatch[1] ?? "";
-  const body = bodyMatch[2] ?? "";
+  const body = stripScripts(bodyMatch[2] ?? "");
   const classMatch = attrs.match(/class=["']([^"']+)["']/i);
 
   return {
     className: classMatch?.[1] ?? "",
     body,
   };
+}
+
+function escapeRegExp(input: string) {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function replaceWithWhitespaceTolerance(input: string, source: string, target: string) {
+  const exact = input.split(source).join(target);
+  if (exact !== input || !/\s/.test(source)) {
+    return exact;
+  }
+
+  const tokens = source.trim().split(/\s+/).map(escapeRegExp);
+  if (!tokens.length) return exact;
+  const pattern = new RegExp(tokens.join("\\s+"), "g");
+  return exact.replace(pattern, target);
 }
 
 function applyReplacements(input: string, replacements?: Record<string, string>) {
@@ -70,8 +118,14 @@ function applyReplacements(input: string, replacements?: Record<string, string>)
 
   let output = input;
   for (const [source, target] of Object.entries(merged)) {
-    output = output.split(source).join(target);
+    output = replaceWithWhitespaceTolerance(output, source, target);
   }
+
+  output = output.replace(
+    /href="\/sign-in\?redirect_url=\/onboarding\/?"/g,
+    'href="/sign-in?redirect_url=/dashboard/"',
+  );
+  output = output.replace(/\\n/g, "\n").replace(/\\1/g, "");
   return output;
 }
 
