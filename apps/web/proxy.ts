@@ -8,6 +8,7 @@ const isPublicRoute = createRouteMatcher([
   "/assessment(.*)",
   "/employers(.*)",
   "/u/(.*)",
+  "/api/auth/google/start",
   "/api/og/(.*)",
   "/api/employers/talent(.*)",
   "/robots.txt",
