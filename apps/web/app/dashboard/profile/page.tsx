@@ -1,15 +1,21 @@
-import { TopNav } from "@/components/nav";
 import { ProfileEditor } from "@/components/profile-editor";
 
 export default function DashboardProfilePage() {
   return (
     <>
-      <TopNav />
-      <main className="container section">
-        <h1>My Online Profile</h1>
-        <p className="lead">Edit profile metadata, publish public page, and verify OG surfaces for SEO/social sharing.</p>
-        <ProfileEditor />
-      </main>
+      <section className="dash-header">
+        <div>
+          <h1 style={{ fontSize: "2rem" }}>Profile Settings</h1>
+          <p>Publish your profile, projects, build log, and SEO metadata in one workflow.</p>
+        </div>
+      </section>
+
+      <section className="dash-body">
+        <article className="dash-panel">
+          <h2>My Online Profile</h2>
+          <ProfileEditor />
+        </article>
+      </section>
     </>
   );
 }

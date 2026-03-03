@@ -1,119 +1,128 @@
 import Link from "next/link";
-import { TopNav } from "@/components/nav";
 import { DashboardOverview } from "@/components/dashboard-overview";
 
 export default function DashboardPage() {
   return (
     <>
-      <TopNav />
-      <main className="split container">
-        <aside className="sidebar">
-          <h3>AI Tutor Workspace</h3>
-          <p className="lead" style={{ fontSize: ".92rem", marginTop: 6 }}>
-            <strong>TEST_USER_0001</strong> · Product Management Track
-          </p>
-          <div className="side-links">
-            <Link className="active" href="/dashboard">Overview</Link>
-            <Link href="/dashboard/projects">My Projects</Link>
-            <Link href="/dashboard/profile">My Online Profile</Link>
-            <Link href="/dashboard/chat">Chat</Link>
-            <Link href="/dashboard/social">LinkedIn/X Posts</Link>
-            <Link href="/dashboard/updates">Daily Updates</Link>
-          </div>
-          <div className="card" style={{ marginTop: 10 }}>
-            <h3>Verification Policy</h3>
-            <p>
-              Platform policy supports `in_progress` to `built` to `verified`. Failing dependencies block advancement
-              with explicit recovery actions.
-            </p>
-          </div>
-        </aside>
+      <section className="dash-header">
+        <div>
+          <h1 style={{ fontSize: "2rem" }}>Good Morning, Alex</h1>
+          <p>Ready to build something new today?</p>
+        </div>
+        <div className="dash-header-actions">
+          <Link className="btn" href="/employers/talent">
+            View Talent Board
+          </Link>
+        </div>
+      </section>
 
-        <section className="content">
-          <div className="kpi-grid">
-            <div className="kpi"><span className="label">AI-Native Score</span><span className="value">58</span></div>
-            <div className="kpi"><span className="label">Projects Built</span><span className="value">1</span></div>
-            <div className="kpi"><span className="label">Verified Skills</span><span className="value">2</span></div>
-            <div className="kpi"><span className="label">Tokens Used</span><span className="value">18430</span></div>
+      <section className="dash-body">
+        <article className="dash-banner">
+          <div>
+            <h3>AI Tutor: Let&apos;s finish your automation workflow.</h3>
+            <p>You left off at the data parsing step in the Customer Support Copilot project.</p>
           </div>
+          <Link className="btn primary" href="/dashboard/chat">
+            Resume Session
+          </Link>
+        </article>
 
-          <div className="grid-2">
-            <article className="panel pad">
-              <h3>My Projects</h3>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Project</th>
-                    <th>Status</th>
-                    <th>Artifacts</th>
-                    <th>Skills</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>PROJECT_ALPHA_001</td>
-                    <td><span className="tag warn">In Progress</span></td>
-                    <td>Draft website</td>
-                    <td>Prompting</td>
-                  </tr>
-                  <tr>
-                    <td>PROJECT_BETA_002</td>
-                    <td><span className="tag">Planned</span></td>
-                    <td>None</td>
-                    <td>Workflow Mapping</td>
-                  </tr>
-                  <tr>
-                    <td>PROJECT_GAMMA_003</td>
-                    <td><span className="tag">Planned</span></td>
-                    <td>None</td>
-                    <td>Documentation</td>
-                  </tr>
-                </tbody>
-              </table>
-              <div className="hero-actions">
-                <Link className="btn" href="/dashboard/projects">Open Projects</Link>
+        <div className="dash-grid-main">
+          <div className="dash-stack">
+            <article className="dash-panel">
+              <h2>My Projects</h2>
+              <div className="dash-project-cards">
+                <div className="dash-project-card">
+                  <span className="tag warn">In Progress</span>
+                  <h3 style={{ marginTop: 10 }}>Customer Support Copilot</h3>
+                  <p>An automated email responder using RAG to fetch CRM context before drafting replies.</p>
+                  <div className="dash-meter">
+                    <span />
+                  </div>
+                </div>
+
+                <div className="dash-project-card" style={{ borderColor: "color-mix(in srgb, var(--ok), transparent 58%)" }}>
+                  <span className="tag ok">Completed</span>
+                  <h3 style={{ marginTop: 10 }}>Lead Scraper Pro</h3>
+                  <p>Python script to map local businesses to a CSV using Google Maps APIs.</p>
+                </div>
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <Link className="btn" href="/dashboard/projects">
+                  Open Project Portfolio
+                </Link>
               </div>
             </article>
 
-            <article className="panel pad">
-              <h3>My Online Profile</h3>
-              <p>Private by default. Publish selected projects to your public profile and employer marketplace card.</p>
-              <ul className="list">
-                <li>Headline and role track stored</li>
-                <li>Skills matrix drafted</li>
-                <li>OG metadata generated</li>
-                <li>Social links configured</li>
-              </ul>
-              <div className="hero-actions">
-                <Link className="btn brand" href="/dashboard/profile">Edit Profile</Link>
-                <Link className="btn" href="/u/test-user-0001">Preview Public URL</Link>
+            <article className="dash-panel">
+              <h2>My Online Profile</h2>
+              <p className="lead">Publish system-verified projects with social links, OG metadata, and skill evidence.</p>
+              <div className="skill-chips">
+                <span className="skill-chip ok">Platform Verified Skills</span>
+                <span className="skill-chip">Build Log</span>
+                <span className="skill-chip">Token Meter</span>
+              </div>
+              <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <Link className="btn" href="/dashboard/profile">
+                  Edit Profile
+                </Link>
+                <Link className="btn" href="/u/test-user-0001">
+                  View Public URL
+                </Link>
+              </div>
+            </article>
+
+            <article className="dash-panel">
+              <h2>AI Tutor Chat</h2>
+              <p className="lead">Always-available tutor support with project event streams and deterministic fail-state recovery.</p>
+              <div className="msg agent" style={{ marginTop: 10 }}>
+                Continue module checkpoints and publish one build-log event from your active project.
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <Link className="btn primary" href="/dashboard/chat">
+                  Open Chat Tutor
+                </Link>
               </div>
             </article>
           </div>
 
-          <div className="grid-2">
-            <article className="panel pad">
-              <h3>AI Tutor Chat Snapshot</h3>
-              <div className="msg agent">Complete module 01 and publish one build-log entry for PROJECT_ALPHA_001.</div>
-              <div className="hero-actions">
-                <Link className="btn" href="/dashboard/chat">Open Chat</Link>
+          <div className="dash-stack">
+            <article className="dash-panel">
+              <h3>Social Drafts</h3>
+              <p className="lead">Drafts generated from your latest project milestones.</p>
+              <div className="msg" style={{ marginTop: 10 }}>
+                "Finished my first automation workflow. Built with AI Tutor and published proof publicly."
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <Link className="btn primary" href="/dashboard/social">
+                  Review and Publish
+                </Link>
               </div>
             </article>
 
-            <article className="panel pad">
-              <h3>Relevant AI News</h3>
-              <ul className="list">
-                <li>Agent observability standards are becoming common in hiring screens.</li>
-                <li>Evaluation pipelines for retrieval quality are now expected in many AI roles.</li>
-                <li>Portfolio-based AI proof is replacing generic skill claims.</li>
-              </ul>
-              <div className="fail-box"><strong>Fail state sample:</strong> News refresh job failed. Retry required.</div>
+            <article className="dash-panel">
+              <h3>AI Updates</h3>
+              <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                <div className="card">
+                  <strong>Claude 3.5 Released</strong>
+                  <p>New capabilities detected. Your tutor highlighted 3 workflows you can apply today.</p>
+                </div>
+                <div className="card" style={{ opacity: 0.7 }}>
+                  <strong>Provider latency alert</strong>
+                  <p>Expected slow response windows. Retry logic will auto-schedule jobs.</p>
+                </div>
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <Link className="btn" href="/dashboard/updates">
+                  View Inbox
+                </Link>
+              </div>
             </article>
           </div>
+        </div>
 
-          <DashboardOverview />
-        </section>
-      </main>
+        <DashboardOverview />
+      </section>
     </>
   );
 }

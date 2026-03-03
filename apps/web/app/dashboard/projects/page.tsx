@@ -1,18 +1,27 @@
-import { TopNav } from "@/components/nav";
 import { ProjectWorkbench } from "@/components/project-workbench";
 
 export default function DashboardProjectsPage() {
   return (
     <>
-      <TopNav />
-      <main className="container section">
-        <h1>My Projects</h1>
-        <p className="lead">Create projects and generate website/PPT/PDF/resume artifacts with explicit failure handling.</p>
-        <ProjectWorkbench />
-        <div className="fail-box" style={{ marginTop: 14 }}>
-          Fail state policy: generation failures block promotion to Built/Verified until successful retry.
+      <section className="dash-header">
+        <div>
+          <h1 style={{ fontSize: "2rem" }}>Project Portfolio</h1>
+          <p>Manage active builds and proof artifacts.</p>
         </div>
-      </main>
+      </section>
+
+      <section className="dash-body">
+        <article className="dash-panel">
+          <h2>Active and Completed Builds</h2>
+          <p className="lead">Generate website, deck, PDF, and resume assets directly from project state.</p>
+          <ProjectWorkbench />
+        </article>
+
+        <div className="fail-box">
+          <strong>Fail state policy:</strong> generation failures block promotion to Built/Verified until successful
+          retry and evidence sync.
+        </div>
+      </section>
     </>
   );
 }

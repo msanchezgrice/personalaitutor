@@ -10,44 +10,34 @@ export default function HomePage() {
         <section className="hero">
           <div className="container hero-grid">
             <div>
-              <span className="tag">AI is moving fast</span>
-              <h1>
-                Meet your dedicated AI Tutor that teaches and proves your skills.
+              <span className="tag">Your dedicated AI copilot for career growth</span>
+              <h1 className="hero-main-title">
+                Learn fast and <span className="text-gradient">prove it publicly.</span>
               </h1>
-              <p className="lead">
-                System-Verified Proof of Work for the AI era. Build projects, complete modules, earn verified skill
-                badges, and publish an employer-ready public profile.
+              <p className="lead" style={{ fontSize: "1.22rem" }}>
+                AI is moving fast. Meet your dedicated AI Tutor that teaches you how to build with AI and generates
+                System-Verified Proof of Work across projects, modules, and artifacts.
               </p>
 
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
+              <div className="hero-actions">
                 <a className="btn primary" href="https://careerguard.me/intake" target="_blank" rel="noreferrer">
-                  Start AI Assessment
+                  Take the AI Assessment
                 </a>
-                <Link className="btn" href="/onboarding">
-                  Start Onboarding Wizard
-                </Link>
                 <Link className="btn" href="/employers/talent">
-                  See Talent Board
+                  See Example Profiles
                 </Link>
               </div>
 
-              <div className="stats">
-                <div className="stat">
-                  <strong>Website</strong>
-                  Your public profile and project pages.
+              <div className="hero-foot">
+                <div className="avatar-stack">
+                  <span>AC</span>
+                  <span>+2k</span>
                 </div>
-                <div className="stat">
-                  <strong>Build Log</strong>
-                  Event-level proof mapped to skills.
-                </div>
-                <div className="stat">
-                  <strong>Verification</strong>
-                  Platform Verified and AI Tutor Verified badges.
-                </div>
+                <p>Professionals already building their AI stack.</p>
               </div>
             </div>
 
-            <div className="hero-frame glass-panel">
+            <div className="hero-frame">
               <div className="overlay" />
               <iframe src="/dashboard/" title="Dashboard preview" />
             </div>
@@ -55,61 +45,71 @@ export default function HomePage() {
         </section>
 
         <section className="section">
-          <div className="container panel">
-            <h2>How It Works</h2>
+          <div className="container panel pad">
+            <h2>How it works</h2>
             <ol className="list">
               <li>Tell us your background and goals.</li>
-              <li>Your AI Tutor builds a personalized dashboard and starts execution jobs.</li>
-              <li>Complete modules and explainers to earn badges and verified skills.</li>
-              <li>Your AI Tutor remains available to explain, build, and troubleshoot.</li>
-              <li>Receive goal-aligned daily updates with status, tasks, and relevant AI news.</li>
+              <li>Your dedicated AI Tutor builds a custom dashboard and starts guided execution.</li>
+              <li>Complete modules and explainers to earn badges and skill status updates.</li>
+              <li>Your tutor stays available to explain and build with you 24/7.</li>
+              <li>Receive daily updates with status, upcoming tasks, relevant AI news, and links.</li>
             </ol>
           </div>
         </section>
 
         <section className="section">
           <div className="container">
-            <h2>Career paths and module matrix</h2>
-            <p className="lead">Onboarding, dashboard checklists, and employer filters share the same matrix source.</p>
-            <div className="grid-4" style={{ marginTop: 14 }}>
-              {CAREER_PATHS.map((path) => (
-                <article key={path.id} className="card">
-                  <h3>{path.name}</h3>
-                  <p className="lead" style={{ marginTop: 6 }}>{path.coreSkillDomain}</p>
-                  <ul className="list">
-                    {path.modules.slice(0, 2).map((module) => (
-                      <li key={module}>{module}</li>
-                    ))}
-                  </ul>
-                </article>
-              ))}
+            <h2>What gets built for you</h2>
+            <p className="lead">Website, build log, profile, project cards, social drafts, and production artifacts.</p>
+            <div className="grid-3" style={{ marginTop: 14 }}>
+              <article className="card">
+                <h3>Public profile website</h3>
+                <p>SEO-ready profile page with social links, token usage, and proof-based skills.</p>
+              </article>
+              <article className="card">
+                <h3>Build log + project cards</h3>
+                <p>Upwork-style stack details backed by build telemetry and verification events.</p>
+              </article>
+              <article className="card">
+                <h3>Artifact generation</h3>
+                <p>One-click website, pptx, pdf, resume_docx, and resume_pdf generation per project.</p>
+              </article>
             </div>
           </div>
         </section>
 
         <section className="section">
-          <div className="container panel">
-            <h2>This is your secret weapon for staying up to date</h2>
-            <p className="lead">
-              AI will not replace you. Someone with AI skills will. We help you build those skills and prove them
-              publicly.
-            </p>
-            <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Link className="btn primary" href="/dashboard">
-                Open Dashboard
-              </Link>
-              <Link className="btn" href="/u/test-user-0001">
-                See Public Profile Example
-              </Link>
-              <Link className="btn" href="/employers">
-                Employer Portal
-              </Link>
+          <div className="container panel pad">
+            <h2>Career Matrix</h2>
+            <p className="lead">Onboarding options, dashboard skill lists, and talent marketplace filters come from one matrix source.</p>
+            <div className="grid-4" style={{ marginTop: 12 }}>
+              {CAREER_PATHS.map((path) => (
+                <article key={path.id} className="card">
+                  <strong>{path.name}</strong>
+                  <p>{path.coreSkillDomain}</p>
+                </article>
+              ))}
+            </div>
+
+            <div className="cta-band">
+              <h3>This is your secret weapon for staying up to date.</h3>
+              <p className="lead">
+                AI won&apos;t replace you. Someone with AI skills will. Start building public proof now.
+              </p>
+              <div className="hero-actions">
+                <Link className="btn primary" href="/onboarding">
+                  Start Building
+                </Link>
+                <Link className="btn" href="/employers/talent">
+                  Explore Talent Board
+                </Link>
+              </div>
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="container footer">No silent fallback behavior in MVP. Fail states always include recovery actions.</footer>
+      <footer className="container footer">No silent fallback behavior. Every fail-state includes recovery actions.</footer>
     </>
   );
 }

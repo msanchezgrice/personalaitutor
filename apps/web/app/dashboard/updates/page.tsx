@@ -1,15 +1,21 @@
-import { TopNav } from "@/components/nav";
 import { UpdatesConsole } from "@/components/updates-console";
 
 export default function DashboardUpdatesPage() {
   return (
     <>
-      <TopNav />
-      <main className="container section">
-        <h1>Daily Updates and Relevant AI News</h1>
-        <p className="lead">Scheduler hooks for `news-refresh` and `daily-update` with explicit fail-state notices.</p>
-        <UpdatesConsole />
-      </main>
+      <section className="dash-header">
+        <div>
+          <h1 style={{ fontSize: "2rem" }}>AI Inbox and News</h1>
+          <p>Relevant AI news module plus daily digest and fail-state notifications.</p>
+        </div>
+      </section>
+
+      <section className="dash-body">
+        <article className="dash-panel">
+          <h2>Updates and scheduler controls</h2>
+          <UpdatesConsole />
+        </article>
+      </section>
     </>
   );
 }

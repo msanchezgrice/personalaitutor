@@ -25,7 +25,7 @@ export function ThemeToggle() {
         setTheme(next);
       }}
     >
-      {theme === "dark" ? "Light Mode" : "Dark Mode"}
+      {theme === "dark" ? "Light" : "Dark"}
     </button>
   );
 }
