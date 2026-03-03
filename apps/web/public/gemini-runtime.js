@@ -144,7 +144,7 @@
   ];
 
   function needsAuth() {
-    return authRequiredPaths.indexOf(currentPath) !== -1;
+    return Array.isArray(authRequiredPaths) && authRequiredPaths.indexOf(currentPath) !== -1;
   }
 
   function readTheme() {
@@ -926,7 +926,7 @@
       '<div class="flex justify-between items-start mb-4">' +
       '<img src="' +
       (candidate.avatarUrl || "/assets/avatar.png") +
-      '" class="w-16 h-16 rounded-full object-cover border border-white/20" alt="' +
+      '" width="64" height="64" style="width:64px;height:64px;object-fit:cover;" class="w-16 h-16 rounded-full object-cover border border-white/20" alt="' +
       candidate.name +
       '">' +
       '<div class="bg-emerald-500/20 text-emerald-400 w-8 h-8 rounded-full flex items-center justify-center border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]" title="Verified Human Builder"><i class="fa-solid fa-check text-sm font-bold"></i></div>' +

@@ -19,20 +19,16 @@
   <!-- Navigation -->
   <header class="glass sticky top-0 z-50 border-x-0 border-t-0 rounded-none bg-opacity-80 backdrop-blur-xl">
     <div class="container nav">
-      <div class="flex items-center gap-2">
-        <div
-          class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl">
-          <i class="fa-solid fa-brain"></i>
-        </div>
-        <span class="font-[Outfit] font-bold text-xl tracking-tight">My AI Skill Tutor</span>
-      </div>
+      <a href="/" class="flex items-center gap-2">
+        <img src="/assets/branding/brand_wordmark_logo.png" alt="My AI Skill Tutor" class="h-8 w-auto object-contain" />
+      </a>
       <nav class="hidden md:flex nav-links">
         <a href="#how-it-works" class="nav-link">How it works</a>
         <a href="#proof" class="nav-link">Public Proof</a>
         <a href="/employers/" class="nav-link">For Employers</a>
       </nav>
       <div class="flex gap-4">
-        <a href="/onboarding/" class="btn btn-secondary hidden sm:flex">Log In</a>
+        <a href="/sign-in?redirect_url=/onboarding/" class="btn btn-secondary">Log In</a>
         <a href="/assessment/" class="btn btn-primary animate-pulse-glow">Start Assessment <i
             class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>
       </div>
@@ -79,8 +75,7 @@
       <div class="relative z-10 hidden lg:block perspective-1000">
         <div
           class="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl transform -rotate-y-5 rotate-x-5 perspective-1000 origin-center bg-[#0f111a] border border-gray-200 dark:border-white/20">
-          <div class="absolute inset-0 bg-transparent z-10"></div><iframe src="/dashboard/"
-            class="w-[150%] h-[150%] origin-top-left scale-[0.66] pointer-events-none border-none"></iframe>
+          <img src="/assets/screenshot_dashboard.png" alt="Dashboard preview" class="w-full h-full object-cover" />
         </div>
 
         <!-- Floating Badge -->
@@ -154,9 +149,8 @@
         <div class="order-2 md:order-1 relative perspective-1000">
           <div
             class="glass-panel p-2 rounded-2xl transform rotateY-5 shadow-2xl overflow-hidden aspect-[4/3] bg-white/5 border border-gray-200 dark:border-white/20">
-            <div class="absolute inset-0 bg-transparent z-10"></div>
-            <iframe src="/dashboard/"
-              class="w-[150%] h-[150%] origin-top-left scale-[0.66] pointer-events-none border-none"></iframe>
+            <img src="/assets/screenshot_dashboard.png" alt="Dashboard View"
+              class="w-full h-full object-cover rounded-xl border border-white/5 opacity-90" />
           </div>
         </div>
         <div class="order-1 md:order-2">
@@ -201,9 +195,8 @@
         <div class="relative perspective-1000">
           <div
             class="glass-panel p-2 rounded-2xl transform -rotateY-5 shadow-2xl overflow-hidden aspect-[4/3] bg-white/5 border border-gray-200 dark:border-white/20">
-            <div class="absolute inset-0 bg-transparent z-10"></div>
-            <iframe src="/dashboard/profile/"
-              class="w-[150%] h-[150%] origin-top-left scale-[0.66] pointer-events-none border-none"></iframe>
+            <img src="/assets/screenshot_profile.png" alt="Public Profile"
+              class="w-full h-full object-cover rounded-xl border border-white/5 opacity-90" />
           </div>
         </div>
       </div>
@@ -218,9 +211,8 @@
         <div class="order-2 md:order-1 relative perspective-1000">
           <div
             class="glass-panel p-2 rounded-2xl transform rotateY-5 shadow-2xl overflow-hidden aspect-[4/3] bg-white/5 border border-gray-200 dark:border-white/20">
-            <div class="absolute inset-0 bg-transparent z-10"></div>
-            <iframe src="/dashboard/chat/"
-              class="w-[150%] h-[150%] origin-top-left scale-[0.66] pointer-events-none border-none"></iframe>
+            <img src="/assets/screenshot_chat.png" alt="Chat Tutor"
+              class="w-full h-full object-cover rounded-xl border border-white/5 opacity-90" />
           </div>
         </div>
         <div class="order-1 md:order-2">
@@ -265,9 +257,8 @@
         <div class="relative perspective-1000">
           <div
             class="glass-panel p-2 rounded-2xl transform -rotateY-5 shadow-2xl overflow-hidden aspect-[4/3] bg-white/5 border border-gray-200 dark:border-white/20">
-            <div class="absolute inset-0 bg-transparent z-10"></div>
-            <iframe src="/dashboard/projects/"
-              class="w-[150%] h-[150%] origin-top-left scale-[0.66] pointer-events-none border-none"></iframe>
+            <img src="/assets/screenshot_projects.png" alt="Project Portfolios"
+              class="w-full h-full object-cover rounded-xl border border-white/5 opacity-90" />
           </div>
         </div>
       </div>
@@ -370,26 +361,22 @@
 
   <footer class="border-t border-white/10 py-12 mt-auto">
     <div class="container flex flex-col md:flex-row justify-between items-center gap-6">
-      <div class="flex items-center gap-2">
-        <div
-          class="w-6 h-6 rounded bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xs">
-          <i class="fa-solid fa-brain"></i>
-        </div>
-        <span class="font-[Outfit] font-bold text-lg">My AI Skill Tutor</span>
-      </div>
-      <div class="flex items-center gap-5 text-sm">
+      <a href="/" class="flex items-center gap-2">
+        <img src="/assets/branding/brand_wordmark_logo.png" alt="My AI Skill Tutor" class="h-7 w-auto object-contain" />
+      </a>
+      <div class="flex items-center gap-4 text-sm">
         <a href="https://x.com/myaiskilltu" target="_blank" rel="noreferrer"
-          class="text-gray-400 hover:text-white transition flex items-center gap-2">
-          <i class="fa-brands fa-x-twitter"></i>
-          <span>@myaiskilltu</span>
+          class="text-gray-400 hover:text-white transition w-9 h-9 rounded-full border border-white/10 flex items-center justify-center"
+          aria-label="My AI Skill Tutor on X">
+          <i class="fa-brands fa-x-twitter text-base"></i>
         </a>
         <a href="http://linkedin.com/company/myaiskilltutor" target="_blank" rel="noreferrer"
-          class="text-gray-400 hover:text-white transition flex items-center gap-2">
-          <i class="fa-brands fa-linkedin text-[#0077b5]"></i>
-          <span>linkedin.com/company/myaiskilltutor</span>
+          class="text-gray-400 hover:text-white transition w-9 h-9 rounded-full border border-white/10 flex items-center justify-center"
+          aria-label="My AI Skill Tutor on LinkedIn">
+          <i class="fa-brands fa-linkedin text-[#0077b5] text-base"></i>
         </a>
       </div>
-      <p class="text-sm text-gray-500">© 2026 AI Tutor. All rights reserved.</p>
+      <p class="text-sm text-gray-500">© 2026 My AI Skill Tutor. All rights reserved.</p>
     </div>
   </footer>
 

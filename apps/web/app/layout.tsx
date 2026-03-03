@@ -9,6 +9,11 @@ const appBaseUrl = getSiteUrl();
 export const metadata: Metadata = {
   metadataBase: new URL(appBaseUrl),
   applicationName: BRAND_NAME,
+  icons: {
+    icon: "/assets/branding/brand_logo_icon.png",
+    shortcut: "/assets/branding/brand_logo_icon.png",
+    apple: "/assets/branding/brand_logo_icon.png",
+  },
   title: {
     default: `${BRAND_NAME} | Build AI Skills and Public Proof`,
     template: `%s | ${BRAND_NAME}`,
@@ -42,14 +47,17 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const clerkJsUrl = process.env.NEXT_PUBLIC_CLERK_JS_URL || "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
+
   return (
     <html lang="en" data-theme="dark">
       <head>
+        <link rel="icon" href="/assets/branding/brand_logo_icon.png" />
         <link rel="stylesheet" href="/styles.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       </head>
       <body>
-        <ClerkProvider>
+        <ClerkProvider clerkJSUrl={clerkJsUrl}>
           <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
           <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
           <Script src="/gemini-runtime.js" strategy="afterInteractive" />

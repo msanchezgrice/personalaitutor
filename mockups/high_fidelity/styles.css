@@ -36,6 +36,84 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Prevent avatar/image flash before Tailwind utility runtime attaches */
+.object-cover {
+  object-fit: cover;
+}
+
+.rounded-full {
+  border-radius: 9999px;
+}
+
+.w-6 {
+  width: 1.5rem;
+}
+
+.h-6 {
+  height: 1.5rem;
+}
+
+.w-8 {
+  width: 2rem;
+}
+
+.h-8 {
+  height: 2rem;
+}
+
+.w-10 {
+  width: 2.5rem;
+}
+
+.h-10 {
+  height: 2.5rem;
+}
+
+.w-12 {
+  width: 3rem;
+}
+
+.h-12 {
+  height: 3rem;
+}
+
+.w-16 {
+  width: 4rem;
+}
+
+.h-16 {
+  height: 4rem;
+}
+
+.w-20 {
+  width: 5rem;
+}
+
+.h-20 {
+  height: 5rem;
+}
+
+.w-24 {
+  width: 6rem;
+}
+
+.h-24 {
+  height: 6rem;
+}
+
+.w-32 {
+  width: 8rem;
+}
+
+.h-32 {
+  height: 8rem;
+}
+
 h1,
 h2,
 h3,
