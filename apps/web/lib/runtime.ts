@@ -93,6 +93,95 @@ function appBaseUrl() {
   return "http://localhost:6396";
 }
 
+function welcomeFromAddress() {
+  const configured = process.env.RESEND_FROM_EMAIL?.trim();
+  if (configured) return configured;
+  return `${BRAND_NAME} <onboarding@resend.dev>`;
+}
+
+async function sendWelcomeEmail(input: { to: string; name: string; handle: string }) {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) return false;
+
+  const dashboardUrl = `${appBaseUrl()}/dashboard/?welcome=1`;
+  const profileUrl = `${appBaseUrl()}/u/${input.handle}/`;
+  const subject = `Welcome to ${BRAND_NAME}`;
+  const html = `
+    <div style="font-family:Inter,Arial,sans-serif;color:#0f172a;background:#f8fafc;padding:24px">
+      <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:24px">
+        <h1 style="margin:0 0 10px;font-size:24px;">Welcome, ${input.name}.</h1>
+        <p style="margin:0 0 14px;line-height:1.6;color:#475569;">
+          Your AI Tutor workspace is ready. Start your onboarding, finish your assessment, and publish your first verified project.
+        </p>
+        <p style="margin:0 0 20px;line-height:1.6;color:#475569;">
+          Dashboard: <a href="${dashboardUrl}">${dashboardUrl}</a><br />
+          Public profile: <a href="${profileUrl}">${profileUrl}</a>
+        </p>
+        <a href="${dashboardUrl}" style="display:inline-block;background:#10b981;color:#ffffff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600;">Open Dashboard</a>
+      </div>
+    </div>
+  `.trim();
+  const text = [
+    `Welcome to ${BRAND_NAME}, ${input.name}.`,
+    "Your workspace is ready.",
+    `Dashboard: ${dashboardUrl}`,
+    `Public profile: ${profileUrl}`,
+  ].join("\n");
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      from: welcomeFromAddress(),
+      to: [input.to],
+      subject,
+      html,
+      text,
+    }),
+  });
+
+  return res.ok;
+}
+
+async function maybeSendWelcomeEmail(input: { profileId: string; email?: string | null; name: string; handle: string }) {
+  const email = input.email?.trim();
+  if (!email) return;
+  if (!process.env.RESEND_API_KEY?.trim()) return;
+
+  const supabase = getSupabaseAdmin();
+  const { data: statusRow } = await supabase
+    .from("learner_profiles")
+    .select("welcome_email_sent_at")
+    .eq("id", input.profileId)
+    .maybeSingle();
+
+  if (!statusRow || statusRow.welcome_email_sent_at) return;
+
+  try {
+    const delivered = await sendWelcomeEmail({
+      to: email,
+      name: input.name,
+      handle: input.handle,
+    });
+
+    if (!delivered) return;
+
+    await supabase
+      .from("learner_profiles")
+      .update({
+        welcome_email_sent_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", input.profileId)
+      .is("welcome_email_sent_at", null);
+  } catch (error) {
+    console.warn("[welcome-email] send failed", error instanceof Error ? error.message : "unknown");
+  }
+}
+
 function isUuid(input: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input);
 }
@@ -693,6 +782,26 @@ export async function runtimeUpdateOnboardingCareerImport(input: {
     .from("learner_profiles")
     .update({ career_path_id: input.careerPathId, updated_at: new Date().toISOString() })
     .eq("id", session.userId);
+
+  if (typeof input.linkedinUrl === "string" && input.linkedinUrl.trim().length) {
+    const existingProfile = await getProfileRowById(session.userId);
+    if (existingProfile) {
+      const existingLinks = existingProfile.social_links ?? {};
+      const linkedinUrl = input.linkedinUrl.trim();
+      if (existingLinks.linkedin !== linkedinUrl) {
+        await supabase
+          .from("learner_profiles")
+          .update({
+            social_links: {
+              ...existingLinks,
+              linkedin: linkedinUrl,
+            },
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingProfile.id);
+      }
+    }
+  }
 
   return runtimeFindOnboardingSession(input.sessionId);
 }
@@ -1299,6 +1408,7 @@ export async function runtimeGetDashboardSummary(
     name?: string;
     handleBase?: string;
     avatarUrl?: string | null;
+    email?: string | null;
   },
 ): Promise<DashboardSummary | null> {
   if (mode() === "memory") return memGetDashboardSummary(userId);
@@ -1313,6 +1423,13 @@ export async function runtimeGetDashboardSummary(
     });
   }
   if (!profile) return null;
+
+  await maybeSendWelcomeEmail({
+    profileId: profile.id,
+    email: seed?.email ?? null,
+    name: profile.name,
+    handle: profile.handle,
+  });
 
   // Avoid swapping frequently-changing provider avatar URLs on every request,
   // which can cause visual flicker on dashboard refresh/navigation.

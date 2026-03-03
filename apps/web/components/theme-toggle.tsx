@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">("light");
 
   useEffect(() => {
     const root = document.documentElement;
-    const current = (root.getAttribute("data-theme") as "dark" | "light" | null) ?? "dark";
+    const current = (root.getAttribute("data-theme") as "dark" | "light" | null) ?? "light";
     setTheme(current);
   }, []);
 
@@ -22,6 +22,7 @@ export function ThemeToggle() {
         const root = document.documentElement;
         root.setAttribute("data-theme", next);
         localStorage.setItem("ai_theme", next);
+        localStorage.setItem("theme", next);
         setTheme(next);
       }}
     >

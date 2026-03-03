@@ -1,5 +1,8 @@
 (function () {
   var currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
+  if (document && document.documentElement) {
+    document.documentElement.setAttribute("data-path", currentPath);
+  }
   if (document && document.body) {
     document.body.setAttribute("data-path", currentPath);
   }
@@ -79,9 +82,7 @@
     }
   }
 
-  if (!needsAuth()) {
-    applyCtxImmediately();
-  }
+  applyCtxImmediately();
 
   function byText(selector, text) {
     return Array.prototype.find.call(document.querySelectorAll(selector), function (el) {
@@ -180,9 +181,9 @@
       var explicit = window.localStorage.getItem("ai_theme");
       if (explicit === "light" || explicit === "dark") return explicit;
     } catch {
-      return "dark";
+      return "light";
     }
-    return "dark";
+    return "light";
   }
 
   function persistTheme(theme) {
@@ -239,7 +240,13 @@
     if (!needsAuth()) return null;
     var data = await getJson("/api/auth/session");
     if (!data || !data.auth) return null;
-    ctx.userId = data.auth.userId || ctx.userId;
+    var incomingUserId = data.auth.userId || null;
+    if (incomingUserId && ctx.userId && incomingUserId !== ctx.userId) {
+      ctx.sessionId = null;
+      ctx.projectId = null;
+      ctx.handle = null;
+    }
+    ctx.userId = incomingUserId || ctx.userId;
     if (data.auth.name) ctx.name = data.auth.name;
     if (data.auth.avatarUrl) ctx.avatarUrl = data.auth.avatarUrl;
     if (data.auth.email) ctx.email = data.auth.email;
@@ -307,6 +314,8 @@
     var res = await fetch(url, {
       method: "POST",
       headers: requestHeaders(true),
+      cache: "no-store",
+      credentials: "same-origin",
       body: JSON.stringify(payload),
     });
     var data = await res.json().catch(function () {
@@ -327,6 +336,8 @@
     var res = await fetch(url, {
       method: "GET",
       headers: requestHeaders(false),
+      cache: "no-store",
+      credentials: "same-origin",
     });
     var data = await res.json().catch(function () {
       return {};
@@ -879,16 +890,36 @@
     var summary = await getDashboardSummary();
     updateSharedUserUi(summary);
 
-    var inputs = document.querySelectorAll("form input[type='text']");
+    var profileForm = document.querySelector("form");
+    var inputs = profileForm ? profileForm.querySelectorAll("input[type='text']") : [];
     var nameInput = inputs[0] || null;
     var roleInput = inputs[1] || null;
-    var bioInput = document.querySelector("form textarea");
+    var bioInput = profileForm ? profileForm.querySelector("textarea") : null;
     var linkedInInput = inputs[2] || null;
+    var avatarUrlInput = document.getElementById("profile-avatar-url");
+
+    if (!avatarUrlInput && profileForm) {
+      var avatarField = document.createElement("div");
+      avatarField.innerHTML =
+        '<label class="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">Avatar URL</label>' +
+        '<input id="profile-avatar-url" type="url" placeholder="https://..." class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition">';
+      var submitRow = profileForm.querySelector("div.pt-4.mt-4.border-t");
+      if (submitRow && submitRow.parentElement) {
+        profileForm.insertBefore(avatarField, submitRow);
+      } else {
+        profileForm.appendChild(avatarField);
+      }
+      avatarUrlInput = avatarField.querySelector("#profile-avatar-url");
+    }
 
     if (nameInput) nameInput.value = summary.user.name || "";
     if (roleInput) roleInput.value = summary.user.headline || "";
     if (bioInput) bioInput.value = summary.user.bio || "";
     if (linkedInInput) linkedInInput.value = (summary.user.socialLinks && summary.user.socialLinks.linkedin) || "";
+    var currentAvatarUrl = ctx.avatarUrl || summary.user.avatarUrl || "";
+    if (avatarUrlInput) {
+      avatarUrlInput.value = currentAvatarUrl;
+    }
     if (ctx.email) {
       var emailNode = Array.prototype.find.call(document.querySelectorAll("p.text-sm"), function (node) {
         return (node.textContent || "").indexOf("@") !== -1;
@@ -897,9 +928,9 @@
     }
 
     var avatarElements = document.querySelectorAll("img[src='/assets/avatar.png']");
-    if (ctx.avatarUrl) {
+    if (currentAvatarUrl) {
       Array.prototype.forEach.call(avatarElements, function (img) {
-        img.setAttribute("src", ctx.avatarUrl);
+        img.setAttribute("src", currentAvatarUrl);
         if (summary.user && summary.user.name) {
           img.setAttribute("alt", summary.user.name);
         }
@@ -920,7 +951,8 @@
     if (saveButton) {
       saveButton.addEventListener("click", async function () {
         try {
-          var nextAvatar = ctx.avatarUrl || summary.user.avatarUrl || null;
+          var normalizedAvatar = avatarUrlInput && avatarUrlInput.value ? normalizeUrl(avatarUrlInput.value) : undefined;
+          var nextAvatar = normalizedAvatar || currentAvatarUrl || null;
           var payload = {
             name: nameInput ? nameInput.value.trim() : summary.user.name,
             headline: roleInput ? roleInput.value.trim() : summary.user.headline,
@@ -934,10 +966,15 @@
           if (linkedInInput && linkedInInput.value && !payload.socialLinks.linkedin) {
             throw new Error("LinkedIn URL is invalid");
           }
+          if (avatarUrlInput && avatarUrlInput.value && !normalizedAvatar) {
+            throw new Error("Avatar URL is invalid");
+          }
 
           var response = await fetch("/api/profile", {
             method: "PATCH",
             headers: requestHeaders(true),
+            cache: "no-store",
+            credentials: "same-origin",
             body: JSON.stringify(payload),
           });
 
@@ -950,9 +987,19 @@
 
           if (data.profile && data.profile.handle) {
             ctx.handle = data.profile.handle;
-            if (data.profile.avatarUrl) ctx.avatarUrl = data.profile.avatarUrl;
+            if (data.profile.avatarUrl) {
+              ctx.avatarUrl = data.profile.avatarUrl;
+              currentAvatarUrl = data.profile.avatarUrl;
+            } else if (nextAvatar) {
+              ctx.avatarUrl = nextAvatar;
+              currentAvatarUrl = nextAvatar;
+            }
             saveCtx(ctx);
             if (publicBtn) setHref(publicBtn, "/u/" + data.profile.handle + "/");
+            if (avatarUrlInput && currentAvatarUrl) avatarUrlInput.value = currentAvatarUrl;
+            Array.prototype.forEach.call(document.querySelectorAll("img[src='/assets/avatar.png'], img[src='" + nextAvatar + "']"), function (img) {
+              if (currentAvatarUrl) img.setAttribute("src", currentAvatarUrl);
+            });
           }
 
           toast("Profile saved.", false);
@@ -967,7 +1014,7 @@
     });
     if (avatarButton) {
       avatarButton.addEventListener("click", async function () {
-        var current = ctx.avatarUrl || summary.user.avatarUrl || "";
+        var current = currentAvatarUrl || "";
         var next = window.prompt("Paste avatar image URL", current);
         if (next === null) return;
         var trimmed = (next || "").trim();
@@ -985,6 +1032,8 @@
           var res = await fetch("/api/profile", {
             method: "PATCH",
             headers: requestHeaders(true),
+            cache: "no-store",
+            credentials: "same-origin",
             body: JSON.stringify({ avatarUrl: trimmed }),
           });
           var data = await res.json().catch(function () {
@@ -994,7 +1043,9 @@
             throw new Error(data && data.error && data.error.message ? data.error.message : "Avatar update failed");
           }
           ctx.avatarUrl = trimmed;
+          currentAvatarUrl = trimmed;
           saveCtx(ctx);
+          if (avatarUrlInput) avatarUrlInput.value = trimmed;
           Array.prototype.forEach.call(document.querySelectorAll("img[src='/assets/avatar.png'], img[src='" + current + "']"), function (img) {
             img.setAttribute("src", trimmed);
           });

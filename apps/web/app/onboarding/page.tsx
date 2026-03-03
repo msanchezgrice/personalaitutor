@@ -15,7 +15,7 @@ export default function OnboardingPage() {
   return (
     <GeminiStaticPage
       template="onboarding/index.html"
-      className="relative min-h-screen bg-[#0f111a] text-white flex items-center justify-center py-12 px-6 overflow-hidden"
+      className="relative min-h-screen flex items-center justify-center py-12 px-6 overflow-hidden bg-[var(--bg-dark)] text-[var(--text-main)]"
     />
   );
 }

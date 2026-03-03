@@ -11,6 +11,7 @@ export async function dashboardReplacements() {
     name: seed.name,
     handleBase: seed.handleBase,
     avatarUrl: seed.avatarUrl ?? null,
+    email: seed.email ?? null,
   });
 
   if (!summary) return {};

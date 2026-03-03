@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
     name: seed.name,
     handleBase: seed.handleBase,
     avatarUrl: seed.avatarUrl ?? null,
+    email: seed.email ?? null,
   });
 
   if (!summary) {

@@ -50,8 +50,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const clerkJsUrl = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
 
   return (
-    <html lang="en" data-theme="dark">
+    <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
+        <script id="theme-boot" dangerouslySetInnerHTML={{ __html: themeBootScript }} />
         <link rel="icon" href="/assets/branding/brand_logo_icon.png" />
         <link rel="stylesheet" href="/styles.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -59,7 +60,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ClerkProvider clerkJSUrl={clerkJsUrl}>
           <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
-          <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
           <Script src="/gemini-runtime.js" strategy="afterInteractive" />
           {children}
         </ClerkProvider>

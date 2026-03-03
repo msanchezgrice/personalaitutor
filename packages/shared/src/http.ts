@@ -1,5 +1,19 @@
+function withNoStoreHeaders(init?: ResponseInit) {
+  const headers = new Headers(init?.headers);
+  if (!headers.has("cache-control")) {
+    headers.set("cache-control", "no-store, max-age=0, must-revalidate");
+  }
+  if (!headers.has("pragma")) {
+    headers.set("pragma", "no-cache");
+  }
+  if (!headers.has("expires")) {
+    headers.set("expires", "0");
+  }
+  return headers;
+}
+
 export function jsonOk(data: unknown, init?: ResponseInit): Response {
-  return Response.json({ ok: true, ...((data as Record<string, unknown>) ?? {}) }, init);
+  return Response.json({ ok: true, ...((data as Record<string, unknown>) ?? {}) }, { ...init, headers: withNoStoreHeaders(init) });
 }
 
 export function jsonError(
@@ -17,6 +31,6 @@ export function jsonError(
         ...(details ?? {}),
       },
     },
-    { status },
+    { status, headers: withNoStoreHeaders() },
   );
 }

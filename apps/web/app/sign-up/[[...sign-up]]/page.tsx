@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { SignUp } from "@clerk/nextjs";
-import { dark } from "@clerk/themes";
+import { experimental__simple as clerkSimple } from "@clerk/themes";
 import { BRAND_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -26,19 +26,20 @@ export default async function SignUpPage({
   const forceRedirectUrl = safeRedirect(params?.redirect_url);
 
   return (
-    <main className="min-h-screen bg-[#0f111a] text-white flex items-center justify-center px-6 py-10">
+    <main className="min-h-screen bg-[#eef3f2] text-[#0f172a] flex items-center justify-center px-6 py-10">
       <SignUp
         routing="path"
         path="/sign-up"
         forceRedirectUrl={forceRedirectUrl}
         fallbackRedirectUrl="/onboarding/"
         appearance={{
-          baseTheme: dark,
+          baseTheme: clerkSimple,
           variables: {
-            colorPrimary: "#4f46e5",
-            colorBackground: "#0f111a",
-            colorInputBackground: "#111827",
-            colorText: "#f3f4f6",
+            colorPrimary: "#10b981",
+            colorBackground: "#f8fafc",
+            colorInputBackground: "#ffffff",
+            colorText: "#0f172a",
+            colorTextSecondary: "#475569",
           },
         }}
       />

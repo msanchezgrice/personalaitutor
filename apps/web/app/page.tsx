@@ -37,11 +37,14 @@ export default async function HomePage() {
       name: seed.name,
       handleBase: seed.handleBase,
       avatarUrl: seed.avatarUrl ?? null,
+      email: seed.email ?? null,
     });
     if (summary?.user?.handle) {
       replacements['href="/sign-in?redirect_url=/dashboard/" class="btn btn-secondary">Log In</a>'] =
         'href="/dashboard/?welcome=1" class="btn btn-secondary">Dashboard</a>';
     }
   }
+  replacements['<img src="/assets/branding/brand_wordmark_logo.png" alt="My AI Skill Tutor" class="h-8 w-auto object-contain" />'] =
+    '<img src="/assets/branding/brand_logo_icon.png" alt="My AI Skill Tutor" class="h-10 w-10 object-contain" /><span class="font-[Outfit] font-bold text-lg tracking-tight text-white">My AI Skill Tutor</span>';
   return <GeminiStaticPage template="index.html" replacements={replacements} />;
 }

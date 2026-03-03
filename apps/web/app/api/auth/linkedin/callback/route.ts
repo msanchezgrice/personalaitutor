@@ -1,4 +1,4 @@
-import { jsonError, jsonOk, runtimeConnectOAuth, runtimeMarkOAuthFailure } from "@/lib/runtime";
+import { jsonError, jsonOk, runtimeConnectOAuth, runtimeMarkOAuthFailure, runtimeUpdateProfile } from "@/lib/runtime";
 import { NextRequest, NextResponse } from "next/server";
 
 function parseState(state: string | null) {
@@ -67,6 +67,7 @@ export async function GET(req: NextRequest) {
   }
 
   let accountLabel = "LinkedIn Profile";
+  let pictureUrl: string | null = null;
   if (!state?.mock) {
     const clientId = process.env.LINKEDIN_CLIENT_ID;
     const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
@@ -115,8 +116,11 @@ export async function GET(req: NextRequest) {
         },
       });
       if (profileRes.ok) {
-        const info = (await profileRes.json()) as { name?: string; email?: string };
+        const info = (await profileRes.json()) as { name?: string; email?: string; picture?: string };
         accountLabel = info.name?.trim() || info.email?.trim() || accountLabel;
+        if (typeof info.picture === "string" && info.picture.trim()) {
+          pictureUrl = info.picture.trim();
+        }
       }
     } catch {
       // Non-blocking label enrichment.
@@ -125,6 +129,14 @@ export async function GET(req: NextRequest) {
 
   const profileConnection = await runtimeConnectOAuth(userId, "linkedin_profile", accountLabel);
   const postConnection = await runtimeConnectOAuth(userId, "linkedin", "LinkedIn Posting");
+
+  if (pictureUrl) {
+    try {
+      await runtimeUpdateProfile(userId, { avatarUrl: pictureUrl });
+    } catch {
+      // Non-blocking avatar enrichment.
+    }
+  }
 
   if (shouldRedirect) {
     return NextResponse.redirect(new URL("/dashboard/social?oauth=linkedin_connected", req.nextUrl.origin));
