@@ -28,7 +28,6 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY;
   return (
     <html lang="en" data-theme="dark">
       <head>
@@ -36,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       </head>
       <body>
-        <ClerkProvider publishableKey={clerkPublishableKey}>
+        <ClerkProvider>
           <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
           <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
           <Script src="/gemini-runtime.js" strategy="afterInteractive" />
