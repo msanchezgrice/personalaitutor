@@ -10,8 +10,13 @@
   var isDashboardPath = currentPath === "/dashboard" || currentPath.indexOf("/dashboard/") === 0;
   var DASHBOARD_SUMMARY_CACHE_PREFIX = "ai_tutor_dashboard_summary_v2:";
   var DASHBOARD_SNAPSHOT_CACHE_PREFIX = "ai_tutor_dashboard_snapshot_v2:";
+  var SOCIAL_DRAFTS_CACHE_PREFIX = "ai_tutor_social_drafts_v1:";
   var SUMMARY_CACHE_TTL_MS = 120000;
   var SNAPSHOT_CACHE_TTL_MS = 1800000;
+  var SOCIAL_DRAFTS_CACHE_TTL_MS = 600000;
+  var SIGN_UP_INTENT_KEY = "ai_tutor_clerk_signup_intent_v1";
+  var PENDING_ONBOARDING_SESSION_KEY = "ai_tutor_pending_onboarding_session_v1";
+  var ONBOARDING_ASSESSMENT_FUNNEL = "onboarding_assessment";
 
   function normalizedPath(pathname) {
     return (pathname || "/").replace(/\/+$/, "") || "/";
@@ -30,6 +35,14 @@
   function writeSessionObject(key, value) {
     try {
       window.sessionStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      return null;
+    }
+  }
+
+  function removeSessionObject(key) {
+    try {
+      window.sessionStorage.removeItem(key);
     } catch {
       return null;
     }
@@ -93,10 +106,171 @@
   var ctx = ensureCtx();
   var hasAppliedAuthCtx = false;
   var restoredDashboardSnapshot = false;
+  var lastPosthogIdentifiedUserId = null;
+
+  function posthogClient() {
+    if (!window || !window.posthog) return null;
+    if (typeof window.posthog.capture !== "function") return null;
+    return window.posthog;
+  }
+
+  function baseAnalyticsProps(properties) {
+    var base = {
+      app: "web",
+      path: currentPath,
+    };
+    if (ctx && ctx.userId) base.user_id = ctx.userId;
+    if (ctx && ctx.sessionId) base.session_id = ctx.sessionId;
+    if (ctx && ctx.handle) base.handle = ctx.handle;
+    return Object.assign(base, properties || {});
+  }
+
+  function captureEvent(eventName, properties) {
+    var posthog = posthogClient();
+    if (!posthog || !eventName) return;
+    try {
+      posthog.capture(eventName, baseAnalyticsProps(properties));
+    } catch {
+      return null;
+    }
+  }
+
+  function trackFunnelStep(step, properties) {
+    if (!step) return;
+    captureEvent("onboarding_assessment_funnel_step", Object.assign({
+      funnel: ONBOARDING_ASSESSMENT_FUNNEL,
+      step: step,
+    }, properties || {}));
+  }
+
+  function identifyPosthogUser() {
+    if (!ctx || !ctx.userId) return;
+    var posthog = posthogClient();
+    if (!posthog || typeof posthog.identify !== "function") return;
+
+    var distinctId = String(ctx.userId);
+
+    var personProps = {};
+    if (ctx.email) personProps.email = ctx.email;
+    if (ctx.name) personProps.name = ctx.name;
+    if (ctx.handle) personProps.handle = ctx.handle;
+    if (ctx.careerPathId) personProps.career_path_id = ctx.careerPathId;
+
+    try {
+      if (lastPosthogIdentifiedUserId === distinctId) {
+        if (typeof posthog.setPersonProperties === "function" && Object.keys(personProps).length) {
+          posthog.setPersonProperties(personProps);
+        }
+        return;
+      }
+
+      posthog.identify(distinctId, personProps);
+      lastPosthogIdentifiedUserId = distinctId;
+    } catch {
+      return null;
+    }
+  }
+
+  function markSignUpIntent() {
+    writeSessionObject(SIGN_UP_INTENT_KEY, {
+      startedAt: Date.now(),
+      referrer: document && document.referrer ? document.referrer : null,
+    });
+  }
+
+  function readSignUpIntent() {
+    return readSessionObject(SIGN_UP_INTENT_KEY);
+  }
+
+  function clearSignUpIntent() {
+    removeSessionObject(SIGN_UP_INTENT_KEY);
+  }
+
+  function readPendingOnboardingSessionId() {
+    var fromUrl = null;
+    try {
+      var params = new URLSearchParams(window.location.search || "");
+      var urlSession = params.get("onboardingSessionId");
+      if (urlSession) fromUrl = urlSession;
+    } catch {
+      fromUrl = null;
+    }
+    if (fromUrl) return fromUrl;
+
+    var pending = readSessionObject(PENDING_ONBOARDING_SESSION_KEY);
+    if (!pending || typeof pending !== "object") return null;
+    if (typeof pending.sessionId !== "string" || !pending.sessionId.trim()) return null;
+    return pending.sessionId.trim();
+  }
+
+  function clearPendingOnboardingSession() {
+    removeSessionObject(PENDING_ONBOARDING_SESSION_KEY);
+  }
+
+  function maybeTrackAuthEntryEvents() {
+    if (currentPath === "/sign-up") {
+      markSignUpIntent();
+      captureEvent("clerk_sign_up_started", { auth_provider: "clerk" });
+      captureEvent("clerk_sign_up_viewed", { auth_provider: "clerk" });
+      captureEvent("auth_clerk_sign_up_viewed", { auth_provider: "clerk" });
+      trackFunnelStep("clerk_sign_up_viewed", { auth_provider: "clerk" });
+      return;
+    }
+
+    if (currentPath === "/sign-in") {
+      captureEvent("auth_clerk_sign_in_viewed", { auth_provider: "clerk" });
+    }
+  }
+
+  function maybeTrackSignUpCompletion(source) {
+    if (!ctx || !ctx.userId) return;
+    if (currentPath !== "/onboarding") return;
+    var intent = readSignUpIntent();
+    if (!intent || !intent.startedAt) return;
+
+    captureEvent("clerk_sign_up_completed", {
+      auth_provider: "clerk",
+      source: source || "runtime",
+      signup_started_at: intent.startedAt,
+    });
+    captureEvent("auth_clerk_sign_up_completed", {
+      auth_provider: "clerk",
+      source: source || "runtime",
+      signup_started_at: intent.startedAt,
+    });
+    trackFunnelStep("clerk_sign_up_completed", {
+      auth_provider: "clerk",
+      source: source || "runtime",
+    });
+    clearSignUpIntent();
+  }
+
+  function maybeTrackDashboardWelcomeStep() {
+    if (!isDashboardPath) return;
+    var params = new URLSearchParams(window.location.search || "");
+    if (params.get("welcome") !== "1") return;
+    captureEvent("dashboard_welcome_viewed", {
+      source: "assessment_redirect",
+      situation: ctx && ctx.situation ? ctx.situation : null,
+      career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : null,
+    });
+    trackFunnelStep("dashboard_welcome_viewed", {
+      source: "assessment_redirect",
+      situation: ctx && ctx.situation ? ctx.situation : null,
+      career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : null,
+    });
+  }
 
   function cacheScope() {
     if (!ctx || !ctx.userId) return null;
     return String(ctx.userId);
+  }
+
+  function isNarrowViewport() {
+    if (!window || typeof window.matchMedia !== "function") {
+      return window.innerWidth <= 1024;
+    }
+    return window.matchMedia("(max-width: 1024px)").matches;
   }
 
   function dashboardSummaryCacheKey() {
@@ -126,8 +300,30 @@
     return DASHBOARD_SNAPSHOT_CACHE_PREFIX + scope + ":" + normalizedPath(pathname);
   }
 
+  function socialDraftCacheKey(projectId) {
+    var scope = cacheScope();
+    if (!scope) return null;
+    return SOCIAL_DRAFTS_CACHE_PREFIX + scope + ":" + String(projectId || "none");
+  }
+
+  function readSocialDraftCache(projectId) {
+    var key = socialDraftCacheKey(projectId);
+    if (!key) return null;
+    var payload = readSessionObject(key);
+    if (!payload || !payload.ts || !payload.drafts) return null;
+    if (Date.now() - Number(payload.ts) > SOCIAL_DRAFTS_CACHE_TTL_MS) return null;
+    return payload.drafts;
+  }
+
+  function writeSocialDraftCache(projectId, drafts) {
+    var key = socialDraftCacheKey(projectId);
+    if (!key || !drafts) return;
+    writeSessionObject(key, { ts: Date.now(), drafts: drafts });
+  }
+
   function persistDashboardSnapshot(pathname) {
     if (!isDashboardPath) return;
+    if (isNarrowViewport()) return;
     var key = dashboardSnapshotCacheKey(pathname || currentPath);
     if (!key) return;
     var aside = document.querySelector("aside");
@@ -142,6 +338,7 @@
       asideHtml: aside.innerHTML || "",
       mainHtml: main.innerHTML || "",
     });
+    captureEvent("dashboard_snapshot_persisted", { path: normalizedPath(pathname || currentPath) });
   }
 
   function showDashboardSkeletons() {
@@ -161,6 +358,7 @@
 
   function restoreDashboardSnapshot() {
     if (!isDashboardPath) return false;
+    if (isNarrowViewport()) return false;
     var key = dashboardSnapshotCacheKey(currentPath);
     if (!key) return false;
     var payload = readSessionObject(key);
@@ -178,11 +376,13 @@
       document.documentElement.style.colorScheme = payload.theme === "dark" ? "dark" : "light";
     }
     document.documentElement.setAttribute("data-runtime-ready", "1");
+    captureEvent("dashboard_snapshot_restored", { path: currentPath });
     return true;
   }
 
   function wireDashboardSnapshotPersistence() {
     if (!isDashboardPath) return;
+    if (isNarrowViewport()) return;
     if (document.documentElement.getAttribute("data-snapshot-cache-wired") === "1") return;
     document.documentElement.setAttribute("data-snapshot-cache-wired", "1");
 
@@ -313,62 +513,39 @@
   }
 
   async function performSignOut() {
-    for (var attempt = 0; attempt < 20; attempt += 1) {
+    captureEvent("auth_sign_out_clicked", { auth_provider: "clerk" });
+    var posthog = posthogClient();
+    if (posthog && typeof posthog.reset === "function") {
       try {
-        if (window.Clerk && typeof window.Clerk.signOut === "function") {
-          await window.Clerk.signOut({ redirectUrl: "/" });
-          return;
-        }
+        posthog.reset();
+        lastPosthogIdentifiedUserId = null;
       } catch {
-        break;
+        // keep sign-out flow moving even if analytics reset fails
       }
-      await new Promise(function (resolve) {
-        window.setTimeout(resolve, 80);
-      });
     }
-    toast("Sign-out unavailable right now. Please retry.", true);
+    try {
+      if (window.Clerk && typeof window.Clerk.signOut === "function") {
+        await window.Clerk.signOut({ redirectUrl: "/" });
+        captureEvent("auth_sign_out_completed", { auth_provider: "clerk", method: "clerk_client" });
+        return;
+      }
+    } catch {
+      // fall through to sign-out route
+    }
+    captureEvent("auth_sign_out_fallback_redirect", { auth_provider: "clerk", method: "sign_out_route" });
+    try {
+      window.location.href = "/sign-out";
+      return;
+    } catch {
+      captureEvent("auth_sign_out_failed", { auth_provider: "clerk", reason: "redirect_failed" });
+      toast("Sign-out unavailable right now. Please retry.", true);
+    }
   }
 
   function ensureGlobalSignOutControl(isSignedIn) {
-    if (isDashboardPath) return;
     var existing = document.getElementById("global-sign-out");
-    if (!isSignedIn) {
-      if (existing) existing.remove();
-      return;
-    }
-
-    if (!existing) {
-      existing = document.createElement("button");
-      existing.id = "global-sign-out";
-      existing.type = "button";
-      existing.textContent = "Sign Out";
-      existing.addEventListener("click", function () {
-        void performSignOut();
-      });
-    }
-
-    var navAuth = Array.prototype.find.call(document.querySelectorAll("a"), function (node) {
-      var text = (node.textContent || "").trim().toLowerCase();
-      return text === "log in" || text === "dashboard";
-    });
-
-    if (navAuth && navAuth.parentElement) {
-      existing.className = "btn btn-secondary";
-      existing.removeAttribute("style");
-      if (navAuth.nextSibling) {
-        navAuth.parentElement.insertBefore(existing, navAuth.nextSibling);
-      } else {
-        navAuth.parentElement.appendChild(existing);
-      }
-      return;
-    }
-
-    existing.className = "btn btn-secondary";
-    existing.style.position = "fixed";
-    existing.style.top = "16px";
-    existing.style.right = "74px";
-    existing.style.zIndex = "120";
-    document.body.appendChild(existing);
+    if (existing) existing.remove();
+    return;
   }
 
   function redirectToSignIn(path) {
@@ -464,6 +641,7 @@
       document.documentElement.setAttribute("data-theme", theme);
       persistTheme(theme);
       syncThemeToggleUi(theme);
+      captureEvent("theme_toggled", { theme: theme });
     });
   }
 
@@ -490,9 +668,74 @@
       writeDashboardSummaryCache(data.summary);
     }
     saveCtx(ctx);
+    identifyPosthogUser();
+    maybeTrackSignUpCompletion("sync_auth_context");
+    captureEvent("auth_session_synced", {
+      scope: "required_path",
+      has_summary: Boolean(data.summary),
+    });
     hasAppliedAuthCtx = true;
     applyCtxImmediately();
     return data;
+  }
+
+  async function maybeClaimOnboardingSession() {
+    if (!ctx || !ctx.userId) return;
+    var sessionToClaim = readPendingOnboardingSessionId();
+    if (!sessionToClaim) return;
+
+    try {
+      var result = await postJson("/api/onboarding/claim", { sessionId: sessionToClaim });
+      if (result && result.session) {
+        ctx.sessionId = result.session.id || ctx.sessionId;
+        if (result.session.careerPathId) ctx.careerPathId = result.session.careerPathId;
+        if (result.session.situation) ctx.situation = result.session.situation;
+        if (Array.isArray(result.session.goals)) ctx.onboardingGoals = result.session.goals;
+      }
+      if (result && result.user) {
+        if (result.user.id) ctx.userId = result.user.id;
+        if (result.user.handle) ctx.handle = result.user.handle;
+        if (result.user.name) ctx.name = result.user.name;
+        if (result.user.avatarUrl) ctx.avatarUrl = result.user.avatarUrl;
+      }
+      saveCtx(ctx);
+
+      try {
+        var summaryPayload = await getJson("/api/dashboard/summary");
+        if (summaryPayload && summaryPayload.summary) {
+          writeDashboardSummaryCache(summaryPayload.summary);
+        }
+      } catch {
+        // Non-blocking refresh.
+      }
+
+      clearPendingOnboardingSession();
+      captureEvent("onboarding_session_claimed", {
+        session_id: sessionToClaim,
+        migrated: Boolean(result && result.migrated),
+      });
+      trackFunnelStep("onboarding_session_claimed", {
+        session_id: sessionToClaim,
+        migrated: Boolean(result && result.migrated),
+      });
+
+      try {
+        var params = new URLSearchParams(window.location.search || "");
+        if (params.has("onboardingSessionId")) {
+          params.delete("onboardingSessionId");
+          var nextSearch = params.toString();
+          var next = window.location.pathname + (nextSearch ? "?" + nextSearch : "");
+          window.history.replaceState({}, "", next);
+        }
+      } catch {
+        return;
+      }
+    } catch (err) {
+      captureEvent("onboarding_session_claim_failed", {
+        session_id: sessionToClaim,
+        reason: err && err.message ? err.message : "unknown_error",
+      });
+    }
   }
 
   function applyLandingAuthUi(summary) {
@@ -525,8 +768,11 @@
         if (data.auth && data.auth.avatarUrl) ctx.avatarUrl = data.auth.avatarUrl;
         if (data.summary.user && data.summary.user.handle) ctx.handle = data.summary.user.handle;
         saveCtx(ctx);
+        identifyPosthogUser();
+        maybeTrackSignUpCompletion("landing_auth");
         applyLandingAuthUi(data.summary);
         ensureGlobalSignOutControl(true);
+        captureEvent("auth_session_synced", { scope: "landing", signed_in: true });
       } else {
         ctx.userId = null;
         ctx.handle = null;
@@ -535,8 +781,10 @@
         ctx.avatarUrl = null;
         ctx.email = null;
         saveCtx(ctx);
+        lastPosthogIdentifiedUserId = null;
         applyLandingAuthUi(null);
         ensureGlobalSignOutControl(false);
+        captureEvent("auth_session_synced", { scope: "landing", signed_in: false });
       }
     } catch {
       ctx.userId = null;
@@ -546,8 +794,10 @@
       ctx.avatarUrl = null;
       ctx.email = null;
       saveCtx(ctx);
+      lastPosthogIdentifiedUserId = null;
       applyLandingAuthUi(null);
       ensureGlobalSignOutControl(false);
+      captureEvent("auth_session_sync_failed", { scope: "landing" });
     }
   }
 
@@ -562,13 +812,18 @@
         if (data.auth.email) ctx.email = data.auth.email;
         if (data.summary && data.summary.user && data.summary.user.handle) ctx.handle = data.summary.user.handle;
         saveCtx(ctx);
+        identifyPosthogUser();
+        maybeTrackSignUpCompletion("optional_auth");
         ensureGlobalSignOutControl(true);
+        captureEvent("auth_session_synced", { scope: "optional", signed_in: true });
         return;
       }
     } catch {
       // not signed in
     }
+    lastPosthogIdentifiedUserId = null;
     ensureGlobalSignOutControl(false);
+    captureEvent("auth_session_synced", { scope: "optional", signed_in: false });
   }
 
   async function postJson(url, body) {
@@ -688,8 +943,19 @@
 
     if (isDashboardPath) {
       renameSocialNavLabels();
+      var staleSidebarSignOut = document.getElementById("dashboard-sidebar-settings");
+      if (staleSidebarSignOut) staleSidebarSignOut.remove();
+      var aside = document.querySelector("aside");
+      if (aside) {
+        Array.prototype.forEach.call(aside.querySelectorAll("a,button"), function (node) {
+          var text = (node.textContent || "").trim().toLowerCase();
+          if (text === "sign out" || text === "log out") {
+            node.remove();
+          }
+        });
+      }
       ensureDashboardSettingsMenu();
-      ensureSidebarSettingsMenu();
+      ensureMobileDashboardNav();
     }
   }
 
@@ -744,26 +1010,77 @@
     }
   }
 
-  function ensureSidebarSettingsMenu() {
+  function ensureMobileDashboardNav() {
     if (!isDashboardPath) return;
-    if (document.getElementById("dashboard-sidebar-settings")) return;
-    var aside = document.querySelector("aside");
-    if (!aside) return;
-    var nav = aside.querySelector("nav.space-y-1");
-    if (!nav) return;
+    var shell = document.querySelector("[data-gemini-shell='1']");
+    if (!shell) return;
+    var aside = shell.querySelector(":scope > aside");
+    var main = shell.querySelector(":scope > main");
+    if (!aside || !main) return;
 
-    var row = document.createElement("div");
-    row.id = "dashboard-sidebar-settings";
-    row.className = "mt-3 pt-3 border-t border-white/10";
-    row.innerHTML =
-      '<button type="button" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-gray-300" data-sidebar-sign-out="1">' +
-      '<i class="fa-solid fa-right-from-bracket"></i><span>Sign Out</span></button>';
-    nav.appendChild(row);
+    var header = main.querySelector(":scope > header");
+    if (!header) return;
 
-    var signOut = row.querySelector("[data-sidebar-sign-out='1']");
-    if (signOut) {
-      signOut.addEventListener("click", async function () {
-        void performSignOut();
+    var existingOverlay = document.querySelector(".dashboard-mobile-nav-overlay");
+    if (!existingOverlay) {
+      var overlay = document.createElement("button");
+      overlay.type = "button";
+      overlay.className = "dashboard-mobile-nav-overlay";
+      overlay.setAttribute("aria-label", "Close menu");
+      overlay.addEventListener("click", function () {
+        document.documentElement.setAttribute("data-mobile-nav", "closed");
+      });
+      document.body.appendChild(overlay);
+    }
+
+    var leftCluster = header.querySelector(".flex.items-center.gap-4") || header.querySelector("div");
+    if (!leftCluster) leftCluster = header;
+
+    var toggleButton = header.querySelector("[data-mobile-nav-toggle='1']");
+    if (!toggleButton) {
+      toggleButton = document.createElement("button");
+      toggleButton.type = "button";
+      toggleButton.setAttribute("data-mobile-nav-toggle", "1");
+      toggleButton.setAttribute("aria-label", "Open menu");
+      toggleButton.className =
+        "hidden lg:hidden mr-3 h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-gray-200";
+      toggleButton.innerHTML = '<i class="fa-solid fa-bars text-sm"></i>';
+      if (leftCluster.firstChild) {
+        leftCluster.insertBefore(toggleButton, leftCluster.firstChild);
+      } else {
+        leftCluster.appendChild(toggleButton);
+      }
+    }
+
+    var closeMobileMenu = function () {
+      document.documentElement.setAttribute("data-mobile-nav", "closed");
+    };
+
+    toggleButton.onclick = function () {
+      var isOpen = document.documentElement.getAttribute("data-mobile-nav") === "open";
+      document.documentElement.setAttribute("data-mobile-nav", isOpen ? "closed" : "open");
+      captureEvent("dashboard_mobile_nav_toggled", { is_open: !isOpen });
+    };
+
+    Array.prototype.forEach.call(aside.querySelectorAll("a[href]"), function (node) {
+      if (node.getAttribute("data-mobile-nav-bound") === "1") return;
+      node.setAttribute("data-mobile-nav-bound", "1");
+      node.addEventListener("click", function () {
+        closeMobileMenu();
+      });
+    });
+
+    if (!isNarrowViewport()) {
+      document.documentElement.setAttribute("data-mobile-nav", "closed");
+    } else if (!document.documentElement.getAttribute("data-mobile-nav")) {
+      document.documentElement.setAttribute("data-mobile-nav", "closed");
+    }
+
+    if (document.documentElement.getAttribute("data-mobile-nav-resize-wired") !== "1") {
+      document.documentElement.setAttribute("data-mobile-nav-resize-wired", "1");
+      window.addEventListener("resize", function () {
+        if (!isDashboardPath) return;
+        ensureMobileDashboardNav();
       });
     }
   }
@@ -791,6 +1108,17 @@
     if (data.user && data.user.avatarUrl) ctx.avatarUrl = data.user.avatarUrl;
     if (Array.isArray(data.onboardingOptions)) ctx.onboardingOptions = data.onboardingOptions;
     saveCtx(ctx);
+    identifyPosthogUser();
+    captureEvent("onboarding_session_initialized", {
+      session_id: data.session.id,
+      career_path_id: ctx.careerPathId || "product-management",
+      source: "onboarding_start",
+    });
+    trackFunnelStep("onboarding_session_initialized", {
+      session_id: data.session.id,
+      career_path_id: ctx.careerPathId || "product-management",
+      source: "onboarding_start",
+    });
 
     return {
       id: data.session.id,
@@ -802,10 +1130,14 @@
   async function getDashboardSummary() {
     var cached = readDashboardSummaryCache();
     if (cached) {
+      captureEvent("dashboard_summary_cache_hit", { source: "session_storage" });
       void (async function refreshDashboardSummary() {
         try {
           var fresh = await getJson("/api/dashboard/summary");
-          if (fresh && fresh.summary) writeDashboardSummaryCache(fresh.summary);
+          if (fresh && fresh.summary) {
+            writeDashboardSummaryCache(fresh.summary);
+            captureEvent("dashboard_summary_refreshed", { source: "network" });
+          }
         } catch {
           return null;
         }
@@ -815,12 +1147,18 @@
 
     try {
       var response = await getJson("/api/dashboard/summary");
-      if (response && response.summary) writeDashboardSummaryCache(response.summary);
+      if (response && response.summary) {
+        writeDashboardSummaryCache(response.summary);
+        captureEvent("dashboard_summary_loaded", { source: "network" });
+      }
       return response.summary;
     } catch (err) {
       await ensureSession();
       var retry = await getJson("/api/dashboard/summary");
-      if (retry && retry.summary) writeDashboardSummaryCache(retry.summary);
+      if (retry && retry.summary) {
+        writeDashboardSummaryCache(retry.summary);
+        captureEvent("dashboard_summary_loaded", { source: "network_after_session" });
+      }
       return retry.summary;
     }
   }
@@ -849,8 +1187,12 @@
   }
 
   async function hydrateDashboardHome() {
+    captureEvent("dashboard_tab_viewed", { tab: "home" });
     var summary = await getDashboardSummary();
     updateSharedUserUi(summary);
+    var topRecommendation = Array.isArray(summary.moduleRecommendations) && summary.moduleRecommendations.length
+      ? summary.moduleRecommendations[0]
+      : null;
 
     var projects = summary.projects || [];
     var active = projects.find(function (project) {
@@ -860,6 +1202,23 @@
     var completed = projects.find(function (project) {
       return project.state === "built" || project.state === "showcased";
     }) || projects[1] || null;
+
+    var tutorBanner = document.querySelector("div.glass-panel.p-6.rounded-2xl.mb-8");
+    if (tutorBanner && topRecommendation) {
+      var bannerTitle = tutorBanner.querySelector("h3");
+      var bannerBody = tutorBanner.querySelector("p.text-sm.text-gray-400");
+      var bannerCta = tutorBanner.querySelector("a.btn");
+      if (bannerTitle) {
+        bannerTitle.innerHTML = '<span class="text-emerald-400">My AI Skill Tutor:</span> Start your recommended module: ' + topRecommendation.title + ".";
+      }
+      if (bannerBody) {
+        bannerBody.textContent = topRecommendation.summary + " Added from your onboarding assessment.";
+      }
+      if (bannerCta) {
+        bannerCta.textContent = "Start Recommended Module";
+        setHref(bannerCta, "/dashboard/chat/?module=" + encodeURIComponent(topRecommendation.id));
+      }
+    }
 
     var cards = document.querySelectorAll("section .grid.sm\\:grid-cols-2 > a");
     if (cards[0] && active) {
@@ -904,6 +1263,22 @@
       });
 
       if (addTarget) skillStack.appendChild(addTarget);
+    } else if (skillStack && Array.isArray(summary.moduleRecommendations) && summary.moduleRecommendations.length) {
+      var addTargetSkill = Array.prototype.find.call(skillStack.children, function (child) {
+        return (child.textContent || "").indexOf("Add Target Skill") !== -1;
+      });
+      skillStack.innerHTML = "";
+      summary.moduleRecommendations.slice(0, 3).forEach(function (track, index) {
+        var fallback = document.createElement("div");
+        fallback.className = index === 0
+          ? "flex border border-emerald-500/30 bg-emerald-500/10 rounded-full items-center px-3 py-1.5"
+          : "flex border border-white/10 bg-white/5 rounded-full items-center px-3 py-1.5";
+        var pct = index === 0 ? "20%" : index === 1 ? "10%" : "5%";
+        fallback.innerHTML = '<span class="text-xs ' + (index === 0 ? "text-emerald-400" : "text-gray-300") + '"></span>';
+        setText(fallback.querySelector("span"), track.title + " (" + pct + ")");
+        skillStack.appendChild(fallback);
+      });
+      if (addTargetSkill) skillStack.appendChild(addTargetSkill);
     }
 
     var socialQuote = document.querySelector("section p.text-sm.text-gray-300.mb-4.italic");
@@ -925,6 +1300,7 @@
   }
 
   async function hydrateProjectsPage() {
+    captureEvent("dashboard_tab_viewed", { tab: "projects" });
     var summary = await getDashboardSummary();
     updateSharedUserUi(summary);
 
@@ -1032,6 +1408,7 @@
   }
 
   async function hydrateChatPage() {
+    captureEvent("dashboard_tab_viewed", { tab: "chat" });
     var summary = await getDashboardSummary();
     updateSharedUserUi(summary);
     var projectPromise = ensurePrimaryProject(summary);
@@ -1054,6 +1431,28 @@
     if (!history || !textarea || !sendBtn) return;
 
     var sending = false;
+    history.innerHTML = "";
+    var introBubble = createBubble("<p></p>", false);
+    var introParagraph = introBubble.querySelector("p");
+    setText(
+      introParagraph,
+      "Welcome back. I’m your AI Tutor. Share what you’re trying to build and I’ll map the next steps with proof artifacts."
+    );
+    history.appendChild(introBubble);
+    history.scrollTop = history.scrollHeight;
+    projectPromise
+      .then(function (project) {
+        if (!project || !introParagraph) return;
+        setText(
+          introParagraph,
+          "Welcome back. I’m your AI Tutor. Let’s continue " +
+            project.title +
+            ". Share your current blocker and I’ll give concrete next steps plus a verification check."
+        );
+      })
+      .catch(function () {
+        return null;
+      });
 
     async function sendMessage() {
       if (sending) return;
@@ -1066,6 +1465,7 @@
       history.appendChild(userBubble);
       history.scrollTop = history.scrollHeight;
       textarea.value = "";
+      captureEvent("chat_message_sent", { message_length: text.length });
 
       try {
         var project = await projectPromise;
@@ -1081,11 +1481,13 @@
         setText(aiBubble.querySelector("p"), replyText);
         history.appendChild(aiBubble);
         history.scrollTop = history.scrollHeight;
+        captureEvent("chat_message_received", { reply_length: replyText.length });
       } catch (err) {
         var errorBubble = createBubble("<p></p>", false);
         setText(errorBubble.querySelector("p"), "My AI Skill Tutor failed to respond: " + (err && err.message ? err.message : "Unknown error"));
         history.appendChild(errorBubble);
         history.scrollTop = history.scrollHeight;
+        captureEvent("chat_message_failed", { reason: err && err.message ? err.message : "unknown_error" });
       } finally {
         sending = false;
       }
@@ -1104,9 +1506,7 @@
   }
 
   async function hydrateSocialPage() {
-    var summary = await getDashboardSummary();
-    updateSharedUserUi(summary);
-    var primaryProject = await ensurePrimaryProject(summary);
+    captureEvent("dashboard_tab_viewed", { tab: "social" });
 
     renameSocialNavLabels();
 
@@ -1122,8 +1522,28 @@
       document.title = document.title.replace(/Social Hooks/g, "Social Media");
     }
 
-    var contentWrap = document.querySelector("main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-8");
+    var contentWrap = document.querySelector(
+      "main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-8, main .p-6.md\\:p-10.max-w-5xl.mx-auto.w-full.pb-24",
+    );
     if (!contentWrap) return;
+
+    contentWrap.innerHTML =
+      '<section class="glass p-6 md:p-8 rounded-2xl border border-white/10 bg-white/5 runtime-social-shell">' +
+      '<div class="h-5 w-40 rounded bg-white/10 runtime-skeleton mb-4"></div>' +
+      '<div class="grid gap-4 md:grid-cols-2">' +
+      '<div class="rounded-xl border border-white/10 p-4"><div class="h-40 rounded-lg bg-white/10 runtime-skeleton"></div></div>' +
+      '<div class="rounded-xl border border-white/10 p-4"><div class="h-40 rounded-lg bg-white/10 runtime-skeleton"></div></div>' +
+      "</div>" +
+      "</section>";
+
+    var summary = await getDashboardSummary();
+    updateSharedUserUi(summary);
+    var primaryProject = null;
+    try {
+      primaryProject = await ensurePrimaryProject(summary);
+    } catch {
+      primaryProject = null;
+    }
 
     contentWrap.innerHTML =
       '<section class="glass p-6 md:p-8 rounded-2xl border border-white/10 bg-white/5">' +
@@ -1225,6 +1645,7 @@
 
     async function loadIdeas(showToastOnSuccess) {
       try {
+        var ideaStart = performance.now();
         var ideasResult = await postJson("/api/social/drafts/ideas", {
           userId: ctx.userId,
           projectId: primaryProject ? primaryProject.id : null,
@@ -1243,8 +1664,19 @@
         if (showToastOnSuccess) {
           toast(ideasResult.source === "llm" ? "Fresh social ideas ready." : "Fallback social ideas ready.", false);
         }
+        writeSocialDraftCache(primaryProject ? primaryProject.id : null, {
+          linkedin: draftState.linkedin,
+          x: draftState.x,
+          contextLabel: draftState.contextLabel,
+          source: ideasResult.source === "llm" ? "llm" : "profile_context",
+        });
+        captureEvent("social_ideas_loaded", {
+          source: ideasResult.source === "llm" ? "llm" : "profile_context",
+          duration_ms: Math.round(performance.now() - ideaStart),
+        });
         return;
       } catch {
+        var fallbackStart = performance.now();
         var fallback = await postJson("/api/social/drafts/generate", {
           userId: ctx.userId,
           projectId: primaryProject ? primaryProject.id : null,
@@ -1266,6 +1698,16 @@
         if (showToastOnSuccess) {
           toast("Drafts refreshed.", false);
         }
+        writeSocialDraftCache(primaryProject ? primaryProject.id : null, {
+          linkedin: draftState.linkedin,
+          x: draftState.x,
+          contextLabel: draftState.contextLabel,
+          source: "template",
+        });
+        captureEvent("social_ideas_loaded", {
+          source: "template",
+          duration_ms: Math.round(performance.now() - fallbackStart),
+        });
       }
     }
 
@@ -1275,6 +1717,7 @@
         if (editing) {
           draftState.linkedin = readDraft("linkedin");
           setEditMode("linkedin", false);
+          captureEvent("social_draft_edited", { platform: "linkedin", draft_length: draftState.linkedin.length });
           toast("LinkedIn draft updated.", false);
           return;
         }
@@ -1288,6 +1731,7 @@
         if (editing) {
           draftState.x = readDraft("x");
           setEditMode("x", false);
+          captureEvent("social_draft_edited", { platform: "x", draft_length: draftState.x.length });
           toast("Tweet draft updated.", false);
           return;
         }
@@ -1302,6 +1746,7 @@
           toast("LinkedIn draft is empty.", true);
           return;
         }
+        captureEvent("social_share_clicked", { platform: "linkedin", mode: "native_composer" });
         window.open(shareUrl("linkedin", draftState.linkedin), "_blank", "noopener,noreferrer");
         toast("Opening LinkedIn share.", false);
       });
@@ -1314,6 +1759,7 @@
           toast("Tweet draft is empty.", true);
           return;
         }
+        captureEvent("social_share_clicked", { platform: "x", mode: "native_composer" });
         window.open(shareUrl("x", draftState.x), "_blank", "noopener,noreferrer");
         toast("Opening native Tweet composer.", false);
       });
@@ -1326,6 +1772,7 @@
         refreshButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Refreshing';
         try {
           lockAllEdits();
+          captureEvent("social_refresh_clicked", { project_id: primaryProject ? primaryProject.id : null });
           await loadIdeas(true);
         } catch (err) {
           toast(err instanceof Error ? err.message : "Unable to refresh social ideas", true);
@@ -1337,10 +1784,21 @@
     }
 
     lockAllEdits();
-    try {
-      await loadIdeas(false);
-    } catch (err) {
-      toast(err instanceof Error ? err.message : "Failed to generate social ideas", true);
+    var cachedDrafts = readSocialDraftCache(primaryProject ? primaryProject.id : null);
+    if (cachedDrafts) {
+      draftState.linkedin = normalizeDraftText(cachedDrafts.linkedin || "");
+      draftState.x = normalizeDraftText(cachedDrafts.x || "");
+      draftState.contextLabel = normalizeDraftText(cachedDrafts.contextLabel || draftState.contextLabel || "Fresh ideas");
+      updateDraftInputs();
+      if (sourceNode) sourceNode.textContent = cachedDrafts.source === "llm" ? "Cached personalized ideas" : "Cached draft ideas";
+      captureEvent("social_ideas_cache_hit", { source: cachedDrafts.source || "cached" });
+      void loadIdeas(false);
+    } else {
+      try {
+        await loadIdeas(false);
+      } catch (err) {
+        toast(err instanceof Error ? err.message : "Failed to generate social ideas", true);
+      }
     }
 
     var params = new URLSearchParams(window.location.search);
@@ -1348,9 +1806,11 @@
     if (oauth === "linkedin_connected") toast("LinkedIn connected.", false);
     if (oauth === "x_connected") toast("X connected.", false);
     if (oauth === "linkedin_denied" || oauth === "x_denied") toast("OAuth connection was denied.", true);
+    captureEvent("social_page_hydrated", { has_project: Boolean(primaryProject) });
   }
 
   async function hydrateUpdatesPage() {
+    captureEvent("dashboard_tab_viewed", { tab: "updates" });
     var summary = await getDashboardSummary();
     updateSharedUserUi(summary);
 
@@ -1377,6 +1837,7 @@
   }
 
   async function hydrateProfilePage() {
+    captureEvent("dashboard_tab_viewed", { tab: "profile" });
     var summary = await getDashboardSummary();
     updateSharedUserUi(summary);
 
@@ -1537,6 +1998,10 @@
             applyAvatarToUi(currentAvatarUrl);
           }
 
+          captureEvent("profile_saved", {
+            has_linkedin: Boolean(payload.socialLinks && payload.socialLinks.linkedin),
+            has_avatar: Boolean(currentAvatarUrl),
+          });
           toast("Profile saved.", false);
         } catch (err) {
           toast(err instanceof Error ? err.message : "Profile save failed", true);
@@ -1700,6 +2165,7 @@
             try {
               await saveAvatar(normalized);
               closeModal();
+              captureEvent("profile_avatar_updated", { source: "url" });
               toast("Avatar updated.", false);
             } catch (err) {
               toast(err instanceof Error ? err.message : "Avatar update failed", true);
@@ -1731,6 +2197,7 @@
               var dataUrl = canvas.toDataURL("image/jpeg", 0.9);
               await saveAvatar(dataUrl);
               closeModal();
+              captureEvent("profile_avatar_updated", { source: "upload_crop" });
               toast("Avatar updated.", false);
             } catch (err) {
               saveBtn.removeAttribute("disabled");
@@ -1786,6 +2253,7 @@
   }
 
   async function hydrateEmployerTalentPage() {
+    captureEvent("employer_talent_viewed", { source: "page_load" });
     var header = document.querySelector("h2.text-xl.font-\\[Outfit\\].text-white");
     var grid = document.querySelector(".grid.md\\:grid-cols-2.lg\\:grid-cols-3.gap-6");
     var search = document.querySelector("header input[type='text']");
@@ -1825,6 +2293,12 @@
       if (header) {
         header.textContent = rows.length + " Candidates Match Criteria";
       }
+      captureEvent("employer_talent_loaded", {
+        result_count: rows.length,
+        has_search: Boolean(search && search.value.trim()),
+        selected_skill: selectedSkill || "",
+        selected_status: selectedStatus || "",
+      });
 
       if (skillSection && facets.skills && facets.skills.length) {
         var list = skillSection.querySelector(".space-y-2");
@@ -1848,6 +2322,7 @@
               Array.prototype.forEach.call(list.querySelectorAll("input[type='checkbox']"), function (node) {
                 if (node !== checkbox) node.checked = false;
               });
+              captureEvent("employer_filter_changed", { filter_type: "skill", skill: selectedSkill || "" });
               void loadRows();
             });
             list.appendChild(label);
@@ -1889,6 +2364,7 @@
       radio.addEventListener("change", function () {
         if (!radio.checked) return;
         selectedStatus = index === 0 ? "verified" : "";
+        captureEvent("employer_filter_changed", { filter_type: "status", status: selectedStatus || "all" });
         void loadRows();
       });
     });
@@ -1898,6 +2374,7 @@
       search.addEventListener("input", function () {
         window.clearTimeout(timeout);
         timeout = window.setTimeout(function () {
+          captureEvent("employer_filter_changed", { filter_type: "search", query_length: search.value.trim().length });
           void loadRows();
         }, 220);
       });
@@ -1906,7 +2383,7 @@
     await loadRows();
   }
 
-  if (currentPath === "/onboarding") {
+  if (currentPath === "/onboarding" && !document.getElementById("onboarding-react-root")) {
     var selectedResumeFilename = null;
     var uploadLabel = byText("p", "Upload Resume (PDF)");
     var uploadCard = uploadLabel ? uploadLabel.closest("div.border-2") : null;
@@ -1916,6 +2393,18 @@
     var beginButton = document.getElementById("onboarding-start-assessment");
     var scoreButtons = document.querySelectorAll("button.onboarding-score");
     var chosenScore = Number((ctx && ctx.aiKnowledgeScore) || 3);
+    var signUpIntent = readSignUpIntent();
+
+    captureEvent("onboarding_viewed", {
+      entry_point: signUpIntent ? "clerk_sign_up" : "direct",
+      has_existing_session: Boolean(ctx.sessionId),
+      career_path_id: ctx.careerPathId || "product-management",
+    });
+    trackFunnelStep("onboarding_viewed", {
+      entry_point: signUpIntent ? "clerk_sign_up" : "direct",
+      has_existing_session: Boolean(ctx.sessionId),
+      career_path_id: ctx.careerPathId || "product-management",
+    });
 
     function applySelectedScore() {
       Array.prototype.forEach.call(scoreButtons, function (button) {
@@ -1932,6 +2421,7 @@
       button.addEventListener("click", function () {
         chosenScore = Number(button.getAttribute("data-ai-score") || "3");
         applySelectedScore();
+        captureEvent("onboarding_ai_knowledge_selected", { ai_knowledge_score: chosenScore });
       });
     });
     applySelectedScore();
@@ -1951,6 +2441,9 @@
         var file = uploader.files && uploader.files[0];
         if (!file) return;
         selectedResumeFilename = file.name;
+        var dot = file.name.lastIndexOf(".");
+        var extension = dot >= 0 ? file.name.slice(dot + 1).toLowerCase() : "unknown";
+        captureEvent("onboarding_resume_selected", { resume_attached: true, resume_extension: extension });
         var subtitle = uploadCard.querySelector("p.text-xs");
         if (subtitle) subtitle.textContent = "Selected: " + file.name;
       });
@@ -1996,8 +2489,18 @@
             toast("Select at least one goal.", true);
             return;
           }
-
           var selectedCareerPath = careerPathSelect && careerPathSelect.value ? careerPathSelect.value : "product-management";
+          captureEvent("onboarding_start_assessment_clicked", {
+            selected_goals_count: goals.length,
+            selected_goals: goals,
+            career_path_id: selectedCareerPath,
+          });
+          trackFunnelStep("onboarding_start_assessment_clicked", {
+            selected_goals_count: goals.length,
+            selected_goals: goals,
+            career_path_id: selectedCareerPath,
+          });
+
           var selectedSituation = situationSelect && situationSelect.value ? situationSelect.value : "employed";
           var selectedLinkedIn = linkedinInput && linkedinInput.value ? linkedinInput.value.trim() : "";
           ctx.careerPathId = selectedCareerPath;
@@ -2014,16 +2517,64 @@
             linkedinUrl: selectedLinkedIn || null,
             resumeFilename: selectedResumeFilename,
           });
+          captureEvent("onboarding_career_import_completed", {
+            session_id: session.id,
+            career_path_id: selectedCareerPath,
+            has_linkedin_url: Boolean(selectedLinkedIn),
+            resume_attached: Boolean(selectedResumeFilename),
+            ai_knowledge_score: chosenScore,
+          });
+          trackFunnelStep("onboarding_career_import_completed", {
+            session_id: session.id,
+            career_path_id: selectedCareerPath,
+            has_linkedin_url: Boolean(selectedLinkedIn),
+            resume_attached: Boolean(selectedResumeFilename),
+            resume_extension: selectedResumeFilename && selectedResumeFilename.indexOf(".") >= 0
+              ? selectedResumeFilename.split(".").pop().toLowerCase()
+              : null,
+            ai_knowledge_score: chosenScore,
+          });
 
           await postJson("/api/onboarding/situation", {
             sessionId: session.id,
             situation: selectedSituation,
             goals: goals,
           });
+          captureEvent("onboarding_situation_completed", {
+            session_id: session.id,
+            situation: selectedSituation,
+            selected_goals_count: goals.length,
+            selected_goals: goals,
+          });
+          trackFunnelStep("onboarding_situation_completed", {
+            session_id: session.id,
+            situation: selectedSituation,
+            selected_goals_count: goals.length,
+            selected_goals: goals,
+            career_path_id: selectedCareerPath,
+          });
+          captureEvent("onboarding_completed", {
+            session_id: session.id,
+            situation: selectedSituation,
+            selected_goals_count: goals.length,
+            selected_goals: goals,
+            career_path_id: selectedCareerPath,
+          });
+          captureEvent("onboarding_assessment_redirected", { session_id: session.id });
+          trackFunnelStep("onboarding_completed", {
+            session_id: session.id,
+            situation: selectedSituation,
+            selected_goals_count: goals.length,
+            selected_goals: goals,
+            career_path_id: selectedCareerPath,
+          });
 
           toast("Onboarding saved. Continue to assessment.", false);
           window.location.href = "/assessment/?sessionId=" + encodeURIComponent(session.id);
         } catch (err) {
+          captureEvent("onboarding_submission_failed", {
+            reason: err && err.message ? err.message : "unknown_error",
+          });
           toast(err instanceof Error ? err.message : "Failed to complete onboarding", true);
         } finally {
           beginButton.dataset.busy = "0";
@@ -2034,6 +2585,17 @@
   }
 
   if (currentPath === "/assessment") {
+    captureEvent("assessment_viewed", {
+      has_existing_session: Boolean(ctx.sessionId),
+      entry_point: ctx && ctx.sessionId ? "onboarding" : "direct",
+      career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+    });
+    trackFunnelStep("assessment_viewed", {
+      has_existing_session: Boolean(ctx.sessionId),
+      entry_point: ctx && ctx.sessionId ? "onboarding" : "direct",
+      career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+    });
+
     var assessmentCard = document.querySelector(".glass-panel");
 
     var continueLink = assessmentCard
@@ -2047,9 +2609,27 @@
     if (continueLink) {
       continueLink.addEventListener("click", async function (event) {
         event.preventDefault();
+        captureEvent("assessment_continue_clicked", {
+          source: "assessment_page",
+          career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+        });
+        trackFunnelStep("assessment_continue_clicked", {
+          source: "assessment_page",
+          career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+        });
         try {
           var session = await ensureSession();
           var start = await postJson("/api/assessment/start", { sessionId: session.id });
+          captureEvent("assessment_started", {
+            session_id: session.id,
+            assessment_id: start.assessment.id,
+            career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+          });
+          trackFunnelStep("assessment_started", {
+            session_id: session.id,
+            assessment_id: start.assessment.id,
+            career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+          });
           var checked = document.querySelector('input[name="goal"]:checked');
           var selectedValue = 3;
           var selectedGoal = "learn_foundations";
@@ -2069,6 +2649,20 @@
           await postJson("/api/assessment/submit", {
             assessmentId: start.assessment.id,
             answers: [{ questionId: "primary_goal", value: selectedValue }],
+          });
+          captureEvent("assessment_submitted", {
+            session_id: session.id,
+            assessment_id: start.assessment.id,
+            primary_goal: selectedGoal,
+            primary_goal_value: selectedValue,
+            career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+          });
+          trackFunnelStep("assessment_submitted", {
+            session_id: session.id,
+            assessment_id: start.assessment.id,
+            primary_goal: selectedGoal,
+            primary_goal_value: selectedValue,
+            career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
           });
 
           var validGoalSet = {
@@ -2091,14 +2685,52 @@
             situation: selectedSituation,
             goals: selectedGoals,
           });
+          captureEvent("assessment_completed", {
+            session_id: session.id,
+            assessment_id: start.assessment.id,
+            situation: selectedSituation,
+            selected_goals_count: selectedGoals.length,
+            selected_goals: selectedGoals,
+            primary_goal: selectedGoal,
+            primary_goal_value: selectedValue,
+            career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+          });
+          trackFunnelStep("assessment_completed", {
+            session_id: session.id,
+            assessment_id: start.assessment.id,
+            selected_goals_count: selectedGoals.length,
+            selected_goals: selectedGoals,
+            situation: selectedSituation,
+            primary_goal: selectedGoal,
+            primary_goal_value: selectedValue,
+            career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+          });
+          captureEvent("assessment_dashboard_redirected", {
+            session_id: session.id,
+            assessment_id: start.assessment.id,
+            situation: selectedSituation,
+            career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+          });
+          trackFunnelStep("assessment_dashboard_redirected", {
+            session_id: session.id,
+            assessment_id: start.assessment.id,
+            situation: selectedSituation,
+            career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+          });
 
           toast("Assessment submitted.", false);
           window.location.href = "/dashboard/?welcome=1";
         } catch (err) {
           if (isUnauthenticatedError(err)) {
+            captureEvent("assessment_failed_auth_required", {
+              reason: err && err.message ? err.message : "auth_required",
+            });
             redirectToSignIn("/assessment/");
             return;
           }
+          captureEvent("assessment_failed", {
+            reason: err && err.message ? err.message : "unknown_error",
+          });
           toast(err instanceof Error ? err.message : "Assessment failed", true);
         }
       });
@@ -2106,43 +2738,53 @@
   }
 
   async function hydrateCurrentPath() {
+    captureEvent("app_route_hydrate_started", { path: currentPath });
     if (currentPath === "/dashboard") {
       await hydrateDashboardHome();
+      captureEvent("app_route_hydrate_completed", { path: currentPath });
       return;
     }
 
     if (currentPath === "/dashboard/projects") {
       await hydrateProjectsPage();
+      captureEvent("app_route_hydrate_completed", { path: currentPath });
       return;
     }
 
     if (currentPath === "/dashboard/chat") {
       await hydrateChatPage();
+      captureEvent("app_route_hydrate_completed", { path: currentPath });
       return;
     }
 
     if (currentPath === "/dashboard/social") {
       await hydrateSocialPage();
+      captureEvent("app_route_hydrate_completed", { path: currentPath });
       return;
     }
 
     if (currentPath === "/dashboard/updates") {
       await hydrateUpdatesPage();
+      captureEvent("app_route_hydrate_completed", { path: currentPath });
       return;
     }
 
     if (currentPath === "/dashboard/profile") {
       await hydrateProfilePage();
+      captureEvent("app_route_hydrate_completed", { path: currentPath });
       return;
     }
 
     if (currentPath === "/employers/talent") {
       await hydrateEmployerTalentPage();
+      captureEvent("app_route_hydrate_completed", { path: currentPath });
     }
   }
 
   async function boot() {
+    captureEvent("app_boot_started", { path: currentPath });
     try {
+      maybeTrackAuthEntryEvents();
       wireThemeToggle();
       await trySyncLandingAuth();
       await syncOptionalAuthUi();
@@ -2162,7 +2804,16 @@
         }
       }
 
+      try {
+        await maybeClaimOnboardingSession();
+      } catch {
+        // Non-blocking; dashboard can continue loading.
+      }
+
+      maybeTrackDashboardWelcomeStep();
+      ensureMobileDashboardNav();
       await hydrateCurrentPath();
+      captureEvent("app_boot_completed", { path: currentPath });
     } finally {
       if (!hasAppliedAuthCtx && !needsAuth()) {
         applyCtxImmediately();

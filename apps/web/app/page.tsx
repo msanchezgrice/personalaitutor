@@ -67,6 +67,18 @@ export default async function HomePage() {
         'href="/dashboard/?welcome=1" class="btn btn-secondary">Dashboard</a>';
     }
   }
+  replacements['href="/assessment/" class="btn btn-primary animate-pulse-glow">Start Assessment <i class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>'] =
+    'href="/onboarding/" class="btn btn-primary animate-pulse-glow">Start Assessment <i class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>';
+  replacements['href="/assessment/" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>'] =
+    'href="/onboarding/" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>';
+  replacements['href="/assessment/" class="btn btn-primary text-xl px-10 py-5 animate-pulse-glow shadow-2xl">Start Your AI'] =
+    'href="/onboarding/" class="btn btn-primary text-xl px-10 py-5 animate-pulse-glow shadow-2xl">Start Your AI';
+  replacements['href="/assessment" class="btn btn-primary animate-pulse-glow">Start Assessment <i class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>'] =
+    'href="/onboarding/" class="btn btn-primary animate-pulse-glow">Start Assessment <i class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>';
+  replacements['href="/assessment" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>'] =
+    'href="/onboarding/" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>';
+  replacements['href="/assessment/"'] = 'href="/onboarding/"';
+  replacements['href="/assessment"'] = 'href="/onboarding/"';
   replacements['<img src="/assets/branding/brand_wordmark_logo.png" alt="My AI Skill Tutor" class="h-8 w-auto object-contain" />'] =
     '<img src="/assets/branding/brand_brain_icon.svg" alt="My AI Skill Tutor" class="h-11 w-11 object-contain" /><span class="font-[Outfit] font-bold text-[1.9rem] leading-none tracking-tight text-[var(--text-main)]">My AI Skill Tutor</span>';
   return <GeminiStaticPage template="index.html" replacements={replacements} />;

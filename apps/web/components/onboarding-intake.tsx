@@ -471,7 +471,8 @@ export function OnboardingIntake() {
   );
   const normalizedScore = useMemo(() => {
     if (assessmentScore === null || Number.isNaN(assessmentScore)) return 0;
-    return Math.max(0, Math.min(100, Math.round(assessmentScore)));
+    const raw = assessmentScore <= 1 ? assessmentScore * 100 : assessmentScore;
+    return Math.max(0, Math.min(100, Math.round(raw)));
   }, [assessmentScore]);
   const riskBand = useMemo(() => getRiskBand(normalizedScore), [normalizedScore]);
   const riskTimeline = useMemo(() => getTimeline(normalizedScore), [normalizedScore]);
@@ -555,8 +556,8 @@ export function OnboardingIntake() {
   };
 
   const ensureSession = async () => {
-    if (sessionId && sessionUserId) {
-      return { id: sessionId, userId: sessionUserId };
+    if (sessionId) {
+      return { id: sessionId, userId: sessionUserId ?? "" };
     }
     const payload = await postJson<OnboardingStartPayload>("/api/onboarding/start", {
       name: jobTitle.trim() || "New Learner",
@@ -618,7 +619,7 @@ export function OnboardingIntake() {
       const href =
         `/api/auth/linkedin/start?redirect=1` +
         `&sessionId=${encodeURIComponent(session.id)}` +
-        `&userId=${encodeURIComponent(session.userId)}` +
+        `${session.userId ? `&userId=${encodeURIComponent(session.userId)}` : ""}` +
         `&redirectPath=${encodeURIComponent(redirectPath)}`;
       window.location.href = href;
     } catch (err) {

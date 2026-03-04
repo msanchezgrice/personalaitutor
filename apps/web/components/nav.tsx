@@ -13,7 +13,7 @@ export function TopNav() {
 
         <nav className="nav">
           <Link href="/">How it works</Link>
-          <Link href="/assessment">Assessment</Link>
+          <Link href="/onboarding">Assessment</Link>
           <Link href="/onboarding">Onboarding</Link>
           <Link href="/employers">For Employers</Link>
         </nav>
@@ -22,7 +22,7 @@ export function TopNav() {
           <Link className="btn secondary" href="/onboarding">
             Log In
           </Link>
-          <Link className="btn primary" href="/assessment">
+          <Link className="btn primary" href="/onboarding">
             Start Assessment
           </Link>
           <ThemeToggle />

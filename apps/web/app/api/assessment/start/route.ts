@@ -2,6 +2,7 @@ import { jsonError, jsonOk, runtimeFindOnboardingSession, runtimeStartAssessment
 import { z } from "zod";
 import { NextRequest } from "next/server";
 import { getUserId } from "@/lib/api";
+import { getAuthUserId } from "@/lib/auth";
 
 const schema = z
   .object({
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
 
     const candidateUserId = parsed.data?.sessionId
       ? (await runtimeFindOnboardingSession(parsed.data.sessionId))?.userId
-      : getUserId(req);
+      : (await getAuthUserId(req)) ?? getUserId(req);
 
     if (!candidateUserId) {
       return jsonError("UNAUTHENTICATED", "Sign in required", 401);

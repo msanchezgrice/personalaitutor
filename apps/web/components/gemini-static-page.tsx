@@ -123,6 +123,8 @@ function applyReplacements(input: string, replacements?: Record<string, string>)
     "http://linkedin.com/company/myaiskilltutor": "https://www.linkedin.com/company/myaiskilltutor",
     "https://linkedin.com/company/myaiskilltutor": "https://www.linkedin.com/company/myaiskilltutor",
     "fa-x-twitter": "fa-twitter",
+    'href="/assessment/"': 'href="/onboarding/"',
+    'href="/assessment"': 'href="/onboarding/"',
     ...(replacements ?? {}),
   };
 
@@ -154,6 +156,7 @@ export function GeminiStaticPage({ template, replacements, className }: GeminiSt
 
   return (
     <div
+      data-gemini-shell="1"
       className={className ?? extracted.className}
       dangerouslySetInnerHTML={{ __html: html }}
       suppressHydrationWarning

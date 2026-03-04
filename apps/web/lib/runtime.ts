@@ -109,6 +109,10 @@ async function sendWelcomeEmail(input: { to: string; name: string; handle: strin
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;color:#0f172a;background:#f8fafc;padding:24px">
       <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:24px">
+        <div style="display:flex;align-items:center;gap:10px;margin:0 0 16px;padding-bottom:12px;border-bottom:1px solid #e2e8f0;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:#10b981;color:#ffffff;font-size:14px;font-weight:700;">AI</span>
+          <span style="font-size:15px;font-weight:700;letter-spacing:.2px;">${BRAND_NAME}</span>
+        </div>
         <h1 style="margin:0 0 10px;font-size:24px;">Welcome, ${input.name}.</h1>
         <p style="margin:0 0 14px;line-height:1.6;color:#475569;">
           Your AI Tutor workspace is ready. Start your onboarding, finish your assessment, and publish your first verified project.
@@ -193,6 +197,18 @@ function safeHandle(input: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
+}
+
+function parseSkillTools(input?: string | null) {
+  if (!input || !input.trim()) return [];
+  return Array.from(
+    new Set(
+      input
+        .split(/[,\n]/)
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, 20);
 }
 
 function uuidFromExternalId(input: string) {
@@ -766,6 +782,13 @@ export async function runtimeUpdateOnboardingSituation(input: {
 export async function runtimeUpdateOnboardingCareerImport(input: {
   sessionId: string;
   careerPathId: string;
+  careerCategoryLabel?: string;
+  jobTitle?: string;
+  yearsExperience?: "0-1" | "1-3" | "3-5" | "5-10" | "10+";
+  companySize?: "startup" | "small" | "medium" | "large" | null;
+  dailyWorkSummary?: string;
+  keySkills?: string | null;
+  aiComfort?: number;
   linkedinUrl?: string | null;
   resumeFilename?: string | null;
 }) {
@@ -786,32 +809,306 @@ export async function runtimeUpdateOnboardingCareerImport(input: {
     })
     .eq("id", input.sessionId);
 
-  await supabase
-    .from("learner_profiles")
-    .update({ career_path_id: input.careerPathId, updated_at: new Date().toISOString() })
-    .eq("id", session.userId);
+  const existingProfile = await getProfileRowById(session.userId);
+  if (existingProfile) {
+    const existingLinks = existingProfile.social_links ?? {};
+    const linkedinUrl =
+      typeof input.linkedinUrl === "string" && input.linkedinUrl.trim().length ? input.linkedinUrl.trim() : null;
+    const parsedTools = parseSkillTools(input.keySkills);
+    const mergedTools = Array.from(new Set([...(existingProfile.tools ?? []), ...parsedTools])).slice(0, 24);
 
-  if (typeof input.linkedinUrl === "string" && input.linkedinUrl.trim().length) {
-    const existingProfile = await getProfileRowById(session.userId);
-    if (existingProfile) {
-      const existingLinks = existingProfile.social_links ?? {};
-      const linkedinUrl = input.linkedinUrl.trim();
-      if (existingLinks.linkedin !== linkedinUrl) {
-        await supabase
-          .from("learner_profiles")
-          .update({
-            social_links: {
-              ...existingLinks,
-              linkedin: linkedinUrl,
-            },
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existingProfile.id);
-      }
+    const nextLinks = {
+      ...existingLinks,
+      ...(linkedinUrl ? { linkedin: linkedinUrl } : {}),
+    };
+
+    const profilePatch: {
+      career_path_id: string;
+      headline?: string;
+      bio?: string;
+      tools?: string[];
+      social_links?: Record<string, string>;
+      updated_at: string;
+    } = {
+      career_path_id: input.careerPathId,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (input.jobTitle?.trim()) {
+      profilePatch.headline = input.jobTitle.trim();
     }
+    if (input.dailyWorkSummary?.trim()) {
+      profilePatch.bio = input.dailyWorkSummary.trim().slice(0, 600);
+    }
+    if (mergedTools.length) {
+      profilePatch.tools = mergedTools;
+    }
+    if (linkedinUrl || Object.keys(existingLinks).length) {
+      profilePatch.social_links = nextLinks;
+    }
+
+    await supabase.from("learner_profiles").update(profilePatch).eq("id", existingProfile.id);
   }
 
   return runtimeFindOnboardingSession(input.sessionId);
+}
+
+export async function runtimeClaimOnboardingSession(input: {
+  sessionId: string;
+  authUserId: string;
+  seed?: {
+    name?: string;
+    handleBase?: string;
+    avatarUrl?: string | null;
+  };
+}) {
+  const session = await runtimeFindOnboardingSession(input.sessionId);
+  if (!session) return null;
+
+  if (mode() === "memory") {
+    const user = await runtimeFindUserById(input.authUserId);
+    if (!user) return null;
+    return {
+      session,
+      user,
+      migrated: session.userId !== user.id,
+    };
+  }
+
+  const supabase = getSupabaseAdmin();
+  const now = new Date().toISOString();
+
+  const targetProfile = await getOrCreateProfile({
+    userId: input.authUserId,
+    name: input.seed?.name,
+    avatarUrl: input.seed?.avatarUrl ?? null,
+    handleBase: input.seed?.handleBase,
+    careerPathId: session.careerPathId ?? undefined,
+  });
+
+  const sourceProfileId = session.userId;
+  if (sourceProfileId !== targetProfile.id) {
+    await supabase
+      .from("onboarding_sessions")
+      .update({
+        learner_profile_id: targetProfile.id,
+        updated_at: now,
+      })
+      .eq("id", input.sessionId);
+
+    await supabase
+      .from("assessment_attempts")
+      .update({
+        learner_profile_id: targetProfile.id,
+        updated_at: now,
+      })
+      .eq("learner_profile_id", sourceProfileId);
+
+    const { data: sourceSkills } = await supabase
+      .from("user_skill_evidence")
+      .select("id,skill_name,status,score,evidence_count")
+      .eq("learner_profile_id", sourceProfileId);
+    const { data: targetSkills } = await supabase
+      .from("user_skill_evidence")
+      .select("id,skill_name,status,score,evidence_count")
+      .eq("learner_profile_id", targetProfile.id);
+
+    const targetSkillByName = new Map<
+      string,
+      { id: string; status: string; score: number; evidence_count: number }
+    >();
+    for (const row of targetSkills ?? []) {
+      targetSkillByName.set(row.skill_name, row);
+    }
+
+    for (const sourceSkill of sourceSkills ?? []) {
+      const existing = targetSkillByName.get(sourceSkill.skill_name);
+      if (!existing) {
+        await supabase
+          .from("user_skill_evidence")
+          .update({
+            learner_profile_id: targetProfile.id,
+            updated_at: now,
+          })
+          .eq("id", sourceSkill.id);
+        continue;
+      }
+
+      const nextStatus =
+        skillStatusRank(sourceSkill.status) > skillStatusRank(existing.status)
+          ? sourceSkill.status
+          : existing.status;
+
+      await supabase
+        .from("user_skill_evidence")
+        .update({
+          status: nextStatus,
+          score: Math.max(Number(existing.score ?? 0), Number(sourceSkill.score ?? 0)),
+          evidence_count: Math.max(0, Number(existing.evidence_count ?? 0) + Number(sourceSkill.evidence_count ?? 0)),
+          updated_at: now,
+        })
+        .eq("id", existing.id);
+
+      await supabase.from("user_skill_evidence").delete().eq("id", sourceSkill.id);
+    }
+
+    await supabase
+      .from("projects")
+      .update({
+        learner_profile_id: targetProfile.id,
+        updated_at: now,
+      })
+      .eq("learner_profile_id", sourceProfileId);
+
+    await supabase
+      .from("build_log_entries")
+      .update({
+        learner_profile_id: targetProfile.id,
+      })
+      .eq("learner_profile_id", sourceProfileId);
+
+    await supabase
+      .from("agent_jobs")
+      .update({
+        learner_profile_id: targetProfile.id,
+        updated_at: now,
+      })
+      .eq("learner_profile_id", sourceProfileId);
+
+    await supabase
+      .from("agent_job_events")
+      .update({
+        learner_profile_id: targetProfile.id,
+      })
+      .eq("learner_profile_id", sourceProfileId);
+
+    await supabase
+      .from("social_drafts")
+      .update({
+        learner_profile_id: targetProfile.id,
+        updated_at: now,
+      })
+      .eq("learner_profile_id", sourceProfileId);
+
+    await supabase
+      .from("daily_update_emails")
+      .update({
+        learner_profile_id: targetProfile.id,
+      })
+      .eq("learner_profile_id", sourceProfileId);
+
+    const { data: sourceOauth } = await supabase
+      .from("oauth_connections")
+      .select("id,platform,connected,account_label")
+      .eq("learner_profile_id", sourceProfileId);
+
+    const { data: targetOauth } = await supabase
+      .from("oauth_connections")
+      .select("id,platform,connected,account_label")
+      .eq("learner_profile_id", targetProfile.id);
+
+    const targetByPlatform = new Map<string, { id: string; connected: boolean; account_label: string | null }>();
+    for (const row of targetOauth ?? []) {
+      targetByPlatform.set(row.platform, {
+        id: row.id,
+        connected: Boolean(row.connected),
+        account_label: row.account_label ?? null,
+      });
+    }
+
+    for (const row of sourceOauth ?? []) {
+      const existing = targetByPlatform.get(row.platform);
+      if (!existing) {
+        await supabase
+          .from("oauth_connections")
+          .update({
+            learner_profile_id: targetProfile.id,
+            updated_at: now,
+          })
+          .eq("id", row.id);
+        continue;
+      }
+
+      const nextConnected = existing.connected || Boolean(row.connected);
+      const nextLabel = existing.account_label || row.account_label || null;
+
+      await supabase
+        .from("oauth_connections")
+        .update({
+          connected: nextConnected,
+          account_label: nextLabel,
+          connected_at: nextConnected ? now : null,
+          updated_at: now,
+        })
+        .eq("id", existing.id);
+
+      await supabase.from("oauth_connections").delete().eq("id", row.id);
+    }
+  }
+
+  const refreshedSession = await runtimeFindOnboardingSession(input.sessionId);
+  if (!refreshedSession) return null;
+
+  const sourceProfile = await runtimeFindUserById(sourceProfileId);
+  const currentTarget = await runtimeFindUserById(targetProfile.id);
+  if (!currentTarget) return null;
+
+  const mergedGoals = Array.from(
+    new Set([
+      ...(currentTarget.goals ?? []),
+      ...(sourceProfile?.goals ?? []),
+      ...(refreshedSession.goals ?? []),
+    ]),
+  ) as UserProfile["goals"];
+
+  const socialLinks: UserProfile["socialLinks"] = {
+    ...currentTarget.socialLinks,
+  };
+  if (refreshedSession.linkedinUrl?.trim()) {
+    socialLinks.linkedin = refreshedSession.linkedinUrl.trim();
+  } else if (!socialLinks.linkedin && sourceProfile?.socialLinks.linkedin) {
+    socialLinks.linkedin = sourceProfile.socialLinks.linkedin;
+  }
+
+  const patch: Partial<UserProfile> = {
+    careerPathId: refreshedSession.careerPathId ?? currentTarget.careerPathId,
+    goals: mergedGoals,
+    socialLinks,
+  };
+
+  const mergedTools = Array.from(
+    new Set([...(currentTarget.tools ?? []), ...(sourceProfile?.tools ?? [])]),
+  ).slice(0, 24);
+  if (mergedTools.length) {
+    patch.tools = mergedTools;
+  }
+
+  const defaultHeadline = "AI Builder";
+  const defaultBio = "Building practical AI workflows and sharing public proof of execution.";
+  const shouldReplaceHeadline =
+    !currentTarget.headline || currentTarget.headline.trim().toLowerCase() === defaultHeadline.toLowerCase();
+  const shouldReplaceBio = !currentTarget.bio || currentTarget.bio.trim() === defaultBio;
+  if (sourceProfile?.headline && shouldReplaceHeadline) {
+    patch.headline = sourceProfile.headline;
+  }
+  if (sourceProfile?.bio && shouldReplaceBio) {
+    patch.bio = sourceProfile.bio;
+  }
+
+  if (!currentTarget.avatarUrl && (sourceProfile?.avatarUrl || input.seed?.avatarUrl)) {
+    patch.avatarUrl = sourceProfile?.avatarUrl ?? input.seed?.avatarUrl ?? null;
+  }
+  if (input.seed?.name?.trim()) {
+    patch.name = input.seed.name.trim();
+  }
+
+  const updatedUser = (await runtimeUpdateProfile(currentTarget.id, patch)) ?? currentTarget;
+
+  return {
+    session: refreshedSession,
+    user: updatedUser,
+    migrated: sourceProfileId !== updatedUser.id,
+  };
 }
 
 export async function runtimeStartAssessment(userId: string) {
@@ -858,21 +1155,83 @@ export async function runtimeSubmitAssessment(input: {
     .maybeSingle();
   if (!attempt) return null;
 
-  const total = input.answers.reduce((sum, answer) => sum + answer.value, 0);
-  const score = Number((input.answers.length ? total / input.answers.length / 5 : 0).toFixed(2));
-  const pivot = Math.floor(total) % CAREER_PATHS.length;
-  const recommended = [
-    CAREER_PATHS[pivot].id,
-    CAREER_PATHS[(pivot + 1) % CAREER_PATHS.length].id,
-    CAREER_PATHS[(pivot + 2) % CAREER_PATHS.length].id,
-  ];
+  const total = input.answers.reduce((sum, answer) => sum + Number(answer.value || 0), 0);
+  const score = Number((input.answers.length ? total / input.answers.length / 5 : 0).toFixed(4));
+
+  const allPathIds = CAREER_PATHS.map((entry) => entry.id);
+  const profile = await runtimeFindUserById(attempt.learner_profile_id);
+  const fallbackPath = profile?.careerPathId ?? allPathIds[0];
+
+  const { data: latestOnboarding } = await supabase
+    .from("onboarding_sessions")
+    .select("career_path_id,goals,situation,ai_knowledge_score,updated_at")
+    .eq("learner_profile_id", attempt.learner_profile_id)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const careerFromOnboarding =
+    typeof latestOnboarding?.career_path_id === "string" && allPathIds.includes(latestOnboarding.career_path_id)
+      ? latestOnboarding.career_path_id
+      : null;
+  const primaryPath = careerFromOnboarding ?? fallbackPath;
+
+  const answerMap = new Map(input.answers.map((entry) => [entry.questionId, Number(entry.value || 0)]));
+  const aiComfort = answerMap.get("ai_comfort") ?? Math.max(1, Math.min(5, Math.round(score * 5)));
+  const goals = Array.isArray(latestOnboarding?.goals)
+    ? (latestOnboarding.goals.filter((entry): entry is string => typeof entry === "string") as string[])
+    : [];
+
+  const goalHintsByPath: Record<string, string[]> = {
+    build_business: ["product-management", "marketing-seo", "sales-revops"],
+    upskill_current_job: [primaryPath, "operations", "software-engineering"],
+    showcase_for_job: ["software-engineering", "quality-assurance", "product-management"],
+    learn_foundations: ["operations", "product-management", "software-engineering"],
+    ship_ai_projects: ["software-engineering", "product-management", "customer-support"],
+  };
+
+  const recommended = new Set<string>();
+  const pushPath = (candidate: string | null | undefined) => {
+    if (!candidate) return;
+    if (!allPathIds.includes(candidate)) return;
+    recommended.add(candidate);
+  };
+
+  pushPath(primaryPath);
+
+  for (const goal of goals) {
+    for (const hinted of goalHintsByPath[goal] ?? []) {
+      pushPath(hinted);
+      if (recommended.size >= 3) break;
+    }
+    if (recommended.size >= 3) break;
+  }
+
+  if (recommended.size < 3) {
+    if (aiComfort <= 2) {
+      ["operations", "product-management", "customer-support"].forEach(pushPath);
+    } else if (aiComfort >= 4) {
+      ["software-engineering", "quality-assurance", "sales-revops"].forEach(pushPath);
+    } else {
+      ["product-management", "marketing-seo", "operations"].forEach(pushPath);
+    }
+  }
+
+  if (recommended.size < 3) {
+    const primaryIndex = Math.max(0, allPathIds.indexOf(primaryPath));
+    pushPath(allPathIds[(primaryIndex + 1) % allPathIds.length]);
+    pushPath(allPathIds[(primaryIndex + 2) % allPathIds.length]);
+    pushPath(allPathIds[(primaryIndex + 3) % allPathIds.length]);
+  }
+
+  const recommendedCareerPathIds = Array.from(recommended).slice(0, 3);
 
   await supabase
     .from("assessment_attempts")
     .update({
       score,
       answers: input.answers,
-      recommended_career_path_ids: recommended,
+      recommended_career_path_ids: recommendedCareerPathIds,
       submitted_at: new Date().toISOString(),
     })
     .eq("id", input.assessmentId);
@@ -880,13 +1239,13 @@ export async function runtimeSubmitAssessment(input: {
   await supabase
     .from("learner_profiles")
     .update({
-      career_path_id: recommended[0],
+      career_path_id: recommendedCareerPathIds[0],
       tokens_used: Number(attempt.tokens_used ?? 0) + 500,
       updated_at: new Date().toISOString(),
     })
     .eq("id", attempt.learner_profile_id);
 
-  const firstModules = CAREER_PATHS.find((path) => path.id === recommended[0])?.modules.slice(0, 2) ?? [];
+  const firstModules = CAREER_PATHS.find((path) => path.id === recommendedCareerPathIds[0])?.modules.slice(0, 2) ?? [];
   for (const moduleName of firstModules) {
     await upsertSkill({
       userId: attempt.learner_profile_id,
@@ -904,7 +1263,7 @@ export async function runtimeSubmitAssessment(input: {
     startedAt: attempt.started_at,
     submittedAt: new Date().toISOString(),
     answers: input.answers,
-    recommendedCareerPathIds: recommended,
+    recommendedCareerPathIds,
   } as AssessmentAttempt;
 }
 

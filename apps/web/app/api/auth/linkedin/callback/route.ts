@@ -1,14 +1,34 @@
 import { jsonError, jsonOk, runtimeConnectOAuth, runtimeMarkOAuthFailure, runtimeUpdateProfile } from "@/lib/runtime";
 import { NextRequest, NextResponse } from "next/server";
+import { getAuthUserId } from "@/lib/auth";
 
 function parseState(state: string | null) {
   if (!state) return null;
   try {
     const decoded = Buffer.from(state, "base64url").toString("utf8");
-    return JSON.parse(decoded) as { userId?: string; redirect?: boolean; mock?: boolean };
+    return JSON.parse(decoded) as { userId?: string; redirect?: boolean; mock?: boolean; redirectPath?: string };
   } catch {
     return null;
   }
+}
+
+function sanitizeRedirectPath(path: string | null | undefined) {
+  if (!path || !path.trim()) return null;
+  const value = path.trim();
+  if (!value.startsWith("/")) return null;
+  if (value.startsWith("//")) return null;
+  if (value.length > 400) return null;
+  return value;
+}
+
+function buildRedirectTarget(req: NextRequest, status: "linkedin_connected" | "linkedin_denied", redirectPath?: string | null) {
+  const fallback = new URL(`/dashboard/social?oauth=${status}`, req.nextUrl.origin);
+  const safe = sanitizeRedirectPath(redirectPath);
+  if (!safe) return fallback;
+
+  const target = new URL(safe, req.nextUrl.origin);
+  target.searchParams.set("oauth", status);
+  return target;
 }
 
 function resolveRedirectUri(req: NextRequest) {
@@ -56,12 +76,14 @@ function pickLegacyPictureUrl(payload: unknown): string | null {
 export async function GET(req: NextRequest) {
   const error = req.nextUrl.searchParams.get("error");
   const state = parseState(req.nextUrl.searchParams.get("state"));
-  const userId = req.headers.get("x-user-id") ?? state?.userId ?? null;
-  const shouldRedirect = req.nextUrl.searchParams.get("redirect") === "1" || state?.redirect;
+  const authUserId = await getAuthUserId(req);
+  const userId = authUserId ?? req.headers.get("x-user-id") ?? state?.userId ?? null;
+  const redirectPath = sanitizeRedirectPath(req.nextUrl.searchParams.get("redirectPath")) ?? sanitizeRedirectPath(state?.redirectPath);
+  const shouldRedirect = req.nextUrl.searchParams.get("redirect") === "1" || state?.redirect || Boolean(redirectPath);
 
   if (!userId) {
     if (shouldRedirect) {
-      return NextResponse.redirect(new URL("/dashboard/social?oauth=linkedin_denied", req.nextUrl.origin));
+      return NextResponse.redirect(buildRedirectTarget(req, "linkedin_denied", redirectPath));
     }
     return jsonError("UNAUTHENTICATED", "Sign in required", 401);
   }
@@ -69,7 +91,7 @@ export async function GET(req: NextRequest) {
   if (error) {
     await runtimeMarkOAuthFailure(userId, "linkedin_profile", "LINKEDIN_OAUTH_DENIED");
     if (shouldRedirect) {
-      return NextResponse.redirect(new URL("/dashboard/social?oauth=linkedin_denied", req.nextUrl.origin));
+      return NextResponse.redirect(buildRedirectTarget(req, "linkedin_denied", redirectPath));
     }
     return jsonError("LINKEDIN_OAUTH_DENIED", "LinkedIn OAuth was denied", 401);
   }
@@ -183,7 +205,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (shouldRedirect) {
-    return NextResponse.redirect(new URL("/dashboard/social?oauth=linkedin_connected", req.nextUrl.origin));
+    return NextResponse.redirect(buildRedirectTarget(req, "linkedin_connected", redirectPath));
   }
 
   return jsonOk({
