@@ -55,6 +55,20 @@ person_profiles:"identified_only"
 }
 
 const posthogInitScript = buildPosthogInitScript(posthogProjectApiKey, posthogHost);
+const clerkLocalization = {
+  signIn: {
+    start: {
+      title: `Sign in to ${BRAND_NAME}`,
+      subtitle: "Welcome back! Please sign in to continue",
+    },
+  },
+  signUp: {
+    start: {
+      title: `Create your ${BRAND_NAME} account`,
+      subtitle: "Please fill in the details to get started",
+    },
+  },
+};
 
 function buildFbPixelScript(pixelId: string) {
   if (!pixelId) return "";
@@ -161,7 +175,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             />
           </noscript>
         ) : null}
-        <ClerkProvider clerkJSUrl={clerkJsUrl}>
+        <ClerkProvider clerkJSUrl={clerkJsUrl} localization={clerkLocalization}>
           <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
           <Script src="/gemini-runtime.js" strategy="afterInteractive" />
           {children}
