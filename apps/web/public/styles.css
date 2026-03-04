@@ -643,13 +643,7 @@ footer .container > div.flex.items-center.gap-4 i {
 }
 
 #theme-toggle {
-  z-index: 120 !important;
-}
-
-:root[data-theme="light"] #theme-toggle {
-  color: #0f172a !important;
-  background: rgba(255, 255, 255, 0.95) !important;
-  border-color: rgba(148, 163, 184, 0.45) !important;
+  display: none !important;
 }
 
 :root[data-theme="light"] body[data-path="/"] .inline-flex.items-center.gap-2.px-3.py-1.rounded-full.border.border-cyan-500\/40.bg-cyan-500\/10.text-cyan-300.text-sm.font-medium.mb-6 {

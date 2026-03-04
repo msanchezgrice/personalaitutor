@@ -5,22 +5,11 @@ export const themeBootScript = `
     document.documentElement.setAttribute("data-path", p);
     document.documentElement.setAttribute("data-runtime-ready", "0");
 
-    var ai = localStorage.getItem("ai_theme");
-    var legacy = localStorage.getItem("theme");
-    var t = "light";
-    if (ai === "light" || ai === "dark") {
-      t = ai;
-    } else if (legacy === "light") {
-      t = "light";
-    }
+    document.documentElement.setAttribute("data-theme", "light");
+    document.documentElement.style.colorScheme = "light";
+    document.documentElement.style.backgroundColor = "#f8fafc";
 
-    localStorage.setItem("theme", t);
-    localStorage.setItem("ai_theme", t);
-    document.documentElement.setAttribute("data-theme", t);
-    document.documentElement.style.colorScheme = t === "dark" ? "dark" : "light";
-    document.documentElement.style.backgroundColor = t === "dark" ? "#0f111a" : "#f8fafc";
-
-    var needsGate = p.indexOf("/dashboard") === 0 || p.indexOf("/u/") === 0 || p.indexOf("/employers/talent") === 0;
+    var needsGate = p.indexOf("/dashboard") === 0 || p.indexOf("/u/") === 0 || p === "/employers/talent";
     if (needsGate) {
       var s = document.createElement("style");
       s.id = "runtime-gate";
@@ -42,6 +31,7 @@ export const themeBootScript = `
   } catch (e) {
     document.documentElement.setAttribute("data-theme", "light");
     document.documentElement.style.colorScheme = "light";
+    document.documentElement.style.backgroundColor = "#f8fafc";
     document.documentElement.setAttribute("data-runtime-ready", "1");
   }
 })();

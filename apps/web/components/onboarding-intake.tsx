@@ -19,15 +19,13 @@ type OnboardingStartPayload = {
   error?: { message?: string };
 };
 
-type AssessmentStartPayload = {
+type OnboardingCompletePayload = {
   ok: boolean;
-  assessment?: { id: string };
-  error?: { message?: string };
-};
-
-type AssessmentSubmitPayload = {
-  ok: boolean;
-  assessment?: { score: number; recommendedCareerPathIds: string[] };
+  session?: { id: string; userId: string };
+  assessment?: { id: string; score: number; recommendedCareerPathIds: string[] };
+  signedIn?: boolean;
+  claimed?: boolean;
+  user?: { id: string; handle: string; name: string; avatarUrl?: string | null } | null;
   error?: { message?: string };
 };
 
@@ -394,25 +392,6 @@ async function postJson<T>(url: string, body: Record<string, unknown>): Promise<
   return data;
 }
 
-async function getJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, {
-    method: "GET",
-    headers: {
-      "cache-control": "no-store",
-    },
-    credentials: "same-origin",
-  });
-  const data = (await res.json().catch(() => ({}))) as T & { ok?: boolean; error?: { message?: string } };
-  if (!res.ok || !data || (typeof data === "object" && "ok" in data && !data.ok)) {
-    const message =
-      data && typeof data === "object" && "error" in data && data.error?.message
-        ? data.error.message
-        : "Request failed";
-    throw new Error(message);
-  }
-  return data;
-}
-
 export function OnboardingIntake() {
   const [step, setStep] = useState<Step>(1);
   const [busy, setBusy] = useState(false);
@@ -684,7 +663,15 @@ export function OnboardingIntake() {
     try {
       const session = await ensureSession();
 
-      await postJson("/api/onboarding/career-import", {
+      const answers = [
+        { questionId: "career_experience", value: selectedExperience.score },
+        { questionId: "ai_comfort", value: aiComfort },
+        { questionId: "daily_work_complexity", value: Math.min(5, Math.max(1, Math.ceil(dailyWorkSummary.trim().length / 70))) },
+        { questionId: "linkedin_context", value: linkedinUrl.trim() ? 5 : 2 },
+        { questionId: "resume_context", value: uploadedResumeName || resumeFile ? 4 : 2 },
+      ];
+
+      const completed = await postJson<OnboardingCompletePayload>("/api/onboarding/complete", {
         sessionId: session.id,
         careerPathId: selectedCareer.path,
         careerCategoryLabel: selectedCareerLabel,
@@ -696,37 +683,13 @@ export function OnboardingIntake() {
         aiComfort,
         linkedinUrl: linkedinUrl.trim() || null,
         resumeFilename: uploadedResumeName ?? resumeFile?.name ?? null,
-      });
-
-      await postJson("/api/onboarding/situation", {
-        sessionId: session.id,
         situation,
         goals: selectedGoals,
-      });
-
-      const assessmentStart = await postJson<AssessmentStartPayload>("/api/assessment/start", {
-        sessionId: session.id,
-      });
-
-      if (!assessmentStart.assessment?.id) {
-        throw new Error("Unable to start assessment");
-      }
-
-      const answers = [
-        { questionId: "career_experience", value: selectedExperience.score },
-        { questionId: "ai_comfort", value: aiComfort },
-        { questionId: "daily_work_complexity", value: Math.min(5, Math.max(1, Math.ceil(dailyWorkSummary.trim().length / 70))) },
-        { questionId: "linkedin_context", value: linkedinUrl.trim() ? 5 : 2 },
-        { questionId: "resume_context", value: uploadedResumeName || resumeFile ? 4 : 2 },
-      ];
-
-      const assessmentSubmit = await postJson<AssessmentSubmitPayload>("/api/assessment/submit", {
-        assessmentId: assessmentStart.assessment.id,
         answers,
       });
 
-      const score = assessmentSubmit.assessment?.score ?? 0;
-      const recommended = assessmentSubmit.assessment?.recommendedCareerPathIds ?? [];
+      const score = completed.assessment?.score ?? 0;
+      const recommended = completed.assessment?.recommendedCareerPathIds ?? [];
       setAssessmentScore(score);
       setRecommendedPaths(recommended);
       if (!quizCompleteFired.current) {
@@ -735,20 +698,7 @@ export function OnboardingIntake() {
       }
       setStep(5);
 
-      let isSignedIn = false;
-      try {
-        await getJson("/api/auth/session");
-        isSignedIn = true;
-      } catch {
-        isSignedIn = false;
-      }
-
-      if (isSignedIn) {
-        try {
-          await postJson("/api/onboarding/claim", { sessionId: session.id });
-        } catch {
-          // Non-blocking on direct signed-in onboarding.
-        }
+      if (completed.signedIn) {
         setNextRedirectHref(`/dashboard/?welcome=1&onboardingSessionId=${encodeURIComponent(session.id)}`);
         setNextRedirectLabel("Open Dashboard");
         return;
@@ -788,17 +738,6 @@ export function OnboardingIntake() {
       className="relative min-h-screen bg-[var(--bg-dark)] text-[var(--text-main)] overflow-x-hidden px-4 py-10 md:px-6"
       data-onboarding-react-root="1"
     >
-      <div className="fixed top-4 right-4 z-[100]">
-        <button
-          id="theme-toggle"
-          type="button"
-          aria-label="Toggle dark mode"
-          className="btn bg-white/10 hover:bg-white/20 text-white border border-white/10 px-3 py-2 rounded-lg flex items-center justify-center transition-colors"
-        >
-          <i className="fa-solid fa-sun" id="theme-icon" />
-        </button>
-      </div>
-
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-8">
           <a href="/" className="inline-flex items-center gap-3 mb-5">

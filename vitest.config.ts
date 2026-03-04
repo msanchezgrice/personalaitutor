@@ -5,5 +5,8 @@ export default defineConfig({
     include: ["tests/**/*.test.ts"],
     environment: "node",
     globals: true,
+    env: {
+      PERSISTENCE_MODE: "memory",
+    },
   },
 });

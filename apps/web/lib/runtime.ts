@@ -59,11 +59,15 @@ type PersistenceMode = "memory" | "supabase";
 function mode(): PersistenceMode {
   const explicit = process.env.PERSISTENCE_MODE?.toLowerCase();
   if (explicit === "supabase" || explicit === "memory") return explicit;
+  if (explicit) {
+    throw new Error("PERSISTENCE_MODE_INVALID");
+  }
   const hasSupabaseCreds = Boolean(
     (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) &&
       (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY),
   );
-  return hasSupabaseCreds ? "supabase" : "memory";
+  if (hasSupabaseCreds) return "supabase";
+  throw new Error("PERSISTENCE_MODE_REQUIRED");
 }
 
 let cachedClient: SupabaseClient | null = null;
@@ -1891,46 +1895,6 @@ function socialShareUrl(platform: SocialPlatform, text: string) {
     : `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
 }
 
-function fallbackSocialIdeas(input: {
-  profile: UserProfile;
-  project: Project | null;
-  targetUrl: string;
-}): {
-  linkedin: string;
-  x: string;
-  contextLabel: string;
-} {
-  const headline = input.profile.headline?.trim() || "AI Builder";
-  const firstGoal = input.profile.goals?.[0];
-  const goalText = firstGoal ? ` Goal focus: ${firstGoal.replace(/_/g, " ")}.` : "";
-
-  if (input.project) {
-    return {
-      linkedin: sanitizeSocialText(
-        `Shipped ${input.project.title} with ${BRAND_NAME}. Verified build log + artifacts are now public.${goalText}`,
-        input.targetUrl,
-      ),
-      x: sanitizeSocialText(
-        `Just shipped ${input.project.title} with ${BRAND_NAME}. ${headline} building in public.${goalText}`,
-        input.targetUrl,
-      ),
-      contextLabel: `Project: ${input.project.title}`,
-    };
-  }
-
-  return {
-    linkedin: sanitizeSocialText(
-      `Building AI-native skills with ${BRAND_NAME}. Sharing practical proof, not just claims.${goalText}`,
-      input.targetUrl,
-    ),
-    x: sanitizeSocialText(
-      `Building in public with ${BRAND_NAME}. Shipping real AI work and sharing proof.${goalText}`,
-      input.targetUrl,
-    ),
-    contextLabel: "Profile momentum",
-  };
-}
-
 function extractOpenAiOutputText(data: {
   output_text?: string;
   output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
@@ -2022,23 +1986,12 @@ export async function runtimeGenerateSocialIdeas(input: {
     memorySignals.push(`events:${summary.latestEvents.slice(0, 2).map((entry) => entry.message).join(" | ")}`);
   }
 
-  const fallback = fallbackSocialIdeas({
-    profile: summary.user,
-    project: chosenProject,
-    targetUrl,
-  });
-
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
     return {
-      ok: true as const,
-      source: "fallback" as const,
-      ideas: {
-        linkedin: fallback.linkedin,
-        x: fallback.x,
-        contextLabel: fallback.contextLabel,
-        targetUrl,
-      },
+      ok: false as const,
+      errorCode: "OPENAI_CONFIG_MISSING",
+      ideas: null,
       memorySignals,
     };
   }
@@ -2115,16 +2068,14 @@ export async function runtimeGenerateSocialIdeas(input: {
       },
       memorySignals,
     };
-  } catch {
+  } catch (error) {
     return {
-      ok: true as const,
-      source: "fallback" as const,
-      ideas: {
-        linkedin: fallback.linkedin,
-        x: fallback.x,
-        contextLabel: fallback.contextLabel,
-        targetUrl,
-      },
+      ok: false as const,
+      errorCode:
+        error instanceof Error && error.message.startsWith("OPENAI_RESPONSE_FAILED")
+          ? "OPENAI_SOCIAL_PROVIDER_FAILED"
+          : "OPENAI_SOCIAL_FAILED",
+      ideas: null,
       memorySignals,
     };
   }
@@ -2323,6 +2274,43 @@ export async function runtimeMarkOAuthFailure(userId: string, platform: "linkedi
   };
 }
 
+export async function runtimeQueueAgentMemoryRefreshJob(input: { userId: string; reason?: string }) {
+  if (mode() === "memory") {
+    return { ok: true as const, queued: false, jobId: null, errorCode: null };
+  }
+
+  const profile = await runtimeFindUserById(input.userId);
+  if (!profile) {
+    return { ok: false as const, queued: false, jobId: null, errorCode: "USER_NOT_FOUND" };
+  }
+
+  const supabase = getSupabaseAdmin();
+  const { data: existing } = await supabase
+    .from("agent_jobs")
+    .select("id")
+    .eq("learner_profile_id", profile.id)
+    .eq("type", "memory.refresh")
+    .in("status", ["queued", "claimed", "running"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing?.id) {
+    return { ok: true as const, queued: false, jobId: existing.id, errorCode: null };
+  }
+
+  const jobId = await createJob({
+    userId: profile.id,
+    projectId: null,
+    type: "memory.refresh",
+    payload: {
+      reason: input.reason ?? "manual_request",
+    },
+  });
+
+  return { ok: true as const, queued: true, jobId, errorCode: null };
+}
+
 export async function runtimeRefreshRelevantNews(options?: { forceFailCode?: string }) {
   if (mode() === "memory") return memRefreshRelevantNews(options);
   if (options?.forceFailCode) {
@@ -2361,6 +2349,14 @@ export async function runtimeRefreshRelevantNews(options?: { forceFailCode?: str
 
   await supabase.from("news_insights").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await supabase.from("news_insights").insert(rows);
+
+  const { data: profiles } = await supabase.from("learner_profiles").select("id");
+  for (const profile of profiles ?? []) {
+    await runtimeQueueAgentMemoryRefreshJob({
+      userId: profile.id,
+      reason: "news_refresh",
+    });
+  }
 
   return {
     ok: true as const,

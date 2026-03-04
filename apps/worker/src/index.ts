@@ -253,6 +253,100 @@ async function processArtifactJob(job: ClaimedJob) {
   await incrementTokens(job.learner_profile_id, 950);
 }
 
+async function processMemoryRefreshJob(job: ClaimedJob) {
+  if (!job.learner_profile_id) return;
+
+  const supabase = supabaseAdmin();
+  const userId = job.learner_profile_id;
+  const now = nowIso();
+
+  const { data: profile } = await supabase
+    .from("learner_profiles")
+    .select("id,handle,full_name,headline,career_path_id,goals,tools,updated_at")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (!profile) {
+    throw new Error("MEMORY_REFRESH_PROFILE_NOT_FOUND");
+  }
+
+  const { data: skills } = await supabase
+    .from("user_skill_evidence")
+    .select("skill_name,status,score,evidence_count,updated_at")
+    .eq("learner_profile_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(8);
+
+  const { data: projects } = await supabase
+    .from("projects")
+    .select("id,slug,title,state,updated_at")
+    .eq("learner_profile_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(5);
+
+  const { data: events } = await supabase
+    .from("agent_job_events")
+    .select("event_type,message,created_at")
+    .eq("learner_profile_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  const { data: news } = await supabase
+    .from("news_insights")
+    .select("id,title,url,published_at")
+    .order("published_at", { ascending: false })
+    .limit(3);
+
+  const memoryValue = {
+    refreshedAt: now,
+    profile: {
+      id: profile.id,
+      handle: profile.handle,
+      name: profile.full_name,
+      headline: profile.headline,
+      careerPathId: profile.career_path_id,
+      goals: profile.goals ?? [],
+      tools: profile.tools ?? [],
+      profileUpdatedAt: profile.updated_at,
+    },
+    topSkills: (skills ?? []).map((skill) => ({
+      skill: skill.skill_name,
+      status: skill.status,
+      score: Number(skill.score ?? 0),
+      evidenceCount: Number(skill.evidence_count ?? 0),
+      updatedAt: skill.updated_at ?? null,
+    })),
+    recentProjects: (projects ?? []).map((project) => ({
+      id: project.id,
+      slug: project.slug,
+      title: project.title,
+      state: project.state,
+      updatedAt: project.updated_at,
+    })),
+    recentEvents: (events ?? []).map((event) => ({
+      type: event.event_type,
+      message: event.message,
+      createdAt: event.created_at,
+    })),
+    recentNews: (news ?? []).map((entry) => ({
+      id: entry.id,
+      title: entry.title,
+      url: entry.url,
+      publishedAt: entry.published_at,
+    })),
+  };
+
+  await supabase.from("agent_memory").upsert(
+    {
+      learner_profile_id: userId,
+      memory_key: "refresh_slot",
+      memory_value: memoryValue,
+      refreshed_at: now,
+    },
+    { onConflict: "learner_profile_id,memory_key" },
+  );
+}
+
 async function scheduleRetryOrFail(job: ClaimedJob, failureCode: string) {
   const supabase = supabaseAdmin();
   const attempts = Number(job.attempts ?? 1);
@@ -333,6 +427,10 @@ async function processClaimedJob(job: ClaimedJob) {
 
   if (job.type === "project.generate_website" || job.type === "project.generate_artifact") {
     await processArtifactJob(job);
+  }
+
+  if (job.type === "memory.refresh") {
+    await processMemoryRefreshJob(job);
   }
 
   await setJobStatus(job, "completed", { lease_until: null, last_error_code: null });
@@ -471,8 +569,67 @@ async function createDailyUpdateForDefaultUser() {
   console.log("[worker] daily update sent");
 }
 
+async function queueMemoryRefreshJobs() {
+  const supabase = supabaseAdmin();
+  const { data: profiles } = await supabase
+    .from("learner_profiles")
+    .select("id")
+    .order("updated_at", { ascending: false })
+    .limit(60);
+
+  if (!profiles?.length) {
+    console.log("[worker] memory refresh skipped: no profiles");
+    return;
+  }
+
+  let queuedCount = 0;
+  for (const profile of profiles) {
+    const { data: existing } = await supabase
+      .from("agent_jobs")
+      .select("id")
+      .eq("learner_profile_id", profile.id)
+      .eq("type", "memory.refresh")
+      .in("status", ["queued", "claimed", "running"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existing?.id) continue;
+
+    const jobId = randomUUID();
+    await supabase.from("agent_jobs").insert({
+      id: jobId,
+      learner_profile_id: profile.id,
+      project_id: null,
+      type: "memory.refresh",
+      payload: {
+        reason: "scheduler_refresh_slot",
+      },
+      status: "queued",
+      attempts: 0,
+      max_attempts: 3,
+    });
+
+    await insertJobEvent({
+      jobId,
+      userId: profile.id,
+      projectId: null,
+      type: "job.queued",
+      message: "memory.refresh queued",
+      payload: {
+        reason: "scheduler_refresh_slot",
+      },
+    });
+
+    queuedCount += 1;
+  }
+
+  console.log(`[worker] memory refresh jobs queued: ${queuedCount}`);
+}
+
 async function runSchedulers() {
   await refreshRelevantNews();
+  await queueMemoryRefreshJobs();
   await createDailyUpdateForDefaultUser();
 }
 

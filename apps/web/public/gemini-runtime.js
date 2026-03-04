@@ -8,15 +8,27 @@
   }
   var CTX_KEY = "ai_tutor_user_ctx_v1";
   var isDashboardPath = currentPath === "/dashboard" || currentPath.indexOf("/dashboard/") === 0;
+  var isTalentListPath = currentPath === "/employers/talent";
+  var isTalentDetailPath = currentPath.indexOf("/employers/talent/") === 0 && !isTalentListPath;
   var DASHBOARD_SUMMARY_CACHE_PREFIX = "ai_tutor_dashboard_summary_v2:";
   var DASHBOARD_SNAPSHOT_CACHE_PREFIX = "ai_tutor_dashboard_snapshot_v2:";
+  var AUTH_SESSION_CACHE_PREFIX = "ai_tutor_auth_session_v1:";
   var SOCIAL_DRAFTS_CACHE_PREFIX = "ai_tutor_social_drafts_v1:";
   var SUMMARY_CACHE_TTL_MS = 120000;
+  var AUTH_SESSION_CACHE_TTL_MS = 45000;
   var SNAPSHOT_CACHE_TTL_MS = 1800000;
   var SOCIAL_DRAFTS_CACHE_TTL_MS = 600000;
   var SIGN_UP_INTENT_KEY = "ai_tutor_clerk_signup_intent_v1";
   var PENDING_ONBOARDING_SESSION_KEY = "ai_tutor_pending_onboarding_session_v1";
   var ONBOARDING_ASSESSMENT_FUNNEL = "onboarding_assessment";
+
+  if (isTalentDetailPath) {
+    document.documentElement.setAttribute("data-theme", "light");
+    document.documentElement.style.colorScheme = "light";
+    document.documentElement.style.backgroundColor = "#f8fafc";
+    document.documentElement.setAttribute("data-runtime-ready", "1");
+    return;
+  }
 
   function normalizedPath(pathname) {
     return (pathname || "/").replace(/\/+$/, "") || "/";
@@ -266,6 +278,27 @@
     return String(ctx.userId);
   }
 
+  function authSessionCacheKey() {
+    var scope = cacheScope();
+    if (!scope) return null;
+    return AUTH_SESSION_CACHE_PREFIX + scope;
+  }
+
+  function readAuthSessionCache() {
+    var key = authSessionCacheKey();
+    if (!key) return null;
+    var payload = readSessionObject(key);
+    if (!payload || !payload.ts || !payload.data) return null;
+    if (Date.now() - Number(payload.ts) > AUTH_SESSION_CACHE_TTL_MS) return null;
+    return payload.data;
+  }
+
+  function writeAuthSessionCache(data) {
+    var key = authSessionCacheKey();
+    if (!key || !data) return;
+    writeSessionObject(key, { ts: Date.now(), data: data });
+  }
+
   function isNarrowViewport() {
     if (!window || typeof window.matchMedia !== "function") {
       return window.innerWidth <= 1024;
@@ -371,10 +404,7 @@
     if (typeof payload.mainClass === "string" && payload.mainClass) main.className = payload.mainClass;
     aside.innerHTML = payload.asideHtml;
     main.innerHTML = payload.mainHtml;
-    if (payload.theme === "dark" || payload.theme === "light") {
-      document.documentElement.setAttribute("data-theme", payload.theme);
-      document.documentElement.style.colorScheme = payload.theme === "dark" ? "dark" : "light";
-    }
+    enforceLightTheme();
     document.documentElement.setAttribute("data-runtime-ready", "1");
     captureEvent("dashboard_snapshot_restored", { path: currentPath });
     return true;
@@ -582,101 +612,65 @@
     return Array.isArray(authRequiredPaths) && authRequiredPaths.indexOf(currentPath) !== -1;
   }
 
-  function readTheme() {
-    try {
-      var explicit = window.localStorage.getItem("ai_theme");
-      if (explicit === "light" || explicit === "dark") return explicit;
-      var legacy = window.localStorage.getItem("theme");
-      if (legacy === "light") return "light";
-    } catch {
-      return "light";
-    }
-    return "light";
+  function enforceLightTheme() {
+    document.documentElement.setAttribute("data-theme", "light");
+    document.documentElement.style.colorScheme = "light";
+    document.documentElement.style.backgroundColor = "#f8fafc";
   }
 
-  function persistTheme(theme) {
-    try {
-      window.localStorage.setItem("ai_theme", theme);
-      window.localStorage.setItem("theme", theme);
-    } catch {
-      return null;
-    }
-  }
-
-  function syncThemeToggleUi(theme) {
-    var icon = document.getElementById("theme-icon");
+  function wireThemeToggle() {
+    enforceLightTheme();
     var toggle = document.getElementById("theme-toggle");
-    if (icon) {
-      icon.classList.remove("fa-sun", "fa-moon");
-      icon.classList.add(theme === "light" ? "fa-moon" : "fa-sun");
-    }
     if (toggle) {
-      if (theme === "light") {
-        toggle.classList.remove("text-white", "border-white/10", "bg-white/10", "hover:bg-white/20");
-        toggle.classList.add("text-gray-800", "border-gray-300", "bg-white", "hover:bg-gray-100");
-      } else {
-        toggle.classList.remove("text-gray-800", "border-gray-300", "bg-white", "hover:bg-gray-100");
-        toggle.classList.add("text-white", "border-white/10", "bg-white/10", "hover:bg-white/20");
-      }
+      toggle.remove();
     }
-  }
-
-  function wireThemeToggle(attempt) {
-    var themeToggle = document.getElementById("theme-toggle");
-    if (!themeToggle) {
-      if ((attempt || 0) < 6) {
-        window.setTimeout(function () {
-          wireThemeToggle((attempt || 0) + 1);
-        }, 120);
-      }
-      return;
-    }
-
-    var current = readTheme();
-    document.documentElement.setAttribute("data-theme", current);
-    syncThemeToggleUi(current);
-
-    themeToggle.addEventListener("click", function () {
-      var theme = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
-      document.documentElement.setAttribute("data-theme", theme);
-      persistTheme(theme);
-      syncThemeToggleUi(theme);
-      captureEvent("theme_toggled", { theme: theme });
-    });
   }
 
   async function syncAuthContext() {
     if (!needsAuth()) return null;
-    var data = await getJson("/api/auth/session");
-    if (!data || !data.auth) return null;
-    var incomingUserId = data.auth.userId || null;
-    if (incomingUserId && ctx.userId && incomingUserId !== ctx.userId) {
-      ctx.sessionId = null;
-      ctx.projectId = null;
-      ctx.handle = null;
+    var applyAuthData = function (data, source) {
+      if (!data || !data.auth) return null;
+      var incomingUserId = data.auth.userId || null;
+      if (incomingUserId && ctx.userId && incomingUserId !== ctx.userId) {
+        ctx.sessionId = null;
+        ctx.projectId = null;
+        ctx.handle = null;
+      }
+      ctx.userId = incomingUserId || ctx.userId;
+      if (data.auth.name) ctx.name = data.auth.name;
+      if (data.auth.avatarUrl) ctx.avatarUrl = data.auth.avatarUrl;
+      if (data.auth.email) ctx.email = data.auth.email;
+      if (data.summary && data.summary.user && data.summary.user.handle) {
+        ctx.handle = data.summary.user.handle;
+        ctx.headline = headlineForUser(data.summary.user);
+        if (data.summary.user.avatarUrl) ctx.avatarUrl = data.summary.user.avatarUrl;
+      }
+      if (data.summary) {
+        writeDashboardSummaryCache(data.summary);
+      }
+      saveCtx(ctx);
+      identifyPosthogUser();
+      maybeTrackSignUpCompletion("sync_auth_context");
+      captureEvent("auth_session_synced", {
+        scope: "required_path",
+        has_summary: Boolean(data.summary),
+        source: source || "network",
+      });
+      hasAppliedAuthCtx = true;
+      applyCtxImmediately();
+      return data;
+    };
+
+    var cached = readAuthSessionCache();
+    if (cached) {
+      applyAuthData(cached, "session_cache");
+      return cached;
     }
-    ctx.userId = incomingUserId || ctx.userId;
-    if (data.auth.name) ctx.name = data.auth.name;
-    if (data.auth.avatarUrl) ctx.avatarUrl = data.auth.avatarUrl;
-    if (data.auth.email) ctx.email = data.auth.email;
-    if (data.summary && data.summary.user && data.summary.user.handle) {
-      ctx.handle = data.summary.user.handle;
-      ctx.headline = headlineForUser(data.summary.user);
-      if (data.summary.user.avatarUrl) ctx.avatarUrl = data.summary.user.avatarUrl;
-    }
-    if (data.summary) {
-      writeDashboardSummaryCache(data.summary);
-    }
-    saveCtx(ctx);
-    identifyPosthogUser();
-    maybeTrackSignUpCompletion("sync_auth_context");
-    captureEvent("auth_session_synced", {
-      scope: "required_path",
-      has_summary: Boolean(data.summary),
-    });
-    hasAppliedAuthCtx = true;
-    applyCtxImmediately();
-    return data;
+
+    var fresh = await getJson("/api/auth/session");
+    if (!fresh || !fresh.auth) return null;
+    writeAuthSessionCache(fresh);
+    return applyAuthData(fresh, "network");
   }
 
   async function maybeClaimOnboardingSession() {
@@ -1131,17 +1125,6 @@
     var cached = readDashboardSummaryCache();
     if (cached) {
       captureEvent("dashboard_summary_cache_hit", { source: "session_storage" });
-      void (async function refreshDashboardSummary() {
-        try {
-          var fresh = await getJson("/api/dashboard/summary");
-          if (fresh && fresh.summary) {
-            writeDashboardSummaryCache(fresh.summary);
-            captureEvent("dashboard_summary_refreshed", { source: "network" });
-          }
-        } catch {
-          return null;
-        }
-      })();
       return cached;
     }
 
@@ -1379,7 +1362,7 @@
 
   function createBubble(html, isUser) {
     var wrapper = document.createElement("div");
-    var theme = document.documentElement.getAttribute("data-theme") || "dark";
+    var theme = document.documentElement.getAttribute("data-theme") || "light";
     wrapper.className = isUser
       ? "flex items-start justify-end gap-4 max-w-4xl ml-auto"
       : "flex items-start gap-4 max-w-4xl";
@@ -1644,71 +1627,35 @@
     }
 
     async function loadIdeas(showToastOnSuccess) {
-      try {
-        var ideaStart = performance.now();
-        var ideasResult = await postJson("/api/social/drafts/ideas", {
-          userId: ctx.userId,
-          projectId: primaryProject ? primaryProject.id : null,
-        });
-        var ideas = ideasResult.ideas || {};
-        draftState.linkedin = normalizeDraftText(ideas.linkedin || "");
-        draftState.x = normalizeDraftText(ideas.x || "");
-        draftState.contextLabel = normalizeDraftText(ideas.contextLabel || draftState.contextLabel || "Fresh ideas");
-        if (!draftState.linkedin || !draftState.x) {
-          throw new Error("Generated ideas were empty");
-        }
-        updateDraftInputs();
-        if (sourceNode) {
-          sourceNode.textContent = ideasResult.source === "llm" ? "Personalized with user memory" : "Generated from profile context";
-        }
-        if (showToastOnSuccess) {
-          toast(ideasResult.source === "llm" ? "Fresh social ideas ready." : "Fallback social ideas ready.", false);
-        }
-        writeSocialDraftCache(primaryProject ? primaryProject.id : null, {
-          linkedin: draftState.linkedin,
-          x: draftState.x,
-          contextLabel: draftState.contextLabel,
-          source: ideasResult.source === "llm" ? "llm" : "profile_context",
-        });
-        captureEvent("social_ideas_loaded", {
-          source: ideasResult.source === "llm" ? "llm" : "profile_context",
-          duration_ms: Math.round(performance.now() - ideaStart),
-        });
-        return;
-      } catch {
-        var fallbackStart = performance.now();
-        var fallback = await postJson("/api/social/drafts/generate", {
-          userId: ctx.userId,
-          projectId: primaryProject ? primaryProject.id : null,
-        });
-        var drafts = fallback.drafts || [];
-        var linkedInDraft = drafts.find(function (entry) {
-          return entry.platform === "linkedin";
-        });
-        var xDraft = drafts.find(function (entry) {
-          return entry.platform === "x";
-        });
-        draftState.linkedin = normalizeDraftText(linkedInDraft ? linkedInDraft.text : "");
-        draftState.x = normalizeDraftText(xDraft ? xDraft.text : "");
-        draftState.contextLabel = primaryProject ? "Project: " + primaryProject.title : "Profile momentum";
-        updateDraftInputs();
-        if (sourceNode) {
-          sourceNode.textContent = "Generated from template drafts";
-        }
-        if (showToastOnSuccess) {
-          toast("Drafts refreshed.", false);
-        }
-        writeSocialDraftCache(primaryProject ? primaryProject.id : null, {
-          linkedin: draftState.linkedin,
-          x: draftState.x,
-          contextLabel: draftState.contextLabel,
-          source: "template",
-        });
-        captureEvent("social_ideas_loaded", {
-          source: "template",
-          duration_ms: Math.round(performance.now() - fallbackStart),
-        });
+      var ideaStart = performance.now();
+      var ideasResult = await postJson("/api/social/drafts/ideas", {
+        userId: ctx.userId,
+        projectId: primaryProject ? primaryProject.id : null,
+      });
+      var ideas = ideasResult.ideas || {};
+      draftState.linkedin = normalizeDraftText(ideas.linkedin || "");
+      draftState.x = normalizeDraftText(ideas.x || "");
+      draftState.contextLabel = normalizeDraftText(ideas.contextLabel || draftState.contextLabel || "Fresh ideas");
+      if (!draftState.linkedin || !draftState.x) {
+        throw new Error("Generated ideas were empty");
       }
+      updateDraftInputs();
+      if (sourceNode) {
+        sourceNode.textContent = ideasResult.source === "llm" ? "Personalized with user memory" : "Generated from profile context";
+      }
+      if (showToastOnSuccess) {
+        toast("Fresh social ideas ready.", false);
+      }
+      writeSocialDraftCache(primaryProject ? primaryProject.id : null, {
+        linkedin: draftState.linkedin,
+        x: draftState.x,
+        contextLabel: draftState.contextLabel,
+        source: ideasResult.source === "llm" ? "llm" : "profile_context",
+      });
+      captureEvent("social_ideas_loaded", {
+        source: ideasResult.source === "llm" ? "llm" : "profile_context",
+        duration_ms: Math.round(performance.now() - ideaStart),
+      });
     }
 
     if (linkedInEditButton) {
@@ -1792,11 +1739,16 @@
       updateDraftInputs();
       if (sourceNode) sourceNode.textContent = cachedDrafts.source === "llm" ? "Cached personalized ideas" : "Cached draft ideas";
       captureEvent("social_ideas_cache_hit", { source: cachedDrafts.source || "cached" });
-      void loadIdeas(false);
+      void loadIdeas(false).catch(function (err) {
+        if (sourceNode) sourceNode.textContent = "Blocked: OpenAI social generation unavailable";
+        captureEvent("social_ideas_failed", { reason: err && err.message ? err.message : "unknown_error" });
+      });
     } else {
       try {
         await loadIdeas(false);
       } catch (err) {
+        if (sourceNode) sourceNode.textContent = "Blocked: OpenAI social generation unavailable";
+        captureEvent("social_ideas_failed", { reason: err && err.message ? err.message : "unknown_error" });
         toast(err instanceof Error ? err.message : "Failed to generate social ideas", true);
       }
     }
@@ -2262,26 +2214,56 @@
 
     var selectedSkill = null;
     var selectedStatus = "";
+    var allRows = null;
+    var facetsData = null;
 
     var skillSection = Array.prototype.find.call(document.querySelectorAll("aside .mb-6"), function (node) {
       return (node.textContent || "").indexOf("Filter by Skill") !== -1;
     });
 
-    async function loadRows() {
+    async function ensureTalentData() {
+      if (allRows && facetsData) return;
       if (!grid.dataset.initialized) {
         grid.dataset.initialized = "1";
         grid.innerHTML =
           '<div class="glass p-6 rounded-2xl border border-white/10 text-gray-400">Loading talent profiles...</div>';
       }
-      var params = new URLSearchParams();
-      if (selectedSkill) params.set("skill", selectedSkill);
-      if (selectedStatus) params.set("status", selectedStatus);
-      if (search && search.value.trim()) params.set("q", search.value.trim());
+      var baseData = await getJson("/api/employers/talent");
+      allRows = baseData.rows || [];
+      facetsData = baseData.facets || {};
+    }
 
-      var data = await getJson("/api/employers/talent" + (params.toString() ? "?" + params.toString() : ""));
-      var rows = data.rows || [];
-      var facets = data.facets || {};
-      var isDefaultView = !selectedSkill && !selectedStatus && !(search && search.value.trim());
+    function filteredRows() {
+      var rows = (allRows || []).slice();
+      var query = search && search.value ? search.value.trim().toLowerCase() : "";
+      if (selectedSkill) {
+        rows = rows.filter(function (candidate) {
+          return Array.isArray(candidate.topSkills) && candidate.topSkills.indexOf(selectedSkill) !== -1;
+        });
+      }
+      if (selectedStatus) {
+        rows = rows.filter(function (candidate) {
+          return candidate.status === selectedStatus;
+        });
+      }
+      if (query) {
+        rows = rows.filter(function (candidate) {
+          var haystack = (
+            String(candidate.handle || "") +
+            " " +
+            String(candidate.name || "") +
+            " " +
+            String(candidate.role || "") +
+            " " +
+            ((candidate.topSkills || []).join(" ")) +
+            " " +
+            ((candidate.topTools || []).join(" "))
+          ).toLowerCase();
+          return haystack.indexOf(query) !== -1;
+        });
+      }
+
+      var isDefaultView = !selectedSkill && !selectedStatus && !query;
       if (isDefaultView) {
         rows = rows
           .filter(function (candidate) {
@@ -2289,6 +2271,12 @@
           })
           .slice(0, 20);
       }
+      return rows;
+    }
+
+    async function loadRows() {
+      await ensureTalentData();
+      var rows = filteredRows();
 
       if (header) {
         header.textContent = rows.length + " Candidates Match Criteria";
@@ -2300,12 +2288,12 @@
         selected_status: selectedStatus || "",
       });
 
-      if (skillSection && facets.skills && facets.skills.length) {
+      if (skillSection && facetsData.skills && facetsData.skills.length) {
         var list = skillSection.querySelector(".space-y-2");
         if (list && !list.dataset.hydrated) {
           list.dataset.hydrated = "1";
           list.innerHTML = "";
-          facets.skills.slice(0, 8).forEach(function (skill, index) {
+          facetsData.skills.slice(0, 8).forEach(function (skill, index) {
             var id = "skill-filter-" + index;
             var label = document.createElement("label");
             label.className = "flex items-center gap-3 text-gray-300 hover:text-white cursor-pointer group";

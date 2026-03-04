@@ -10,7 +10,7 @@ type SocialMediaComposerProps = {
   initialLinkedin: string;
   initialTweet: string;
   initialContext: string;
-  initialSource: "llm" | "fallback";
+  initialSource: "llm" | "profile_context";
 };
 
 type SocialIdeasResponse = {
@@ -21,18 +21,7 @@ type SocialIdeasResponse = {
     contextLabel: string;
     targetUrl: string;
   };
-  source?: "llm" | "fallback";
-  error?: {
-    message?: string;
-  };
-};
-
-type SocialDraftsResponse = {
-  ok: boolean;
-  drafts?: Array<{
-    platform: "linkedin" | "x";
-    text: string;
-  }>;
+  source?: "llm" | "profile_context";
   error?: {
     message?: string;
   };
@@ -89,7 +78,6 @@ export function SocialMediaComposer(props: SocialMediaComposerProps) {
 
   const userQuery = encodeURIComponent(props.userId);
   const ideasUrl = `/api/social/drafts/ideas?userId=${userQuery}`;
-  const draftsUrl = `/api/social/drafts/generate?userId=${userQuery}`;
 
   async function refreshIdeas() {
     setRefreshing(true);
@@ -112,23 +100,9 @@ export function SocialMediaComposer(props: SocialMediaComposerProps) {
       setStatus("Social ideas refreshed.");
       setStatusError(false);
       return;
-    } catch {
-      try {
-        const fallback = await postJson<SocialDraftsResponse>(draftsUrl, {
-          projectId: props.projectId,
-        });
-        const linkedin = fallback.drafts?.find((entry) => entry.platform === "linkedin")?.text || "";
-        const tweet = fallback.drafts?.find((entry) => entry.platform === "x")?.text || "";
-        setLinkedinDraft(normalizeDraft(linkedin));
-        setTweetDraft(normalizeDraft(tweet));
-        setContextLabel(props.projectId ? props.initialContext : "Profile momentum");
-        setSourceLabel("Generated from template drafts");
-        setStatus("Refreshed with fallback templates.");
-        setStatusError(false);
-      } catch (error) {
-        setStatus(error instanceof Error ? error.message : "Failed to refresh social ideas.");
-        setStatusError(true);
-      }
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to refresh social ideas.");
+      setStatusError(true);
     } finally {
       setRefreshing(false);
     }
@@ -255,4 +229,3 @@ export function SocialMediaComposer(props: SocialMediaComposerProps) {
     </section>
   );
 }
-
