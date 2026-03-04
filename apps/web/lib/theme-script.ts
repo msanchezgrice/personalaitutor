@@ -25,11 +25,11 @@ export const themeBootScript = `
       var s = document.createElement("style");
       s.id = "runtime-gate";
       s.textContent =
-        'html[data-runtime-ready="0"][data-path^="/dashboard"] body > div:first-child{opacity:0!important;pointer-events:none!important}' +
+        'html[data-runtime-ready="0"][data-path^="/dashboard"] [data-gemini-shell="1"]{opacity:0!important;pointer-events:none!important}' +
         'html[data-runtime-ready="0"][data-path^="/dashboard"] aside,html[data-runtime-ready="0"][data-path^="/dashboard"] main{opacity:0!important}' +
         'html[data-runtime-ready="0"][data-path^="/u/"] main{opacity:0!important}' +
         'html[data-runtime-ready="0"][data-path^="/employers/talent"] .grid.md\\\\:grid-cols-2.lg\\\\:grid-cols-3.gap-6{opacity:0!important}' +
-        'html[data-runtime-ready="1"][data-path^="/dashboard"] body > div:first-child{transition:opacity 120ms ease-out;opacity:1!important;pointer-events:auto!important}' +
+        'html[data-runtime-ready="1"][data-path^="/dashboard"] [data-gemini-shell="1"]{transition:opacity 120ms ease-out;opacity:1!important;pointer-events:auto!important}' +
         'html[data-runtime-ready="1"][data-path^="/dashboard"] aside,html[data-runtime-ready="1"][data-path^="/dashboard"] main,html[data-runtime-ready="1"][data-path^="/u/"] main,html[data-runtime-ready="1"][data-path^="/employers/talent"] .grid.md\\\\:grid-cols-2.lg\\\\:grid-cols-3.gap-6{transition:opacity 120ms ease-out;opacity:1!important}';
       document.head.appendChild(s);
     }
@@ -38,7 +38,7 @@ export const themeBootScript = `
       if (document.documentElement.getAttribute("data-runtime-ready") !== "1") {
         document.documentElement.setAttribute("data-runtime-ready", "1");
       }
-    }, 10000);
+    }, 5000);
   } catch (e) {
     document.documentElement.setAttribute("data-theme", "light");
     document.documentElement.style.colorScheme = "light";

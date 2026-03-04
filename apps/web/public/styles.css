@@ -788,75 +788,108 @@ body[data-path="/"] .container.nav > a span {
 
 /* Mobile layout hardening */
 @media (max-width: 1024px) {
-  html[data-path^="/dashboard"] body > div:first-child,
-  body[data-path^="/dashboard"] > div:first-child {
+  html[data-path^="/dashboard"] [data-gemini-shell="1"],
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] {
     display: block !important;
     width: 100% !important;
     min-height: 100vh !important;
     overflow-x: hidden !important;
+    position: relative !important;
   }
 
-  html[data-path^="/dashboard"] body > div:first-child > aside,
-  body[data-path^="/dashboard"] > div:first-child > aside {
-    width: 100% !important;
-    height: auto !important;
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > aside,
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > aside {
+    width: min(86vw, 340px) !important;
+    height: 100vh !important;
     max-width: 100% !important;
-    border-right: 0 !important;
+    border-right: 1px solid rgba(148, 163, 184, 0.28) !important;
     border-left: 0 !important;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.28) !important;
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 30 !important;
+    border-bottom: 0 !important;
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    z-index: 90 !important;
+    overflow-y: auto !important;
+    transform: translateX(-108%) !important;
+    transition: transform 180ms ease-out !important;
   }
 
-  html[data-path^="/dashboard"] body > div:first-child > aside .p-6,
-  body[data-path^="/dashboard"] > div:first-child > aside .p-6 {
+  html[data-mobile-nav="open"][data-path^="/dashboard"] [data-gemini-shell="1"] > aside,
+  body[data-mobile-nav="open"][data-path^="/dashboard"] [data-gemini-shell="1"] > aside {
+    transform: translateX(0) !important;
+  }
+
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > aside .p-6,
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > aside .p-6 {
     padding: 1rem !important;
   }
 
-  html[data-path^="/dashboard"] body > div:first-child > aside nav.space-y-1,
-  body[data-path^="/dashboard"] > div:first-child > aside nav.space-y-1 {
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > aside nav.space-y-1,
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > aside nav.space-y-1 {
     display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 0.5rem !important;
+    grid-template-columns: 1fr !important;
+    gap: 0.45rem !important;
   }
 
-  html[data-path^="/dashboard"] body > div:first-child > aside nav.space-y-1>a,
-  body[data-path^="/dashboard"] > div:first-child > aside nav.space-y-1>a {
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > aside nav.space-y-1>a,
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > aside nav.space-y-1>a {
     padding: 0.65rem 0.75rem !important;
     font-size: 0.85rem !important;
   }
 
-  html[data-path^="/dashboard"] body > div:first-child > aside .mt-auto,
-  body[data-path^="/dashboard"] > div:first-child > aside .mt-auto {
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > aside .mt-auto,
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > aside .mt-auto {
     display: none !important;
   }
 
-  html[data-path^="/dashboard"] body > div:first-child > main,
-  body[data-path^="/dashboard"] > div:first-child > main {
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main,
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main {
     width: 100% !important;
     max-width: 100% !important;
-    min-height: auto !important;
+    min-height: 100vh !important;
   }
 
-  html[data-path^="/dashboard"] body > div:first-child > main > header,
-  body[data-path^="/dashboard"] > div:first-child > main > header {
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header,
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header {
     height: auto !important;
     min-height: 72px !important;
     padding: 1rem !important;
+    gap: 0.5rem !important;
+    overflow-x: hidden !important;
   }
 
-  html[data-path^="/dashboard"] body > div:first-child > main .p-10,
-  body[data-path^="/dashboard"] > div:first-child > main .p-10 {
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main .p-10,
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main .p-10 {
     padding: 1rem !important;
     max-width: 100% !important;
   }
 
-  html[data-path^="/dashboard"] body > div:first-child > main .grid.lg\:grid-cols-3,
-  body[data-path^="/dashboard"] > div:first-child > main .grid.lg\:grid-cols-3,
-  html[data-path^="/dashboard"] body > div:first-child > main .grid.md\:grid-cols-2,
-  body[data-path^="/dashboard"] > div:first-child > main .grid.md\:grid-cols-2 {
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main .grid.lg\:grid-cols-3,
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main .grid.lg\:grid-cols-3,
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main .grid.md\:grid-cols-2,
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main .grid.md\:grid-cols-2 {
     grid-template-columns: 1fr !important;
+  }
+
+  html[data-path^="/dashboard"] .dashboard-mobile-nav-overlay,
+  body[data-path^="/dashboard"] .dashboard-mobile-nav-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(2, 6, 23, 0.42) !important;
+    z-index: 80 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 160ms ease-out !important;
+  }
+
+  html[data-mobile-nav="open"][data-path^="/dashboard"] .dashboard-mobile-nav-overlay,
+  body[data-mobile-nav="open"][data-path^="/dashboard"] .dashboard-mobile-nav-overlay {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  html[data-path^="/dashboard"] [data-mobile-nav-toggle="1"],
+  body[data-path^="/dashboard"] [data-mobile-nav-toggle="1"] {
+    display: inline-flex !important;
   }
 
   html[data-path="/onboarding"] .container.max-w-4xl,
@@ -881,43 +914,92 @@ body[data-path="/"] .container.nav > a span {
 }
 
 @media (max-width: 768px) {
-  html[data-path^="/dashboard"] body > div:first-child > aside nav.space-y-1,
-  body[data-path^="/dashboard"] > div:first-child > aside nav.space-y-1 {
-    grid-template-columns: 1fr !important;
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main .p-4.md\:p-6,
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main .p-4.md\:p-6 {
+    padding: 0.75rem !important;
   }
 
-  html[data-path^="/dashboard"] body > div:first-child > main .p-4.md\:p-6,
-  body[data-path^="/dashboard"] > div:first-child > main .p-4.md\:p-6 {
-    padding: 0.75rem !important;
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main .p-6.md\:p-10,
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main .p-6.md\:p-10 {
+    padding: 0.9rem !important;
+  }
+
+  html[data-path^="/dashboard/chat"] [data-gemini-shell="1"] .max-w-4xl,
+  body[data-path^="/dashboard/chat"] [data-gemini-shell="1"] .max-w-4xl {
+    max-width: 100% !important;
+  }
+
+  html[data-path="/dashboard/chat"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-2,
+  body[data-path="/dashboard/chat"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-2 {
+    display: none !important;
+  }
+
+  html[data-path^="/dashboard/chat"] [data-gemini-shell="1"] .chat-user-bubble,
+  html[data-path^="/dashboard/chat"] [data-gemini-shell="1"] .chat-ai-bubble,
+  body[data-path^="/dashboard/chat"] [data-gemini-shell="1"] .chat-user-bubble,
+  body[data-path^="/dashboard/chat"] [data-gemini-shell="1"] .chat-ai-bubble {
+    max-width: calc(100vw - 4rem) !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
+  html[data-path^="/dashboard/chat"] [data-gemini-shell="1"] pre,
+  body[data-path^="/dashboard/chat"] [data-gemini-shell="1"] pre {
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    overflow-x: auto !important;
   }
 
   html[data-path="/"] .container.nav > a,
   body[data-path="/"] .container.nav > a {
     gap: 0.5rem !important;
+    min-width: 0 !important;
   }
 
   html[data-path="/"] .container.nav,
   body[data-path="/"] .container.nav {
-    gap: 0.5rem !important;
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    align-items: center !important;
+    gap: 0.55rem !important;
     padding-top: 0.75rem !important;
     padding-bottom: 0.75rem !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    width: 100% !important;
   }
 
   html[data-path="/"] .container.nav > a span,
   body[data-path="/"] .container.nav > a span {
-    font-size: 1.15rem !important;
+    font-size: 1.35rem !important;
     line-height: 1.1 !important;
+    max-width: 11rem !important;
+    white-space: normal !important;
   }
 
-  html[data-path="/"] .container.nav .btn,
-  body[data-path="/"] .container.nav .btn {
-    padding: 0.6rem 0.8rem !important;
-    font-size: 0.82rem !important;
+  html[data-path="/"] .container.nav > nav,
+  body[data-path="/"] .container.nav > nav {
+    display: none !important;
   }
 
   html[data-path="/"] .container.nav > div.flex.gap-4,
   body[data-path="/"] .container.nav > div.flex.gap-4 {
+    grid-column: 1 / -1 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 0.5rem !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  html[data-path="/"] .container.nav .btn,
+  body[data-path="/"] .container.nav .btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 0.7rem 0.78rem !important;
+    font-size: 0.92rem !important;
+    text-align: center !important;
+    justify-content: center !important;
   }
 }
 

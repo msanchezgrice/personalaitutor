@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { GeminiStaticPage } from "@/components/gemini-static-page";
+import { redirect } from "next/navigation";
 import {
   BRAND_NAME,
   BRAND_X_HANDLE,
@@ -42,5 +42,5 @@ export const metadata: Metadata = {
 };
 
 export default function AssessmentPage() {
-  return <GeminiStaticPage template="assessment/index.html" />;
+  redirect("/onboarding");
 }
