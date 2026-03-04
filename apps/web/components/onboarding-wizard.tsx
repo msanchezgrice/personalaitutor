@@ -3,6 +3,12 @@
 import { useMemo, useState } from "react";
 import type { GoalType, SituationStatus } from "@aitutor/shared";
 import { CAREER_PATHS } from "@aitutor/shared";
+import {
+  fbOnboardingStart,
+  fbQuizStart,
+  fbQuizComplete,
+  fbOnboardingComplete,
+} from "@/lib/fb-pixel";
 
 type OnboardingStartResponse = {
   ok: true;
@@ -89,6 +95,7 @@ export function OnboardingWizard() {
       }
       setSessionId(data.session.id);
       setUser(data.user);
+      fbOnboardingStart();
       setStep(2);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to start onboarding session");
@@ -152,6 +159,7 @@ export function OnboardingWizard() {
       }
 
       setAssessmentId(assessment.assessment.id);
+      fbQuizStart();
       setStep(4);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to complete career import step");
@@ -177,6 +185,8 @@ export function OnboardingWizard() {
         throw new Error(data && "error" in data ? data.error.message : "Unable to submit assessment");
       }
       setAssessmentResult(data.assessment);
+      fbQuizComplete(data.assessment.score, data.assessment.recommendedCareerPathIds);
+      fbOnboardingComplete();
       setStep(5);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to submit assessment");

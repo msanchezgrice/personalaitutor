@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { fbQuizStart, fbQuizComplete } from "@/lib/fb-pixel";
 
 const questions = [
   "I can choose the right model for a business task.",
@@ -31,6 +32,7 @@ export function AssessmentQuiz() {
         throw new Error(data.error?.message ?? "Unable to start assessment");
       }
       setAssessmentId(data.assessment.id);
+      fbQuizStart();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to start assessment");
     } finally {
@@ -63,6 +65,7 @@ export function AssessmentQuiz() {
         score: data.assessment.score,
         recommendedCareerPathIds: data.assessment.recommendedCareerPathIds,
       });
+      fbQuizComplete(data.assessment.score, data.assessment.recommendedCareerPathIds);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to submit assessment");
     } finally {

@@ -35,6 +35,12 @@ This document lists every environment variable required or recommended for `myai
 |---|---|---|---|---|
 | `OPENAI_API_KEY` | Yes for real AI generation | Agent/content generation paths | `sk-...` | OpenAI dashboard -> API keys |
 | `RESEND_API_KEY` | Yes for real emails | Daily updates + fail-state alerts | `re_...` | Resend dashboard -> API keys |
+| `NEXT_PUBLIC_POSTHOG_KEY` | Recommended | Browser analytics bootstrap (`app/layout.tsx`) | `phc_...` project key | PostHog project settings -> Project API Key |
+| `NEXT_PUBLIC_POSTHOG_HOST` | Recommended | Browser analytics host | e.g. `https://us.i.posthog.com` | PostHog region host |
+| `NEXT_PUBLIC_FB_PIXEL_ID` | Recommended | Meta Pixel browser tracking (`app/layout.tsx` + `lib/fb-pixel.ts`) | Numeric pixel id (e.g. `1245045833736130`) | Meta Events Manager -> Data Sources -> Pixel ID |
+| `POSTHOG_CLI_API_KEY` | Required for PostHog CLI dashboard checks | `pnpm posthog:dashboard:spec` | `phx_...` personal API key | PostHog personal settings -> Personal API Keys |
+| `POSTHOG_CLI_PROJECT_ID` | Required for PostHog CLI dashboard checks | `pnpm posthog:dashboard:spec` | Numeric or string project id | PostHog project URL / API |
+| `POSTHOG_CLI_HOST` | Optional override for PostHog CLI | `pnpm posthog:dashboard:spec` | e.g. `https://us.posthog.com` | PostHog region host |
 | `VERCEL_TOKEN` | Needed for CI deploy automation | Scripts/deploy pipeline | Vercel personal/team token | Vercel settings -> Tokens |
 | `RENDER_API_KEY` | Needed only if worker deploys via Render | Worker deploy automation | Render API token | Render dashboard -> API keys |
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { GeminiStaticPage } from "@/components/gemini-static-page";
+import { OnboardingIntake } from "@/components/onboarding-intake";
 import { BRAND_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -12,5 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function OnboardingPage() {
-  return <GeminiStaticPage template="onboarding/index.html" />;
+  return <OnboardingIntake />;
 }

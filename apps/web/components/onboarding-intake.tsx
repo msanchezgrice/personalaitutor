@@ -1,0 +1,1331 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { GoalType, SituationStatus } from "@aitutor/shared";
+import {
+  fbOnboardingComplete,
+  fbOnboardingStart,
+  fbQuizComplete,
+  fbQuizStart,
+  fbViewContent,
+} from "@/lib/fb-pixel";
+
+type Step = 1 | 2 | 3 | 4 | 5;
+
+type OnboardingStartPayload = {
+  ok: boolean;
+  session?: { id: string; userId: string };
+  user?: { id: string; handle: string; name: string };
+  error?: { message?: string };
+};
+
+type AssessmentStartPayload = {
+  ok: boolean;
+  assessment?: { id: string };
+  error?: { message?: string };
+};
+
+type AssessmentSubmitPayload = {
+  ok: boolean;
+  assessment?: { score: number; recommendedCareerPathIds: string[] };
+  error?: { message?: string };
+};
+
+type ResumeUploadPayload = {
+  ok: boolean;
+  resume?: {
+    filename: string;
+    path: string;
+    bytes: number;
+    mimeType: string;
+    bucket: string;
+  };
+  error?: { message?: string };
+};
+
+type RiskSeverity = "Low" | "Medium" | "High";
+type RiskBand = "Low" | "Moderate" | "High";
+
+type CareerAssessmentTemplate = {
+  title: string;
+  description: string;
+  riskAreas: Array<{ label: string; level: RiskSeverity }>;
+  recommendedActions: string[];
+  aiToolAnalysis: string;
+  careerStrategies: string;
+  actionPlan: string[];
+};
+
+const analysisSteps = [
+  "Analyzing your professional profile",
+  "Researching AI trends in your field",
+  "Evaluating automation risk factors",
+  "Generating personalized insights",
+  "Finalizing your career assessment",
+  "Preparing your personalized tutor setup",
+];
+
+const careerCategoryOptions = [
+  { value: "product-manager", label: "Product Manager", path: "product-management" },
+  { value: "designer", label: "Designer", path: "branding-design" },
+  { value: "marketing", label: "Marketing", path: "marketing-seo" },
+  { value: "accounting", label: "Accounting", path: "operations" },
+  { value: "legal", label: "Legal", path: "operations" },
+  { value: "software-engineering", label: "Software Engineering", path: "software-engineering" },
+  { value: "other", label: "Other", path: "product-management" },
+] as const;
+
+const careerQuestionContent: Record<
+  (typeof careerCategoryOptions)[number]["value"],
+  {
+    subtitle: string;
+    jobTitlePlaceholder: string;
+    workSummaryPlaceholder: string;
+    skillsPlaceholder: string;
+  }
+> = {
+  "product-manager": {
+    subtitle: "Specialized analysis for product strategy, roadmapping, stakeholder management",
+    jobTitlePlaceholder: "e.g., Senior Product Manager, Product Owner, Associate PM",
+    workSummaryPlaceholder:
+      "Describe your product management activities like roadmap planning, user story writing, stakeholder meetings, data analysis, feature prioritization, sprint planning...",
+    skillsPlaceholder:
+      "e.g., Jira, Confluence, Product Analytics, User Research, Roadmapping, Agile/Scrum, SQL, Stakeholder Management...",
+  },
+  designer: {
+    subtitle: "Specialized analysis for design workflow, creative tooling, and review cycles",
+    jobTitlePlaceholder: "e.g., Senior UX Designer, Product Designer, Graphic Designer",
+    workSummaryPlaceholder:
+      "Describe your design process, tools you use (Figma, Sketch, Adobe Creative Suite), daily tasks like user research, wireframing, prototyping, stakeholder meetings, design reviews...",
+    skillsPlaceholder:
+      "e.g., Figma, Sketch, Adobe Creative Suite, User Research, Prototyping, Design Systems, Interaction Design...",
+  },
+  marketing: {
+    subtitle: "Specialized analysis for content, campaign execution, and growth operations",
+    jobTitlePlaceholder: "e.g., Marketing Manager, Content Marketer, Digital Marketing Specialist",
+    workSummaryPlaceholder:
+      "Describe your marketing activities like content creation, campaign management, social media strategy, SEO optimization, analytics reporting, and lead generation...",
+    skillsPlaceholder:
+      "e.g., Google Analytics, HubSpot, Content Creation, SEO/SEM, Social Media Marketing, Email Marketing...",
+  },
+  accounting: {
+    subtitle: "Specialized analysis for finance workflows, reconciliation, and reporting automation",
+    jobTitlePlaceholder: "e.g., Staff Accountant, Financial Analyst, Bookkeeper, CPA",
+    workSummaryPlaceholder:
+      "Describe your accounting work like bookkeeping, financial reporting, tax preparation, accounts payable/receivable, financial analysis, and auditing...",
+    skillsPlaceholder:
+      "e.g., QuickBooks, Excel, SAP, Financial Reporting, Tax Software, Bookkeeping, Financial Analysis...",
+  },
+  legal: {
+    subtitle: "Specialized analysis for legal research, contract review, and compliance operations",
+    jobTitlePlaceholder: "e.g., Attorney, Legal Counsel, Paralegal, Legal Assistant",
+    workSummaryPlaceholder:
+      "Describe your legal work like contract review, legal research, document drafting, client consultation, case preparation, and regulatory compliance...",
+    skillsPlaceholder:
+      "e.g., Legal Research Databases, Contract Review, Document Drafting, Case Management Software...",
+  },
+  "software-engineering": {
+    subtitle: "Specialized analysis for engineering workflows, architecture, and delivery velocity",
+    jobTitlePlaceholder: "e.g., Software Engineer, Full-Stack Developer, Staff Engineer",
+    workSummaryPlaceholder:
+      "Describe your engineering work like implementation, code reviews, architecture decisions, debugging, incident response, and deployment workflows...",
+    skillsPlaceholder:
+      "e.g., TypeScript, Python, APIs, CI/CD, Testing, Observability, Cloud Infrastructure...",
+  },
+  other: {
+    subtitle: "Specialized analysis for your role-specific workflows and automation opportunities",
+    jobTitlePlaceholder: "e.g., Operations Lead, Sales Manager, HR Business Partner",
+    workSummaryPlaceholder:
+      "Describe your daily responsibilities, recurring tasks, decision points, and where AI could help you move faster...",
+    skillsPlaceholder:
+      "e.g., Domain tools, reporting platforms, automation tools, communication workflows...",
+  },
+};
+
+const assessmentTemplates: Record<(typeof careerCategoryOptions)[number]["value"], CareerAssessmentTemplate> = {
+  "product-manager": {
+    title: "Product Manager Assessment",
+    description:
+      "Analysis of AI automation impact on product management, with focus on planning, documentation, and stakeholder execution.",
+    riskAreas: [
+      { label: "PRD drafting and requirement formatting", level: "High" },
+      { label: "Status reporting and routine updates", level: "Medium" },
+      { label: "Strategic prioritization and tradeoff decisions", level: "Low" },
+    ],
+    recommendedActions: [
+      "Shift more time into strategy and cross-functional alignment",
+      "Build stronger experimentation and analytics interpretation skills",
+      "Publish proof of AI-assisted product operations wins",
+    ],
+    aiToolAnalysis:
+      "Use AI copilots for PRD scaffolding, synthesis from interviews, and release-note generation; keep human ownership for prioritization and narrative.",
+    careerStrategies:
+      "Position yourself as an AI-native PM who converts ambiguous goals into execution systems with measurable business outcomes.",
+    actionPlan: [
+      "Automate one weekly reporting workflow in your stack",
+      "Create a repeatable AI prompt pack for discovery + planning",
+      "Ship a public project card showing before/after cycle-time impact",
+    ],
+  },
+  designer: {
+    title: "Design Assessment",
+    description:
+      "Analysis of AI impact on design roles across ideation, production assets, and quality review workflows.",
+    riskAreas: [
+      { label: "Rapid concept generation and variation production", level: "High" },
+      { label: "UI copy and basic component layout drafting", level: "Medium" },
+      { label: "System-level UX strategy and taste leadership", level: "Low" },
+    ],
+    recommendedActions: [
+      "Double down on research-backed design rationale and storytelling",
+      "Lead design systems and interaction architecture decisions",
+      "Use AI to accelerate iterations while preserving quality standards",
+    ],
+    aiToolAnalysis:
+      "AI tools are strongest for drafts and exploration, while brand judgment, accessibility nuance, and product coherence remain designer-led.",
+    careerStrategies:
+      "Become the designer who can run high-volume exploration and still ship polished, conversion-driven experiences.",
+    actionPlan: [
+      "Create an AI-assisted exploration workflow for 3 concept directions",
+      "Define a review rubric for quality and accessibility checks",
+      "Publish a build log showing AI draft-to-final design evolution",
+    ],
+  },
+  marketing: {
+    title: "Marketing Assessment",
+    description:
+      "Evaluation of AI impact on marketing roles, including content creation, campaign management, and data analysis.",
+    riskAreas: [
+      { label: "Content writing and copy generation", level: "High" },
+      { label: "Social media scheduling and performance summaries", level: "High" },
+      { label: "Brand strategy and campaign positioning", level: "Low" },
+    ],
+    recommendedActions: [
+      "Develop stronger strategic brand thinking",
+      "Focus on creative campaign concepts and channel orchestration",
+      "Improve advanced data interpretation and narrative reporting",
+    ],
+    aiToolAnalysis:
+      "AI can generate variants quickly for ads, posts, and emails; strongest leverage comes from rapid testing loops and human-led messaging decisions.",
+    careerStrategies:
+      "Lead with experimentation frameworks and audience insight synthesis so AI output is tied to measurable growth outcomes.",
+    actionPlan: [
+      "Build a reusable AI content pipeline for one campaign",
+      "Define test hypotheses and reporting templates by funnel stage",
+      "Publish a public proof card with lift metrics from an AI-assisted sprint",
+    ],
+  },
+  accounting: {
+    title: "Accounting Assessment",
+    description:
+      "Analysis of AI automation in accounting, focusing on bookkeeping, reporting workflows, and advisory services.",
+    riskAreas: [
+      { label: "Data entry and bookkeeping", level: "High" },
+      { label: "Basic financial reporting and reconciliations", level: "High" },
+      { label: "Strategic financial advisory", level: "Low" },
+    ],
+    recommendedActions: [
+      "Transition toward advisory and strategic planning functions",
+      "Strengthen client communication and scenario planning skills",
+      "Focus on complex compliance and exception-handling workflows",
+    ],
+    aiToolAnalysis:
+      "AI handles repetitive categorization and first-pass summaries; accountants retain leverage in controls, risk judgment, and decision-grade interpretation.",
+    careerStrategies:
+      "Move upmarket by combining AI-enabled speed with trusted financial judgment and strategic advisory depth.",
+    actionPlan: [
+      "Automate one reconciliation or categorization workflow",
+      "Build a monthly advisory insights template for stakeholders",
+      "Document AI control checks and exception-handling process publicly",
+    ],
+  },
+  legal: {
+    title: "Legal Assessment",
+    description:
+      "Assessment of AI impact in legal workflows, including drafting support, research acceleration, and review operations.",
+    riskAreas: [
+      { label: "First-draft clause generation and summarization", level: "High" },
+      { label: "Legal research triage and precedent clustering", level: "Medium" },
+      { label: "Negotiation strategy and case judgment", level: "Low" },
+    ],
+    recommendedActions: [
+      "Specialize in high-context advisory and negotiation outcomes",
+      "Develop AI quality-control and citation validation workflows",
+      "Use AI to accelerate drafting while retaining legal accountability",
+    ],
+    aiToolAnalysis:
+      "AI improves speed for draft and research prep, but legal reliability depends on robust human review, source validation, and risk ownership.",
+    careerStrategies:
+      "Stand out as counsel who can deploy AI safely with defensible review frameworks and client-ready decision support.",
+    actionPlan: [
+      "Create a vetted prompt + citation-check checklist",
+      "Pilot AI-assisted drafting on low-risk template documents",
+      "Publish a build log on legal AI quality-control practices",
+    ],
+  },
+  "software-engineering": {
+    title: "Software Engineering Assessment",
+    description:
+      "Assessment of AI impact across coding productivity, debugging, architecture decisions, and operational reliability.",
+    riskAreas: [
+      { label: "Boilerplate implementation and unit test generation", level: "High" },
+      { label: "Debugging and code review assistance", level: "Medium" },
+      { label: "System architecture and reliability tradeoffs", level: "Low" },
+    ],
+    recommendedActions: [
+      "Increase depth in architecture and distributed systems fundamentals",
+      "Strengthen production debugging and observability workflows",
+      "Use AI for speed while maintaining rigorous validation and testing",
+    ],
+    aiToolAnalysis:
+      "AI accelerates implementation velocity; senior leverage remains in design decisions, runtime reliability, and shipping resilient systems.",
+    careerStrategies:
+      "Build a profile as an engineer who ships faster with AI and still raises quality bars through automation and testing discipline.",
+    actionPlan: [
+      "Create an AI-assisted code-generation + validation pipeline",
+      "Instrument one project with stronger observability and alerts",
+      "Publish a project card with latency, reliability, or dev-time gains",
+    ],
+  },
+  other: {
+    title: "Career Assessment",
+    description:
+      "General assessment of AI automation exposure in your current workflow with recommendations to build durable advantage.",
+    riskAreas: [
+      { label: "Repetitive documentation and routine communication tasks", level: "High" },
+      { label: "Standardized analysis and report generation", level: "Medium" },
+      { label: "Relationship management and strategic decision-making", level: "Low" },
+    ],
+    recommendedActions: [
+      "Map high-frequency repetitive tasks and automate the first layer",
+      "Strengthen domain-specific judgment and decision frameworks",
+      "Show public proof of AI-enabled process improvements",
+    ],
+    aiToolAnalysis:
+      "AI can handle repeatable workflows quickly; your leverage grows by owning context, edge-case handling, and cross-functional execution.",
+    careerStrategies:
+      "Adopt an operator mindset: automate repetitive work, reinvest time in high-judgment problems, and document measurable outcomes.",
+    actionPlan: [
+      "Identify top 3 repetitive workflows to automate this month",
+      "Create one AI-assisted process with clear KPI improvements",
+      "Publish the process and results in your public build log",
+    ],
+  },
+};
+
+const yearsExperienceOptions = [
+  { value: "0-1", label: "Less than 1 year", score: 1 },
+  { value: "1-3", label: "1-3 years", score: 2 },
+  { value: "3-5", label: "3-5 years", score: 3 },
+  { value: "5-10", label: "5-10 years", score: 4 },
+  { value: "10+", label: "10+ years", score: 5 },
+] as const;
+
+const companySizeOptions = [
+  { value: "", label: "Select company size" },
+  { value: "startup", label: "Startup (1-50)" },
+  { value: "small", label: "Small (51-200)" },
+  { value: "medium", label: "Medium (201-1000)" },
+  { value: "large", label: "Large (1000+)" },
+] as const;
+
+const situationOptions: Array<{ value: SituationStatus; label: string }> = [
+  { value: "employed", label: "Employed" },
+  { value: "unemployed", label: "Unemployed" },
+  { value: "student", label: "Student" },
+  { value: "founder", label: "Founder" },
+  { value: "freelancer", label: "Freelancer" },
+  { value: "career_switcher", label: "Career Switcher" },
+];
+
+const goalOptions: Array<{ value: GoalType; label: string }> = [
+  { value: "build_business", label: "Build a business" },
+  { value: "upskill_current_job", label: "Upskill for current job" },
+  { value: "showcase_for_job", label: "Showcase skills for a new role" },
+  { value: "ship_ai_projects", label: "Ship AI projects" },
+  { value: "learn_foundations", label: "Learn foundations" },
+];
+
+const aiComfortOptions = [
+  { value: 2, label: "Beginner" },
+  { value: 3, label: "Intermediate" },
+  { value: 5, label: "Advanced" },
+] as const;
+
+const PENDING_SESSION_KEY = "ai_tutor_pending_onboarding_session_v1";
+const ONBOARDING_BOOTSTRAP_KEY = "ai_tutor_onboarding_bootstrap_v1";
+
+function getRiskBand(score: number): RiskBand {
+  if (score >= 70) return "High";
+  if (score >= 45) return "Moderate";
+  return "Low";
+}
+
+function getTimeline(score: number): string {
+  if (score >= 70) return "1-2 years";
+  if (score >= 45) return "1-3 years";
+  return "3-5 years";
+}
+
+function sanitizeRedirectPath(path: string) {
+  if (!path.startsWith("/")) return "/onboarding";
+  return path;
+}
+
+async function postJson<T>(url: string, body: Record<string, unknown>): Promise<T> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body),
+  });
+
+  const data = (await res.json().catch(() => ({}))) as T & { ok?: boolean; error?: { message?: string } };
+  if (!res.ok || !data || (typeof data === "object" && "ok" in data && !data.ok)) {
+    const message =
+      data && typeof data === "object" && "error" in data && data.error?.message
+        ? data.error.message
+        : "Request failed";
+    throw new Error(message);
+  }
+  return data;
+}
+
+async function getJson<T>(url: string): Promise<T> {
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      "cache-control": "no-store",
+    },
+    credentials: "same-origin",
+  });
+  const data = (await res.json().catch(() => ({}))) as T & { ok?: boolean; error?: { message?: string } };
+  if (!res.ok || !data || (typeof data === "object" && "ok" in data && !data.ok)) {
+    const message =
+      data && typeof data === "object" && "error" in data && data.error?.message
+        ? data.error.message
+        : "Request failed";
+    throw new Error(message);
+  }
+  return data;
+}
+
+export function OnboardingIntake() {
+  const [step, setStep] = useState<Step>(1);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [analysisIndex, setAnalysisIndex] = useState(0);
+  const [linkedinConnected, setLinkedinConnected] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  const [assessmentScore, setAssessmentScore] = useState<number | null>(null);
+  const [recommendedPaths, setRecommendedPaths] = useState<string[]>([]);
+  const [resumeUploadBusy, setResumeUploadBusy] = useState(false);
+  const [uploadedResumeName, setUploadedResumeName] = useState<string | null>(null);
+  const [nextRedirectHref, setNextRedirectHref] = useState<string | null>(null);
+  const [nextRedirectLabel, setNextRedirectLabel] = useState("Continue");
+  const [navigatingAfterSummary, setNavigatingAfterSummary] = useState(false);
+  const viewContentFired = useRef(false);
+  const onboardingStartFired = useRef(false);
+  const quizStartFired = useRef(false);
+  const quizCompleteFired = useRef(false);
+  const onboardingCompleteFired = useRef(false);
+
+  const [careerCategory, setCareerCategory] = useState<(typeof careerCategoryOptions)[number]["value"]>("product-manager");
+  const [customCareerCategory, setCustomCareerCategory] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [yearsExperience, setYearsExperience] = useState<(typeof yearsExperienceOptions)[number]["value"]>("1-3");
+  const [companySize, setCompanySize] = useState("");
+  const [situation, setSituation] = useState<SituationStatus>("employed");
+  const [dailyWorkSummary, setDailyWorkSummary] = useState("");
+  const [keySkills, setKeySkills] = useState("");
+  const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [selectedGoals, setSelectedGoals] = useState<GoalType[]>(["upskill_current_job"]);
+  const [aiComfort, setAiComfort] = useState<number>(3);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+
+  const selectedCareer = useMemo(
+    () => careerCategoryOptions.find((entry) => entry.value === careerCategory) ?? careerCategoryOptions[0],
+    [careerCategory],
+  );
+  const selectedCareerLabel = useMemo(() => {
+    if (careerCategory === "other") {
+      return customCareerCategory.trim() || "Other";
+    }
+    return selectedCareer.label;
+  }, [careerCategory, customCareerCategory, selectedCareer.label]);
+  const selectedExperience = useMemo(
+    () => yearsExperienceOptions.find((entry) => entry.value === yearsExperience) ?? yearsExperienceOptions[1],
+    [yearsExperience],
+  );
+  const selectedCareerContent = useMemo(
+    () => careerQuestionContent[careerCategory] ?? careerQuestionContent.other,
+    [careerCategory],
+  );
+  const activeAssessmentTemplate = useMemo(
+    () => assessmentTemplates[careerCategory] ?? assessmentTemplates.other,
+    [careerCategory],
+  );
+  const normalizedScore = useMemo(() => {
+    if (assessmentScore === null || Number.isNaN(assessmentScore)) return 0;
+    return Math.max(0, Math.min(100, Math.round(assessmentScore)));
+  }, [assessmentScore]);
+  const riskBand = useMemo(() => getRiskBand(normalizedScore), [normalizedScore]);
+  const riskTimeline = useMemo(() => getTimeline(normalizedScore), [normalizedScore]);
+  const riskColor = useMemo(() => {
+    if (riskBand === "High") return "#dc2626";
+    if (riskBand === "Moderate") return "#d97706";
+    return "#16a34a";
+  }, [riskBand]);
+
+  const continueAfterSummary = () => {
+    if (!nextRedirectHref) return;
+    setNavigatingAfterSummary(true);
+    window.location.href = nextRedirectHref;
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    document.documentElement.setAttribute("data-onboarding-react", "1");
+    document.documentElement.setAttribute("data-path", "/onboarding");
+    document.body?.setAttribute("data-path", "/onboarding");
+
+    const params = new URLSearchParams(window.location.search);
+    const maybeSessionId = params.get("sessionId");
+    let boot: { sessionId?: string; sessionUserId?: string } | null = null;
+    try {
+      const raw = window.sessionStorage.getItem(ONBOARDING_BOOTSTRAP_KEY);
+      boot = raw ? (JSON.parse(raw) as { sessionId?: string; sessionUserId?: string }) : null;
+    } catch {
+      boot = null;
+    }
+
+    if (maybeSessionId) {
+      setSessionId(maybeSessionId);
+      if (boot?.sessionId === maybeSessionId && boot.sessionUserId) {
+        setSessionUserId(boot.sessionUserId);
+      }
+    } else if (boot?.sessionId) {
+      setSessionId(boot.sessionId);
+      if (boot.sessionUserId) setSessionUserId(boot.sessionUserId);
+    }
+    const oauth = params.get("oauth");
+    if (oauth === "linkedin_connected") {
+      setLinkedinConnected(true);
+    } else if (oauth === "linkedin_denied") {
+      setError("LinkedIn connection was denied. You can continue onboarding without it or try again.");
+    }
+    return () => {
+      document.documentElement.removeAttribute("data-onboarding-react");
+    };
+  }, []);
+
+  useEffect(() => {
+    if (viewContentFired.current) return;
+    viewContentFired.current = true;
+    fbViewContent("onboarding_quiz", {
+      flow: "pre_signup_onboarding",
+      step: 1,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (step !== 4) return;
+    const timer = window.setInterval(() => {
+      setAnalysisIndex((prev) => (prev + 1) % analysisSteps.length);
+    }, 2000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [step]);
+
+  useEffect(() => {
+    if (step !== 5 || onboardingCompleteFired.current) return;
+    onboardingCompleteFired.current = true;
+    fbOnboardingComplete();
+  }, [step]);
+
+  const toggleGoal = (goal: GoalType) => {
+    setSelectedGoals((prev) =>
+      prev.includes(goal) ? prev.filter((entry) => entry !== goal) : [...prev, goal],
+    );
+  };
+
+  const ensureSession = async () => {
+    if (sessionId && sessionUserId) {
+      return { id: sessionId, userId: sessionUserId };
+    }
+    const payload = await postJson<OnboardingStartPayload>("/api/onboarding/start", {
+      name: jobTitle.trim() || "New Learner",
+      handleBase: (jobTitle.trim() || "new-learner").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      careerPathId: selectedCareer.path,
+    });
+    if (!payload.session?.id || !payload.session?.userId) {
+      throw new Error("Unable to initialize onboarding session");
+    }
+    setSessionId(payload.session.id);
+    setSessionUserId(payload.session.userId);
+    try {
+      window.sessionStorage.setItem(
+        ONBOARDING_BOOTSTRAP_KEY,
+        JSON.stringify({ sessionId: payload.session.id, sessionUserId: payload.session.userId }),
+      );
+    } catch {
+      // Ignore storage failures.
+    }
+    return { id: payload.session.id, userId: payload.session.userId };
+  };
+
+  const validateStepOne = () => {
+    if (!careerCategory) return "Select your career category.";
+    if (careerCategory === "other" && !customCareerCategory.trim()) {
+      return "Please specify your career category.";
+    }
+    if (!jobTitle.trim()) return "Enter your job title.";
+    if (!yearsExperience) return "Select years of experience.";
+    return null;
+  };
+
+  const validateStepTwo = () => {
+    if (dailyWorkSummary.trim().length < 50) {
+      return "Add at least 50 characters for your daily work summary.";
+    }
+    if (!selectedGoals.length) return "Select at least one primary goal.";
+    if (linkedinUrl.trim().length > 0) {
+      try {
+        const parsed = new URL(linkedinUrl.trim());
+        if (!parsed.hostname.includes("linkedin.com")) {
+          return "LinkedIn URL must be on linkedin.com.";
+        }
+      } catch {
+        return "LinkedIn URL format is invalid.";
+      }
+    }
+    return null;
+  };
+
+  const runLinkedInOAuth = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      const session = await ensureSession();
+      const redirectPath = sanitizeRedirectPath(
+        `/onboarding?sessionId=${encodeURIComponent(session.id)}&oauth=linkedin_connected`,
+      );
+      const href =
+        `/api/auth/linkedin/start?redirect=1` +
+        `&sessionId=${encodeURIComponent(session.id)}` +
+        `&userId=${encodeURIComponent(session.userId)}` +
+        `&redirectPath=${encodeURIComponent(redirectPath)}`;
+      window.location.href = href;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to start LinkedIn OAuth");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const uploadResume = async (file: File) => {
+    setError(null);
+    setResumeUploadBusy(true);
+    try {
+      const session = await ensureSession();
+      const form = new FormData();
+      form.append("sessionId", session.id);
+      form.append("file", file);
+
+      const res = await fetch("/api/onboarding/resume-upload", {
+        method: "POST",
+        body: form,
+        credentials: "same-origin",
+      });
+
+      const data = (await res.json().catch(() => ({}))) as ResumeUploadPayload;
+      if (!res.ok || !data.ok || !data.resume) {
+        throw new Error(data.error?.message ?? "Unable to upload resume");
+      }
+
+      setResumeFile(file);
+      setUploadedResumeName(data.resume.filename);
+    } catch (err) {
+      setResumeFile(null);
+      setUploadedResumeName(null);
+      setError(err instanceof Error ? err.message : "Unable to upload resume");
+    } finally {
+      setResumeUploadBusy(false);
+    }
+  };
+
+  const startAnalysis = async () => {
+    setError(null);
+    const stepOneError = validateStepOne();
+    if (stepOneError) {
+      setStep(1);
+      setError(stepOneError);
+      return;
+    }
+    const stepTwoError = validateStepTwo();
+    if (stepTwoError) {
+      setStep(2);
+      setError(stepTwoError);
+      return;
+    }
+
+    setStep(4);
+    setBusy(true);
+    if (!quizStartFired.current) {
+      quizStartFired.current = true;
+      fbQuizStart();
+    }
+    try {
+      const session = await ensureSession();
+
+      await postJson("/api/onboarding/career-import", {
+        sessionId: session.id,
+        careerPathId: selectedCareer.path,
+        careerCategoryLabel: selectedCareerLabel,
+        jobTitle: jobTitle.trim(),
+        yearsExperience,
+        companySize: companySize || null,
+        dailyWorkSummary: dailyWorkSummary.trim(),
+        keySkills: keySkills.trim() || null,
+        aiComfort,
+        linkedinUrl: linkedinUrl.trim() || null,
+        resumeFilename: uploadedResumeName ?? resumeFile?.name ?? null,
+      });
+
+      await postJson("/api/onboarding/situation", {
+        sessionId: session.id,
+        situation,
+        goals: selectedGoals,
+      });
+
+      const assessmentStart = await postJson<AssessmentStartPayload>("/api/assessment/start", {
+        sessionId: session.id,
+      });
+
+      if (!assessmentStart.assessment?.id) {
+        throw new Error("Unable to start assessment");
+      }
+
+      const answers = [
+        { questionId: "career_experience", value: selectedExperience.score },
+        { questionId: "ai_comfort", value: aiComfort },
+        { questionId: "daily_work_complexity", value: Math.min(5, Math.max(1, Math.ceil(dailyWorkSummary.trim().length / 70))) },
+        { questionId: "linkedin_context", value: linkedinUrl.trim() ? 5 : 2 },
+        { questionId: "resume_context", value: uploadedResumeName || resumeFile ? 4 : 2 },
+      ];
+
+      const assessmentSubmit = await postJson<AssessmentSubmitPayload>("/api/assessment/submit", {
+        assessmentId: assessmentStart.assessment.id,
+        answers,
+      });
+
+      const score = assessmentSubmit.assessment?.score ?? 0;
+      const recommended = assessmentSubmit.assessment?.recommendedCareerPathIds ?? [];
+      setAssessmentScore(score);
+      setRecommendedPaths(recommended);
+      if (!quizCompleteFired.current) {
+        quizCompleteFired.current = true;
+        fbQuizComplete(score, recommended);
+      }
+      setStep(5);
+
+      let isSignedIn = false;
+      try {
+        await getJson("/api/auth/session");
+        isSignedIn = true;
+      } catch {
+        isSignedIn = false;
+      }
+
+      if (isSignedIn) {
+        try {
+          await postJson("/api/onboarding/claim", { sessionId: session.id });
+        } catch {
+          // Non-blocking on direct signed-in onboarding.
+        }
+        setNextRedirectHref(`/dashboard/?welcome=1&onboardingSessionId=${encodeURIComponent(session.id)}`);
+        setNextRedirectLabel("Open Dashboard");
+        return;
+      }
+
+      try {
+        window.sessionStorage.setItem(
+          PENDING_SESSION_KEY,
+          JSON.stringify({ sessionId: session.id, ts: Date.now() }),
+        );
+      } catch {
+        // Ignore storage failures.
+      }
+
+      const redirectPath = `/dashboard/?welcome=1&onboardingSessionId=${encodeURIComponent(session.id)}`;
+      setNextRedirectHref(`/sign-up?redirect_url=${encodeURIComponent(redirectPath)}`);
+      setNextRedirectLabel("Create Account to Continue");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to complete onboarding");
+      setStep(3);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const progressPercent = useMemo(() => {
+    if (step <= 1) return 20;
+    if (step === 2) return 45;
+    if (step === 3) return 70;
+    if (step === 4) return 85;
+    return 100;
+  }, [step]);
+
+  return (
+    <div
+      id="onboarding-react-root"
+      className="relative min-h-screen bg-[var(--bg-dark)] text-[var(--text-main)] overflow-x-hidden px-4 py-10 md:px-6"
+      data-onboarding-react-root="1"
+    >
+      <div className="fixed top-4 right-4 z-[100]">
+        <button
+          id="theme-toggle"
+          type="button"
+          aria-label="Toggle dark mode"
+          className="btn bg-white/10 hover:bg-white/20 text-white border border-white/10 px-3 py-2 rounded-lg flex items-center justify-center transition-colors"
+        >
+          <i className="fa-solid fa-sun" id="theme-icon" />
+        </button>
+      </div>
+
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center mb-8">
+          <a href="/" className="inline-flex items-center gap-3 mb-5">
+            <img src="/assets/branding/brand_brain_icon.svg" alt="My AI Skill Tutor" className="h-11 w-11 object-contain" />
+            <span className="font-[Outfit] font-bold text-4xl tracking-tight text-[var(--text-main)]">My AI Skill Tutor</span>
+          </a>
+          <div className="inline-flex items-center bg-[#dce6f7] text-[#2454d6] px-5 py-2 rounded-full text-sm font-medium mb-3">
+            <span className="mr-2">🎯</span>
+            {selectedCareerLabel} Risk Assessment
+          </div>
+          <p className="text-xl text-[var(--text-muted)]">
+            {selectedCareerContent.subtitle}
+          </p>
+        </div>
+
+        <div className="glass-panel p-8 md:p-10 rounded-2xl border border-white/10">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-4xl font-[Outfit] text-[var(--text-main)]">
+              {step === 1 && "Basic Information"}
+              {step === 2 && "Work Details"}
+              {step === 3 && "Resume & Review"}
+              {step === 4 && "AI Analysis"}
+              {step === 5 && "Assessment Complete"}
+            </h2>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map((index) => (
+                <span
+                  key={index}
+                  className={`inline-block h-4 w-4 rounded-full ${
+                    index < step
+                      ? "bg-emerald-500"
+                      : index === step
+                        ? "bg-[#0b1838]"
+                        : "bg-[#c5cfde]"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="h-3 w-full bg-[#e6eaf2] rounded-full overflow-hidden mb-8">
+            <div className="h-full bg-[#0b1838] rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+          </div>
+
+          {error ? (
+            <div className="mb-6 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
+
+          {linkedinConnected ? (
+            <div className="mb-6 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              LinkedIn connected successfully. You can continue the onboarding quiz.
+            </div>
+          ) : null}
+
+          {step === 1 ? (
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Career Category</label>
+                <select
+                  value={careerCategory}
+                  onChange={(event) =>
+                    setCareerCategory(event.target.value as (typeof careerCategoryOptions)[number]["value"])
+                  }
+                  className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                >
+                  {careerCategoryOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {careerCategory === "other" ? (
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Please specify your career category</label>
+                  <input
+                    type="text"
+                    value={customCareerCategory}
+                    onChange={(event) => setCustomCareerCategory(event.target.value)}
+                    placeholder="e.g., Sales, Operations, HR"
+                    className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                  />
+                </div>
+              ) : null}
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Job Title</label>
+                <input
+                  type="text"
+                  value={jobTitle}
+                  onChange={(event) => setJobTitle(event.target.value)}
+                  placeholder={selectedCareerContent.jobTitlePlaceholder}
+                  className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Years of Experience</label>
+                <select
+                  value={yearsExperience}
+                  onChange={(event) =>
+                    setYearsExperience(event.target.value as (typeof yearsExperienceOptions)[number]["value"])
+                  }
+                  className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                >
+                  {yearsExperienceOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Company Size (Optional)</label>
+                <select
+                  value={companySize}
+                  onChange={(event) => setCompanySize(event.target.value)}
+                  className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                >
+                  {companySizeOptions.map((option) => (
+                    <option key={option.value || "none"} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          ) : null}
+
+          {step === 2 ? (
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Daily Work Summary</label>
+                <textarea
+                  rows={4}
+                  value={dailyWorkSummary}
+                  onChange={(event) => setDailyWorkSummary(event.target.value)}
+                  placeholder={selectedCareerContent.workSummaryPlaceholder}
+                  className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                />
+                <p className="mt-2 text-sm text-[var(--text-muted)]">
+                  {dailyWorkSummary.trim().length}/300 characters (minimum 50)
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Key Skills &amp; Tools (Optional)</label>
+                <textarea
+                  rows={3}
+                  value={keySkills}
+                  onChange={(event) => setKeySkills(event.target.value)}
+                  placeholder={selectedCareerContent.skillsPlaceholder}
+                  className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">
+                  <i className="fa-brands fa-linkedin text-[#0a66c2] mr-2" />
+                  LinkedIn Profile URL
+                </label>
+                <input
+                  type="url"
+                  value={linkedinUrl}
+                  onChange={(event) => setLinkedinUrl(event.target.value)}
+                  placeholder="https://linkedin.com/in/your-profile"
+                  className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                />
+                <p className="mt-2 text-sm text-[var(--text-muted)]">We use this for profile context and recommendations.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void runLinkedInOAuth();
+                  }}
+                  disabled={busy}
+                  className="mt-3 btn btn-secondary"
+                >
+                  <i className="fa-brands fa-linkedin mr-2" />
+                  Connect LinkedIn OAuth
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Current Situation</label>
+                <select
+                  value={situation}
+                  onChange={(event) => setSituation(event.target.value as SituationStatus)}
+                  className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                >
+                  {situationOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Primary Goals</label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {goalOptions.map((goal) => {
+                    const checked = selectedGoals.includes(goal.value);
+                    return (
+                      <label
+                        key={goal.value}
+                        className={`rounded-xl border px-3 py-2 text-sm cursor-pointer ${
+                          checked ? "border-emerald-400 bg-emerald-50 text-emerald-800" : "border-[#cad3e3] bg-white text-[var(--text-main)]"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="mr-2 align-middle"
+                          checked={checked}
+                          onChange={() => toggleGoal(goal.value)}
+                        />
+                        {goal.label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">How comfortable are you with AI tools today?</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {aiComfortOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setAiComfort(option.value)}
+                      className={`rounded-xl border px-3 py-2 text-sm ${
+                        aiComfort === option.value
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                          : "border-[#cad3e3] bg-white text-[var(--text-main)]"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {step === 3 ? (
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium mb-3 text-[var(--text-main)]">Upload Resume (Optional)</label>
+                <label className="block rounded-2xl border-2 border-dashed border-[#b8c6da] bg-[#f8fbff] px-6 py-10 text-center cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/40 transition-colors">
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.txt"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] ?? null;
+                      if (!file) {
+                        setResumeFile(null);
+                        setUploadedResumeName(null);
+                        return;
+                      }
+                      void uploadResume(file);
+                    }}
+                  />
+                  <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-[#e7edf8] flex items-center justify-center">
+                    <i className="fa-solid fa-upload text-2xl text-[#5f7394]" />
+                  </div>
+                  <p className="text-xl font-medium text-[var(--text-main)]">
+                    {resumeUploadBusy
+                      ? "Uploading resume..."
+                      : uploadedResumeName ?? resumeFile?.name ?? "Drop your resume here"}
+                  </p>
+                  <p className="text-sm text-[var(--text-muted)] mt-2">
+                    {resumeUploadBusy
+                      ? "Please wait while we save your file"
+                      : uploadedResumeName
+                        ? "File uploaded successfully"
+                        : "Supports PDF, DOC, DOCX, TXT (max 10MB)"}
+                  </p>
+                </label>
+              </div>
+
+              <div className="rounded-2xl border border-[#bdd0ef] bg-[#eef4ff] p-5">
+                <h4 className="text-xl font-semibold text-[var(--text-main)] mb-2">Ready for AI Analysis</h4>
+                <ul className="space-y-2 text-[var(--text-muted)]">
+                  <li><i className="fa-solid fa-robot mr-2 text-[#4c5f82]" />Your responses personalize your tutor path.</li>
+                  <li><i className="fa-regular fa-clock mr-2 text-[#4c5f82]" />Analysis typically takes 30-60 seconds.</li>
+                  <li><i className="fa-solid fa-shield mr-2 text-[#4c5f82]" />LinkedIn and resume context improves recommendations.</li>
+                </ul>
+              </div>
+
+              <div className="rounded-2xl border border-[#d4dce9] bg-[#f7f9fc] p-5">
+                <h4 className="text-xl font-semibold text-[var(--text-main)] mb-3">Review Your Information</h4>
+                <div className="grid gap-2 text-[var(--text-main)]">
+                  <p><strong>Role:</strong> {jobTitle || "Not provided"} ({selectedCareerLabel})</p>
+                  <p><strong>Experience:</strong> {selectedExperience.label}</p>
+                  <p><strong>Company Size:</strong> {companySize || "Not specified"}</p>
+                  <p><strong>Resume:</strong> {uploadedResumeName || resumeFile ? "Uploaded" : "Not provided"}</p>
+                  <p><strong>LinkedIn:</strong> {linkedinUrl.trim() ? "Provided" : linkedinConnected ? "Connected via OAuth" : "Not provided"}</p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {step === 4 ? (
+            <div className="py-12 text-center">
+              <div className="mx-auto mb-6 h-20 w-20 rounded-full border-4 border-[#102246] border-t-transparent animate-spin" />
+              <h3 className="text-4xl font-[Outfit] text-[var(--text-main)] mb-5">AI Analysis in Progress</h3>
+              <div className="max-w-xl mx-auto rounded-2xl border border-[#ccd9ef] bg-[#eef4ff] px-5 py-4 text-lg text-[var(--text-main)]">
+                <i className="fa-solid fa-spinner animate-spin mr-3 text-[#102246]" />
+                {analysisSteps[analysisIndex]}
+              </div>
+            </div>
+          ) : null}
+
+          {step === 5 ? (
+            <div className="space-y-8">
+              <div className="flex flex-wrap gap-2">
+                {careerCategoryOptions.map((option) => (
+                  <span
+                    key={option.value}
+                    className={`rounded-full border px-4 py-1 text-sm ${
+                      option.value === careerCategory
+                        ? "border-[#0b1838] bg-[#0b1838] text-white"
+                        : "border-[#cad3e3] bg-white text-[var(--text-main)]"
+                    }`}
+                  >
+                    {option.label}
+                  </span>
+                ))}
+              </div>
+
+              <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+                <div className="space-y-4">
+                  <h3 className="text-4xl font-[Outfit] text-[var(--text-main)]">{activeAssessmentTemplate.title}</h3>
+                  <div className="flex items-center gap-3 text-sm">
+                    <span
+                      className="rounded-full px-3 py-1 font-semibold"
+                      style={{ backgroundColor: `${riskColor}1a`, color: riskColor }}
+                    >
+                      {riskBand} Risk ({normalizedScore}/100)
+                    </span>
+                    <span className="text-[var(--text-muted)]">Timeline: {riskTimeline}</span>
+                  </div>
+                  <p className="text-[var(--text-muted)]">{activeAssessmentTemplate.description}</p>
+
+                  <div className="rounded-2xl border border-[#d4dce9] bg-[#f7f9fc] p-5">
+                    <h4 className="text-2xl font-[Outfit] text-[var(--text-main)] mb-3">Key Risk Areas</h4>
+                    <ul className="space-y-2">
+                      {activeAssessmentTemplate.riskAreas.map((item) => {
+                        const dotColor =
+                          item.level === "High" ? "#dc2626" : item.level === "Medium" ? "#d97706" : "#16a34a";
+                        return (
+                          <li key={item.label} className="flex items-start gap-3 text-[var(--text-main)]">
+                            <span className="mt-2 inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dotColor }} />
+                            <span>
+                              {item.label} ({item.level} Risk)
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+
+                  <div className="rounded-2xl border border-[#bdd0ef] bg-[#eef4ff] p-5">
+                    <h4 className="text-2xl font-[Outfit] text-[var(--text-main)] mb-3">Recommended Actions</h4>
+                    <ul className="list-disc list-inside space-y-2 text-[var(--text-main)]">
+                      {activeAssessmentTemplate.recommendedActions.map((action) => (
+                        <li key={action}>{action}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-[#d4dce9] bg-white p-5">
+                  <div className="mx-auto relative h-36 w-36">
+                    <div
+                      className="h-full w-full rounded-full"
+                      style={{
+                        background: `conic-gradient(${riskColor} ${normalizedScore * 3.6}deg, #d9e1ee 0deg)`,
+                      }}
+                    />
+                    <div className="absolute inset-3 rounded-full bg-white flex flex-col items-center justify-center">
+                      <span className="text-5xl font-bold" style={{ color: riskColor }}>
+                        {normalizedScore}
+                      </span>
+                      <span className="text-sm font-semibold" style={{ color: riskColor }}>
+                        {riskBand} Risk
+                      </span>
+                    </div>
+                  </div>
+
+                  <h4 className="mt-6 text-3xl font-[Outfit] text-[var(--text-main)] text-center">{activeAssessmentTemplate.title}</h4>
+                  <p className="text-center text-[var(--text-muted)] mb-4">Risk Assessment Report</p>
+
+                  <div className="space-y-3">
+                    {activeAssessmentTemplate.riskAreas.slice(0, 2).map((item) => (
+                      <div key={item.label} className="rounded-xl border border-[#e1e7f1] p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-semibold text-[var(--text-main)]">{item.label}</p>
+                          <span
+                            className="rounded-full px-2 py-0.5 text-xs font-semibold"
+                            style={{
+                              backgroundColor:
+                                item.level === "High" ? "#fecaca" : item.level === "Medium" ? "#fde68a" : "#bbf7d0",
+                              color: item.level === "High" ? "#991b1b" : item.level === "Medium" ? "#92400e" : "#166534",
+                            }}
+                          >
+                            {item.level}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="mt-4 text-sm text-center text-[var(--text-muted)]">
+                    <i className="fa-regular fa-clock mr-2" />
+                    Timeline: {riskTimeline}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-2xl border border-[#d4dce9] bg-[#f7f9fc] p-5">
+                  <h4 className="text-xl font-[Outfit] text-[var(--text-main)] mb-2">AI Tool Analysis</h4>
+                  <p className="text-[var(--text-muted)]">{activeAssessmentTemplate.aiToolAnalysis}</p>
+                </div>
+                <div className="rounded-2xl border border-[#d4dce9] bg-[#f7f9fc] p-5">
+                  <h4 className="text-xl font-[Outfit] text-[var(--text-main)] mb-2">Career Strategies</h4>
+                  <p className="text-[var(--text-muted)]">{activeAssessmentTemplate.careerStrategies}</p>
+                </div>
+                <div className="rounded-2xl border border-[#d4dce9] bg-[#f7f9fc] p-5">
+                  <h4 className="text-xl font-[Outfit] text-[var(--text-main)] mb-2">Action Plan</h4>
+                  <ul className="list-disc list-inside space-y-1 text-[var(--text-muted)]">
+                    {activeAssessmentTemplate.actionPlan.map((stepItem) => (
+                      <li key={stepItem}>{stepItem}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {recommendedPaths.length ? (
+                <div className="rounded-xl border border-[#d4dce9] bg-white px-4 py-3 text-sm text-[var(--text-main)]">
+                  Recommended skill tracks: {recommendedPaths.join(", ")}
+                </div>
+              ) : null}
+
+              <div className="flex flex-col gap-3 border-t border-[#d6deec] pt-6 md:flex-row md:items-center md:justify-between">
+                <p className="text-sm text-[var(--text-muted)]">
+                  Review complete. Continue to activate your tutor dashboard and personalized modules.
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-primary px-8"
+                  onClick={continueAfterSummary}
+                  disabled={!nextRedirectHref || navigatingAfterSummary}
+                >
+                  {navigatingAfterSummary ? "Opening..." : nextRedirectLabel}
+                  <i className="fa-solid fa-arrow-right ml-2" />
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {step < 4 ? (
+            <div className="mt-8 flex items-center justify-between border-t border-[#d6deec] pt-6">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setError(null);
+                  setStep((prev) => (prev > 1 ? ((prev - 1) as Step) : prev));
+                }}
+                disabled={busy || resumeUploadBusy || step === 1}
+              >
+                <i className="fa-solid fa-arrow-left mr-2" />
+                Back
+              </button>
+              {step < 3 ? (
+                <button
+                  type="button"
+                  className="btn btn-primary px-8"
+                  onClick={() => {
+                    setError(null);
+                    if (step === 1) {
+                      const validation = validateStepOne();
+                      if (validation) {
+                        setError(validation);
+                        return;
+                      }
+                      if (!onboardingStartFired.current) {
+                        onboardingStartFired.current = true;
+                        fbOnboardingStart();
+                      }
+                    }
+                    if (step === 2) {
+                      const validation = validateStepTwo();
+                      if (validation) {
+                        setError(validation);
+                        return;
+                      }
+                    }
+                    setStep((prev) => (prev < 5 ? ((prev + 1) as Step) : prev));
+                  }}
+                  disabled={busy || resumeUploadBusy}
+                >
+                  Continue <i className="fa-solid fa-arrow-right ml-2" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-primary px-8"
+                  onClick={() => {
+                    void startAnalysis();
+                  }}
+                  disabled={busy || resumeUploadBusy}
+                >
+                  <i className="fa-solid fa-robot mr-2" />
+                  {busy ? "Analyzing..." : "Start AI Analysis"}
+                </button>
+              )}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
