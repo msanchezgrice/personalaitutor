@@ -403,6 +403,8 @@ a {
   --bg-card: rgba(255, 255, 255, 0.9);
   --bg-card-hover: rgba(255, 255, 255, 1);
   --border-color: rgba(0, 0, 0, 0.1);
+  --text-main: #0f172a;
+  --text-muted: #64748b;
 }
 
 :root[data-theme="light"] body {
@@ -935,4 +937,138 @@ body[data-path="/"] .container.nav > a span {
 
 :root[data-theme="light"] body[data-path="/onboarding"] .text-gray-500 {
   color: #64748b !important;
+}
+
+:root[data-theme="light"] body[data-path="/onboarding"] .glass-panel .border-2.border-dashed {
+  border-color: rgba(148, 163, 184, 0.45) !important;
+  background: rgba(248, 250, 252, 0.95) !important;
+}
+
+:root[data-theme="light"] body[data-path="/onboarding"] .glass-panel .border-2.border-dashed:hover {
+  border-color: rgba(16, 185, 129, 0.55) !important;
+  background: #ffffff !important;
+}
+
+:root[data-theme="light"] body[data-path="/onboarding"] select,
+:root[data-theme="light"] body[data-path="/onboarding"] input[type="url"] {
+  background: #ffffff !important;
+  border-color: rgba(148, 163, 184, 0.4) !important;
+  color: #0f172a !important;
+}
+
+:root[data-theme="light"] body[data-path="/onboarding"] input::placeholder {
+  color: #64748b !important;
+}
+
+:root[data-theme="light"] body[data-path="/assessment"] h1,
+:root[data-theme="light"] body[data-path="/assessment"] h2,
+:root[data-theme="light"] body[data-path="/assessment"] p {
+  color: #0f172a !important;
+}
+
+:root[data-theme="light"] body[data-path="/assessment"] .glass-panel {
+  background: #ffffff !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+}
+
+:root[data-theme="light"] body[data-path="/assessment"] .glass-panel .text-emerald-400 {
+  color: #059669 !important;
+}
+
+:root[data-theme="light"] body[data-path="/assessment"] .glass-panel label {
+  color: #0f172a !important;
+}
+
+:root[data-theme="light"] body[data-path="/assessment"] .glass-panel span.text-gray-500,
+:root[data-theme="light"] body[data-path="/assessment"] .glass-panel .text-gray-500 {
+  color: #64748b !important;
+}
+
+/* Runtime loading skeletons for dashboard first-load responsiveness */
+.runtime-skeleton {
+  position: relative !important;
+  overflow: hidden !important;
+  min-height: 120px;
+}
+
+.runtime-skeleton > * {
+  opacity: 0 !important;
+}
+
+.runtime-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, rgba(148, 163, 184, 0.12) 8%, rgba(148, 163, 184, 0.22) 18%, rgba(148, 163, 184, 0.12) 33%);
+  background-size: 220% 100%;
+  animation: runtime-shimmer 1.2s linear infinite;
+}
+
+@keyframes runtime-shimmer {
+  to {
+    background-position-x: -220%;
+  }
+}
+
+/* Avatar crop modal */
+.avatar-crop-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.65);
+  z-index: 9998;
+}
+
+.avatar-crop-modal {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 560px);
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  box-shadow: 0 20px 50px rgba(2, 6, 23, 0.35);
+  z-index: 9999;
+  padding: 1rem;
+}
+
+.avatar-crop-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.avatar-crop-stage {
+  width: min(82vw, 360px);
+  height: min(82vw, 360px);
+  margin: 0 auto;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: #e2e8f0;
+  overflow: hidden;
+  position: relative;
+  touch-action: none;
+}
+
+.avatar-crop-stage img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: center center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.avatar-crop-controls {
+  margin-top: 0.75rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.avatar-crop-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
 }

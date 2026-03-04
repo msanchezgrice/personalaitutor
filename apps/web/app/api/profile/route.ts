@@ -14,7 +14,19 @@ const goals = z.enum([
 const schema = z.object({
   handle: z.string().min(2).max(64).optional(),
   name: z.string().min(2).max(80).optional(),
-  avatarUrl: z.string().url().optional().nullable(),
+  avatarUrl: z
+    .string()
+    .refine((value) => {
+      if (value.startsWith("data:image/")) return true;
+      try {
+        const parsed = new URL(value);
+        return parsed.protocol === "http:" || parsed.protocol === "https:";
+      } catch {
+        return false;
+      }
+    }, "avatarUrl must be an image data URL or HTTP(S) URL")
+    .optional()
+    .nullable(),
   headline: z.string().min(4).max(140).optional(),
   bio: z.string().min(8).max(1200).optional(),
   careerPathId: z.string().min(1).optional(),

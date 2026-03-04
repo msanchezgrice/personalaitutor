@@ -13,9 +13,12 @@ test.describe("hard gate browser verification", () => {
     await expect(page.getByRole("link", { name: /continue/i })).toBeVisible();
   });
 
-  test("onboarding route is auth-protected", async ({ page }) => {
+  test("onboarding route loads wizard controls", async ({ page }) => {
     await page.goto("/onboarding");
-    await expect(page).toHaveURL(/\/sign-in\?/);
+    await expect(page).toHaveURL(/\/onboarding\/?$/);
+    await expect(page.locator("#onboarding-situation")).toBeVisible();
+    await expect(page.locator("#onboarding-career-path")).toBeVisible();
+    await expect(page.locator("#onboarding-start-assessment")).toBeVisible();
   });
 
   test("dashboard routes and session API require auth", async ({ page }) => {

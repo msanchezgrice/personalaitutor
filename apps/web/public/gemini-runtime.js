@@ -8,6 +8,32 @@
   }
   var CTX_KEY = "ai_tutor_user_ctx_v1";
   var isDashboardPath = currentPath === "/dashboard" || currentPath.indexOf("/dashboard/") === 0;
+  var DASHBOARD_SUMMARY_CACHE_PREFIX = "ai_tutor_dashboard_summary_v2:";
+  var DASHBOARD_SNAPSHOT_CACHE_PREFIX = "ai_tutor_dashboard_snapshot_v2:";
+  var SUMMARY_CACHE_TTL_MS = 120000;
+  var SNAPSHOT_CACHE_TTL_MS = 1800000;
+
+  function normalizedPath(pathname) {
+    return (pathname || "/").replace(/\/+$/, "") || "/";
+  }
+
+  function readSessionObject(key) {
+    try {
+      var raw = window.sessionStorage.getItem(key);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  function writeSessionObject(key, value) {
+    try {
+      window.sessionStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      return null;
+    }
+  }
 
   function uuidv4() {
     if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
@@ -66,6 +92,130 @@
 
   var ctx = ensureCtx();
   var hasAppliedAuthCtx = false;
+  var restoredDashboardSnapshot = false;
+
+  function cacheScope() {
+    if (!ctx || !ctx.userId) return null;
+    return String(ctx.userId);
+  }
+
+  function dashboardSummaryCacheKey() {
+    var scope = cacheScope();
+    if (!scope) return null;
+    return DASHBOARD_SUMMARY_CACHE_PREFIX + scope;
+  }
+
+  function readDashboardSummaryCache() {
+    var key = dashboardSummaryCacheKey();
+    if (!key) return null;
+    var payload = readSessionObject(key);
+    if (!payload || !payload.summary || !payload.ts) return null;
+    if (Date.now() - Number(payload.ts) > SUMMARY_CACHE_TTL_MS) return null;
+    return payload.summary;
+  }
+
+  function writeDashboardSummaryCache(summary) {
+    var key = dashboardSummaryCacheKey();
+    if (!key || !summary) return;
+    writeSessionObject(key, { ts: Date.now(), summary: summary });
+  }
+
+  function dashboardSnapshotCacheKey(pathname) {
+    var scope = cacheScope();
+    if (!scope) return null;
+    return DASHBOARD_SNAPSHOT_CACHE_PREFIX + scope + ":" + normalizedPath(pathname);
+  }
+
+  function persistDashboardSnapshot(pathname) {
+    if (!isDashboardPath) return;
+    var key = dashboardSnapshotCacheKey(pathname || currentPath);
+    if (!key) return;
+    var aside = document.querySelector("aside");
+    var main = document.querySelector("main");
+    if (!aside || !main) return;
+    writeSessionObject(key, {
+      ts: Date.now(),
+      path: normalizedPath(pathname || currentPath),
+      theme: document.documentElement.getAttribute("data-theme") || "light",
+      asideClass: aside.className || "",
+      mainClass: main.className || "",
+      asideHtml: aside.innerHTML || "",
+      mainHtml: main.innerHTML || "",
+    });
+  }
+
+  function showDashboardSkeletons() {
+    if (!isDashboardPath || restoredDashboardSnapshot) return;
+    var cards = document.querySelectorAll("main .glass, main .glass-panel, main .panel");
+    Array.prototype.forEach.call(cards, function (node) {
+      node.classList.add("runtime-skeleton");
+    });
+  }
+
+  function clearDashboardSkeletons() {
+    if (!isDashboardPath) return;
+    Array.prototype.forEach.call(document.querySelectorAll(".runtime-skeleton"), function (node) {
+      node.classList.remove("runtime-skeleton");
+    });
+  }
+
+  function restoreDashboardSnapshot() {
+    if (!isDashboardPath) return false;
+    var key = dashboardSnapshotCacheKey(currentPath);
+    if (!key) return false;
+    var payload = readSessionObject(key);
+    if (!payload || !payload.ts || !payload.asideHtml || !payload.mainHtml) return false;
+    if (Date.now() - Number(payload.ts) > SNAPSHOT_CACHE_TTL_MS) return false;
+    var aside = document.querySelector("aside");
+    var main = document.querySelector("main");
+    if (!aside || !main) return false;
+    if (typeof payload.asideClass === "string" && payload.asideClass) aside.className = payload.asideClass;
+    if (typeof payload.mainClass === "string" && payload.mainClass) main.className = payload.mainClass;
+    aside.innerHTML = payload.asideHtml;
+    main.innerHTML = payload.mainHtml;
+    if (payload.theme === "dark" || payload.theme === "light") {
+      document.documentElement.setAttribute("data-theme", payload.theme);
+      document.documentElement.style.colorScheme = payload.theme === "dark" ? "dark" : "light";
+    }
+    document.documentElement.setAttribute("data-runtime-ready", "1");
+    return true;
+  }
+
+  function wireDashboardSnapshotPersistence() {
+    if (!isDashboardPath) return;
+    if (document.documentElement.getAttribute("data-snapshot-cache-wired") === "1") return;
+    document.documentElement.setAttribute("data-snapshot-cache-wired", "1");
+
+    document.addEventListener("click", function (event) {
+      if (event.defaultPrevented) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      var target = event.target;
+      if (!target || !target.closest) return;
+      var link = target.closest("a[href]");
+      if (!link) return;
+      if (link.getAttribute("target") === "_blank") return;
+      var href = link.getAttribute("href");
+      if (!href || href.indexOf("javascript:") === 0) return;
+      try {
+        var url = new URL(href, window.location.origin);
+        var nextPath = normalizedPath(url.pathname);
+        if (nextPath === currentPath) return;
+        if (nextPath === "/dashboard" || nextPath.indexOf("/dashboard/") === 0) {
+          persistDashboardSnapshot(currentPath);
+        }
+      } catch {
+        return;
+      }
+    }, true);
+
+    window.addEventListener("pagehide", function () {
+      persistDashboardSnapshot(currentPath);
+    });
+  }
+
+  restoredDashboardSnapshot = restoreDashboardSnapshot();
+  wireDashboardSnapshotPersistence();
+  showDashboardSkeletons();
 
   function applyCtxImmediately() {
     if (!ctx || !ctx.name || !isDashboardPath) return;
@@ -160,6 +310,65 @@
     if (err.code === "UNAUTHENTICATED") return true;
     if (typeof err.message === "string" && err.message.toLowerCase().indexOf("sign in required") !== -1) return true;
     return false;
+  }
+
+  async function performSignOut() {
+    for (var attempt = 0; attempt < 20; attempt += 1) {
+      try {
+        if (window.Clerk && typeof window.Clerk.signOut === "function") {
+          await window.Clerk.signOut({ redirectUrl: "/" });
+          return;
+        }
+      } catch {
+        break;
+      }
+      await new Promise(function (resolve) {
+        window.setTimeout(resolve, 80);
+      });
+    }
+    toast("Sign-out unavailable right now. Please retry.", true);
+  }
+
+  function ensureGlobalSignOutControl(isSignedIn) {
+    if (isDashboardPath) return;
+    var existing = document.getElementById("global-sign-out");
+    if (!isSignedIn) {
+      if (existing) existing.remove();
+      return;
+    }
+
+    if (!existing) {
+      existing = document.createElement("button");
+      existing.id = "global-sign-out";
+      existing.type = "button";
+      existing.textContent = "Sign Out";
+      existing.addEventListener("click", function () {
+        void performSignOut();
+      });
+    }
+
+    var navAuth = Array.prototype.find.call(document.querySelectorAll("a"), function (node) {
+      var text = (node.textContent || "").trim().toLowerCase();
+      return text === "log in" || text === "dashboard";
+    });
+
+    if (navAuth && navAuth.parentElement) {
+      existing.className = "btn btn-secondary";
+      existing.removeAttribute("style");
+      if (navAuth.nextSibling) {
+        navAuth.parentElement.insertBefore(existing, navAuth.nextSibling);
+      } else {
+        navAuth.parentElement.appendChild(existing);
+      }
+      return;
+    }
+
+    existing.className = "btn btn-secondary";
+    existing.style.position = "fixed";
+    existing.style.top = "16px";
+    existing.style.right = "74px";
+    existing.style.zIndex = "120";
+    document.body.appendChild(existing);
   }
 
   function redirectToSignIn(path) {
@@ -277,6 +486,9 @@
       ctx.headline = headlineForUser(data.summary.user);
       if (data.summary.user.avatarUrl) ctx.avatarUrl = data.summary.user.avatarUrl;
     }
+    if (data.summary) {
+      writeDashboardSummaryCache(data.summary);
+    }
     saveCtx(ctx);
     hasAppliedAuthCtx = true;
     applyCtxImmediately();
@@ -314,6 +526,7 @@
         if (data.summary.user && data.summary.user.handle) ctx.handle = data.summary.user.handle;
         saveCtx(ctx);
         applyLandingAuthUi(data.summary);
+        ensureGlobalSignOutControl(true);
       } else {
         ctx.userId = null;
         ctx.handle = null;
@@ -323,6 +536,7 @@
         ctx.email = null;
         saveCtx(ctx);
         applyLandingAuthUi(null);
+        ensureGlobalSignOutControl(false);
       }
     } catch {
       ctx.userId = null;
@@ -333,7 +547,28 @@
       ctx.email = null;
       saveCtx(ctx);
       applyLandingAuthUi(null);
+      ensureGlobalSignOutControl(false);
     }
+  }
+
+  async function syncOptionalAuthUi() {
+    if (needsAuth() || currentPath === "/") return;
+    try {
+      var data = await getJson("/api/auth/session");
+      if (data && data.auth) {
+        if (data.auth.userId) ctx.userId = data.auth.userId;
+        if (data.auth.name) ctx.name = data.auth.name;
+        if (data.auth.avatarUrl) ctx.avatarUrl = data.auth.avatarUrl;
+        if (data.auth.email) ctx.email = data.auth.email;
+        if (data.summary && data.summary.user && data.summary.user.handle) ctx.handle = data.summary.user.handle;
+        saveCtx(ctx);
+        ensureGlobalSignOutControl(true);
+        return;
+      }
+    } catch {
+      // not signed in
+    }
+    ensureGlobalSignOutControl(false);
   }
 
   async function postJson(url, body) {
@@ -504,15 +739,7 @@
 
     if (signOut) {
       signOut.addEventListener("click", async function () {
-        try {
-          if (window.Clerk && typeof window.Clerk.signOut === "function") {
-            await window.Clerk.signOut({ redirectUrl: "/" });
-            return;
-          }
-        } catch {
-          // Fallback redirect below.
-        }
-        window.location.href = "/";
+        void performSignOut();
       });
     }
   }
@@ -536,15 +763,7 @@
     var signOut = row.querySelector("[data-sidebar-sign-out='1']");
     if (signOut) {
       signOut.addEventListener("click", async function () {
-        try {
-          if (window.Clerk && typeof window.Clerk.signOut === "function") {
-            await window.Clerk.signOut({ redirectUrl: "/" });
-            return;
-          }
-        } catch {
-          // fallback below
-        }
-        window.location.href = "/";
+        void performSignOut();
       });
     }
   }
@@ -581,12 +800,27 @@
   }
 
   async function getDashboardSummary() {
+    var cached = readDashboardSummaryCache();
+    if (cached) {
+      void (async function refreshDashboardSummary() {
+        try {
+          var fresh = await getJson("/api/dashboard/summary");
+          if (fresh && fresh.summary) writeDashboardSummaryCache(fresh.summary);
+        } catch {
+          return null;
+        }
+      })();
+      return cached;
+    }
+
     try {
       var response = await getJson("/api/dashboard/summary");
+      if (response && response.summary) writeDashboardSummaryCache(response.summary);
       return response.summary;
     } catch (err) {
       await ensureSession();
       var retry = await getJson("/api/dashboard/summary");
+      if (retry && retry.summary) writeDashboardSummaryCache(retry.summary);
       return retry.summary;
     }
   }
@@ -674,15 +908,19 @@
 
     var socialQuote = document.querySelector("section p.text-sm.text-gray-300.mb-4.italic");
     if (socialQuote) {
-      try {
-        var drafts = await postJson("/api/social/drafts/generate", { userId: ctx.userId, projectId: active ? active.id : null });
-        var linkedinDraft = (drafts.drafts || []).find(function (entry) { return entry.platform === "linkedin"; });
-        if (linkedinDraft) {
-          socialQuote.textContent = '"' + linkedinDraft.text.slice(0, 160) + '..."';
-        }
-      } catch {
-        return null;
-      }
+      window.setTimeout(function () {
+        void (async function hydrateSocialQuote() {
+          try {
+            var drafts = await postJson("/api/social/drafts/generate", { userId: ctx.userId, projectId: active ? active.id : null });
+            var linkedinDraft = (drafts.drafts || []).find(function (entry) { return entry.platform === "linkedin"; });
+            if (linkedinDraft) {
+              socialQuote.textContent = '"' + linkedinDraft.text.slice(0, 160) + '..."';
+            }
+          } catch {
+            return null;
+          }
+        })();
+      }, 10);
     }
   }
 
@@ -1169,8 +1407,55 @@
     if (bioInput) bioInput.value = summary.user.bio || "";
     if (linkedInInput) linkedInInput.value = (summary.user.socialLinks && summary.user.socialLinks.linkedin) || "";
     var currentAvatarUrl = ctx.avatarUrl || summary.user.avatarUrl || "";
+    function normalizeAvatarValue(input) {
+      var raw = typeof input === "string" ? input.trim() : "";
+      if (!raw) return undefined;
+      if (raw.indexOf("data:image/") === 0) return raw;
+      return normalizeUrl(raw);
+    }
+
+    function applyAvatarToUi(nextUrl) {
+      if (!nextUrl) return;
+      Array.prototype.forEach.call(document.querySelectorAll("img[src='/assets/avatar.png'], img[data-role='profile-avatar']"), function (img) {
+        img.setAttribute("src", nextUrl);
+        img.setAttribute("data-role", "profile-avatar");
+      });
+      if (avatarUrlInput) {
+        if (nextUrl.indexOf("data:image/") === 0) {
+          avatarUrlInput.value = "";
+          avatarUrlInput.placeholder = "Uploaded image saved.";
+        } else {
+          avatarUrlInput.value = nextUrl;
+        }
+      }
+    }
+
+    async function saveAvatar(nextUrl) {
+      var res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: requestHeaders(true),
+        cache: "no-store",
+        credentials: "same-origin",
+        body: JSON.stringify({ avatarUrl: nextUrl }),
+      });
+      var data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data.ok) {
+        throw new Error(data && data.error && data.error.message ? data.error.message : "Avatar update failed");
+      }
+      ctx.avatarUrl = nextUrl;
+      currentAvatarUrl = nextUrl;
+      saveCtx(ctx);
+      applyAvatarToUi(nextUrl);
+    }
     if (avatarUrlInput) {
-      avatarUrlInput.value = currentAvatarUrl;
+      if (currentAvatarUrl.indexOf("data:image/") === 0) {
+        avatarUrlInput.value = "";
+        avatarUrlInput.placeholder = "Uploaded image saved.";
+      } else {
+        avatarUrlInput.value = currentAvatarUrl;
+      }
     }
     if (ctx.email) {
       var emailNode = Array.prototype.find.call(document.querySelectorAll("p.text-sm"), function (node) {
@@ -1203,7 +1488,7 @@
     if (saveButton) {
       saveButton.addEventListener("click", async function () {
         try {
-          var normalizedAvatar = avatarUrlInput && avatarUrlInput.value ? normalizeUrl(avatarUrlInput.value) : undefined;
+          var normalizedAvatar = avatarUrlInput && avatarUrlInput.value ? normalizeAvatarValue(avatarUrlInput.value) : undefined;
           var nextAvatar = normalizedAvatar || currentAvatarUrl || null;
           var payload = {
             name: nameInput ? nameInput.value.trim() : summary.user.name,
@@ -1249,9 +1534,7 @@
             saveCtx(ctx);
             if (publicBtn) setHref(publicBtn, "/u/" + data.profile.handle + "/");
             if (avatarUrlInput && currentAvatarUrl) avatarUrlInput.value = currentAvatarUrl;
-            Array.prototype.forEach.call(document.querySelectorAll("img[src='/assets/avatar.png'], img[src='" + nextAvatar + "']"), function (img) {
-              if (currentAvatarUrl) img.setAttribute("src", currentAvatarUrl);
-            });
+            applyAvatarToUi(currentAvatarUrl);
           }
 
           toast("Profile saved.", false);
@@ -1266,45 +1549,197 @@
     });
     if (avatarButton) {
       avatarButton.addEventListener("click", async function () {
-        var current = currentAvatarUrl || "";
-        var next = window.prompt("Paste avatar image URL", current);
-        if (next === null) return;
-        var trimmed = (next || "").trim();
-        if (!trimmed) {
-          toast("Avatar URL cannot be empty.", true);
-          return;
-        }
-        try {
-          new URL(trimmed);
-        } catch {
-          toast("Avatar URL must be valid.", true);
-          return;
-        }
-        try {
-          var res = await fetch("/api/profile", {
-            method: "PATCH",
-            headers: requestHeaders(true),
-            cache: "no-store",
-            credentials: "same-origin",
-            body: JSON.stringify({ avatarUrl: trimmed }),
-          });
-          var data = await res.json().catch(function () {
-            return {};
-          });
-          if (!res.ok || !data.ok) {
-            throw new Error(data && data.error && data.error.message ? data.error.message : "Avatar update failed");
+        if (document.getElementById("avatar-crop-modal")) return;
+
+        var fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.accept = "image/*";
+        fileInput.style.display = "none";
+        document.body.appendChild(fileInput);
+
+        fileInput.addEventListener("change", function () {
+          var file = fileInput.files && fileInput.files[0];
+          if (!file) {
+            fileInput.remove();
+            return;
           }
-          ctx.avatarUrl = trimmed;
-          currentAvatarUrl = trimmed;
-          saveCtx(ctx);
-          if (avatarUrlInput) avatarUrlInput.value = trimmed;
-          Array.prototype.forEach.call(document.querySelectorAll("img[src='/assets/avatar.png'], img[src='" + current + "']"), function (img) {
-            img.setAttribute("src", trimmed);
+
+          if (!file.type || file.type.indexOf("image/") !== 0) {
+            toast("Please choose an image file.", true);
+            fileInput.remove();
+            return;
+          }
+
+          var objectUrl = URL.createObjectURL(file);
+          var backdrop = document.createElement("div");
+          backdrop.className = "avatar-crop-backdrop";
+          backdrop.id = "avatar-crop-backdrop";
+
+          var modal = document.createElement("div");
+          modal.className = "avatar-crop-modal";
+          modal.id = "avatar-crop-modal";
+          modal.innerHTML =
+            '<div class="avatar-crop-header">' +
+            '<h3 class="font-[Outfit] text-lg font-semibold">Crop profile image</h3>' +
+            '<button type="button" class="btn btn-secondary" data-avatar-close="1">Cancel</button>' +
+            "</div>" +
+            '<div class="avatar-crop-stage" data-avatar-stage="1">' +
+            '<img data-avatar-image="1" alt="Avatar crop preview">' +
+            "</div>" +
+            '<div class="avatar-crop-controls">' +
+            '<label class="text-xs text-gray-500 uppercase tracking-wider">Zoom</label>' +
+            '<input type="range" min="1" max="3" step="0.01" value="1.1" data-avatar-zoom="1">' +
+            "</div>" +
+            '<div class="avatar-crop-actions">' +
+            '<button type="button" class="btn btn-secondary" data-avatar-use-url="1">Use URL</button>' +
+            '<button type="button" class="btn btn-primary" data-avatar-save="1">Save Avatar</button>' +
+            "</div>";
+
+          document.body.appendChild(backdrop);
+          document.body.appendChild(modal);
+
+          var stage = modal.querySelector("[data-avatar-stage='1']");
+          var image = modal.querySelector("[data-avatar-image='1']");
+          var closeBtn = modal.querySelector("[data-avatar-close='1']");
+          var saveBtn = modal.querySelector("[data-avatar-save='1']");
+          var urlBtn = modal.querySelector("[data-avatar-use-url='1']");
+          var zoomInput = modal.querySelector("[data-avatar-zoom='1']");
+          if (!stage || !image || !closeBtn || !saveBtn || !zoomInput || !urlBtn) {
+            backdrop.remove();
+            modal.remove();
+            fileInput.remove();
+            URL.revokeObjectURL(objectUrl);
+            return;
+          }
+
+          var dragStartX = 0;
+          var dragStartY = 0;
+          var startOffsetX = 0;
+          var startOffsetY = 0;
+          var dragging = false;
+          var offsetX = 0;
+          var offsetY = 0;
+          var zoom = 1.1;
+          var naturalW = 0;
+          var naturalH = 0;
+
+          function closeModal() {
+            backdrop.remove();
+            modal.remove();
+            fileInput.remove();
+            URL.revokeObjectURL(objectUrl);
+          }
+
+          function drawPreview() {
+            if (!naturalW || !naturalH) return;
+            var stageRect = stage.getBoundingClientRect();
+            var baseScale = Math.max(stageRect.width / naturalW, stageRect.height / naturalH);
+            var finalScale = baseScale * zoom;
+            var drawW = naturalW * finalScale;
+            var drawH = naturalH * finalScale;
+            var maxX = Math.max(0, (drawW - stageRect.width) / 2);
+            var maxY = Math.max(0, (drawH - stageRect.height) / 2);
+            if (offsetX > maxX) offsetX = maxX;
+            if (offsetX < -maxX) offsetX = -maxX;
+            if (offsetY > maxY) offsetY = maxY;
+            if (offsetY < -maxY) offsetY = -maxY;
+            image.style.width = drawW + "px";
+            image.style.height = drawH + "px";
+            image.style.transform = "translate(calc(-50% + " + offsetX + "px), calc(-50% + " + offsetY + "px))";
+          }
+
+          image.addEventListener("load", function () {
+            naturalW = image.naturalWidth || 1;
+            naturalH = image.naturalHeight || 1;
+            drawPreview();
           });
-          toast("Avatar updated.", false);
-        } catch (err) {
-          toast(err instanceof Error ? err.message : "Avatar update failed", true);
-        }
+          image.setAttribute("src", objectUrl);
+
+          zoomInput.addEventListener("input", function () {
+            zoom = Number(zoomInput.value || "1.1");
+            drawPreview();
+          });
+
+          stage.addEventListener("pointerdown", function (event) {
+            dragging = true;
+            dragStartX = event.clientX;
+            dragStartY = event.clientY;
+            startOffsetX = offsetX;
+            startOffsetY = offsetY;
+            stage.setPointerCapture(event.pointerId);
+          });
+
+          stage.addEventListener("pointermove", function (event) {
+            if (!dragging) return;
+            offsetX = startOffsetX + (event.clientX - dragStartX);
+            offsetY = startOffsetY + (event.clientY - dragStartY);
+            drawPreview();
+          });
+
+          stage.addEventListener("pointerup", function (event) {
+            dragging = false;
+            stage.releasePointerCapture(event.pointerId);
+          });
+
+          closeBtn.addEventListener("click", function () {
+            closeModal();
+          });
+
+          backdrop.addEventListener("click", function () {
+            closeModal();
+          });
+
+          urlBtn.addEventListener("click", async function () {
+            var typed = window.prompt("Paste avatar image URL", currentAvatarUrl || "");
+            if (typed === null) return;
+            var normalized = normalizeAvatarValue(typed);
+            if (!normalized) {
+              toast("Avatar URL is invalid.", true);
+              return;
+            }
+            try {
+              await saveAvatar(normalized);
+              closeModal();
+              toast("Avatar updated.", false);
+            } catch (err) {
+              toast(err instanceof Error ? err.message : "Avatar update failed", true);
+            }
+          });
+
+          saveBtn.addEventListener("click", async function () {
+            if (!naturalW || !naturalH) return;
+            saveBtn.setAttribute("disabled", "true");
+            try {
+              var outputSize = 512;
+              var canvas = document.createElement("canvas");
+              canvas.width = outputSize;
+              canvas.height = outputSize;
+              var ctx2d = canvas.getContext("2d");
+              if (!ctx2d) throw new Error("Canvas unavailable");
+
+              var baseScale = Math.max(outputSize / naturalW, outputSize / naturalH);
+              var finalScale = baseScale * zoom;
+              var drawW = naturalW * finalScale;
+              var drawH = naturalH * finalScale;
+              var drawX = (outputSize - drawW) / 2 + offsetX;
+              var drawY = (outputSize - drawH) / 2 + offsetY;
+
+              ctx2d.fillStyle = "#e2e8f0";
+              ctx2d.fillRect(0, 0, outputSize, outputSize);
+              ctx2d.drawImage(image, drawX, drawY, drawW, drawH);
+
+              var dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+              await saveAvatar(dataUrl);
+              closeModal();
+              toast("Avatar updated.", false);
+            } catch (err) {
+              saveBtn.removeAttribute("disabled");
+              toast(err instanceof Error ? err.message : "Avatar update failed", true);
+            }
+          });
+        });
+
+        fileInput.click();
       });
     }
   }
@@ -1471,17 +1906,6 @@
     await loadRows();
   }
 
-  function ensureEmailButton(container, redirectPath) {
-    if (!container) return;
-    if (container.querySelector("[data-email-auth='1']")) return;
-    var btn = document.createElement("a");
-    btn.href = "/sign-in?redirect_url=" + encodeURIComponent(redirectPath);
-    btn.dataset.emailAuth = "1";
-    btn.className = "w-full flex items-center justify-center gap-3 p-3 rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/10 transition-all font-medium";
-    btn.innerHTML = '<i class="fa-regular fa-envelope text-lg"></i><span>Continue with Email</span>';
-    container.appendChild(btn);
-  }
-
   if (currentPath === "/onboarding") {
     var selectedResumeFilename = null;
     var uploadLabel = byText("p", "Upload Resume (PDF)");
@@ -1577,6 +2001,7 @@
           var selectedSituation = situationSelect && situationSelect.value ? situationSelect.value : "employed";
           var selectedLinkedIn = linkedinInput && linkedinInput.value ? linkedinInput.value.trim() : "";
           ctx.careerPathId = selectedCareerPath;
+          ctx.situation = selectedSituation;
           ctx.aiKnowledgeScore = chosenScore;
           ctx.onboardingGoals = goals;
           if (selectedLinkedIn) ctx.linkedinUrl = selectedLinkedIn;
@@ -1610,17 +2035,15 @@
 
   if (currentPath === "/assessment") {
     var assessmentCard = document.querySelector(".glass-panel");
-    if (assessmentCard) {
-      var row = assessmentCard.querySelector(".mb-8 .space-y-4");
-      if (row && row.parentElement) {
-        var emailWrap = document.createElement("div");
-        emailWrap.className = "mt-5";
-        ensureEmailButton(emailWrap, "/assessment/");
-        row.parentElement.insertBefore(emailWrap, row);
-      }
-    }
 
-    var continueLink = byText("a", "Continue");
+    var continueLink = assessmentCard
+      ? assessmentCard.querySelector(".flex.justify-between.items-center.pt-6 a.btn.btn-primary, .flex.justify-between.items-center.pt-6 a[href*='/onboarding']")
+      : null;
+    if (!continueLink) {
+      continueLink = Array.prototype.find.call(document.querySelectorAll(".glass-panel a.btn.btn-primary"), function (node) {
+        return ((node.textContent || "").toLowerCase().indexOf("continue") !== -1);
+      });
+    }
     if (continueLink) {
       continueLink.addEventListener("click", async function (event) {
         event.preventDefault();
@@ -1648,10 +2071,25 @@
             answers: [{ questionId: "primary_goal", value: selectedValue }],
           });
 
+          var validGoalSet = {
+            build_business: true,
+            upskill_current_job: true,
+            showcase_for_job: true,
+            ship_ai_projects: true,
+            learn_foundations: true,
+          };
+          var selectedGoals = Array.isArray(ctx.onboardingGoals)
+            ? ctx.onboardingGoals.filter(function (entry) { return Boolean(validGoalSet[entry]); })
+            : [];
+          if (!selectedGoals.length) {
+            selectedGoals = [selectedGoal];
+          }
+          var selectedSituation = typeof ctx.situation === "string" ? ctx.situation : "employed";
+
           await postJson("/api/onboarding/situation", {
             sessionId: session.id,
-            situation: "employed",
-            goals: [selectedGoal],
+            situation: selectedSituation,
+            goals: selectedGoals,
           });
 
           toast("Assessment submitted.", false);
@@ -1667,10 +2105,54 @@
     }
   }
 
+  async function hydrateCurrentPath() {
+    if (currentPath === "/dashboard") {
+      await hydrateDashboardHome();
+      return;
+    }
+
+    if (currentPath === "/dashboard/projects") {
+      await hydrateProjectsPage();
+      return;
+    }
+
+    if (currentPath === "/dashboard/chat") {
+      await hydrateChatPage();
+      return;
+    }
+
+    if (currentPath === "/dashboard/social") {
+      await hydrateSocialPage();
+      return;
+    }
+
+    if (currentPath === "/dashboard/updates") {
+      await hydrateUpdatesPage();
+      return;
+    }
+
+    if (currentPath === "/dashboard/profile") {
+      await hydrateProfilePage();
+      return;
+    }
+
+    if (currentPath === "/employers/talent") {
+      await hydrateEmployerTalentPage();
+    }
+  }
+
   async function boot() {
     try {
       wireThemeToggle();
       await trySyncLandingAuth();
+      await syncOptionalAuthUi();
+
+      if (isDashboardPath && !restoredDashboardSnapshot) {
+        // Reveal immediately with skeletons, then progressively hydrate.
+        document.documentElement.setAttribute("data-runtime-ready", "1");
+      } else if (restoredDashboardSnapshot) {
+        document.documentElement.setAttribute("data-runtime-ready", "1");
+      }
 
       try {
         await syncAuthContext();
@@ -1680,37 +2162,13 @@
         }
       }
 
-      if (currentPath === "/dashboard") {
-        await hydrateDashboardHome();
-      }
-
-      if (currentPath === "/dashboard/projects") {
-        await hydrateProjectsPage();
-      }
-
-      if (currentPath === "/dashboard/chat") {
-        await hydrateChatPage();
-      }
-
-      if (currentPath === "/dashboard/social") {
-        await hydrateSocialPage();
-      }
-
-      if (currentPath === "/dashboard/updates") {
-        await hydrateUpdatesPage();
-      }
-
-      if (currentPath === "/dashboard/profile") {
-        await hydrateProfilePage();
-      }
-
-      if (currentPath === "/employers/talent") {
-        await hydrateEmployerTalentPage();
-      }
+      await hydrateCurrentPath();
     } finally {
       if (!hasAppliedAuthCtx && !needsAuth()) {
         applyCtxImmediately();
       }
+      clearDashboardSkeletons();
+      persistDashboardSnapshot(currentPath);
       document.documentElement.setAttribute("data-runtime-ready", "1");
     }
   }
