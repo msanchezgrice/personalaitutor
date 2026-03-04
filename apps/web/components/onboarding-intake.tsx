@@ -735,27 +735,20 @@ export function OnboardingIntake() {
   return (
     <div
       id="onboarding-react-root"
-      className="relative min-h-screen bg-[var(--bg-dark)] text-[var(--text-main)] overflow-x-hidden px-4 py-10 md:px-6"
+      className="relative min-h-screen bg-[#f8fafc] text-[#1e293b] overflow-x-hidden px-4 py-10 md:px-6"
       data-onboarding-react-root="1"
     >
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-8">
           <a href="/" className="inline-flex items-center gap-3 mb-5">
             <img src="/assets/branding/brand_brain_icon.svg" alt="My AI Skill Tutor" className="h-11 w-11 object-contain" />
-            <span className="font-[Outfit] font-bold text-4xl tracking-tight text-[var(--text-main)]">My AI Skill Tutor</span>
+            <span className="font-[Outfit] font-bold text-4xl tracking-tight text-[#0f172a]">My AI Skill Tutor</span>
           </a>
-          <div className="inline-flex items-center bg-[#dce6f7] text-[#2454d6] px-5 py-2 rounded-full text-sm font-medium mb-3">
-            <span className="mr-2">🎯</span>
-            {selectedCareerLabel} Risk Assessment
-          </div>
-          <p className="text-xl text-[var(--text-muted)]">
-            {selectedCareerContent.subtitle}
-          </p>
         </div>
 
-        <div className="glass-panel p-8 md:p-10 rounded-2xl border border-white/10">
+        <div className="bg-white p-8 md:p-10 rounded-2xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-4xl font-[Outfit] text-[var(--text-main)]">
+            <h2 className="text-3xl font-[Outfit] font-semibold text-[#0f172a]">
               {step === 1 && "Basic Information"}
               {step === 2 && "Work Details"}
               {step === 3 && "Resume & Review"}
@@ -770,16 +763,16 @@ export function OnboardingIntake() {
                     index < step
                       ? "bg-emerald-500"
                       : index === step
-                        ? "bg-[#0b1838]"
-                        : "bg-[#c5cfde]"
+                        ? "bg-emerald-500"
+                        : "bg-slate-200"
                   }`}
                 />
               ))}
             </div>
           </div>
 
-          <div className="h-3 w-full bg-[#e6eaf2] rounded-full overflow-hidden mb-8">
-            <div className="h-full bg-[#0b1838] rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden mb-8">
+            <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }} />
           </div>
 
           {error ? (
@@ -797,13 +790,13 @@ export function OnboardingIntake() {
           {step === 1 ? (
             <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Career Category</label>
+                <label className="block text-sm font-medium mb-2 text-[#334155]">Career Category</label>
                 <select
                   value={careerCategory}
                   onChange={(event) =>
                     setCareerCategory(event.target.value as (typeof careerCategoryOptions)[number]["value"])
                   }
-                  className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[#1e293b] placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 transition-colors"
                 >
                   {careerCategoryOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -815,36 +808,36 @@ export function OnboardingIntake() {
 
               {careerCategory === "other" ? (
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Please specify your career category</label>
+                  <label className="block text-sm font-medium mb-2 text-[#334155]">Please specify your career category</label>
                   <input
                     type="text"
                     value={customCareerCategory}
                     onChange={(event) => setCustomCareerCategory(event.target.value)}
                     placeholder="e.g., Sales, Operations, HR"
-                    className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[#1e293b] placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 transition-colors"
                   />
                 </div>
               ) : null}
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Job Title</label>
+                <label className="block text-sm font-medium mb-2 text-[#334155]">Job Title</label>
                 <input
                   type="text"
                   value={jobTitle}
                   onChange={(event) => setJobTitle(event.target.value)}
                   placeholder={selectedCareerContent.jobTitlePlaceholder}
-                  className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[#1e293b] placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Years of Experience</label>
+                <label className="block text-sm font-medium mb-2 text-[#334155]">Years of Experience</label>
                 <select
                   value={yearsExperience}
                   onChange={(event) =>
                     setYearsExperience(event.target.value as (typeof yearsExperienceOptions)[number]["value"])
                   }
-                  className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[#1e293b] placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 transition-colors"
                 >
                   {yearsExperienceOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -855,11 +848,11 @@ export function OnboardingIntake() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Company Size (Optional)</label>
+                <label className="block text-sm font-medium mb-2 text-[#334155]">Company Size (Optional)</label>
                 <select
                   value={companySize}
                   onChange={(event) => setCompanySize(event.target.value)}
-                  className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[#1e293b] placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 transition-colors"
                 >
                   {companySizeOptions.map((option) => (
                     <option key={option.value || "none"} value={option.value}>
@@ -874,32 +867,32 @@ export function OnboardingIntake() {
           {step === 2 ? (
             <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Daily Work Summary</label>
+                <label className="block text-sm font-medium mb-2 text-[#334155]">Daily Work Summary</label>
                 <textarea
                   rows={4}
                   value={dailyWorkSummary}
                   onChange={(event) => setDailyWorkSummary(event.target.value)}
                   placeholder={selectedCareerContent.workSummaryPlaceholder}
-                  className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[#1e293b] placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 transition-colors"
                 />
-                <p className="mt-2 text-sm text-[var(--text-muted)]">
+                <p className="mt-2 text-sm text-slate-500">
                   {dailyWorkSummary.trim().length}/300 characters (minimum 50)
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Key Skills &amp; Tools (Optional)</label>
+                <label className="block text-sm font-medium mb-2 text-[#334155]">Key Skills &amp; Tools (Optional)</label>
                 <textarea
                   rows={3}
                   value={keySkills}
                   onChange={(event) => setKeySkills(event.target.value)}
                   placeholder={selectedCareerContent.skillsPlaceholder}
-                  className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[#1e293b] placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">
+                <label className="block text-sm font-medium mb-2 text-[#334155]">
                   <i className="fa-brands fa-linkedin text-[#0a66c2] mr-2" />
                   LinkedIn Profile URL
                 </label>
@@ -908,9 +901,9 @@ export function OnboardingIntake() {
                   value={linkedinUrl}
                   onChange={(event) => setLinkedinUrl(event.target.value)}
                   placeholder="https://linkedin.com/in/your-profile"
-                  className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[#1e293b] placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 transition-colors"
                 />
-                <p className="mt-2 text-sm text-[var(--text-muted)]">We use this for profile context and recommendations.</p>
+                <p className="mt-2 text-sm text-slate-500">We use this for profile context and recommendations.</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -925,11 +918,11 @@ export function OnboardingIntake() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Current Situation</label>
+                <label className="block text-sm font-medium mb-2 text-[#334155]">Current Situation</label>
                 <select
                   value={situation}
                   onChange={(event) => setSituation(event.target.value as SituationStatus)}
-                  className="w-full rounded-xl border border-[#cad3e3] bg-white px-4 py-3 text-[var(--text-main)]"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[#1e293b] placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 transition-colors"
                 >
                   {situationOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -940,7 +933,7 @@ export function OnboardingIntake() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">Primary Goals</label>
+                <label className="block text-sm font-medium mb-2 text-[#334155]">Primary Goals</label>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {goalOptions.map((goal) => {
                     const checked = selectedGoals.includes(goal.value);
@@ -948,7 +941,7 @@ export function OnboardingIntake() {
                       <label
                         key={goal.value}
                         className={`rounded-xl border px-3 py-2 text-sm cursor-pointer ${
-                          checked ? "border-emerald-400 bg-emerald-50 text-emerald-800" : "border-[#cad3e3] bg-white text-[var(--text-main)]"
+                          checked ? "border-emerald-400 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-[#334155] hover:border-emerald-300 transition-colors"
                         }`}
                       >
                         <input
@@ -965,7 +958,7 @@ export function OnboardingIntake() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-[var(--text-main)]">How comfortable are you with AI tools today?</label>
+                <label className="block text-sm font-medium mb-2 text-[#334155]">How comfortable are you with AI tools today?</label>
                 <div className="grid grid-cols-3 gap-2">
                   {aiComfortOptions.map((option) => (
                     <button
@@ -975,7 +968,7 @@ export function OnboardingIntake() {
                       className={`rounded-xl border px-3 py-2 text-sm ${
                         aiComfort === option.value
                           ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                          : "border-[#cad3e3] bg-white text-[var(--text-main)]"
+                          : "border-slate-200 bg-white text-[#334155] hover:border-emerald-300 transition-colors"
                       }`}
                     >
                       {option.label}
@@ -989,8 +982,8 @@ export function OnboardingIntake() {
           {step === 3 ? (
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium mb-3 text-[var(--text-main)]">Upload Resume (Optional)</label>
-                <label className="block rounded-2xl border-2 border-dashed border-[#b8c6da] bg-[#f8fbff] px-6 py-10 text-center cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/40 transition-colors">
+                <label className="block text-sm font-medium mb-3 text-[#334155]">Upload Resume (Optional)</label>
+                <label className="block rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/40 transition-colors">
                   <input
                     type="file"
                     accept=".pdf,.doc,.docx,.txt"
@@ -1005,15 +998,15 @@ export function OnboardingIntake() {
                       void uploadResume(file);
                     }}
                   />
-                  <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-[#e7edf8] flex items-center justify-center">
-                    <i className="fa-solid fa-upload text-2xl text-[#5f7394]" />
+                  <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-emerald-50 flex items-center justify-center">
+                    <i className="fa-solid fa-upload text-2xl text-emerald-500" />
                   </div>
-                  <p className="text-xl font-medium text-[var(--text-main)]">
+                  <p className="text-xl font-medium text-[#0f172a]">
                     {resumeUploadBusy
                       ? "Uploading resume..."
                       : uploadedResumeName ?? resumeFile?.name ?? "Drop your resume here"}
                   </p>
-                  <p className="text-sm text-[var(--text-muted)] mt-2">
+                  <p className="text-sm text-slate-500 mt-2">
                     {resumeUploadBusy
                       ? "Please wait while we save your file"
                       : uploadedResumeName
@@ -1023,18 +1016,18 @@ export function OnboardingIntake() {
                 </label>
               </div>
 
-              <div className="rounded-2xl border border-[#bdd0ef] bg-[#eef4ff] p-5">
-                <h4 className="text-xl font-semibold text-[var(--text-main)] mb-2">Ready for AI Analysis</h4>
-                <ul className="space-y-2 text-[var(--text-muted)]">
-                  <li><i className="fa-solid fa-robot mr-2 text-[#4c5f82]" />Your responses personalize your tutor path.</li>
-                  <li><i className="fa-regular fa-clock mr-2 text-[#4c5f82]" />Analysis typically takes 30-60 seconds.</li>
-                  <li><i className="fa-solid fa-shield mr-2 text-[#4c5f82]" />LinkedIn and resume context improves recommendations.</li>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                <h4 className="text-xl font-semibold text-[#0f172a] mb-2">Ready for AI Analysis</h4>
+                <ul className="space-y-2 text-slate-500">
+                  <li><i className="fa-solid fa-robot mr-2 text-emerald-600" />Your responses personalize your tutor path.</li>
+                  <li><i className="fa-regular fa-clock mr-2 text-emerald-600" />Analysis typically takes 30-60 seconds.</li>
+                  <li><i className="fa-solid fa-shield mr-2 text-emerald-600" />LinkedIn and resume context improves recommendations.</li>
                 </ul>
               </div>
 
-              <div className="rounded-2xl border border-[#d4dce9] bg-[#f7f9fc] p-5">
-                <h4 className="text-xl font-semibold text-[var(--text-main)] mb-3">Review Your Information</h4>
-                <div className="grid gap-2 text-[var(--text-main)]">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <h4 className="text-xl font-semibold text-[#0f172a] mb-3">Review Your Information</h4>
+                <div className="grid gap-2 text-[#0f172a]">
                   <p><strong>Role:</strong> {jobTitle || "Not provided"} ({selectedCareerLabel})</p>
                   <p><strong>Experience:</strong> {selectedExperience.label}</p>
                   <p><strong>Company Size:</strong> {companySize || "Not specified"}</p>
@@ -1047,10 +1040,10 @@ export function OnboardingIntake() {
 
           {step === 4 ? (
             <div className="py-12 text-center">
-              <div className="mx-auto mb-6 h-20 w-20 rounded-full border-4 border-[#102246] border-t-transparent animate-spin" />
-              <h3 className="text-4xl font-[Outfit] text-[var(--text-main)] mb-5">AI Analysis in Progress</h3>
-              <div className="max-w-xl mx-auto rounded-2xl border border-[#ccd9ef] bg-[#eef4ff] px-5 py-4 text-lg text-[var(--text-main)]">
-                <i className="fa-solid fa-spinner animate-spin mr-3 text-[#102246]" />
+              <div className="mx-auto mb-6 h-20 w-20 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin" />
+              <h3 className="text-3xl font-[Outfit] font-semibold text-[#0f172a] mb-5">AI Analysis in Progress</h3>
+              <div className="max-w-xl mx-auto rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-lg text-[#0f172a]">
+                <i className="fa-solid fa-spinner animate-spin mr-3 text-emerald-600" />
                 {analysisSteps[analysisIndex]}
               </div>
             </div>
@@ -1064,8 +1057,8 @@ export function OnboardingIntake() {
                     key={option.value}
                     className={`rounded-full border px-4 py-1 text-sm ${
                       option.value === careerCategory
-                        ? "border-[#0b1838] bg-[#0b1838] text-white"
-                        : "border-[#cad3e3] bg-white text-[var(--text-main)]"
+                        ? "border-emerald-500 bg-emerald-500 text-white"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300 transition-colors"
                     }`}
                   >
                     {option.label}
@@ -1075,7 +1068,7 @@ export function OnboardingIntake() {
 
               <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
                 <div className="space-y-4">
-                  <h3 className="text-4xl font-[Outfit] text-[var(--text-main)]">{activeAssessmentTemplate.title}</h3>
+                  <h3 className="text-3xl font-[Outfit] font-semibold text-[#0f172a]">{activeAssessmentTemplate.title}</h3>
                   <div className="flex items-center gap-3 text-sm">
                     <span
                       className="rounded-full px-3 py-1 font-semibold"
@@ -1083,18 +1076,18 @@ export function OnboardingIntake() {
                     >
                       {riskBand} Risk ({normalizedScore}/100)
                     </span>
-                    <span className="text-[var(--text-muted)]">Timeline: {riskTimeline}</span>
+                    <span className="text-slate-500">Timeline: {riskTimeline}</span>
                   </div>
-                  <p className="text-[var(--text-muted)]">{activeAssessmentTemplate.description}</p>
+                  <p className="text-slate-500">{activeAssessmentTemplate.description}</p>
 
-                  <div className="rounded-2xl border border-[#d4dce9] bg-[#f7f9fc] p-5">
-                    <h4 className="text-2xl font-[Outfit] text-[var(--text-main)] mb-3">Key Risk Areas</h4>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <h4 className="text-2xl font-[Outfit] text-[#0f172a] mb-3">Key Risk Areas</h4>
                     <ul className="space-y-2">
                       {activeAssessmentTemplate.riskAreas.map((item) => {
                         const dotColor =
                           item.level === "High" ? "#dc2626" : item.level === "Medium" ? "#d97706" : "#16a34a";
                         return (
-                          <li key={item.label} className="flex items-start gap-3 text-[var(--text-main)]">
+                          <li key={item.label} className="flex items-start gap-3 text-[#0f172a]">
                             <span className="mt-2 inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dotColor }} />
                             <span>
                               {item.label} ({item.level} Risk)
@@ -1105,9 +1098,9 @@ export function OnboardingIntake() {
                     </ul>
                   </div>
 
-                  <div className="rounded-2xl border border-[#bdd0ef] bg-[#eef4ff] p-5">
-                    <h4 className="text-2xl font-[Outfit] text-[var(--text-main)] mb-3">Recommended Actions</h4>
-                    <ul className="list-disc list-inside space-y-2 text-[var(--text-main)]">
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                    <h4 className="text-2xl font-[Outfit] text-[#0f172a] mb-3">Recommended Actions</h4>
+                    <ul className="list-disc list-inside space-y-2 text-[#0f172a]">
                       {activeAssessmentTemplate.recommendedActions.map((action) => (
                         <li key={action}>{action}</li>
                       ))}
@@ -1115,7 +1108,7 @@ export function OnboardingIntake() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-[#d4dce9] bg-white p-5">
+                <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
                   <div className="mx-auto relative h-36 w-36">
                     <div
                       className="h-full w-full rounded-full"
@@ -1133,14 +1126,14 @@ export function OnboardingIntake() {
                     </div>
                   </div>
 
-                  <h4 className="mt-6 text-3xl font-[Outfit] text-[var(--text-main)] text-center">{activeAssessmentTemplate.title}</h4>
-                  <p className="text-center text-[var(--text-muted)] mb-4">Risk Assessment Report</p>
+                  <h4 className="mt-6 text-3xl font-[Outfit] text-[#0f172a] text-center">{activeAssessmentTemplate.title}</h4>
+                  <p className="text-center text-slate-500 mb-4">Risk Assessment Report</p>
 
                   <div className="space-y-3">
                     {activeAssessmentTemplate.riskAreas.slice(0, 2).map((item) => (
-                      <div key={item.label} className="rounded-xl border border-[#e1e7f1] p-3">
+                      <div key={item.label} className="rounded-xl border border-slate-200 p-3">
                         <div className="flex items-center justify-between gap-3">
-                          <p className="font-semibold text-[var(--text-main)]">{item.label}</p>
+                          <p className="font-semibold text-[#0f172a]">{item.label}</p>
                           <span
                             className="rounded-full px-2 py-0.5 text-xs font-semibold"
                             style={{
@@ -1156,7 +1149,7 @@ export function OnboardingIntake() {
                     ))}
                   </div>
 
-                  <p className="mt-4 text-sm text-center text-[var(--text-muted)]">
+                  <p className="mt-4 text-sm text-center text-slate-500">
                     <i className="fa-regular fa-clock mr-2" />
                     Timeline: {riskTimeline}
                   </p>
@@ -1164,17 +1157,17 @@ export function OnboardingIntake() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl border border-[#d4dce9] bg-[#f7f9fc] p-5">
-                  <h4 className="text-xl font-[Outfit] text-[var(--text-main)] mb-2">AI Tool Analysis</h4>
-                  <p className="text-[var(--text-muted)]">{activeAssessmentTemplate.aiToolAnalysis}</p>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <h4 className="text-xl font-[Outfit] text-[#0f172a] mb-2">AI Tool Analysis</h4>
+                  <p className="text-slate-500">{activeAssessmentTemplate.aiToolAnalysis}</p>
                 </div>
-                <div className="rounded-2xl border border-[#d4dce9] bg-[#f7f9fc] p-5">
-                  <h4 className="text-xl font-[Outfit] text-[var(--text-main)] mb-2">Career Strategies</h4>
-                  <p className="text-[var(--text-muted)]">{activeAssessmentTemplate.careerStrategies}</p>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <h4 className="text-xl font-[Outfit] text-[#0f172a] mb-2">Career Strategies</h4>
+                  <p className="text-slate-500">{activeAssessmentTemplate.careerStrategies}</p>
                 </div>
-                <div className="rounded-2xl border border-[#d4dce9] bg-[#f7f9fc] p-5">
-                  <h4 className="text-xl font-[Outfit] text-[var(--text-main)] mb-2">Action Plan</h4>
-                  <ul className="list-disc list-inside space-y-1 text-[var(--text-muted)]">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <h4 className="text-xl font-[Outfit] text-[#0f172a] mb-2">Action Plan</h4>
+                  <ul className="list-disc list-inside space-y-1 text-slate-500">
                     {activeAssessmentTemplate.actionPlan.map((stepItem) => (
                       <li key={stepItem}>{stepItem}</li>
                     ))}
@@ -1183,15 +1176,16 @@ export function OnboardingIntake() {
               </div>
 
               {recommendedPaths.length ? (
-                <div className="rounded-xl border border-[#d4dce9] bg-white px-4 py-3 text-sm text-[var(--text-main)]">
+                <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-[#0f172a]">
                   Recommended skill tracks: {recommendedPaths.join(", ")}
                 </div>
               ) : null}
 
-              <div className="flex flex-col gap-3 border-t border-[#d6deec] pt-6 md:flex-row md:items-center md:justify-between">
-                <p className="text-sm text-[var(--text-muted)]">
+              <div className="flex flex-col gap-3 border-t border-slate-200 pt-6 md:flex-row md:items-center md:justify-between">
+                <p className="text-sm text-slate-500">
                   Review complete. Continue to activate your tutor dashboard and personalized modules.
                 </p>
+
                 <button
                   type="button"
                   className="btn btn-primary px-8"
@@ -1206,7 +1200,7 @@ export function OnboardingIntake() {
           ) : null}
 
           {step < 4 ? (
-            <div className="mt-8 flex items-center justify-between border-t border-[#d6deec] pt-6">
+            <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-6">
               <button
                 type="button"
                 className="btn btn-secondary"
