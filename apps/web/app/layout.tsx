@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Analytics } from "@vercel/analytics/next";
 import {
   BRAND_NAME,
   BRAND_DOMAIN,
@@ -92,6 +93,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
           <Script src="/gemini-runtime.js" strategy="afterInteractive" />
           {children}
+          <Analytics />
         </ClerkProvider>
       </body>
     </html>
