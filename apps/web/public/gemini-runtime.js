@@ -15,11 +15,14 @@
   var AUTH_SESSION_CACHE_PREFIX = "ai_tutor_auth_session_v1:";
   var SOCIAL_DRAFTS_CACHE_PREFIX = "ai_tutor_social_drafts_v1:";
   var CHAT_HISTORY_CACHE_PREFIX = "ai_tutor_chat_history_v1:";
+  var ENABLE_DASHBOARD_SNAPSHOT_CACHE = false;
+  var HOME_NEWS_CACHE_PREFIX = "ai_tutor_home_news_v1:";
   var SUMMARY_CACHE_TTL_MS = 120000;
   var AUTH_SESSION_CACHE_TTL_MS = 45000;
   var SNAPSHOT_CACHE_TTL_MS = 1800000;
   var SOCIAL_DRAFTS_CACHE_TTL_MS = 600000;
   var CHAT_HISTORY_CACHE_TTL_MS = 604800000;
+  var HOME_NEWS_CACHE_TTL_MS = 600000;
   var SIGN_UP_INTENT_KEY = "ai_tutor_clerk_signup_intent_v1";
   var PENDING_ONBOARDING_SESSION_KEY = "ai_tutor_pending_onboarding_session_v1";
   var ONBOARDING_ASSESSMENT_FUNNEL = "onboarding_assessment";
@@ -386,7 +389,34 @@
     writeSessionObject(key, { ts: Date.now(), messages: messages });
   }
 
+  function homeNewsCacheKey() {
+    var scope = cacheScope();
+    if (!scope) return null;
+    return HOME_NEWS_CACHE_PREFIX + scope;
+  }
+
+  function readHomeNewsCache() {
+    var key = homeNewsCacheKey();
+    if (!key) return null;
+    var payload = readSessionObject(key);
+    if (!payload || !payload.ts || !Array.isArray(payload.insights)) return null;
+    if (Date.now() - Number(payload.ts) > HOME_NEWS_CACHE_TTL_MS) return null;
+    return payload;
+  }
+
+  function writeHomeNewsCache(payload) {
+    var key = homeNewsCacheKey();
+    if (!key || !payload || !Array.isArray(payload.insights)) return;
+    writeSessionObject(key, {
+      ts: Date.now(),
+      insights: payload.insights,
+      source: payload.source || null,
+      focusSummary: payload.focusSummary || null,
+    });
+  }
+
   function persistDashboardSnapshot(pathname) {
+    if (!ENABLE_DASHBOARD_SNAPSHOT_CACHE) return;
     if (!isDashboardPath) return;
     if (isNarrowViewport()) return;
     var key = dashboardSnapshotCacheKey(pathname || currentPath);
@@ -422,6 +452,7 @@
   }
 
   function restoreDashboardSnapshot() {
+    if (!ENABLE_DASHBOARD_SNAPSHOT_CACHE) return false;
     if (!isDashboardPath) return false;
     if (isNarrowViewport()) return false;
     var key = dashboardSnapshotCacheKey(currentPath);
@@ -443,6 +474,7 @@
   }
 
   function wireDashboardSnapshotPersistence() {
+    if (!ENABLE_DASHBOARD_SNAPSHOT_CACHE) return;
     if (!isDashboardPath) return;
     if (isNarrowViewport()) return;
     if (document.documentElement.getAttribute("data-snapshot-cache-wired") === "1") return;
@@ -694,9 +726,9 @@
     } catch {
       // fall through to sign-out route
     }
-    captureEvent("auth_sign_out_fallback_redirect", { auth_provider: "clerk", method: "sign_out_route" });
+    captureEvent("auth_sign_out_fallback_redirect", { auth_provider: "clerk", method: "home_redirect" });
     try {
-      window.location.href = "/sign-out";
+      window.location.href = "/";
       return;
     } catch {
       captureEvent("auth_sign_out_failed", { auth_provider: "clerk", reason: "redirect_failed" });
@@ -1012,9 +1044,21 @@
     return user.headline;
   }
 
+  function salutationForHour(hour) {
+    if (hour >= 5 && hour < 12) return "Good Morning";
+    if (hour >= 12 && hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  }
+
+  function greetingForLocalTime() {
+    var now = new Date();
+    return salutationForHour(now.getHours());
+  }
+
   function updateSharedUserUi(summary) {
     if (!summary || !summary.user) return;
     var user = summary.user;
+    if (user.id) ctx.userId = user.id;
     ctx.handle = user.handle;
     ctx.name = user.name;
     ctx.headline = headlineForUser(user);
@@ -1049,7 +1093,7 @@
 
     if (greeting) {
       var firstName = user.name.split(" ")[0] || user.name;
-      greeting.textContent = "Good Morning, " + firstName + " 👋";
+      greeting.textContent = greetingForLocalTime() + ", " + firstName + " 👋";
     }
 
     if (ctx.avatarUrl && isDashboardPath) {
@@ -1166,12 +1210,12 @@
       toggleButton.type = "button";
       toggleButton.setAttribute("data-mobile-nav-toggle", "1");
       toggleButton.setAttribute("aria-label", "Open menu");
-      toggleButton.className =
-        "hidden lg:hidden mr-3 h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-gray-200";
+      toggleButton.className = "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-gray-200";
       toggleButton.innerHTML = '<i class="fa-solid fa-bars text-sm"></i>';
-      document.body.appendChild(toggleButton);
-    } else if (toggleButton.parentElement !== document.body) {
-      document.body.appendChild(toggleButton);
+    }
+
+    if (toggleButton.parentElement !== header) {
+      header.insertBefore(toggleButton, header.firstChild);
     }
 
     var closeMobileMenu = function () {
@@ -1190,11 +1234,7 @@
     var settingsMenu = document.getElementById("dashboard-settings-menu");
     if (settingsMenu) {
       var rightControls = header.querySelector(".flex.items-center.gap-4") || header.querySelector(".flex.items-center.gap-2");
-      if (isNarrowViewport()) {
-        if (settingsMenu.parentElement !== document.body) {
-          document.body.appendChild(settingsMenu);
-        }
-      } else if (rightControls && settingsMenu.parentElement !== rightControls) {
+      if (rightControls && settingsMenu.parentElement !== rightControls) {
         rightControls.appendChild(settingsMenu);
       }
     }
@@ -1337,7 +1377,7 @@
       : null;
 
     var projects = summary.projects || [];
-    var active = projects.find(function (project) {
+    var activeProject = projects.find(function (project) {
       return project.state === "building" || project.state === "planned" || project.state === "idea";
     }) || projects[0] || null;
 
@@ -1345,29 +1385,115 @@
       return project.state === "built" || project.state === "showcased";
     }) || projects[1] || null;
 
+    var activeCard = activeProject;
+    if (!activeCard && topRecommendation) {
+      activeCard = {
+        id: null,
+        title: topRecommendation.title,
+        description: topRecommendation.summary,
+        buildLog: [],
+      };
+    }
+    if (!activeCard) {
+      activeCard = {
+        id: null,
+        title: "Introduction to LLMs",
+        description: "Start this module to build LLM fundamentals and ship your first practical artifact.",
+        buildLog: [],
+      };
+    }
+
+    function normalizeInlineText(value) {
+      return String(value || "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function summarizeText(value, maxChars) {
+      var cleaned = normalizeInlineText(value);
+      if (!cleaned) return "";
+      if (!maxChars || cleaned.length <= maxChars) return cleaned;
+      return cleaned.slice(0, Math.max(0, maxChars - 3)).trim() + "...";
+    }
+
+    function latestEventMessage(events) {
+      if (!Array.isArray(events) || !events.length) return "";
+      var bestMessage = "";
+      var bestTs = -Infinity;
+      events.forEach(function (event) {
+        var message = normalizeInlineText(event && event.message);
+        if (!message) return;
+        var parsed = Date.parse(event && event.createdAt ? String(event.createdAt) : "");
+        var ts = Number.isFinite(parsed) ? parsed : 0;
+        if (ts >= bestTs) {
+          bestTs = ts;
+          bestMessage = message;
+        }
+      });
+      return bestMessage;
+    }
+
+    function latestBuildLogMessage(project) {
+      if (!project || !Array.isArray(project.buildLog)) return "";
+      for (var index = project.buildLog.length - 1; index >= 0; index -= 1) {
+        var entry = project.buildLog[index];
+        var message = normalizeInlineText(entry && entry.message);
+        if (!message) continue;
+        return message;
+      }
+      return "";
+    }
+
+    function latestChatCacheMessage(projectId) {
+      if (!projectId) return "";
+      var cachedHistory = readChatHistoryCache(projectId);
+      if (!Array.isArray(cachedHistory) || !cachedHistory.length) return "";
+      for (var index = cachedHistory.length - 1; index >= 0; index -= 1) {
+        var item = cachedHistory[index] || {};
+        var text = normalizeInlineText(item.text);
+        if (!text) continue;
+        return text;
+      }
+      return "";
+    }
+
+    var todayUpdateText = summarizeText(
+      (summary.dailyUpdate && summary.dailyUpdate.summary) ||
+      latestEventMessage(summary.latestEvents) ||
+      "You are set up for focused progress today. Pick one concrete task and ship it.",
+      180,
+    );
+
+    var continuationText = summarizeText(
+      latestBuildLogMessage(activeProject) ||
+      latestChatCacheMessage(activeProject && activeProject.id ? activeProject.id : ctx.projectId) ||
+      "Share your latest blocker and I will help you take the next verified step.",
+      200,
+    );
+
     var tutorBanner = document.querySelector("div.glass-panel.p-6.rounded-2xl.mb-8");
-    if (tutorBanner && topRecommendation) {
+    if (tutorBanner) {
       var bannerTitle = tutorBanner.querySelector("h3");
       var bannerBody = tutorBanner.querySelector("p.text-sm.text-gray-400");
       var bannerCta = tutorBanner.querySelector("a.btn");
       if (bannerTitle) {
-        bannerTitle.innerHTML = '<span class="text-emerald-400">My AI Skill Tutor:</span> Start your recommended module: ' + topRecommendation.title + ".";
+        bannerTitle.innerHTML = '<span class="text-emerald-400">Today&apos;s update:</span> ' + escapeHtml(todayUpdateText);
       }
       if (bannerBody) {
-        bannerBody.textContent = topRecommendation.summary + " Added from your onboarding assessment.";
+        bannerBody.textContent = "Continue where we left off: " + continuationText;
       }
       if (bannerCta) {
-        bannerCta.textContent = "Start Recommended Module";
-        setHref(bannerCta, "/dashboard/chat/?module=" + encodeURIComponent(topRecommendation.id));
+        bannerCta.textContent = "Continue where we left off";
+        setHref(bannerCta, "/dashboard/chat/");
       }
     }
 
     var cards = document.querySelectorAll("section .grid.sm\\:grid-cols-2 > a");
-    if (cards[0] && active) {
+    if (cards[0] && activeCard) {
       var title = cards[0].querySelector("h3");
       var desc = cards[0].querySelector("p.text-xs");
-      setText(title, active.title);
-      setText(desc, active.description);
+      setText(title, activeCard.title || "Introduction to LLMs");
+      setText(desc, activeCard.description || "Start this module to build LLM fundamentals and ship your first practical artifact.");
       setHref(cards[0], "/dashboard/projects/");
     }
 
@@ -1424,20 +1550,73 @@
     }
 
     var socialQuote = document.querySelector("section p.text-sm.text-gray-300.mb-4.italic");
+    var socialSection = socialQuote ? socialQuote.closest("section") : null;
+    var socialCta = socialSection ? socialSection.querySelector("a[href='/dashboard/social/'], a[href='/dashboard/social']") : null;
+    if (socialCta) {
+      setHref(socialCta, "/dashboard/social/");
+      socialCta.textContent = "Review Tweet Draft";
+    }
+
+    function applySocialQuote(tweetText) {
+      if (!socialQuote) return;
+      var normalized = summarizeText(tweetText, 200);
+      if (!normalized) return;
+      socialQuote.textContent = '"' + normalized + '"';
+    }
+
+    var socialFallbackText =
+      "Shipped a practical AI build step today and documented the workflow. Iterating in public and turning feedback into better execution. #AI #BuildInPublic";
+
+    async function loadHomeTweetDraft(projectId) {
+      try {
+        var ideasResult = await postJson("/api/social/drafts/ideas", { projectId: projectId || null });
+        var ideas = ideasResult && ideasResult.ideas ? ideasResult.ideas : null;
+        var tweetIdea = ideas && typeof ideas.x === "string" ? ideas.x : "";
+        if (normalizeInlineText(tweetIdea)) {
+          writeSocialDraftCache(projectId, {
+            linkedin: ideas && typeof ideas.linkedin === "string" ? ideas.linkedin : "",
+            x: tweetIdea,
+            contextLabel: ideas && typeof ideas.contextLabel === "string" ? ideas.contextLabel : "",
+            source: ideasResult && ideasResult.source ? ideasResult.source : "profile_context",
+          });
+          applySocialQuote(tweetIdea);
+          return true;
+        }
+      } catch {
+        // Fall through to deterministic draft fallback.
+      }
+
+      try {
+        var generatedResult = await postJson("/api/social/drafts/generate", { projectId: projectId || null });
+        var xDraft = (generatedResult.drafts || []).find(function (entry) {
+          return entry && entry.platform === "x" && normalizeInlineText(entry.text);
+        });
+        if (xDraft) {
+          applySocialQuote(xDraft.text);
+          return true;
+        }
+      } catch {
+        // Fall through to static fallback.
+      }
+
+      return false;
+    }
+
     if (socialQuote) {
-      window.setTimeout(function () {
-        void (async function hydrateSocialQuote() {
-          try {
-            var drafts = await postJson("/api/social/drafts/generate", { userId: ctx.userId, projectId: active ? active.id : null });
-            var linkedinDraft = (drafts.drafts || []).find(function (entry) { return entry.platform === "linkedin"; });
-            if (linkedinDraft) {
-              socialQuote.textContent = '"' + linkedinDraft.text.slice(0, 160) + '..."';
-            }
-          } catch {
-            return null;
-          }
-        })();
-      }, 10);
+      var socialProjectId = activeProject && activeProject.id ? activeProject.id : null;
+      var cachedDrafts = readSocialDraftCache(socialProjectId);
+      var cachedTweet = cachedDrafts && typeof cachedDrafts.x === "string" ? cachedDrafts.x : "";
+      if (normalizeInlineText(cachedTweet)) {
+        applySocialQuote(cachedTweet);
+        void loadHomeTweetDraft(socialProjectId).catch(function () {
+          return null;
+        });
+      } else {
+        var loadedTweet = await loadHomeTweetDraft(socialProjectId);
+        if (!loadedTweet) {
+          applySocialQuote(socialFallbackText);
+        }
+      }
     }
 
     var updatesSection = Array.prototype.find.call(document.querySelectorAll("section"), function (section) {
@@ -1445,7 +1624,106 @@
       return text.indexOf("ai updates") !== -1 || text.indexOf("view inbox") !== -1;
     });
     if (updatesSection) {
-      updatesSection.remove();
+      var updatesTitle = updatesSection.querySelector("h2");
+      if (updatesTitle) {
+        updatesTitle.innerHTML = '<i class="fa-solid fa-newspaper text-sky-400"></i> AI News';
+      }
+
+      var updatesLink = updatesSection.querySelector("a[href='/dashboard/updates/'], a[href='/dashboard/updates']");
+      if (updatesLink) {
+        setHref(updatesLink, "/dashboard/ai-news/");
+        updatesLink.textContent = "View all";
+      }
+
+      var updatesList = updatesSection.querySelector(".space-y-3");
+      if (updatesList) {
+        function fallbackHomeNews() {
+          return [
+            {
+              title: "AI models are improving evaluation reliability workflows",
+              summary: "Teams are using stricter eval gates before shipping model updates.",
+              source: "Platform Update",
+            },
+            {
+              title: "Agent-first tooling is accelerating delivery for builders",
+              summary: "Workflow tools are bundling AI agents to reduce manual orchestration.",
+              source: "Platform Update",
+            },
+            {
+              title: "Hiring trends now reward measurable AI execution proof",
+              summary: "Public artifacts and outcomes are becoming stronger career signals.",
+              source: "Platform Update",
+            },
+          ];
+        }
+
+        function normalizeHomeNews(insights) {
+          var rows = Array.isArray(insights) ? insights.slice(0, 3) : [];
+          var normalized = rows
+            .map(function (insight) {
+              return {
+                title: normalizeInlineText(insight && insight.title ? insight.title : ""),
+                summary: normalizeInlineText(insight && insight.summary ? insight.summary : ""),
+                source: normalizeInlineText(insight && insight.source ? insight.source : "AI News"),
+              };
+            })
+            .filter(function (story) {
+              return Boolean(story.title);
+            });
+
+          var fallback = fallbackHomeNews();
+          while (normalized.length < 3) {
+            normalized.push(fallback[normalized.length]);
+          }
+          return normalized.slice(0, 3);
+        }
+
+        function renderHomeNews(insights) {
+          var rows = normalizeHomeNews(insights);
+          updatesList.innerHTML = rows
+            .map(function (story) {
+              return (
+                '<a href="/dashboard/ai-news/" class="block glass p-4 rounded-xl border border-sky-500/20 bg-sky-500/5 hover:bg-white/5 transition flex gap-3">' +
+                '<div class="w-8 h-8 rounded shrink-0 bg-sky-500/20 flex items-center justify-center text-sky-400">' +
+                '<i class="fa-solid fa-newspaper text-xs"></i></div>' +
+                "<div>" +
+                '<h4 class="font-medium text-white text-sm mb-0.5">' + escapeHtml(story.title) + "</h4>" +
+                '<p class="text-xs text-gray-400 line-clamp-2">' + escapeHtml(story.summary || "Open AI News to review the full recommendation.") + "</p>" +
+                '<p class="text-[10px] text-sky-300 mt-1">' + escapeHtml(story.source) + "</p>" +
+                "</div></a>"
+              );
+            })
+            .join("");
+        }
+
+        async function refreshHomeNews() {
+          var fresh = await postJson("/api/news/recommendations", { maxStories: 3 });
+          var insights = Array.isArray(fresh && fresh.insights) ? fresh.insights : [];
+          if (!insights.length) {
+            throw new Error("No news insights returned");
+          }
+          writeHomeNewsCache({
+            insights: insights,
+            source: fresh && fresh.source ? fresh.source : null,
+            focusSummary: fresh && fresh.focusSummary ? fresh.focusSummary : null,
+          });
+          renderHomeNews(insights);
+        }
+
+        var cachedNews = readHomeNewsCache();
+        if (cachedNews && Array.isArray(cachedNews.insights) && cachedNews.insights.length) {
+          renderHomeNews(cachedNews.insights);
+          void refreshHomeNews().catch(function () {
+            return null;
+          });
+        } else {
+          try {
+            await refreshHomeNews();
+          } catch {
+            renderHomeNews(fallbackHomeNews());
+          }
+        }
+      }
     }
 
     var talentButton = document.querySelector("header a[href='/employers/talent/']");
@@ -3257,6 +3535,7 @@
     try {
       maybeTrackAuthEntryEvents();
       wireThemeToggle();
+      document.documentElement.setAttribute("data-runtime-ready", "1");
       await trySyncLandingAuth();
       await syncOptionalAuthUi();
 
