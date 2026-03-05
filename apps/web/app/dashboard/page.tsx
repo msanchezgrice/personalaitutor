@@ -1,14 +1,16 @@
 import { GeminiStaticPage } from "@/components/gemini-static-page";
 import { FbCompleteRegistrationOnDashboard } from "@/components/fb-complete-registration-on-dashboard";
 import { Suspense } from "react";
+import { getDashboardTemplateReplacements } from "@/lib/dashboard-template-replacements";
 
 export default async function DashboardPage() {
+  const replacements = await getDashboardTemplateReplacements();
   return (
     <>
       <Suspense fallback={null}>
         <FbCompleteRegistrationOnDashboard />
       </Suspense>
-      <GeminiStaticPage template="dashboard/index.html" />
+      <GeminiStaticPage template="dashboard/index.html" replacements={replacements} />
     </>
   );
 }

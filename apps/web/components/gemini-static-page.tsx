@@ -7,6 +7,7 @@ type GeminiStaticPageProps = {
   template: string;
   replacements?: Record<string, string>;
   className?: string;
+  runtime?: "full" | "none";
 };
 
 const templateCache = new Map<string, { className: string; body: string }>();
@@ -165,7 +166,7 @@ function applyReplacements(input: string, replacements?: Record<string, string>)
   return output;
 }
 
-export function GeminiStaticPage({ template, replacements, className }: GeminiStaticPageProps) {
+export function GeminiStaticPage({ template, replacements, className, runtime = "full" }: GeminiStaticPageProps) {
   const extracted = loadTemplate(template);
   const html = applyReplacements(extracted.body, replacements);
 
@@ -177,7 +178,7 @@ export function GeminiStaticPage({ template, replacements, className }: GeminiSt
         dangerouslySetInnerHTML={{ __html: html }}
         suppressHydrationWarning
       />
-      <Script src="/gemini-runtime.js" strategy="afterInteractive" />
+      {runtime === "full" ? <Script src="/gemini-runtime.js" strategy="afterInteractive" /> : null}
     </>
   );
 }

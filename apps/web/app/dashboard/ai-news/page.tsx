@@ -1,6 +1,7 @@
 import { GeminiStaticPage } from "@/components/gemini-static-page";
+import { getDashboardTemplateReplacements } from "@/lib/dashboard-template-replacements";
 
 export default async function DashboardAiNewsPage() {
-  return <GeminiStaticPage template="dashboard/ai-news/index.html" />;
+  const replacements = await getDashboardTemplateReplacements();
+  return <GeminiStaticPage template="dashboard/ai-news/index.html" replacements={replacements} />;
 }
-

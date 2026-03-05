@@ -121,7 +121,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   if (!profile || !profile.published) {
     if (handle === "alex-chen-ai") {
-      return <GeminiStaticPage template="u/alex-chen-ai/index.html" />;
+      return <GeminiStaticPage template="u/alex-chen-ai/index.html" runtime="none" />;
     }
     return notFound();
   }
@@ -177,7 +177,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   return (
     <>
-      <GeminiStaticPage template="u/alex-chen-ai/index.html" replacements={replacements} />
+      <GeminiStaticPage template="u/alex-chen-ai/index.html" replacements={replacements} runtime="none" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personLd) }} />
     </>
   );

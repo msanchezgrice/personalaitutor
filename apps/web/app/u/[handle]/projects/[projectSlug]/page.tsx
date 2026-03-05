@@ -112,7 +112,7 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
 
   if (!profile || !profile.published || !project || project.userId !== profile.id) {
     if (handle === "alex-chen-ai" && projectSlug === "customer-support-copilot") {
-      return <GeminiStaticPage template="u/alex-chen-ai/projects/customer-support-copilot/index.html" />;
+      return <GeminiStaticPage template="u/alex-chen-ai/projects/customer-support-copilot/index.html" runtime="none" />;
     }
     return notFound();
   }
@@ -146,6 +146,7 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
       <GeminiStaticPage
         template="u/alex-chen-ai/projects/customer-support-copilot/index.html"
         replacements={replacements}
+        runtime="none"
       />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(creativeWorkLd) }} />
     </>
