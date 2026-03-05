@@ -13,6 +13,16 @@ type DashboardShellProps = {
   headerActions?: ReactNode;
   children: ReactNode;
   decor?: ReactNode;
+  initialUser?: {
+    name?: string | null;
+    headline?: string | null;
+    avatarUrl?: string | null;
+    publicProfileUrl?: string | null;
+    levelLabel?: string | null;
+    levelSubtitle?: string | null;
+    levelProgressPct?: number | null;
+    levelProgressText?: string | null;
+  } | null;
 };
 
 type DashboardHref =
@@ -97,7 +107,23 @@ function navIconClassName(item: NavItem, active: boolean) {
   return "fa-solid " + item.icon + " w-5 text-center";
 }
 
-export function DashboardShell({ activeTab, headerTitle, headerSubtitle, headerActions, children, decor }: DashboardShellProps) {
+export function DashboardShell({
+  activeTab,
+  headerTitle,
+  headerSubtitle,
+  headerActions,
+  children,
+  decor,
+  initialUser,
+}: DashboardShellProps) {
+  const displayName = initialUser?.name?.trim() || "Learner";
+  const displayHeadline = initialUser?.headline?.trim() || "AI Builder";
+  const avatarUrl = initialUser?.avatarUrl?.trim() || "/assets/avatar.png";
+  const publicProfileUrl = initialUser?.publicProfileUrl?.trim() || "#";
+  const levelLabel = initialUser?.levelLabel?.trim() || "Level 1";
+  const levelSubtitle = initialUser?.levelSubtitle?.trim() || "Starter Builder";
+  const levelProgressPct = Math.max(0, Math.min(100, Number(initialUser?.levelProgressPct ?? 20)));
+  const levelProgressText = initialUser?.levelProgressText?.trim() || "Start building to level up";
   return (
     <>
       <DashboardRouteHydrator />
@@ -125,16 +151,16 @@ export function DashboardShell({ activeTab, headerTitle, headerSubtitle, headerA
               data-sidebar-profile="1"
             >
               <img
-                src="/assets/avatar.png"
+                src={avatarUrl}
                 className="w-10 h-10 rounded-full object-cover border border-white/20"
-                alt=""
+                alt={displayName}
               />
               <div className="overflow-hidden">
                 <div data-sidebar-profile-name="1" className="font-medium text-white truncate min-h-[1.25rem]">
-                  Loading profile
+                  {displayName}
                 </div>
                 <div data-sidebar-profile-role="1" className="text-xs text-emerald-400 truncate min-h-[1rem]">
-                  Syncing learner data
+                  {displayHeadline}
                 </div>
               </div>
             </Link>
@@ -159,23 +185,27 @@ export function DashboardShell({ activeTab, headerTitle, headerSubtitle, headerA
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/20 blur-2xl rounded-full translate-x-1/2 -translate-y-1/2"></div>
               <div data-sidebar-level-label="1" className="flex items-center gap-2 text-white font-medium mb-1">
-                <img src="/assets/badge.png" className="w-5 h-5" alt="badge" /> Level 1
+                <img src="/assets/badge.png" className="w-5 h-5" alt="badge" /> {levelLabel}
               </div>
-              <p data-sidebar-level-subtitle="1" className="text-xs text-gray-400 mb-3">Syncing progress</p>
+              <p data-sidebar-level-subtitle="1" className="text-xs text-gray-400 mb-3">{levelSubtitle}</p>
               <div className="w-full bg-black/40 h-1.5 rounded-full">
                 <div
                   data-sidebar-level-progress="1"
-                  className="bg-gradient-to-r from-emerald-500 to-cyan-400 w-[20%] h-full rounded-full shadow-[0_0_5px_rgba(79,70,229,0.5)]"
+                  className="bg-gradient-to-r from-emerald-500 to-cyan-400 h-full rounded-full shadow-[0_0_5px_rgba(79,70,229,0.5)]"
+                  style={{ width: `${levelProgressPct}%` }}
                 ></div>
               </div>
-              <p data-sidebar-level-progress-text="1" className="text-[10px] text-gray-500 mt-2 text-right">Preparing progress</p>
+              <p data-sidebar-level-progress-text="1" className="text-[10px] text-gray-500 mt-2 text-right">{levelProgressText}</p>
             </div>
 
             <a
-              href="#"
-              aria-disabled="true"
+              href={publicProfileUrl}
+              aria-disabled={publicProfileUrl === "#" ? "true" : undefined}
               data-public-profile-link="1"
-              className="flex items-center justify-between px-4 py-2 text-gray-400 text-xs border border-white/10 rounded-lg opacity-50 pointer-events-none transition"
+              className={
+                "flex items-center justify-between px-4 py-2 text-gray-400 text-xs border border-white/10 rounded-lg transition" +
+                (publicProfileUrl === "#" ? " opacity-50 pointer-events-none" : "")
+              }
             >
               <span className="flex items-center gap-2">
                 <i className="fa-solid fa-globe"></i> Public Profile

@@ -363,54 +363,77 @@ async function getOrCreateProfile(input: {
 }) {
   const supabase = getSupabaseAdmin();
   const normalizedUserId = normalizeUserId(input.userId);
+  const inferredName =
+    input.name?.trim() ||
+    input.handleBase?.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) ||
+    "New Learner";
+  const defaultHeadline = "AI Builder";
+  const defaultBio = "Building practical AI workflows and sharing public proof of execution.";
 
   const existing = await getProfileRowById(input.userId ?? normalizedUserId);
   if (existing) {
-    if (input.name && input.name.trim() && existing.full_name !== input.name.trim()) {
-      await supabase
-        .from("learner_profiles")
-        .update({
-          full_name: input.name.trim(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", existing.id);
+    const updates: Record<string, unknown> = {};
+    const existingName = typeof existing.full_name === "string" ? existing.full_name.trim() : "";
+    const existingHeadline = typeof existing.headline === "string" ? existing.headline.trim() : "";
+    const existingBio = typeof existing.bio === "string" ? existing.bio.trim() : "";
+    const links = existing.social_links ?? {};
+    const nextLinks: Record<string, string> = {
+      ...links,
+    };
+
+    if (input.name?.trim() && existingName !== input.name.trim()) {
+      updates.full_name = input.name.trim();
       existing.full_name = input.name.trim();
+    } else if (!existingName) {
+      updates.full_name = inferredName;
+      existing.full_name = inferredName;
     }
-    if (input.avatarUrl) {
-      const links = existing.social_links ?? {};
-      if (links.avatar !== input.avatarUrl) {
-        await supabase
-          .from("learner_profiles")
-          .update({
-            social_links: {
-              ...links,
-              avatar: input.avatarUrl,
-            },
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id);
-        existing.social_links = {
-          ...links,
-          avatar: input.avatarUrl,
-        };
-      }
+
+    if (!existingHeadline) {
+      updates.headline = defaultHeadline;
+      existing.headline = defaultHeadline;
     }
+
+    if (!existingBio) {
+      updates.bio = defaultBio;
+      existing.bio = defaultBio;
+    }
+
+    if (!existing.career_path_id) {
+      updates.career_path_id = input.careerPathId ?? CAREER_PATHS[0].id;
+      existing.career_path_id = String(updates.career_path_id);
+    }
+
+    const publicWebsite = `${appBaseUrl()}/u/${existing.handle}`;
+    if (!nextLinks.website) {
+      nextLinks.website = publicWebsite;
+    }
+
+    if (input.avatarUrl && nextLinks.avatar !== input.avatarUrl) {
+      nextLinks.avatar = input.avatarUrl;
+    }
+
+    if (JSON.stringify(nextLinks) !== JSON.stringify(links)) {
+      updates.social_links = nextLinks;
+      existing.social_links = nextLinks;
+    }
+
     if (input.acquisition) {
       const mergedAcquisition = mergeAttribution(
         parseAcquisition(existing.acquisition) ?? undefined,
         input.acquisition,
       );
       if (mergedAcquisition) {
-        await supabase
-          .from("learner_profiles")
-          .update({
-            acquisition: mergedAcquisition,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id);
+        updates.acquisition = mergedAcquisition;
         existing.acquisition = mergedAcquisition as unknown as Record<string, unknown>;
       }
     }
+
+    if (Object.keys(updates).length) {
+      updates.updated_at = new Date().toISOString();
+      await supabase.from("learner_profiles").update(updates).eq("id", existing.id);
+    }
+
     const skills = await getSkillsForProfile(existing.id);
     return profileFromRow(existing, skills);
   }
@@ -430,16 +453,14 @@ async function getOrCreateProfile(input: {
     "id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at";
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
-    const inferredName = input.name?.trim() || input.handleBase?.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) || "New Learner";
-    const inferredBio = "Building practical AI workflows and sharing public proof of execution.";
     const insert = {
       id: normalizedUserId,
       auth_user_id: normalizedUserId,
       external_user_id: input.userId ?? null,
       handle,
       full_name: inferredName,
-      headline: "AI Builder",
-      bio: inferredBio,
+      headline: defaultHeadline,
+      bio: defaultBio,
       career_path_id: input.careerPathId ?? CAREER_PATHS[0].id,
       published: false,
       tokens_used: 0,

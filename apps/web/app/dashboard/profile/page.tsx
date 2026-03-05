@@ -1,6 +1,16 @@
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
+import { getDashboardServerState } from "@/app/dashboard/_lib";
 
-export default function DashboardProfilePage() {
+export default async function DashboardProfilePage() {
+  const state = await getDashboardServerState();
+  const user = state.user;
+  const displayName = user?.name?.trim() || state.seed?.name?.trim() || "New Learner";
+  const displayHeadline = user?.headline?.trim() || "AI Builder";
+  const displayBio = user?.bio?.trim() || "Building practical AI workflows and sharing public proof of execution.";
+  const linkedInUrl = user?.socialLinks?.linkedin?.trim() || "";
+  const avatarUrl = user?.avatarUrl?.trim() || state.seed?.avatarUrl?.trim() || "/assets/avatar.png";
+  const publicProfileUrl = state.publicProfileUrl || "/dashboard/profile";
+  const displayEmail = state.seed?.email?.trim() || "No email on file";
   return (
     <DashboardShell
       activeTab="profile"
@@ -9,8 +19,18 @@ export default function DashboardProfilePage() {
           <i className="fa-solid fa-user text-emerald-400"></i> Profile Settings
         </span>
       )}
+      initialUser={{
+        name: displayName,
+        headline: displayHeadline,
+        avatarUrl,
+        publicProfileUrl,
+        levelLabel: "Level 1",
+        levelSubtitle: "Starter Builder",
+        levelProgressPct: 20,
+        levelProgressText: "Start building to level up",
+      }}
       headerActions={(
-        <a href="/u/alex-chen-ai/" className="btn btn-primary text-xs px-4 py-2">
+        <a href={publicProfileUrl} className="btn btn-primary text-xs px-4 py-2">
           <i className="fa-solid fa-globe mr-1"></i> View Public Profile
         </a>
       )}
@@ -21,14 +41,14 @@ export default function DashboardProfilePage() {
 
           <div className="flex items-center gap-6 mb-8">
             <div className="relative group cursor-pointer inline-block">
-              <img src="/assets/avatar.png" className="w-24 h-24 rounded-full object-cover border-4 border-black box-content shadow-[0_0_20px_rgba(79,70,229,0.3)]" alt="Profile avatar" />
+              <img src={avatarUrl} className="w-24 h-24 rounded-full object-cover border-4 border-black box-content shadow-[0_0_20px_rgba(79,70,229,0.3)]" alt={displayName} />
               <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition border-4 border-emerald-500">
                 <i className="fa-solid fa-camera text-xl text-white"></i>
               </div>
             </div>
             <div>
-              <h3 className="text-white text-lg font-medium">Loading learner profile...</h3>
-              <p className="text-sm text-gray-400 text-emerald-400 mb-2">loading@example.com</p>
+              <h3 className="text-white text-lg font-medium">{displayName}</h3>
+              <p className="text-sm text-gray-400 text-emerald-400 mb-2">{displayEmail}</p>
               <button className="btn btn-secondary text-xs px-3 py-1.5 rounded">Change Avatar</button>
             </div>
           </div>
@@ -40,8 +60,8 @@ export default function DashboardProfilePage() {
                 <input
                   type="text"
                   className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition"
-                  defaultValue=""
-                  placeholder="Loading name"
+                  defaultValue={displayName}
+                  placeholder="Full name"
                 />
               </div>
               <div>
@@ -49,8 +69,8 @@ export default function DashboardProfilePage() {
                 <input
                   type="text"
                   className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition"
-                  defaultValue=""
-                  placeholder="Loading role"
+                  defaultValue={displayHeadline}
+                  placeholder="Current role"
                 />
               </div>
             </div>
@@ -59,8 +79,8 @@ export default function DashboardProfilePage() {
               <textarea
                 className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition resize-none custom-scrollbar"
                 rows={4}
-                defaultValue=""
-                placeholder="Loading profile bio"
+                defaultValue={displayBio}
+                placeholder="Public bio"
               ></textarea>
             </div>
             <div>
@@ -72,7 +92,7 @@ export default function DashboardProfilePage() {
                 <input
                   type="text"
                   className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition"
-                  defaultValue=""
+                  defaultValue={linkedInUrl}
                   placeholder="https://linkedin.com/in/..."
                 />
               </div>
@@ -83,7 +103,7 @@ export default function DashboardProfilePage() {
                 id="profile-avatar-url"
                 type="url"
                 className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition"
-                defaultValue=""
+                defaultValue={avatarUrl.startsWith("/assets/") ? "" : avatarUrl}
                 placeholder="https://..."
               />
             </div>

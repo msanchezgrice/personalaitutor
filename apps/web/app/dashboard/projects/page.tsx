@@ -1,6 +1,18 @@
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
+import { getDashboardServerState } from "@/app/dashboard/_lib";
 
-export default function DashboardProjectsPage() {
+function summarize(value: string | null | undefined, fallback: string, maxChars = 160) {
+  const cleaned = String(value || "").replace(/\s+/g, " ").trim();
+  const base = cleaned || fallback;
+  if (base.length <= maxChars) return base;
+  return `${base.slice(0, Math.max(0, maxChars - 3)).trim()}...`;
+}
+
+export default async function DashboardProjectsPage() {
+  const state = await getDashboardServerState();
+  const user = state.user;
+  const activeProject = state.activeProject;
+  const completedProject = state.completedProject;
   return (
     <DashboardShell
       activeTab="projects"
@@ -11,6 +23,16 @@ export default function DashboardProjectsPage() {
         </span>
       )}
       headerSubtitle="Manage your active builds and public proof artifacts."
+      initialUser={{
+        name: user?.name ?? state.seed?.name ?? "Learner",
+        headline: user?.headline ?? "AI Builder",
+        avatarUrl: user?.avatarUrl ?? state.seed?.avatarUrl ?? null,
+        publicProfileUrl: state.publicProfileUrl,
+        levelLabel: "Level 1",
+        levelSubtitle: "Starter Builder",
+        levelProgressPct: 20,
+        levelProgressText: "Start building to level up",
+      }}
       decor={<div className="absolute top-0 right-1/4 w-[500px] h-[300px] bg-amber-500/10 blur-[120px] pointer-events-none"></div>}
       headerActions={(
         <a href="/dashboard/chat/" className="btn btn-primary text-xs px-4 py-2 shadow-[0_4px_10px_0_var(--primary-glow)]">
@@ -34,12 +56,14 @@ export default function DashboardProjectsPage() {
               </div>
               <div>
                 <div className="flex gap-2 items-center mb-1">
-                  <h3 className="text-xl font-medium text-white">Loading active project...</h3>
+                  <h3 className="text-xl font-medium text-white">{activeProject?.title || "Starter AI Build"}</h3>
                   <span className="text-[10px] bg-amber-500/20 text-amber-500 font-bold uppercase px-2 py-0.5 rounded border border-amber-500/30">
-                    Syncing
+                    {activeProject ? "Active" : "Planned"}
                   </span>
                 </div>
-                <p className="text-sm text-gray-400 max-w-xl">Fetching the current build, progress, and next tutor step.</p>
+                <p className="text-sm text-gray-400 max-w-xl">
+                  {summarize(activeProject?.description, "Your starter build is ready for the next tutor-guided step.")}
+                </p>
               </div>
             </div>
             <div className="relative w-16 h-16 mr-4 flex-shrink-0 flex items-center justify-center">
@@ -47,7 +71,9 @@ export default function DashboardProjectsPage() {
                 <circle cx="18" cy="18" r="16" fill="none" className="stroke-current text-white/10" strokeWidth="2"></circle>
                 <circle cx="18" cy="18" r="16" fill="none" className="stroke-current text-amber-400" strokeWidth="2" strokeDasharray="100" strokeDashoffset="80"></circle>
               </svg>
-              <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-amber-400">20%</div>
+              <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-amber-400">
+                {activeProject ? "20%" : "10%"}
+              </div>
             </div>
           </a>
         </section>
@@ -67,17 +93,24 @@ export default function DashboardProjectsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-wider bg-transparent text-gray-500 border border-white/10 px-2 py-1 rounded">
-                    Loading
+                    {completedProject ? "Ready" : "Waiting"}
                   </span>
                   <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-                    Synced
+                    {completedProject ? "Published" : "Synced"}
                   </span>
                 </div>
               </div>
-              <h3 className="text-lg font-medium text-white mb-2 relative z-10">Loading published project...</h3>
-              <p className="text-sm text-gray-400 mb-6 flex-grow relative z-10">Completed artifacts and public proof links appear here after hydration.</p>
+              <h3 className="text-lg font-medium text-white mb-2 relative z-10">
+                {completedProject?.title || "Latest proof artifact"}
+              </h3>
+              <p className="text-sm text-gray-400 mb-6 flex-grow relative z-10">
+                {summarize(
+                  completedProject?.description,
+                  "Completed artifacts and public proof links appear here after your first project ships.",
+                )}
+              </p>
               <div className="flex items-center gap-3 mt-auto relative z-10 pt-4 border-t border-white/5">
-                <a href="/u/alex-chen-ai/" className="btn btn-secondary text-xs px-3 py-1.5 flex-1 text-center">
+                <a href={state.publicProfileUrl || "/dashboard/profile"} className="btn btn-secondary text-xs px-3 py-1.5 flex-1 text-center">
                   <i className="fa-solid fa-globe mr-1"></i> View Public Page
                 </a>
                 <button

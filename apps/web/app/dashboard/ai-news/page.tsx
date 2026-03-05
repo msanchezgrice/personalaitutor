@@ -1,6 +1,9 @@
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
+import { getDashboardServerState } from "@/app/dashboard/_lib";
 
-export default function DashboardAiNewsPage() {
+export default async function DashboardAiNewsPage() {
+  const state = await getDashboardServerState();
+  const user = state.user;
   return (
     <DashboardShell
       activeTab="ai-news"
@@ -9,6 +12,16 @@ export default function DashboardAiNewsPage() {
           <i className="fa-solid fa-newspaper text-sky-400"></i> AI News
         </span>
       )}
+      initialUser={{
+        name: user?.name ?? state.seed?.name ?? "Learner",
+        headline: user?.headline ?? "AI Builder",
+        avatarUrl: user?.avatarUrl ?? state.seed?.avatarUrl ?? null,
+        publicProfileUrl: state.publicProfileUrl,
+        levelLabel: "Level 1",
+        levelSubtitle: "Starter Builder",
+        levelProgressPct: 20,
+        levelProgressText: "Start building to level up",
+      }}
       decor={<div className="absolute top-0 right-1/4 w-[400px] h-[300px] bg-sky-500/10 blur-[120px] pointer-events-none"></div>}
     >
       <div className="p-10 max-w-4xl mx-auto w-full pb-24 space-y-4">

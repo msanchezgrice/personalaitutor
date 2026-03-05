@@ -2804,6 +2804,15 @@
     captureEvent("dashboard_tab_viewed", { tab: "profile" });
     var summary = await getDashboardSummary();
     updateSharedUserUi(summary);
+    function profileInlineText(value) {
+      return String(value || "").replace(/\s+/g, " ").trim();
+    }
+    var profileUser = summary && summary.user ? summary.user : {};
+    var resolvedName = profileInlineText(profileUser.name) || profileInlineText(ctx && ctx.name) || "New Learner";
+    var resolvedHeadline = profileInlineText(profileUser.headline) || profileInlineText(ctx && ctx.headline) || "AI Builder";
+    var resolvedBio = profileInlineText(profileUser.bio) || "Building practical AI workflows and sharing public proof of execution.";
+    var resolvedLinkedIn = profileUser.socialLinks && profileUser.socialLinks.linkedin ? profileUser.socialLinks.linkedin : "";
+    var resolvedEmail = ctx.email || profileUser.email || "";
 
     var profileForm = document.querySelector("form");
     var inputs = profileForm ? profileForm.querySelectorAll("input[type='text']") : [];
@@ -2827,25 +2836,24 @@
       avatarUrlInput = avatarField.querySelector("#profile-avatar-url");
     }
 
-    if (nameInput) nameInput.value = summary.user.name || "";
-    if (roleInput) roleInput.value = summary.user.headline || "";
-    if (bioInput) bioInput.value = summary.user.bio || "";
-    if (linkedInInput) linkedInInput.value = (summary.user.socialLinks && summary.user.socialLinks.linkedin) || "";
+    if (nameInput) nameInput.value = resolvedName;
+    if (roleInput) roleInput.value = resolvedHeadline;
+    if (bioInput) bioInput.value = resolvedBio;
+    if (linkedInInput) linkedInInput.value = resolvedLinkedIn;
     var identityHeader = profileForm ? profileForm.parentElement && profileForm.parentElement.querySelector(".flex.items-center.gap-6") : null;
     if (identityHeader) {
       var topName = identityHeader.querySelector("h3");
-      if (topName && summary.user.name) {
-        topName.textContent = summary.user.name;
+      if (topName) {
+        topName.textContent = resolvedName;
       }
       var emailNode = Array.prototype.find.call(identityHeader.querySelectorAll("p"), function (node) {
         return (node.textContent || "").indexOf("@") !== -1;
       });
-      var preferredEmail = ctx.email || (summary.user && summary.user.email) || "";
-      if (emailNode && preferredEmail) {
-        emailNode.textContent = preferredEmail;
+      if (emailNode && resolvedEmail) {
+        emailNode.textContent = resolvedEmail;
       }
     }
-    var currentAvatarUrl = ctx.avatarUrl || summary.user.avatarUrl || "";
+    var currentAvatarUrl = ctx.avatarUrl || profileUser.avatarUrl || "";
     function normalizeAvatarValue(input) {
       var raw = typeof input === "string" ? input.trim() : "";
       if (!raw) return undefined;
@@ -2907,8 +2915,8 @@
     if (currentAvatarUrl) {
       Array.prototype.forEach.call(avatarElements, function (img) {
         img.setAttribute("src", currentAvatarUrl);
-        if (summary.user && summary.user.name) {
-          img.setAttribute("alt", summary.user.name);
+        if (resolvedName) {
+          img.setAttribute("alt", resolvedName);
         }
       });
     }
@@ -2916,8 +2924,8 @@
     var publicBtn = Array.prototype.find.call(document.querySelectorAll("a"), function (node) {
       return (node.textContent || "").indexOf("View Public Profile") !== -1;
     });
-    if (publicBtn) {
-      setHref(publicBtn, "/u/" + summary.user.handle + "/");
+    if (publicBtn && profileUser.handle) {
+      setHref(publicBtn, "/u/" + profileUser.handle + "/");
     }
 
     var saveButton = Array.prototype.find.call(document.querySelectorAll("button"), function (node) {
@@ -2930,9 +2938,9 @@
           var normalizedAvatar = avatarUrlInput && avatarUrlInput.value ? normalizeAvatarValue(avatarUrlInput.value) : undefined;
           var nextAvatar = normalizedAvatar || currentAvatarUrl || null;
           var payload = {
-            name: nameInput ? nameInput.value.trim() : summary.user.name,
-            headline: roleInput ? roleInput.value.trim() : summary.user.headline,
-            bio: bioInput ? bioInput.value.trim() : summary.user.bio,
+            name: nameInput ? nameInput.value.trim() : resolvedName,
+            headline: roleInput ? roleInput.value.trim() : resolvedHeadline,
+            bio: bioInput ? bioInput.value.trim() : resolvedBio,
             avatarUrl: nextAvatar,
             socialLinks: {
               linkedin: linkedInInput && linkedInInput.value ? normalizeUrl(linkedInInput.value) : undefined,

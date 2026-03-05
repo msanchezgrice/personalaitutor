@@ -1,8 +1,53 @@
 import { Suspense } from "react";
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
 import { FbCompleteRegistrationOnDashboard } from "@/components/fb-complete-registration-on-dashboard";
+import { getDashboardServerState } from "@/app/dashboard/_lib";
 
-export default function DashboardPage() {
+function summarize(value: string | null | undefined, fallback: string, maxChars = 180) {
+  const cleaned = String(value || "").replace(/\s+/g, " ").trim();
+  const base = cleaned || fallback;
+  if (base.length <= maxChars) return base;
+  return `${base.slice(0, Math.max(0, maxChars - 3)).trim()}...`;
+}
+
+export default async function DashboardPage() {
+  const state = await getDashboardServerState();
+  const user = state.user;
+  const summary = state.summary;
+  const activeProject = state.activeProject;
+  const completedProject = state.completedProject;
+  const topRecommendation = summary?.moduleRecommendations?.[0] ?? null;
+  const activeCard = activeProject || (topRecommendation
+    ? {
+        title: topRecommendation.title,
+        description: topRecommendation.summary,
+      }
+    : {
+        title: "Introduction to LLMs",
+        description: "Start this module to build LLM fundamentals and ship your first practical artifact.",
+      });
+  const latestEventMessage = summary?.latestEvents?.[0]?.message;
+  const todayUpdateText = summarize(
+    summary?.dailyUpdate?.summary || latestEventMessage,
+    "You are set up for focused progress today. Pick one concrete task and ship it.",
+  );
+  const continuationText = summarize(
+    activeProject?.buildLog?.at(-1)?.message,
+    "Share your latest blocker and I will help you take the next verified step.",
+    200,
+  );
+  const skills = user?.skills?.length
+    ? user.skills.slice(0, 3).map((skill) => ({
+        label: skill.skill,
+        accent: skill.status === "verified",
+        suffix: skill.status === "verified" ? "" : ` (${Math.round((skill.score || 0) * 100)}%)`,
+      }))
+    : (summary?.moduleRecommendations?.slice(0, 3).map((track, index) => ({
+        label: track.title,
+        accent: index === 0,
+        suffix: index === 0 ? " (20%)" : index === 1 ? " (10%)" : " (5%)",
+      })) ?? []);
+  const homeTweetPreview = "Generating today's first-person social draft from your current project context.";
   return (
     <>
       <Suspense fallback={null}>
@@ -10,8 +55,18 @@ export default function DashboardPage() {
       </Suspense>
       <DashboardShell
         activeTab="home"
-        headerTitle={<span data-dashboard-greeting="1">Loading your dashboard...</span>}
-        headerSubtitle="Preparing your tutor workspace."
+        headerTitle={<span data-dashboard-greeting="1">{state.greeting}</span>}
+        headerSubtitle="Ready to build something new today?"
+        initialUser={{
+          name: user?.name ?? state.seed?.name ?? "Learner",
+          headline: user?.headline ?? "AI Builder",
+          avatarUrl: user?.avatarUrl ?? state.seed?.avatarUrl ?? null,
+          publicProfileUrl: state.publicProfileUrl,
+          levelLabel: "Level 1",
+          levelSubtitle: "Starter Builder",
+          levelProgressPct: 20,
+          levelProgressText: "Start building to level up",
+        }}
       >
         <div className="p-10 max-w-6xl mx-auto w-full pb-24">
           <div className="glass-panel p-6 rounded-2xl mb-8 flex flex-col md:flex-row items-center justify-between gap-6 border border-emerald-500/30 overflow-hidden relative">
@@ -24,9 +79,9 @@ export default function DashboardPage() {
               </div>
               <div>
                 <h3 className="text-lg font-medium text-white mb-1">
-                  <span className="text-emerald-400">Today&apos;s update:</span> Loading your tutor summary...
+                  <span className="text-emerald-400">Today&apos;s update:</span> {todayUpdateText}
                 </h3>
-                <p className="text-sm text-gray-400">Continue where we left off: Loading your latest project context.</p>
+                <p className="text-sm text-gray-400">Continue where we left off: {continuationText}</p>
               </div>
             </div>
             <a href="/dashboard/chat/" className="btn btn-primary whitespace-nowrap relative z-10">
@@ -55,13 +110,15 @@ export default function DashboardPage() {
                         <i className="fa-solid fa-layer-group"></i>
                       </div>
                       <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-500 px-2 py-1 rounded">
-                        Loading
+                        {activeProject ? "In Progress" : "Planned"}
                       </span>
                     </div>
                     <h3 className="font-medium text-white mb-1 group-hover:text-emerald-400 transition-colors">
-                      Loading active project...
+                      {activeCard.title}
                     </h3>
-                    <p className="text-xs text-gray-400 mb-4 line-clamp-2">Fetching your first active module or project.</p>
+                    <p className="text-xs text-gray-400 mb-4 line-clamp-2">
+                      {summarize(activeCard.description, "Start this module to build LLM fundamentals and ship your first practical artifact.", 120)}
+                    </p>
                     <div className="w-full bg-black/40 h-1.5 rounded-full">
                       <div className="bg-emerald-500 w-[20%] h-full rounded-full"></div>
                     </div>
@@ -75,15 +132,21 @@ export default function DashboardPage() {
                         <i className="fa-solid fa-award"></i>
                       </div>
                       <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded">
-                        Syncing
+                        {completedProject ? "Completed" : "Syncing"}
                       </span>
                     </div>
-                    <h3 className="font-medium text-white mb-1 relative z-10">Latest proof artifact</h3>
+                    <h3 className="font-medium text-white mb-1 relative z-10">
+                      {completedProject?.title || "Latest proof artifact"}
+                    </h3>
                     <p className="text-xs text-gray-400 mb-4 line-clamp-2 relative z-10">
-                      Completed work appears here after the dashboard sync finishes.
+                      {summarize(
+                        completedProject?.description,
+                        "Completed work appears here after the dashboard sync finishes.",
+                        120,
+                      )}
                     </p>
                     <div className="text-xs text-emerald-400 flex items-center gap-1 font-medium mt-auto relative z-10">
-                      <i className="fa-solid fa-award"></i> Proof syncing
+                      <i className="fa-solid fa-award"></i> {completedProject ? "Proof published" : "Proof syncing"}
                     </div>
                   </a>
                 </div>
@@ -94,12 +157,20 @@ export default function DashboardPage() {
                   <i className="fa-solid fa-layer-group text-teal-400"></i> Verified Skill Stack
                 </h2>
                 <div className="glass p-6 rounded-xl flex flex-wrap gap-2">
-                  <div className="flex border border-emerald-500/30 bg-emerald-500/10 rounded-full items-center px-3 py-1.5">
-                    <span className="text-xs font-medium text-emerald-400">Loading verified skills...</span>
-                  </div>
-                  <div className="flex border border-white/10 bg-white/5 rounded-full items-center px-3 py-1.5">
-                    <span className="text-xs text-gray-300">Skills sync after hydration</span>
-                  </div>
+                  {skills.map((skill) => (
+                    <div
+                      key={skill.label}
+                      className={
+                        skill.accent
+                          ? "flex border border-emerald-500/30 bg-emerald-500/10 rounded-full items-center px-3 py-1.5"
+                          : "flex border border-white/10 bg-white/5 rounded-full items-center px-3 py-1.5"
+                      }
+                    >
+                      <span className={skill.accent ? "text-xs font-medium text-emerald-400" : "text-xs text-gray-300"}>
+                        {skill.label}{skill.suffix}
+                      </span>
+                    </div>
+                  ))}
                   <div className="flex border border-white/5 border-dashed bg-transparent rounded-full items-center px-3 py-1.5">
                     <span className="text-xs text-gray-500">
                       <i className="fa-solid fa-plus mr-1"></i> Add Target Skill
@@ -119,10 +190,10 @@ export default function DashboardPage() {
                 <div className="glass border border-[#0077b5]/30 bg-gradient-to-b from-[#0077b5]/10 to-transparent p-5 rounded-xl">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="runtime-loader-spinner runtime-loader-spinner-sm"></span>
-                    <span className="text-xs font-medium text-[#0077b5] uppercase tracking-wider">Preparing today&apos;s draft</span>
+                    <span className="text-xs font-medium text-[#0077b5] uppercase tracking-wider">Today&apos;s draft</span>
                   </div>
                   <p className="text-sm text-gray-300 mb-4 italic border-l-2 border-[#0077b5] pl-3 py-1 bg-black/20 rounded-r">
-                    &quot;Generating today&apos;s first-person social draft from your current project context.&quot;
+                    &quot;{homeTweetPreview}&quot;
                   </p>
                   <a href="/dashboard/social/" className="btn bg-[#0077b5] hover:bg-[#005582] text-white w-full py-2 text-sm">
                     Open Social Drafts

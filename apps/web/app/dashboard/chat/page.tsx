@@ -1,11 +1,28 @@
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
+import { getDashboardServerState } from "@/app/dashboard/_lib";
 
-export default function DashboardChatPage() {
+export default async function DashboardChatPage() {
+  const state = await getDashboardServerState();
+  const user = state.user;
+  const activeProject = state.activeProject;
+  const introText = activeProject?.title
+    ? `I’m your AI Tutor. Let’s continue ${activeProject.title}. Share your current blocker and I’ll give concrete next steps plus a verification check.`
+    : "I’m your AI Tutor. Share your current blocker and I’ll give concrete next steps plus a verification check.";
   return (
     <DashboardShell
       activeTab="chat"
       headerTitle="My AI Skill Tutor Session"
-      headerSubtitle="Active build"
+      headerSubtitle={activeProject?.title ? `${activeProject.title} • Active Build` : "Active build"}
+      initialUser={{
+        name: user?.name ?? state.seed?.name ?? "Learner",
+        headline: user?.headline ?? "AI Builder",
+        avatarUrl: user?.avatarUrl ?? state.seed?.avatarUrl ?? null,
+        publicProfileUrl: state.publicProfileUrl,
+        levelLabel: "Level 1",
+        levelSubtitle: "Starter Builder",
+        levelProgressPct: 20,
+        levelProgressText: "Start building to level up",
+      }}
       decor={
         <>
           <div className="absolute inset-0 bg-glow opacity-30 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
@@ -34,7 +51,7 @@ export default function DashboardChatPage() {
             <i className="fa-solid fa-robot text-white text-[10px]"></i>
           </div>
           <div className="glass p-5 rounded-2xl rounded-tl-sm text-sm border-emerald-500/20 bg-emerald-500/5">
-            <p>Loading your latest tutor session...</p>
+            <p>{introText}</p>
           </div>
         </div>
       </div>

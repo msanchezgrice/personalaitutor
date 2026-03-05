@@ -1,10 +1,36 @@
 import { getAuthSeed } from "@/lib/auth";
 import { runtimeGetDashboardSummary } from "@/lib/runtime";
+import type { DashboardSummary, Project, UserProfile } from "@aitutor/shared";
 
-export async function dashboardReplacements() {
+export type DashboardServerState = {
+  seed: Awaited<ReturnType<typeof getAuthSeed>>;
+  summary: DashboardSummary | null;
+  user: UserProfile | null;
+  activeProject: Project | null;
+  completedProject: Project | null;
+  publicProfileUrl: string | null;
+  greeting: string;
+};
+
+function greetingForServerTime(date = new Date()) {
+  const hour = date.getHours();
+  if (hour >= 5 && hour < 12) return "Good Morning";
+  if (hour >= 12 && hour < 18) return "Good Afternoon";
+  return "Good Evening";
+}
+
+export async function getDashboardServerState(): Promise<DashboardServerState> {
   const seed = await getAuthSeed();
   if (!seed?.userId) {
-    return {} as Record<string, string>;
+    return {
+      seed,
+      summary: null,
+      user: null,
+      activeProject: null,
+      completedProject: null,
+      publicProfileUrl: null,
+      greeting: `${greetingForServerTime()}, there 👋`,
+    };
   }
 
   const summary = await runtimeGetDashboardSummary(seed.userId, {
@@ -14,31 +40,27 @@ export async function dashboardReplacements() {
     email: seed.email ?? null,
   });
 
-  if (!summary) return {};
+  const user = summary?.user ?? null;
+  const projects = summary?.projects ?? [];
+  const activeProject =
+    projects.find((project) => project.state === "building" || project.state === "planned" || project.state === "idea") ??
+    projects[0] ??
+    null;
+  const completedProject =
+    projects.find((project) => project.state === "built" || project.state === "showcased") ??
+    projects[1] ??
+    null;
+  const displayName = user?.name?.trim() || seed.name?.trim() || "Learner";
+  const firstName = displayName.split(" ")[0] || displayName;
 
-  const avatar = summary.user.avatarUrl?.trim();
-  const publicProfileUrl = `/u/${summary.user.handle}/`;
-  const firstName = summary.user.name.split(" ")[0] || summary.user.name;
-  const replacements: Record<string, string> = {
-    "Alex Chen": summary.user.name,
-    "Product Manager": summary.user.headline || "AI Builder",
-    "Good Morning, Alex 👋": `Good Morning, ${firstName} 👋`,
-    "Welcome back, Alex!": `Welcome back, ${firstName}!`,
-    "Based on our last session, we were working on handling the JSON payload in your `webhook_handler.py` script.":
-      "I’m ready to help with your next build step.",
-    "Here's the block we left off with. Can you copy the exact output you are currently receiving in your terminal when a test event triggers?":
-      "Share your current blocker or code snippet and I’ll propose the next verified step.",
-    "Lead Scraper Pro - Alex Chen": `Lead Scraper Pro - ${summary.user.name}`,
-    "Contact Alex": `Contact ${firstName}`,
-    "/u/alex-chen-ai/": publicProfileUrl,
-    "/u/test-user-0001/": publicProfileUrl,
-    "/u/alex-chen-ai": publicProfileUrl,
-    "/u/test-user-0001": publicProfileUrl,
+  return {
+    seed,
+    summary,
+    user,
+    activeProject,
+    completedProject,
+    publicProfileUrl: user?.handle ? `/u/${user.handle}/` : null,
+    greeting: `${greetingForServerTime()}, ${firstName} 👋`,
   };
-
-  if (avatar) {
-    replacements["/assets/avatar.png"] = avatar;
-  }
-
-  return replacements;
 }
+
