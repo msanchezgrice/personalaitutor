@@ -27,6 +27,11 @@
   var PENDING_ONBOARDING_SESSION_KEY = "ai_tutor_pending_onboarding_session_v1";
   var ONBOARDING_ASSESSMENT_FUNNEL = "onboarding_assessment";
 
+  if (!isDashboardPath && document && document.documentElement) {
+    // Non-dashboard pages should render immediately to avoid visible reflow flashes.
+    document.documentElement.setAttribute("data-runtime-ready", "1");
+  }
+
   if (isTalentDetailPath) {
     document.documentElement.setAttribute("data-theme", "light");
     document.documentElement.style.colorScheme = "light";
@@ -644,9 +649,9 @@
   showDashboardSkeletons();
 
   function applyCtxImmediately() {
-    if (!ctx || !ctx.name || !isDashboardPath) return;
+    if (!isDashboardPath) return;
     var sidebarProfileLink = document.querySelector("aside a[href='/dashboard/profile/'], aside a[href='/dashboard/profile']");
-    if (sidebarProfileLink) {
+    if (sidebarProfileLink && ctx && ctx.name) {
       var nameEl = sidebarProfileLink.querySelector(".font-medium");
       var roleEl = sidebarProfileLink.querySelector(".text-xs");
       if (nameEl) nameEl.textContent = ctx.name;
@@ -658,7 +663,7 @@
         sidebarAvatar.setAttribute("alt", ctx.name);
       }
     }
-    if (ctx.handle) {
+    if (ctx && ctx.handle) {
       Array.prototype.forEach.call(
         document.querySelectorAll("a[href='/u/alex-chen-ai/'], a[href='/u/test-user-0001/'], a[href='/u/alex-chen-ai'], a[href='/u/test-user-0001']"),
         function (node) {
@@ -666,7 +671,7 @@
         },
       );
     }
-    if (currentPath === "/dashboard/profile") {
+    if (currentPath === "/dashboard/profile" && ctx && ctx.name) {
       var topIdentity = document.querySelector("main .flex.items-center.gap-6");
       if (topIdentity) {
         var identityName = topIdentity.querySelector("h3");
@@ -688,6 +693,20 @@
         }
       }
     }
+    var sidebarNameNode = document.querySelector("aside a[href='/dashboard/profile/'] .font-medium, aside a[href='/dashboard/profile'] .font-medium");
+    var displayName = sidebarNameNode ? (sidebarNameNode.textContent || "").trim() : "";
+    if (!displayName && ctx && ctx.name) displayName = ctx.name || "";
+    if (displayName) {
+      var greetingNode = Array.prototype.find.call(document.querySelectorAll("header h1"), function (el) {
+        var text = (el.textContent || "").toLowerCase();
+        return text.indexOf("good morning") !== -1 || text.indexOf("good afternoon") !== -1 || text.indexOf("good evening") !== -1;
+      });
+      if (greetingNode) {
+        var firstName = displayName.split(" ")[0] || displayName;
+        greetingNode.textContent = greetingForLocalTime() + ", " + firstName + " 👋";
+      }
+    }
+    updateSidebarLevelCard();
     renameSocialNavLabels();
   }
 
@@ -715,8 +734,9 @@
     Array.prototype.forEach.call(
       document.querySelectorAll("a[href='/dashboard/social/'], a[href='/dashboard/social']"),
       function (node) {
-        if (typeof node.innerHTML === "string" && node.innerHTML.indexOf("Social Hooks") !== -1) {
-          node.innerHTML = node.innerHTML.replace(/Social Hooks/g, "Social Media");
+        if (typeof node.innerHTML === "string") {
+          node.innerHTML = node.innerHTML.replace(/Social Hooks/g, "Social Drafts");
+          node.innerHTML = node.innerHTML.replace(/Social Media/g, "Social Drafts");
         }
       },
     );
@@ -728,6 +748,25 @@
           node.innerHTML = node.innerHTML.replace(/Updates/g, "Activity");
           node.innerHTML = node.innerHTML.replace(/fa-solid fa-bell/g, "fa-solid fa-clock-rotate-left");
         }
+      },
+    );
+
+    Array.prototype.forEach.call(
+      document.querySelectorAll(
+        "a[href='/dashboard/updates/'], a[href='/dashboard/updates'], a[href='/dashboard/activity/'], a[href='/dashboard/activity']",
+      ),
+      function (node) {
+        Array.prototype.forEach.call(node.querySelectorAll("span"), function (child) {
+          var text = (child.textContent || "").trim();
+          var className = typeof child.className === "string" ? child.className : "";
+          if (!text) {
+            if (className.indexOf("bg-red-500") !== -1) child.remove();
+            return;
+          }
+          if (/^[0-9]+$/.test(text) && (className.indexOf("bg-red-500") !== -1 || className.indexOf("text-[10px]") !== -1)) {
+            child.remove();
+          }
+        });
       },
     );
 
@@ -829,6 +868,21 @@
     window.setTimeout(function () {
       node.remove();
     }, 2800);
+  }
+
+  function renderDashboardHydrationError(err) {
+    if (!isDashboardPath) return;
+    var main = document.querySelector("main");
+    if (!main) return;
+    var message = err && err.message ? String(err.message) : "Unknown dashboard runtime error";
+    main.innerHTML =
+      '<div class="p-6 md:p-10 max-w-3xl mx-auto w-full">' +
+      '<section class="glass p-6 rounded-2xl border border-red-300 bg-red-50 text-red-700">' +
+      '<h2 class="font-[Outfit] text-lg font-semibold mb-2">Dashboard module failed to load</h2>' +
+      '<p class="text-sm mb-2">' + escapeHtml(message) + "</p>" +
+      '<p class="text-xs text-red-600">Reload this page. If it persists, open the Activity tab after refresh to inspect recent errors.</p>' +
+      "</section>" +
+      "</div>";
   }
 
   function isUnauthenticatedError(err) {
@@ -1187,12 +1241,54 @@
     return salutationForHour(now.getHours());
   }
 
+  function computeLearnerLevel(user) {
+    if (!user || !Array.isArray(user.skills) || !user.skills.length) return 1;
+    var verified = user.skills.filter(function (skill) {
+      return skill && skill.status === "verified";
+    }).length;
+    return Math.max(1, Math.min(3, verified + 1));
+  }
+
+  function updateSidebarLevelCard(summary) {
+    if (!isDashboardPath) return;
+    var level = 1;
+    if (summary && summary.user) {
+      level = computeLearnerLevel(summary.user);
+    }
+    var levelLabel = "Level " + level;
+    var subtitle = level === 1 ? "Starter Builder" : level === 2 ? "Active Builder" : "Verified Builder";
+    var progressWidth = level === 1 ? "20%" : level === 2 ? "60%" : "100%";
+    var progressText = level >= 3 ? "Max level reached" : "Keep shipping to reach Level " + (level + 1);
+
+    var levelNode = Array.prototype.find.call(document.querySelectorAll("aside *"), function (node) {
+      var text = (node.textContent || "").trim();
+      return /^level\s+\d+$/i.test(text);
+    });
+
+    if (levelNode) {
+      levelNode.textContent = levelLabel;
+      var card = levelNode.closest("div.bg-gradient-to-br");
+      if (card) {
+        var bodyText = card.querySelector("p.text-xs.text-gray-400");
+        if (bodyText) bodyText.textContent = subtitle;
+        var progressBar = card.querySelector("div.bg-gradient-to-r");
+        if (progressBar) progressBar.style.width = progressWidth;
+        var progressLabel = card.querySelector("p.text-[10px].text-gray-500");
+        if (progressLabel) progressLabel.textContent = progressText;
+      }
+    }
+  }
+
   function updateSharedUserUi(summary) {
     if (!summary || !summary.user) return;
     var user = summary.user;
+    var resolvedName = user.name;
+    if (ctx && typeof ctx.name === "string" && ctx.name.trim()) {
+      resolvedName = ctx.name.trim();
+    }
     if (user.id) ctx.userId = user.id;
     ctx.handle = user.handle;
-    ctx.name = user.name;
+    ctx.name = resolvedName;
     ctx.headline = headlineForUser(user);
     if (user.avatarUrl) ctx.avatarUrl = user.avatarUrl;
     saveCtx(ctx);
@@ -1201,11 +1297,11 @@
     if (sidebarProfileLink) {
       var nameEl = sidebarProfileLink.querySelector(".font-medium");
       var roleEl = sidebarProfileLink.querySelector(".text-xs");
-      setText(nameEl, user.name);
+      setText(nameEl, resolvedName);
       setText(roleEl, headlineForUser(user));
       var avatar = sidebarProfileLink.querySelector("img");
       if (avatar) {
-        avatar.setAttribute("alt", user.name);
+        avatar.setAttribute("alt", resolvedName);
         if (ctx.avatarUrl) {
           var safeAvatar = sanitizeImageUrl(ctx.avatarUrl);
           if (safeAvatar) avatar.setAttribute("src", safeAvatar);
@@ -1224,7 +1320,7 @@
     });
 
     if (greeting) {
-      var firstName = user.name.split(" ")[0] || user.name;
+      var firstName = resolvedName.split(" ")[0] || resolvedName;
       greeting.textContent = greetingForLocalTime() + ", " + firstName + " 👋";
     }
 
@@ -1234,13 +1330,14 @@
         function (node) {
           var safeAvatarValue = sanitizeImageUrl(ctx.avatarUrl);
           if (safeAvatarValue) node.setAttribute("src", safeAvatarValue);
-          if (!node.getAttribute("alt")) node.setAttribute("alt", user.name);
+          if (!node.getAttribute("alt")) node.setAttribute("alt", resolvedName);
         },
       );
     }
 
     if (isDashboardPath) {
       renameSocialNavLabels();
+      updateSidebarLevelCard(summary);
       var staleSidebarSignOut = document.getElementById("dashboard-sidebar-settings");
       if (staleSidebarSignOut) staleSidebarSignOut.remove();
       var aside = document.querySelector("aside");
@@ -1251,12 +1348,6 @@
             node.remove();
           }
         });
-        Array.prototype.forEach.call(
-          aside.querySelectorAll("a[href='/dashboard/updates/'], a[href='/dashboard/updates']"),
-          function (node) {
-            node.remove();
-          },
-        );
       }
       ensureDashboardSettingsMenu();
       ensureMobileDashboardNav();
@@ -1460,9 +1551,60 @@
   }
 
   async function getDashboardSummary() {
+    function topProjectForPrewarm(summary) {
+      if (!summary || !Array.isArray(summary.projects) || !summary.projects.length) return null;
+      return summary.projects.find(function (project) {
+        return project && (project.state === "building" || project.state === "planned" || project.state === "idea");
+      }) || summary.projects[0] || null;
+    }
+
+    function prewarmDashboardDailyData(summary) {
+      if (!isDashboardPath || !summary) return;
+      var prewarmProject = topProjectForPrewarm(summary);
+      var prewarmProjectId = prewarmProject && prewarmProject.id ? prewarmProject.id : null;
+
+      if (!readHomeNewsCache()) {
+        void postJson("/api/news/recommendations", { maxStories: 6 })
+          .then(function (newsResult) {
+            writeHomeNewsCache({
+              insights: Array.isArray(newsResult && newsResult.insights) ? newsResult.insights : [],
+              source: newsResult && newsResult.source ? newsResult.source : null,
+              focusSummary: newsResult && newsResult.focusSummary ? newsResult.focusSummary : null,
+            });
+            captureEvent("dashboard_news_prewarmed", { source: "background" });
+          })
+          .catch(function (error) {
+            captureEvent("dashboard_news_prewarm_failed", {
+              reason: error && error.message ? error.message : "unknown_error",
+            });
+          });
+      }
+
+      if (!readSocialDraftCache(prewarmProjectId)) {
+        void postJson("/api/social/drafts/ideas", { projectId: prewarmProjectId || null })
+          .then(function (ideasResult) {
+            var ideas = ideasResult && ideasResult.ideas ? ideasResult.ideas : null;
+            if (!ideas) return;
+            writeSocialDraftCache(prewarmProjectId, {
+              linkedin: typeof ideas.linkedin === "string" ? ideas.linkedin : "",
+              x: typeof ideas.x === "string" ? ideas.x : "",
+              contextLabel: typeof ideas.contextLabel === "string" ? ideas.contextLabel : "",
+              source: ideasResult && ideasResult.source ? ideasResult.source : "profile_context",
+            });
+            captureEvent("dashboard_social_prewarmed", { source: "background", has_project: Boolean(prewarmProjectId) });
+          })
+          .catch(function (error) {
+            captureEvent("dashboard_social_prewarm_failed", {
+              reason: error && error.message ? error.message : "unknown_error",
+            });
+          });
+      }
+    }
+
     var cached = readDashboardSummaryCache();
     if (cached) {
       captureEvent("dashboard_summary_cache_hit", { source: "session_storage" });
+      prewarmDashboardDailyData(cached);
       return cached;
     }
 
@@ -1471,6 +1613,7 @@
       if (response && response.summary) {
         writeDashboardSummaryCache(response.summary);
         captureEvent("dashboard_summary_loaded", { source: "network" });
+        prewarmDashboardDailyData(response.summary);
       }
       return response.summary;
     } catch (err) {
@@ -1479,6 +1622,7 @@
       if (retry && retry.summary) {
         writeDashboardSummaryCache(retry.summary);
         captureEvent("dashboard_summary_loaded", { source: "network_after_session" });
+        prewarmDashboardDailyData(retry.summary);
       }
       return retry.summary;
     }
@@ -1703,7 +1847,7 @@
     var socialCta = socialSection ? socialSection.querySelector("a[href='/dashboard/social/'], a[href='/dashboard/social']") : null;
     if (socialCta) {
       setHref(socialCta, "/dashboard/social/");
-      socialCta.textContent = "Review Tweet Draft";
+      socialCta.textContent = "Open Social Drafts";
     }
 
     function applySocialQuote(tweetText) {
@@ -1713,42 +1857,20 @@
       socialQuote.textContent = '"' + normalized + '"';
     }
 
-    var socialFallbackText =
-      "Shipped a practical AI build step today and documented the workflow. Iterating in public and turning feedback into better execution. #AI #BuildInPublic";
-
     async function loadHomeTweetDraft(projectId) {
-      try {
-        var ideasResult = await postJson("/api/social/drafts/ideas", { projectId: projectId || null });
-        var ideas = ideasResult && ideasResult.ideas ? ideasResult.ideas : null;
-        var tweetIdea = ideas && typeof ideas.x === "string" ? ideas.x : "";
-        if (normalizeInlineText(tweetIdea)) {
-          writeSocialDraftCache(projectId, {
-            linkedin: ideas && typeof ideas.linkedin === "string" ? ideas.linkedin : "",
-            x: tweetIdea,
-            contextLabel: ideas && typeof ideas.contextLabel === "string" ? ideas.contextLabel : "",
-            source: ideasResult && ideasResult.source ? ideasResult.source : "profile_context",
-          });
-          applySocialQuote(tweetIdea);
-          return true;
-        }
-      } catch {
-        // Fall through to deterministic draft fallback.
+      var ideasResult = await postJson("/api/social/drafts/ideas", { projectId: projectId || null });
+      var ideas = ideasResult && ideasResult.ideas ? ideasResult.ideas : null;
+      var tweetIdea = ideas && typeof ideas.x === "string" ? ideas.x : "";
+      if (!normalizeInlineText(tweetIdea)) {
+        throw new Error("Tweet draft not returned");
       }
-
-      try {
-        var generatedResult = await postJson("/api/social/drafts/generate", { projectId: projectId || null });
-        var xDraft = (generatedResult.drafts || []).find(function (entry) {
-          return entry && entry.platform === "x" && normalizeInlineText(entry.text);
-        });
-        if (xDraft) {
-          applySocialQuote(xDraft.text);
-          return true;
-        }
-      } catch {
-        // Fall through to static fallback.
-      }
-
-      return false;
+      writeSocialDraftCache(projectId, {
+        linkedin: ideas && typeof ideas.linkedin === "string" ? ideas.linkedin : "",
+        x: tweetIdea,
+        contextLabel: ideas && typeof ideas.contextLabel === "string" ? ideas.contextLabel : "",
+        source: ideasResult && ideasResult.source ? ideasResult.source : "profile_context",
+      });
+      applySocialQuote(tweetIdea);
     }
 
     if (socialQuote) {
@@ -1758,9 +1880,10 @@
       if (normalizeInlineText(cachedTweet)) {
         applySocialQuote(cachedTweet);
       } else {
-        var loadedTweet = await loadHomeTweetDraft(socialProjectId);
-        if (!loadedTweet) {
-          applySocialQuote(socialFallbackText);
+        try {
+          await loadHomeTweetDraft(socialProjectId);
+        } catch {
+          applySocialQuote("Social drafts are unavailable right now. Open Social Drafts to regenerate.");
         }
       }
     }
@@ -1783,29 +1906,9 @@
 
       var updatesList = updatesSection.querySelector(".space-y-3");
       if (updatesList) {
-        function fallbackHomeNews() {
-          return [
-            {
-              title: "AI models are improving evaluation reliability workflows",
-              summary: "Teams are using stricter eval gates before shipping model updates.",
-              source: "Platform Update",
-            },
-            {
-              title: "Agent-first tooling is accelerating delivery for builders",
-              summary: "Workflow tools are bundling AI agents to reduce manual orchestration.",
-              source: "Platform Update",
-            },
-            {
-              title: "Hiring trends now reward measurable AI execution proof",
-              summary: "Public artifacts and outcomes are becoming stronger career signals.",
-              source: "Platform Update",
-            },
-          ];
-        }
-
         function normalizeHomeNews(insights) {
           var rows = Array.isArray(insights) ? insights.slice(0, 3) : [];
-          var normalized = rows
+          return rows
             .map(function (insight) {
               return {
                 title: normalizeInlineText(insight && insight.title ? insight.title : ""),
@@ -1815,17 +1918,19 @@
             })
             .filter(function (story) {
               return Boolean(story.title);
-            });
-
-          var fallback = fallbackHomeNews();
-          while (normalized.length < 3) {
-            normalized.push(fallback[normalized.length]);
-          }
-          return normalized.slice(0, 3);
+            })
+            .slice(0, 3);
         }
 
-        function renderHomeNews(insights) {
+        function renderHomeNews(insights, unavailableReason) {
           var rows = normalizeHomeNews(insights);
+          while (rows.length < 3) {
+            rows.push({
+              title: "AI News unavailable",
+              summary: unavailableReason || "News generation is currently unavailable. Open AI News to retry.",
+              source: "Error",
+            });
+          }
           updatesList.innerHTML = rows
             .map(function (story) {
               return (
@@ -1862,8 +1967,8 @@
         } else {
           try {
             await refreshHomeNews();
-          } catch {
-            renderHomeNews(fallbackHomeNews());
+          } catch (err) {
+            renderHomeNews([], err && err.message ? String(err.message) : "Unable to load AI News.");
           }
         }
       }
@@ -2137,14 +2242,15 @@
 
     var socialHeading = document.querySelector("header h1");
     if (socialHeading) {
-      socialHeading.innerHTML = '<i class="fa-solid fa-share-nodes text-[#0077b5]"></i> Social Media';
+      socialHeading.innerHTML = '<i class="fa-solid fa-share-nodes text-[#0077b5]"></i> Social Drafts';
     }
     var socialSubheading = document.querySelector("header p.text-xs.text-gray-400");
     if (socialSubheading) {
-      socialSubheading.textContent = "AI-generated LinkedIn + Tweet ideas based on your current learner memory.";
+      socialSubheading.textContent = "Daily first-person LinkedIn + Tweet drafts generated from your active project context.";
     }
-    if (typeof document.title === "string" && document.title.indexOf("Social Hooks") !== -1) {
-      document.title = document.title.replace(/Social Hooks/g, "Social Media");
+    if (typeof document.title === "string") {
+      document.title = document.title.replace(/Social Hooks/g, "Social Drafts");
+      document.title = document.title.replace(/Social Media/g, "Social Drafts");
     }
 
     var contentWrap = document.querySelector(
@@ -2173,7 +2279,7 @@
     contentWrap.innerHTML =
       '<section class="glass p-6 md:p-8 rounded-2xl border border-white/10 bg-white/5">' +
       '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">' +
-      '<div><h2 class="text-lg font-[Outfit] font-semibold text-slate-900">Social Media Drafts</h2>' +
+      '<div><h2 class="text-lg font-[Outfit] font-semibold text-slate-900">Social Drafts</h2>' +
       '<p class="text-xs text-slate-600">Edit and share native drafts for LinkedIn and X/Twitter.</p>' +
       '<p class="text-[11px] text-slate-500 mt-1">Voice: <span data-social-author="1"></span></p></div>' +
       '<button type="button" data-social-refresh="1" class="btn btn-secondary text-sm whitespace-nowrap"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh Ideas</button>' +
@@ -3708,7 +3814,7 @@
 
   async function boot() {
     captureEvent("app_boot_started", { path: currentPath });
-    var holdRevealUntilHydrated = currentPath === "/dashboard/chat";
+    var holdRevealUntilHydrated = isDashboardPath;
     try {
       applyAcquisitionLandingVariant();
       maybeTrackAuthEntryEvents();
@@ -3742,7 +3848,19 @@
 
       maybeTrackDashboardWelcomeStep();
       ensureMobileDashboardNav();
-      await hydrateCurrentPath();
+      try {
+        await hydrateCurrentPath();
+      } catch (err) {
+        captureEvent("app_route_hydrate_failed", {
+          path: currentPath,
+          reason: err && err.message ? err.message : "unknown_error",
+        });
+        if (isDashboardPath) {
+          renderDashboardHydrationError(err);
+        } else {
+          throw err;
+        }
+      }
       captureEvent("app_boot_completed", { path: currentPath });
     } finally {
       if (!hasAppliedAuthCtx && !needsAuth()) {
