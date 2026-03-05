@@ -556,6 +556,58 @@
         }
       },
     );
+
+    Array.prototype.forEach.call(
+      document.querySelectorAll("a[href='/dashboard/updates/'], a[href='/dashboard/updates']"),
+      function (node) {
+        if (typeof node.innerHTML === "string") {
+          node.innerHTML = node.innerHTML.replace(/Updates/g, "Activity");
+          node.innerHTML = node.innerHTML.replace(/fa-solid fa-bell/g, "fa-solid fa-clock-rotate-left");
+        }
+      },
+    );
+
+    if (!isDashboardPath) return;
+    var nav = document.querySelector("aside nav");
+    if (!nav) return;
+    var existingAiNews = nav.querySelector("a[href='/dashboard/ai-news/'], a[href='/dashboard/ai-news']");
+
+    if (!existingAiNews) {
+      var socialNode = nav.querySelector("a[href='/dashboard/social/'], a[href='/dashboard/social']");
+      var aiNewsNode = document.createElement("a");
+      aiNewsNode.setAttribute("href", "/dashboard/ai-news/");
+      aiNewsNode.className =
+        "flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition group";
+      aiNewsNode.innerHTML =
+        '<i class="fa-solid fa-newspaper w-5 text-center group-hover:text-sky-400 transition-colors"></i> AI News';
+      if (socialNode && socialNode.nextSibling) {
+        nav.insertBefore(aiNewsNode, socialNode.nextSibling);
+      } else {
+        nav.appendChild(aiNewsNode);
+      }
+      existingAiNews = aiNewsNode;
+    }
+
+    if (existingAiNews) {
+      var aiNewsIcon = existingAiNews.querySelector("i");
+      var isAiNewsActive = currentPath === "/dashboard/ai-news";
+      if (isAiNewsActive) {
+        existingAiNews.className =
+          "flex items-center gap-3 px-4 py-2.5 rounded-lg bg-sky-500/20 text-sky-400 border border-sky-500/30";
+        if (aiNewsIcon) {
+          aiNewsIcon.className = "fa-solid fa-newspaper w-5 text-center font-bold drop-shadow-[0_0_8px_rgba(56,189,248,0.55)]";
+        }
+      } else {
+        existingAiNews.className =
+          "flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition group";
+        if (aiNewsIcon) {
+          aiNewsIcon.className = "fa-solid fa-newspaper w-5 text-center group-hover:text-sky-400 transition-colors";
+        }
+      }
+      if (typeof existingAiNews.textContent === "string" && existingAiNews.textContent.indexOf("AI News") === -1) {
+        existingAiNews.appendChild(document.createTextNode(" AI News"));
+      }
+    }
   }
 
   function normalizeUrl(value) {
@@ -675,6 +727,7 @@
     "/dashboard/chat",
     "/dashboard/projects",
     "/dashboard/social",
+    "/dashboard/ai-news",
     "/dashboard/updates",
     "/dashboard/profile",
   ];
@@ -1934,7 +1987,7 @@
   }
 
   async function hydrateUpdatesPage() {
-    captureEvent("dashboard_tab_viewed", { tab: "updates" });
+    captureEvent("dashboard_tab_viewed", { tab: "activity" });
     var summary = await getDashboardSummary();
     updateSharedUserUi(summary);
     var contentWrap = document.querySelector("main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-4");
@@ -2023,8 +2076,8 @@
 
     contentWrap.innerHTML =
       '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">' +
-      '<h2 class="text-lg font-[Outfit] font-semibold text-slate-900">Operational Updates</h2>' +
-      '<button type="button" data-updates-refresh="1" class="btn btn-secondary text-xs"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh News + Daily Update</button>' +
+      '<h2 class="text-lg font-[Outfit] font-semibold text-slate-900">Activity</h2>' +
+      '<button type="button" data-updates-refresh="1" class="btn btn-secondary text-xs"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh Activity + Daily Update</button>' +
       "</div>" +
       (dailyHtml || "") +
       (eventsHtml || '<div class="glass p-5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700">No live events yet. Trigger a tutor action to populate this feed.</div>');
@@ -2036,17 +2089,132 @@
         refreshButton.setAttribute("disabled", "true");
         refreshButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Refreshing';
         try {
-          await postJson("/api/scheduler/news-refresh", {});
           await postJson("/api/scheduler/daily-update", {});
-          toast("Updates refreshed.", false);
+          toast("Activity refreshed.", false);
           await hydrateUpdatesPage();
         } catch (err) {
-          toast(err instanceof Error ? err.message : "Unable to refresh updates", true);
+          toast(err instanceof Error ? err.message : "Unable to refresh activity", true);
         } finally {
           refreshButton.removeAttribute("disabled");
           refreshButton.innerHTML = original;
         }
       });
+    }
+  }
+
+  async function hydrateAiNewsPage() {
+    captureEvent("dashboard_tab_viewed", { tab: "ai_news" });
+    var summary = await getDashboardSummary();
+    updateSharedUserUi(summary);
+    var contentWrap = document.querySelector("main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-4");
+    if (!contentWrap) return;
+
+    function storyTone(category) {
+      var value = String(category || "").toLowerCase();
+      if (value === "capabilities") return { accent: "sky", label: "Capabilities" };
+      if (value === "tools") return { accent: "violet", label: "Tools" };
+      if (value === "job_displacement") return { accent: "rose", label: "Job Impact" };
+      if (value === "policy") return { accent: "amber", label: "Policy" };
+      return { accent: "emerald", label: "Workflow" };
+    }
+
+    function renderNews(result) {
+      var insights = Array.isArray(result && result.insights) ? result.insights : [];
+      var focusSummary = result && result.focusSummary ? escapeHtml(result.focusSummary) : "Stories tailored to your goals and active projects.";
+      var source = result && result.source ? escapeHtml(String(result.source)) : "personalized";
+      var cards = insights
+        .map(function (insight) {
+          var tone = storyTone(insight && insight.category);
+          var title = escapeHtml(insight && insight.title ? insight.title : "AI Story");
+          var summaryText = escapeHtml(insight && insight.summary ? insight.summary : "");
+          var why = escapeHtml(insight && insight.whyRelevant ? insight.whyRelevant : "");
+          var action = escapeHtml(insight && insight.recommendedAction ? insight.recommendedAction : "");
+          var score = Number(insight && insight.relevanceScore);
+          var scoreLabel = Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) + "%" : "--";
+          var impact = escapeHtml(insight && insight.impact ? String(insight.impact).toUpperCase() : "MED");
+          var url = escapeHtml(insight && insight.url ? insight.url : "#");
+          var sourceLabel = escapeHtml(insight && insight.source ? String(insight.source) : "Source");
+          return (
+            '<article class="glass p-5 rounded-xl border border-' +
+            tone.accent +
+            '-300 bg-' +
+            tone.accent +
+            '-50/90">' +
+            '<div class="flex items-center justify-between gap-3 mb-2">' +
+            '<div class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-' +
+            tone.accent +
+            '-700"><i class="fa-solid fa-newspaper"></i>' +
+            tone.label +
+            "</div>" +
+            '<div class="text-xs text-slate-600">Impact: ' +
+            impact +
+            " · Relevance: " +
+            scoreLabel +
+            "</div>" +
+            "</div>" +
+            '<h3 class="text-base font-semibold text-slate-900 mb-2">' +
+            title +
+            "</h3>" +
+            '<p class="text-sm text-slate-700 mb-3">' +
+            summaryText +
+            "</p>" +
+            (why
+              ? '<p class="text-xs text-slate-700 mb-2"><strong class="font-semibold">Why relevant:</strong> ' + why + "</p>"
+              : "") +
+            (action
+              ? '<p class="text-xs text-slate-700 mb-3"><strong class="font-semibold">Action:</strong> ' + action + "</p>"
+              : "") +
+            '<div class="flex items-center justify-between gap-3 text-xs">' +
+            '<span class="text-slate-500">' + sourceLabel + "</span>" +
+            '<a href="' +
+            url +
+            '" target="_blank" rel="noreferrer" class="text-sky-700 hover:text-sky-900 font-semibold">Open Story →</a>' +
+            "</div>" +
+            "</article>"
+          );
+        })
+        .join("");
+
+      contentWrap.innerHTML =
+        '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">' +
+        '<div><h2 class="text-lg font-[Outfit] font-semibold text-slate-900">AI News</h2>' +
+        '<p class="text-xs text-slate-600 mt-1">' +
+        focusSummary +
+        " · Source: " +
+        source +
+        "</p></div>" +
+        '<button type="button" data-ai-news-refresh="1" class="btn btn-secondary text-xs"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh AI News</button>' +
+        "</div>" +
+        (cards || '<div class="glass p-5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700">No stories available yet. Refresh to pull personalized recommendations.</div>');
+
+      var refreshButton = contentWrap.querySelector("button[data-ai-news-refresh='1']");
+      if (refreshButton) {
+        refreshButton.addEventListener("click", async function () {
+          var original = refreshButton.innerHTML;
+          refreshButton.setAttribute("disabled", "true");
+          refreshButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Refreshing';
+          try {
+            var refreshed = await postJson("/api/news/recommendations", { maxStories: 6 });
+            renderNews(refreshed);
+            toast("AI news refreshed.", false);
+          } catch (err) {
+            toast(err instanceof Error ? err.message : "Unable to refresh AI news", true);
+          } finally {
+            refreshButton.removeAttribute("disabled");
+            refreshButton.innerHTML = original;
+          }
+        });
+      }
+    }
+
+    try {
+      var initial = await postJson("/api/news/recommendations", { maxStories: 6 });
+      renderNews(initial);
+    } catch (err) {
+      contentWrap.innerHTML =
+        '<div class="glass p-5 rounded-xl border border-red-300 bg-red-50 text-red-700">' +
+        escapeHtml(err instanceof Error ? err.message : "Unable to load AI news") +
+        "</div>";
     }
   }
 
@@ -3056,6 +3224,12 @@
 
     if (currentPath === "/dashboard/social") {
       await hydrateSocialPage();
+      captureEvent("app_route_hydrate_completed", { path: currentPath });
+      return;
+    }
+
+    if (currentPath === "/dashboard/ai-news") {
+      await hydrateAiNewsPage();
       captureEvent("app_route_hydrate_completed", { path: currentPath });
       return;
     }

@@ -11,7 +11,8 @@ const links = [
   { href: "/dashboard/chat", label: "Chat Tutor", icon: "✦" },
   { href: "/dashboard/projects", label: "Projects", icon: "▣" },
   { href: "/dashboard/social", label: "Social Media", icon: "in" },
-  { href: "/dashboard/updates", label: "Updates", icon: "⚑", count: 2 },
+  { href: "/dashboard/ai-news", label: "AI News", icon: "🗞" },
+  { href: "/dashboard/updates", label: "Activity", icon: "◷", count: 2 },
   { href: "/dashboard/profile", label: "Profile", icon: "◉" },
 ] as const satisfies ReadonlyArray<{ href: Route; label: string; icon: string; count?: number }>;
 

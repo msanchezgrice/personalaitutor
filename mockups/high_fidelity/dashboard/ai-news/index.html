@@ -4,14 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Activity | AI Tutor</title>
+    <title>AI News | AI Tutor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body class="bg-[#0f111a] text-white lg:flex lg:h-screen lg:overflow-hidden min-h-screen text-sm">
-    <!-- Sidebar setup exactly identical to projects but active link on updates -->
+    <!-- Sidebar setup with AI News active -->
     <aside
         class="w-full lg:w-72 glass border-y-0 border-l-0 rounded-none flex flex-col lg:h-full bg-black/20 flex-shrink-0 z-20 relative">
         <div class="p-6">
@@ -54,15 +54,16 @@
                     Social Media
                 </a>
                 <a href="/dashboard/ai-news/"
-                    class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition group">
-                    <i class="fa-solid fa-newspaper w-5 text-center group-hover:text-sky-400 transition-colors"></i>
+                    class="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                    <i
+                        class="fa-solid fa-newspaper w-5 text-center font-bold drop-shadow-[0_0_8px_rgba(56,189,248,0.55)]"></i>
                     AI News
                 </a>
                 <a href="/dashboard/updates/"
-                    class="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-coral-500/20 text-coral-400 border border-coral-500/30 flex justify-between">
+                    class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition group flex justify-between">
                     <div class="flex items-center gap-3">
                         <i
-                            class="fa-solid fa-clock-rotate-left w-5 text-center font-bold drop-shadow-[0_0_8px_rgba(255,107,107,0.6)]"></i>
+                            class="fa-solid fa-clock-rotate-left w-5 text-center group-hover:text-coral-400 transition-colors"></i>
                         <span>Activity</span>
                     </div>
                     <span
@@ -74,14 +75,14 @@
 
     <!-- Main Content Area -->
     <main class="flex-1 flex flex-col lg:h-full relative overflow-y-auto w-full min-w-0">
-        <div class="absolute top-0 right-1/4 w-[400px] h-[300px] bg-coral-500/10 blur-[120px] pointer-events-none">
+        <div class="absolute top-0 right-1/4 w-[400px] h-[300px] bg-sky-500/10 blur-[120px] pointer-events-none">
         </div>
 
         <header
             class="h-20 flex items-center justify-between px-4 md:px-8 lg:px-10 border-b border-white/5 sticky top-0 bg-[#0f111a]/80 backdrop-blur-xl z-10 flex-shrink-0">
             <div>
                 <h1 class="text-xl font-[Outfit] font-semibold flex items-center gap-3"><i
-                        class="fa-solid fa-clock-rotate-left text-coral-400"></i> Activity Log</h1>
+                        class="fa-solid fa-newspaper text-sky-400"></i> AI News</h1>
             </div>
         <div class="fixed top-4 right-4 z-[100]">
 <button id="theme-toggle" class="btn bg-white/10 hover:bg-white/20 text-white border border-white/10 px-3 py-2 rounded-lg flex items-center justify-center transition-colors">
@@ -91,64 +92,8 @@
 </header>
 
         <div class="p-10 max-w-4xl mx-auto w-full pb-24 space-y-4">
-
-            <!-- Unread Alert -->
-            <div
-                class="glass p-5 rounded-xl border border-coral-500/30 bg-coral-500/5 hover:bg-white/5 transition flex gap-4 cursor-pointer relative overflow-hidden">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-coral-500"></div>
-                <div
-                    class="w-10 h-10 rounded shrink-0 bg-coral-500/20 flex items-center justify-center text-coral-400 mt-1">
-                    <i class="fa-solid fa-newspaper"></i></div>
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <h4 class="font-medium text-white text-base">Claude 3.5 Sonnet Released</h4>
-                        <span class="text-[10px] text-gray-500">2 hours ago</span>
-                    </div>
-                    <p class="text-sm text-gray-300 mb-3">Anthropic just released Claude 3.5. Their coding capabilities
-                        are significantly improved, handling complex JSON structs better.</p>
-                    <div
-                        class="bg-black/30 w-full p-4 rounded-lg border border-white/5 flex items-center justify-between">
-                        <span class="text-xs text-emerald-300"><i class="fa-solid fa-bolt mr-2 text-amber-400"></i> Tutor
-                            Recommendation: Switch standard model to Claude 3.5 for the "Customer Support"
-                            project.</span>
-                        <button class="btn hover:bg-white/10 text-xs px-3 py-1.5 border border-white/10">Apply to
-                            Project</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Unread Task -->
-            <div
-                class="glass p-5 rounded-xl border border-coral-500/30 bg-coral-500/5 hover:bg-white/5 transition flex gap-4 cursor-pointer relative overflow-hidden">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-coral-500"></div>
-                <div
-                    class="w-10 h-10 rounded shrink-0 bg-emerald-500/20 flex items-center justify-center text-emerald-400 mt-1">
-                    <i class="fa-solid fa-list-check"></i></div>
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <h4 class="font-medium text-white text-base">Daily Task: Webhook Review</h4>
-                        <span class="text-[10px] text-gray-500">4 hours ago</span>
-                    </div>
-                    <p class="text-sm text-gray-300 mb-3">Your tutor has setup a review task for the unresolved webhook
-                        errors. Do you have 10 minutes to pair program?</p>
-                    <a href="/dashboard/chat/" class="text-xs text-emerald-400 hover:text-emerald-300 font-medium">Open
-                        Tutor Session &rarr;</a>
-                </div>
-            </div>
-
-            <!-- Read Item -->
-            <div
-                class="glass p-5 rounded-xl border border-white/5 bg-transparent hover:bg-white/5 transition flex gap-4 cursor-pointer opacity-70">
-                <div class="w-10 h-10 rounded shrink-0 bg-gray-800 flex items-center justify-center text-gray-400 mt-1">
-                    <i class="fa-solid fa-award"></i></div>
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <h4 class="font-medium text-gray-300 text-base">Verified Skill Earned</h4>
-                        <span class="text-[10px] text-gray-500">Yesterday</span>
-                    </div>
-                    <p class="text-sm text-gray-400">You earned the 'Prompt Engineering' badge. Your public profile has
-                        been automatically updated.</p>
-                </div>
+            <div class="glass p-5 rounded-xl border border-sky-500/20 bg-sky-500/5 text-slate-100">
+                <p class="text-sm">Loading personalized AI news feed...</p>
             </div>
 
         </div>
