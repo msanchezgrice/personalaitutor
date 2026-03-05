@@ -14,10 +14,12 @@
   var DASHBOARD_SNAPSHOT_CACHE_PREFIX = "ai_tutor_dashboard_snapshot_v2:";
   var AUTH_SESSION_CACHE_PREFIX = "ai_tutor_auth_session_v1:";
   var SOCIAL_DRAFTS_CACHE_PREFIX = "ai_tutor_social_drafts_v1:";
+  var CHAT_HISTORY_CACHE_PREFIX = "ai_tutor_chat_history_v1:";
   var SUMMARY_CACHE_TTL_MS = 120000;
   var AUTH_SESSION_CACHE_TTL_MS = 45000;
   var SNAPSHOT_CACHE_TTL_MS = 1800000;
   var SOCIAL_DRAFTS_CACHE_TTL_MS = 600000;
+  var CHAT_HISTORY_CACHE_TTL_MS = 604800000;
   var SIGN_UP_INTENT_KEY = "ai_tutor_clerk_signup_intent_v1";
   var PENDING_ONBOARDING_SESSION_KEY = "ai_tutor_pending_onboarding_session_v1";
   var ONBOARDING_ASSESSMENT_FUNNEL = "onboarding_assessment";
@@ -354,6 +356,27 @@
     writeSessionObject(key, { ts: Date.now(), drafts: drafts });
   }
 
+  function chatHistoryCacheKey(projectId) {
+    var scope = cacheScope();
+    if (!scope) return null;
+    return CHAT_HISTORY_CACHE_PREFIX + scope + ":" + String(projectId || "none");
+  }
+
+  function readChatHistoryCache(projectId) {
+    var key = chatHistoryCacheKey(projectId);
+    if (!key) return null;
+    var payload = readSessionObject(key);
+    if (!payload || !payload.ts || !Array.isArray(payload.messages)) return null;
+    if (Date.now() - Number(payload.ts) > CHAT_HISTORY_CACHE_TTL_MS) return null;
+    return payload.messages;
+  }
+
+  function writeChatHistoryCache(projectId, messages) {
+    var key = chatHistoryCacheKey(projectId);
+    if (!key || !Array.isArray(messages)) return;
+    writeSessionObject(key, { ts: Date.now(), messages: messages });
+  }
+
   function persistDashboardSnapshot(pathname) {
     if (!isDashboardPath) return;
     if (isNarrowViewport()) return;
@@ -457,7 +480,8 @@
       if (roleEl && ctx.headline) roleEl.textContent = ctx.headline;
       var sidebarAvatar = sidebarProfileLink.querySelector("img");
       if (sidebarAvatar && ctx.avatarUrl) {
-        sidebarAvatar.setAttribute("src", ctx.avatarUrl);
+        var safeSidebarAvatar = sanitizeImageUrl(ctx.avatarUrl);
+        if (safeSidebarAvatar) sidebarAvatar.setAttribute("src", safeSidebarAvatar);
         sidebarAvatar.setAttribute("alt", ctx.name);
       }
     }
@@ -511,6 +535,31 @@
     }
     try {
       return new URL(raw).toString();
+    } catch {
+      return "";
+    }
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function sanitizeImageUrl(value) {
+    var raw = typeof value === "string" ? value.trim() : "";
+    if (!raw) return "";
+    if (raw.indexOf("/") === 0) return raw;
+    if (raw.indexOf("data:image/") === 0) return raw;
+    try {
+      var parsed = new URL(raw, window.location.origin);
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+        return parsed.toString();
+      }
+      return "";
     } catch {
       return "";
     }
@@ -586,17 +635,8 @@
     var headers = {
       "cache-control": "no-store",
     };
-    if (ctx.userId) {
-      headers["x-user-id"] = ctx.userId;
-    }
     if (json) headers["content-type"] = "application/json";
     return headers;
-  }
-
-  function pathWithUserId(path) {
-    if (!ctx.userId) return path;
-    var delimiter = path.indexOf("?") === -1 ? "?" : "&";
-    return path + delimiter + "userId=" + encodeURIComponent(ctx.userId);
   }
 
   var authRequiredPaths = [
@@ -906,7 +946,10 @@
       var avatar = sidebarProfileLink.querySelector("img");
       if (avatar) {
         avatar.setAttribute("alt", user.name);
-        if (ctx.avatarUrl) avatar.setAttribute("src", ctx.avatarUrl);
+        if (ctx.avatarUrl) {
+          var safeAvatar = sanitizeImageUrl(ctx.avatarUrl);
+          if (safeAvatar) avatar.setAttribute("src", safeAvatar);
+        }
       }
     }
 
@@ -929,7 +972,8 @@
       Array.prototype.forEach.call(
         document.querySelectorAll("aside img[src='/assets/avatar.png'], aside a[href='/dashboard/profile'] img[src='/assets/avatar.png'], aside a[href='/dashboard/profile/'] img[src='/assets/avatar.png']"),
         function (node) {
-          node.setAttribute("src", ctx.avatarUrl);
+          var safeAvatarValue = sanitizeImageUrl(ctx.avatarUrl);
+          if (safeAvatarValue) node.setAttribute("src", safeAvatarValue);
           if (!node.getAttribute("alt")) node.setAttribute("alt", user.name);
         },
       );
@@ -949,7 +993,11 @@
         });
       }
       ensureDashboardSettingsMenu();
-      ensureMobileDashboardNav();
+      var staleMobileToggle = document.querySelector("[data-mobile-nav-toggle='1']");
+      if (staleMobileToggle) staleMobileToggle.remove();
+      var staleMobileOverlay = document.querySelector(".dashboard-mobile-nav-overlay");
+      if (staleMobileOverlay) staleMobileOverlay.remove();
+      document.documentElement.setAttribute("data-mobile-nav", "closed");
     }
   }
 
@@ -1027,10 +1075,10 @@
       document.body.appendChild(overlay);
     }
 
-    var leftCluster = header.querySelector(".flex.items-center.gap-4") || header.querySelector("div");
-    if (!leftCluster) leftCluster = header;
-
     var toggleButton = header.querySelector("[data-mobile-nav-toggle='1']");
+    if (!toggleButton) {
+      toggleButton = document.querySelector("[data-mobile-nav-toggle='1']");
+    }
     if (!toggleButton) {
       toggleButton = document.createElement("button");
       toggleButton.type = "button";
@@ -1039,11 +1087,7 @@
       toggleButton.className =
         "hidden lg:hidden mr-3 h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-gray-200";
       toggleButton.innerHTML = '<i class="fa-solid fa-bars text-sm"></i>';
-      if (leftCluster.firstChild) {
-        leftCluster.insertBefore(toggleButton, leftCluster.firstChild);
-      } else {
-        leftCluster.appendChild(toggleButton);
-      }
+      document.body.appendChild(toggleButton);
     }
 
     var closeMobileMenu = function () {
@@ -1055,6 +1099,18 @@
       document.documentElement.setAttribute("data-mobile-nav", isOpen ? "closed" : "open");
       captureEvent("dashboard_mobile_nav_toggled", { is_open: !isOpen });
     };
+
+    var settingsMenu = document.getElementById("dashboard-settings-menu");
+    if (settingsMenu) {
+      var rightControls = header.querySelector(".flex.items-center.gap-4") || header.querySelector(".flex.items-center.gap-2");
+      if (isNarrowViewport()) {
+        if (settingsMenu.parentElement !== document.body) {
+          document.body.appendChild(settingsMenu);
+        }
+      } else if (rightControls && settingsMenu.parentElement !== rightControls) {
+        rightControls.appendChild(settingsMenu);
+      }
+    }
 
     Array.prototype.forEach.call(aside.querySelectorAll("a[href]"), function (node) {
       if (node.getAttribute("data-mobile-nav-bound") === "1") return;
@@ -1280,12 +1336,30 @@
         })();
       }, 10);
     }
+
+    var updatesSection = Array.prototype.find.call(document.querySelectorAll("section"), function (section) {
+      var text = (section.textContent || "").toLowerCase();
+      return text.indexOf("ai updates") !== -1 || text.indexOf("view inbox") !== -1;
+    });
+    if (updatesSection) {
+      updatesSection.remove();
+    }
+
+    var talentButton = document.querySelector("header a[href='/employers/talent/']");
+    if (talentButton && isNarrowViewport()) {
+      talentButton.innerHTML = '<i class="fa-solid fa-eye mr-1"></i> Talent';
+    }
   }
 
   async function hydrateProjectsPage() {
     captureEvent("dashboard_tab_viewed", { tab: "projects" });
     var summary = await getDashboardSummary();
     updateSharedUserUi(summary);
+
+    var newProjectButton = document.querySelector("header a.btn.btn-primary");
+    if (newProjectButton && isNarrowViewport()) {
+      newProjectButton.innerHTML = '<i class="fa-solid fa-plus mr-1"></i> New Project';
+    }
 
     var projects = (summary.projects || []).slice();
     var active = projects.find(function (project) {
@@ -1368,8 +1442,8 @@
       : "flex items-start gap-4 max-w-4xl";
 
     if (isUser) {
-      var userAvatar = ctx.avatarUrl || "/assets/avatar.png";
-      var userAlt = ctx.name || "Learner";
+      var userAvatar = sanitizeImageUrl(ctx.avatarUrl) || "/assets/avatar.png";
+      var userAlt = escapeHtml(ctx.name || "Learner");
       wrapper.innerHTML =
         '<div class="chat-user-bubble bg-emerald-600 text-white p-5 rounded-2xl rounded-tr-sm text-sm shadow-[0_5px_15px_rgba(16,185,129,0.2)]"></div>' +
         '<img src="' + userAvatar + '" class="w-8 h-8 rounded-full object-cover border border-white/20 flex-shrink-0 mt-1" alt="' + userAlt + '">';
@@ -1414,28 +1488,65 @@
     if (!history || !textarea || !sendBtn) return;
 
     var sending = false;
-    history.innerHTML = "";
-    var introBubble = createBubble("<p></p>", false);
-    var introParagraph = introBubble.querySelector("p");
-    setText(
-      introParagraph,
-      "Welcome back. I’m your AI Tutor. Share what you’re trying to build and I’ll map the next steps with proof artifacts."
-    );
-    history.appendChild(introBubble);
-    history.scrollTop = history.scrollHeight;
-    projectPromise
-      .then(function (project) {
-        if (!project || !introParagraph) return;
-        setText(
-          introParagraph,
-          "Welcome back. I’m your AI Tutor. Let’s continue " +
-            project.title +
-            ". Share your current blocker and I’ll give concrete next steps plus a verification check."
-        );
-      })
-      .catch(function () {
-        return null;
+    var chatHistoryState = [];
+    var cacheProjectId = null;
+
+    function persistChatHistory() {
+      if (!cacheProjectId) return;
+      writeChatHistoryCache(cacheProjectId, chatHistoryState.slice(-80));
+    }
+
+    function appendAndPersist(role, text) {
+      chatHistoryState.push({
+        role: role,
+        text: String(text || ""),
+        ts: Date.now(),
       });
+      if (chatHistoryState.length > 80) {
+        chatHistoryState = chatHistoryState.slice(-80);
+      }
+      persistChatHistory();
+    }
+
+    function renderMessage(role, text) {
+      var bubble = createBubble("<p></p>", role === "user");
+      setText(bubble.querySelector("p"), text);
+      history.appendChild(bubble);
+      history.scrollTop = history.scrollHeight;
+    }
+
+    history.innerHTML = "";
+    var project = null;
+    try {
+      project = await projectPromise;
+    } catch {
+      project = null;
+    }
+
+    cacheProjectId = (project && project.id) || ctx.projectId || "none";
+    var cachedMessages = readChatHistoryCache(cacheProjectId);
+
+    if (Array.isArray(cachedMessages) && cachedMessages.length) {
+      chatHistoryState = cachedMessages.slice(-80).map(function (entry) {
+        return {
+          role: entry && entry.role === "user" ? "user" : "assistant",
+          text: String(entry && entry.text ? entry.text : ""),
+          ts: entry && entry.ts ? Number(entry.ts) : Date.now(),
+        };
+      });
+      chatHistoryState.forEach(function (entry) {
+        renderMessage(entry.role, entry.text);
+      });
+    } else {
+      var introText = "Welcome back. I’m your AI Tutor. Share what you’re trying to build and I’ll map the next steps with proof artifacts.";
+      if (project && project.title) {
+        introText = "Welcome back. I’m your AI Tutor. Let’s continue " +
+          project.title +
+          ". Share your current blocker and I’ll give concrete next steps plus a verification check.";
+      }
+      renderMessage("assistant", introText);
+      appendAndPersist("assistant", introText);
+    }
 
     async function sendMessage() {
       if (sending) return;
@@ -1443,10 +1554,8 @@
       if (!text) return;
       sending = true;
 
-      var userBubble = createBubble("<p></p>", true);
-      setText(userBubble.querySelector("p"), text);
-      history.appendChild(userBubble);
-      history.scrollTop = history.scrollHeight;
+      renderMessage("user", text);
+      appendAndPersist("user", text);
       textarea.value = "";
       captureEvent("chat_message_sent", { message_length: text.length });
 
@@ -1460,16 +1569,13 @@
         });
 
         var replyText = result.reply || "My AI Skill Tutor: I logged this step in your project build log.";
-        var aiBubble = createBubble("<p></p>", false);
-        setText(aiBubble.querySelector("p"), replyText);
-        history.appendChild(aiBubble);
-        history.scrollTop = history.scrollHeight;
+        renderMessage("assistant", replyText);
+        appendAndPersist("assistant", replyText);
         captureEvent("chat_message_received", { reply_length: replyText.length });
       } catch (err) {
-        var errorBubble = createBubble("<p></p>", false);
-        setText(errorBubble.querySelector("p"), "My AI Skill Tutor failed to respond: " + (err && err.message ? err.message : "Unknown error"));
-        history.appendChild(errorBubble);
-        history.scrollTop = history.scrollHeight;
+        var errorText = "My AI Skill Tutor failed to respond: " + (err && err.message ? err.message : "Unknown error");
+        renderMessage("assistant", errorText);
+        appendAndPersist("assistant", errorText);
         captureEvent("chat_message_failed", { reason: err && err.message ? err.message : "unknown_error" });
       } finally {
         sending = false;
@@ -1537,16 +1643,16 @@
       '<button type="button" data-social-refresh="1" class="btn btn-secondary text-sm whitespace-nowrap"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh Ideas</button>' +
       "</div>" +
       '<div class="grid gap-4 md:grid-cols-2">' +
-      '<article class="rounded-xl border border-[#0a66c2]/35 bg-[#0a66c2]/10 p-4">' +
+      '<article class="rounded-xl border border-[#0a66c2]/35 bg-[#0a66c2]/10 p-4 runtime-social-card runtime-social-card-linkedin">' +
       '<div class="flex items-center justify-between mb-3"><span class="text-[11px] uppercase tracking-wider text-[#53a9ff] font-semibold">LinkedIn</span><span class="text-[10px] text-gray-300">Native share</span></div>' +
-      '<textarea data-social-input="linkedin" class="w-full min-h-[180px] rounded-lg border border-white/10 bg-[#0f172a]/70 p-3 text-[13px] text-gray-100 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-[#0a66c2]/50" readonly></textarea>' +
+      '<textarea data-social-input="linkedin" class="runtime-social-draft-input w-full min-h-[180px] rounded-lg border border-white/10 bg-[#0f172a]/70 p-3 text-[13px] text-gray-100 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-[#0a66c2]/50" readonly></textarea>' +
       '<div class="flex items-center gap-2 mt-3">' +
       '<button type="button" data-social-edit="linkedin" class="btn btn-secondary text-xs"><i class="fa-solid fa-pen mr-2"></i>Edit</button>' +
       '<button type="button" data-social-share="linkedin" class="btn bg-[#0a66c2] text-white hover:bg-[#095592] text-xs"><i class="fa-brands fa-linkedin-in mr-2"></i>Share</button>' +
       "</div></article>" +
-      '<article class="rounded-xl border border-white/15 bg-black/30 p-4">' +
+      '<article class="rounded-xl border border-white/15 bg-black/30 p-4 runtime-social-card runtime-social-card-x">' +
       '<div class="flex items-center justify-between mb-3"><span class="text-[11px] uppercase tracking-wider text-white font-semibold">Tweet</span><span class="text-[10px] text-gray-300">Native composer</span></div>' +
-      '<textarea data-social-input="x" class="w-full min-h-[180px] rounded-lg border border-white/10 bg-[#0f172a]/70 p-3 text-[13px] text-gray-100 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-white/30" readonly></textarea>' +
+      '<textarea data-social-input="x" class="runtime-social-draft-input w-full min-h-[180px] rounded-lg border border-white/10 bg-[#0f172a]/70 p-3 text-[13px] text-gray-100 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-white/30" readonly></textarea>' +
       '<div class="flex items-center gap-2 mt-3">' +
       '<button type="button" data-social-edit="x" class="btn btn-secondary text-xs"><i class="fa-solid fa-pen mr-2"></i>Edit</button>' +
       '<button type="button" data-social-share="x" class="btn bg-white text-[#111827] hover:bg-gray-200 text-xs"><i class="fa-brands fa-x-twitter mr-2"></i>Tweet</button>' +
@@ -1579,6 +1685,21 @@
       x: "",
       contextLabel: primaryProject ? "Project: " + primaryProject.title : "Profile momentum",
     };
+
+    function fallbackIdeas() {
+      var projectTitle = primaryProject && primaryProject.title ? primaryProject.title : "my latest AI build";
+      var profileLink = ctx && ctx.handle ? (window.location.origin + "/u/" + ctx.handle + "/") : window.location.origin;
+      return {
+        linkedin:
+          "Built and shipped " + projectTitle + " with My AI Skill Tutor.\n\n" +
+          "This week I focused on shipping proof artifacts, documenting decisions, and sharing learnings in public.\n\n" +
+          "If you're building your AI-native portfolio, here's my public profile: " + profileLink,
+        x:
+          "Shipped " + projectTitle + " with My AI Skill Tutor. Building in public + verified artifacts > passive learning.\n\n" +
+          profileLink + "\n\n#BuildInPublic #AI",
+        contextLabel: primaryProject ? "Project: " + projectTitle : "Profile momentum",
+      };
+    }
 
     function normalizeDraftText(value) {
       return String(value || "")
@@ -1637,7 +1758,10 @@
       draftState.x = normalizeDraftText(ideas.x || "");
       draftState.contextLabel = normalizeDraftText(ideas.contextLabel || draftState.contextLabel || "Fresh ideas");
       if (!draftState.linkedin || !draftState.x) {
-        throw new Error("Generated ideas were empty");
+        var fallback = fallbackIdeas();
+        if (!draftState.linkedin) draftState.linkedin = fallback.linkedin;
+        if (!draftState.x) draftState.x = fallback.x;
+        if (!draftState.contextLabel) draftState.contextLabel = fallback.contextLabel;
       }
       updateDraftInputs();
       if (sourceNode) {
@@ -1740,16 +1864,26 @@
       if (sourceNode) sourceNode.textContent = cachedDrafts.source === "llm" ? "Cached personalized ideas" : "Cached draft ideas";
       captureEvent("social_ideas_cache_hit", { source: cachedDrafts.source || "cached" });
       void loadIdeas(false).catch(function (err) {
-        if (sourceNode) sourceNode.textContent = "Blocked: OpenAI social generation unavailable";
+        var fallback = fallbackIdeas();
+        draftState.linkedin = normalizeDraftText(draftState.linkedin || fallback.linkedin);
+        draftState.x = normalizeDraftText(draftState.x || fallback.x);
+        draftState.contextLabel = normalizeDraftText(draftState.contextLabel || fallback.contextLabel);
+        updateDraftInputs();
+        if (sourceNode) sourceNode.textContent = "Using fallback ideas (generator unavailable)";
         captureEvent("social_ideas_failed", { reason: err && err.message ? err.message : "unknown_error" });
       });
     } else {
       try {
         await loadIdeas(false);
       } catch (err) {
-        if (sourceNode) sourceNode.textContent = "Blocked: OpenAI social generation unavailable";
+        var fallbackEmpty = fallbackIdeas();
+        draftState.linkedin = normalizeDraftText(fallbackEmpty.linkedin);
+        draftState.x = normalizeDraftText(fallbackEmpty.x);
+        draftState.contextLabel = normalizeDraftText(fallbackEmpty.contextLabel);
+        updateDraftInputs();
+        if (sourceNode) sourceNode.textContent = "Using fallback ideas (generator unavailable)";
         captureEvent("social_ideas_failed", { reason: err && err.message ? err.message : "unknown_error" });
-        toast(err instanceof Error ? err.message : "Failed to generate social ideas", true);
+        toast(err instanceof Error ? err.message : "Generated fallback social ideas", false);
       }
     }
 
@@ -1819,6 +1953,20 @@
     if (roleInput) roleInput.value = summary.user.headline || "";
     if (bioInput) bioInput.value = summary.user.bio || "";
     if (linkedInInput) linkedInInput.value = (summary.user.socialLinks && summary.user.socialLinks.linkedin) || "";
+    var topName = Array.prototype.find.call(document.querySelectorAll("main h3"), function (node) {
+      var text = (node.textContent || "").trim().toLowerCase();
+      return text === "alex chen" || text === "new learner";
+    });
+    if (topName && summary.user.name) {
+      topName.textContent = summary.user.name;
+    }
+    var topRole = Array.prototype.find.call(document.querySelectorAll("main p"), function (node) {
+      var text = (node.textContent || "").trim().toLowerCase();
+      return text === "product manager" || text === "ai builder";
+    });
+    if (topRole && summary.user.headline) {
+      topRole.textContent = summary.user.headline;
+    }
     var currentAvatarUrl = ctx.avatarUrl || summary.user.avatarUrl || "";
     function normalizeAvatarValue(input) {
       var raw = typeof input === "string" ? input.trim() : "";
@@ -1829,7 +1977,7 @@
 
     function applyAvatarToUi(nextUrl) {
       if (!nextUrl) return;
-      Array.prototype.forEach.call(document.querySelectorAll("img[src='/assets/avatar.png'], img[data-role='profile-avatar']"), function (img) {
+      Array.prototype.forEach.call(document.querySelectorAll("img[src='/assets/avatar.png'], img[data-role='profile-avatar'], main .flex.items-center.gap-6 img"), function (img) {
         img.setAttribute("src", nextUrl);
         img.setAttribute("data-role", "profile-avatar");
       });
@@ -2167,37 +2315,41 @@
     var skills = (candidate.topSkills || []).slice(0, 2);
     var tools = (candidate.topTools || []).slice(0, 3);
     var projectCount = Math.max(1, Math.round((candidate.evidenceScore || 45) / 30));
+    var candidateHandle = encodeURIComponent(String(candidate.handle || ""));
+    var candidateName = escapeHtml(String(candidate.name || "Candidate"));
+    var candidateRole = escapeHtml(String(candidate.role || "AI Builder"));
+    var candidateAvatar = sanitizeImageUrl(candidate.avatarUrl) || "/assets/avatar.png";
 
     return (
       '<a href="/employers/talent/' +
-      candidate.handle +
+      candidateHandle +
       '/" class="glass p-6 rounded-2xl hover:bg-white/5 transition border border-white/10 hover:border-emerald-500/40 group relative cursor-pointer">' +
       '<div class="flex justify-between items-start mb-4">' +
       '<img src="' +
-      (candidate.avatarUrl || "/assets/avatar.png") +
+      candidateAvatar +
       '" width="64" height="64" style="width:64px;height:64px;object-fit:cover;" class="w-16 h-16 rounded-full object-cover border border-white/20" alt="' +
-      candidate.name +
+      candidateName +
       '">' +
       '<div class="bg-emerald-500/20 text-emerald-400 w-8 h-8 rounded-full flex items-center justify-center border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]" title="Verified Human Builder"><i class="fa-solid fa-check text-sm font-bold"></i></div>' +
       "</div>" +
       '<h3 class="text-lg font-medium text-white group-hover:text-emerald-400 transition mb-1">' +
-      candidate.name +
+      candidateName +
       "</h3>" +
       '<p class="text-gray-400 text-sm mb-4">' +
-      candidate.role +
+      candidateRole +
       "</p>" +
       '<div class="space-y-2 mb-6">' +
       '<div class="flex items-center gap-2 text-xs"><i class="fa-solid fa-diagram-project text-gray-500 w-4"></i><span class="text-gray-300">' +
       projectCount +
       " Verified Projects built</span></div>" +
       '<div class="flex items-center gap-2 text-xs"><i class="fa-solid fa-code text-gray-500 w-4"></i><span class="text-gray-300">' +
-      tools.join(", ") +
+      tools.map(escapeHtml).join(", ") +
       "</span></div>" +
       "</div>" +
       '<div class="flex flex-wrap gap-2 mt-auto border-t border-white/10 pt-4">' +
       skills
         .map(function (skill) {
-          return '<span class="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded px-2 py-0.5">' + skill + "</span>";
+          return '<span class="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded px-2 py-0.5">' + escapeHtml(skill) + "</span>";
         })
         .join("") +
       "</div></a>"

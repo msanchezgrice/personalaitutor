@@ -36,6 +36,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 /* Prevent stale template flashes before runtime hydration replaces placeholder data.
    NOTE: GeminiStaticPage wraps template body in a <div>, so aside/main are NOT
    direct children of <body>. Use descendant combinators, not child combinators. */
@@ -796,7 +802,7 @@ html[data-path^="/dashboard"],
 body[data-path^="/dashboard"] {
   width: 100% !important;
   max-width: 100vw !important;
-  overflow-x: clip !important;
+  overflow-x: hidden !important;
 }
 
 html[data-path^="/dashboard"] [data-gemini-shell="1"],
@@ -805,7 +811,7 @@ html[data-path^="/dashboard"] [data-gemini-shell="1"] > main,
 body[data-path^="/dashboard"] [data-gemini-shell="1"] > main {
   width: 100% !important;
   max-width: 100vw !important;
-  overflow-x: clip !important;
+  overflow-x: hidden !important;
 }
 
 html[data-path^="/dashboard"] [data-gemini-shell="1"] > main .glass,
@@ -911,9 +917,18 @@ body[data-path^="/dashboard"] [data-gemini-shell="1"] > main article {
   body[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-4,
   body[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-2 {
     min-width: 0 !important;
+    max-width: 48vw !important;
     gap: 0.45rem !important;
     flex-wrap: nowrap !important;
     justify-content: flex-end !important;
+    overflow: hidden !important;
+  }
+
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-4>*,
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-2>*,
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-4>*,
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-2>* {
+    max-width: 100% !important;
   }
 
   html[data-path^="/dashboard"] [data-gemini-shell="1"] > main .p-10,
