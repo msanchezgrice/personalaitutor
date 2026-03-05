@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   CAREER_PATHS,
   MODULE_TRACKS,
+  type AcquisitionAttribution,
   addProjectChatMessage as memAddProjectChatMessage,
   connectOAuth as memConnectOAuth,
   createDailyUpdate as memCreateDailyUpdate,
@@ -52,6 +53,7 @@ import {
   type UserProfile,
 } from "@aitutor/shared";
 import { BRAND_NAME } from "./site";
+import { mergeAttribution } from "./attribution";
 
 const DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -223,6 +225,12 @@ function parseSkillTools(input?: string | null) {
   ).slice(0, 20);
 }
 
+function parseAcquisition(input: unknown): AcquisitionAttribution | undefined {
+  if (!input || typeof input !== "object") return undefined;
+  const parsed = mergeAttribution(undefined, input as AcquisitionAttribution);
+  return parsed ?? undefined;
+}
+
 function uuidFromExternalId(input: string) {
   const hex = createHash("sha256").update(`personalaitutor:${input}`).digest("hex").slice(0, 32).split("");
   hex[12] = "4";
@@ -268,6 +276,7 @@ function profileFromRow(
     goals: string[] | null;
     tools: string[] | null;
     social_links: Record<string, string> | null;
+    acquisition?: Record<string, unknown> | null;
     created_at: string;
     updated_at: string;
   },
@@ -293,6 +302,7 @@ function profileFromRow(
     published: row.published,
     tokensUsed: row.tokens_used,
     goals: ((row.goals ?? []) as UserProfile["goals"]) || [],
+    acquisition: parseAcquisition(row.acquisition) ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -312,7 +322,7 @@ async function getProfileRowById(userId: string) {
   const normalizedUserId = normalizeUserId(userId);
   const { data, error } = await supabase
     .from("learner_profiles")
-    .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,created_at,updated_at")
+    .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at")
     .eq("id", normalizedUserId)
     .single();
 
@@ -323,7 +333,7 @@ async function getProfileRowById(userId: string) {
   if (!isUuid(userId)) {
     const { data: byExternal } = await supabase
       .from("learner_profiles")
-      .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,created_at,updated_at")
+      .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at")
       .eq("external_user_id", userId)
       .maybeSingle();
     if (byExternal) return byExternal;
@@ -349,6 +359,7 @@ async function getOrCreateProfile(input: {
   avatarUrl?: string | null;
   handleBase?: string;
   careerPathId?: string;
+  acquisition?: AcquisitionAttribution;
 }) {
   const supabase = getSupabaseAdmin();
   const normalizedUserId = normalizeUserId(input.userId);
@@ -384,6 +395,22 @@ async function getOrCreateProfile(input: {
         };
       }
     }
+    if (input.acquisition) {
+      const mergedAcquisition = mergeAttribution(
+        parseAcquisition(existing.acquisition) ?? undefined,
+        input.acquisition,
+      );
+      if (mergedAcquisition) {
+        await supabase
+          .from("learner_profiles")
+          .update({
+            acquisition: mergedAcquisition,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id);
+        existing.acquisition = mergedAcquisition as unknown as Record<string, unknown>;
+      }
+    }
     const skills = await getSkillsForProfile(existing.id);
     return profileFromRow(existing, skills);
   }
@@ -400,7 +427,7 @@ async function getOrCreateProfile(input: {
   }
 
   const selectFields =
-    "id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,created_at,updated_at";
+    "id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at";
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const inferredName = input.name?.trim() || input.handleBase?.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) || "New Learner";
@@ -422,6 +449,7 @@ async function getOrCreateProfile(input: {
         website: `${appBaseUrl()}/u/${handle}`,
         ...(input.avatarUrl ? { avatar: input.avatarUrl } : {}),
       },
+      acquisition: input.acquisition ?? {},
     };
 
     const { data, error } = await supabase.from("learner_profiles").insert(insert).select(selectFields).single();
@@ -683,6 +711,7 @@ export async function runtimeCreateOnboardingSession(input: {
   email?: string | null;
   handleBase?: string;
   careerPathId?: string;
+  acquisition?: AcquisitionAttribution;
 }) {
   if (mode() === "memory") return memCreateOnboardingSession(input);
 
@@ -699,6 +728,7 @@ export async function runtimeCreateOnboardingSession(input: {
     resume_filename: null,
     ai_knowledge_score: null,
     goals: profile.goals,
+    acquisition: input.acquisition ?? profile.acquisition ?? {},
     status: "started",
   };
 
@@ -733,6 +763,7 @@ export async function runtimeCreateOnboardingSession(input: {
       resumeFilename: data.resume_filename,
       aiKnowledgeScore: data.ai_knowledge_score,
       goals: data.goals ?? [],
+      acquisition: parseAcquisition(data.acquisition) ?? undefined,
       status: data.status,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
@@ -756,6 +787,7 @@ export async function runtimeFindOnboardingSession(sessionId: string) {
     resumeFilename: data.resume_filename,
     aiKnowledgeScore: data.ai_knowledge_score,
     goals: data.goals ?? [],
+    acquisition: parseAcquisition(data.acquisition) ?? undefined,
     status: data.status,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
@@ -1087,6 +1119,13 @@ export async function runtimeClaimOnboardingSession(input: {
     goals: mergedGoals,
     socialLinks,
   };
+  const mergedAcquisition = mergeAttribution(
+    mergeAttribution(currentTarget.acquisition, sourceProfile?.acquisition),
+    refreshedSession.acquisition,
+  );
+  if (mergedAcquisition) {
+    patch.acquisition = mergedAcquisition;
+  }
 
   const mergedTools = Array.from(
     new Set([...(currentTarget.tools ?? []), ...(sourceProfile?.tools ?? [])]),
@@ -1302,7 +1341,7 @@ export async function runtimeFindUserByHandle(handle: string) {
 
   const { data } = await supabase
     .from("learner_profiles")
-    .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,created_at,updated_at")
+    .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at")
     .eq("handle", handle)
     .maybeSingle();
   if (!data) return null;
@@ -1337,6 +1376,7 @@ export async function runtimeUpdateProfile(userId: string, patch: Partial<UserPr
     ...profile.socialLinks,
     ...(patch.socialLinks ?? {}),
   };
+  const mergedAcquisition = mergeAttribution(profile.acquisition, patch.acquisition);
 
   if (!mergedSocialLinks.website) {
     mergedSocialLinks.website = `${appBaseUrl()}/u/${handle}`;
@@ -1369,6 +1409,7 @@ export async function runtimeUpdateProfile(userId: string, patch: Partial<UserPr
       tools: patch.tools ?? profile.tools,
       social_links: socialLinksPayload,
       goals: patch.goals ?? profile.goals,
+      acquisition: mergedAcquisition ?? profile.acquisition ?? {},
       updated_at: new Date().toISOString(),
     })
     .eq("id", profile.id);
@@ -1903,6 +1944,33 @@ function sanitizeSocialText(text: string, targetUrl: string) {
   if (!normalized) return targetUrl;
   if (normalized.includes(targetUrl)) return normalized;
   return `${normalized}\n\n${targetUrl}`;
+}
+
+function enforceFirstPersonDraft(text: string, learnerName: string) {
+  let normalized = String(text ?? "");
+  if (!normalized.trim()) return normalized;
+
+  const safeName = learnerName
+    .trim()
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  if (safeName) {
+    normalized = normalized.replace(new RegExp(`\\b${safeName}\\b`, "gi"), "I");
+    normalized = normalized.replace(new RegExp(`\\b${safeName}'s\\b`, "gi"), "my");
+  }
+
+  normalized = normalized
+    .replace(/\b(?:he|she|they)\s+(am|is)\b/gi, "I am")
+    .replace(/\b(?:he|she|they)\s+(was|were)\b/gi, "I was")
+    .replace(/\b(?:he|she|they)\s+(has|have)\b/gi, "I have")
+    .replace(/\b(?:he|she|they)\s+(started|built|launched|created|completed|learned|ships|shipped|uses|used|is)\b/gi, "I $1")
+    .replace(/\bhis\b/gi, "my")
+    .replace(/\bher\b/gi, "my")
+    .replace(/\btheir\b/gi, "my")
+    .replace(/\bhim\b/gi, "me")
+    .replace(/\bthem\b/gi, "me");
+
+  return normalized;
 }
 
 function socialShareUrl(platform: SocialPlatform, text: string) {
@@ -2591,6 +2659,8 @@ export async function runtimeGenerateSocialIdeas(input: {
     "Create two original post drafts based on this learner memory context.",
     "Return JSON only with keys: linkedin, x, contextLabel.",
     "Constraints:",
+    '- write in strict first-person singular voice ("I", "my").',
+    "- never refer to the learner by name or in third person.",
     "- linkedin: professional voice, 2-4 short paragraphs, no markdown headings.",
     "- x: concise tweet-style post, <= 260 characters before URL, no numbering.",
     "- contextLabel: short 2-5 word label.",
@@ -2640,8 +2710,8 @@ export async function runtimeGenerateSocialIdeas(input: {
       ok: true as const,
       source: "llm" as const,
       ideas: {
-        linkedin: sanitizeSocialText(ideas.linkedin, targetUrl),
-        x: sanitizeSocialText(ideas.x, targetUrl),
+        linkedin: sanitizeSocialText(enforceFirstPersonDraft(ideas.linkedin, summary.user.name), targetUrl),
+        x: sanitizeSocialText(enforceFirstPersonDraft(ideas.x, summary.user.name), targetUrl),
         contextLabel: ideas.contextLabel,
         targetUrl,
       },

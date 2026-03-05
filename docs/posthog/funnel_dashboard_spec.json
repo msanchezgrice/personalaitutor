@@ -1,0 +1,61 @@
+{
+  "name": "Growth Funnel - Ad Traffic to Signup Completion",
+  "version": "2026-03-05",
+  "funnel": "onboarding_assessment",
+  "owner": "growth-pm",
+  "events": [
+    "auth_clerk_sign_up_viewed",
+    "clerk_sign_up_started",
+    "clerk_sign_up_completed",
+    "onboarding_viewed",
+    "onboarding_step_viewed",
+    "onboarding_step_completed",
+    "onboarding_assessment_complete",
+    "onboarding_completed",
+    "onboarding_continue_to_dashboard",
+    "dashboard_welcome_viewed",
+    "onboarding_assessment_funnel_step"
+  ],
+  "source_dimension": {
+    "name": "paid_source",
+    "definition": "coalesce(properties['paid_source'], lower(properties['utm_source']), 'unknown')",
+    "normalized_values": ["facebook", "x", "linkedin", "unknown"]
+  },
+  "panels": [
+    {
+      "id": "weekly-stage-by-source",
+      "title": "Weekly stage progression by source",
+      "type": "timeseries",
+      "hogql": "SELECT toStartOfWeek(timestamp) AS week_start, coalesce(properties['paid_source'], lower(properties['utm_source']), 'unknown') AS paid_source, event, uniq(distinct_id) AS users FROM events WHERE event IN ('clerk_sign_up_started','clerk_sign_up_completed','onboarding_viewed','onboarding_assessment_complete','dashboard_welcome_viewed') AND timestamp >= now() - INTERVAL 12 WEEK GROUP BY week_start, paid_source, event ORDER BY week_start ASC, paid_source ASC, event ASC"
+    },
+    {
+      "id": "signup-cvr-by-source",
+      "title": "Signup conversion by source (start to complete)",
+      "type": "table",
+      "hogql": "WITH started AS (SELECT coalesce(properties['paid_source'], lower(properties['utm_source']), 'unknown') AS paid_source, uniq(distinct_id) AS users_started FROM events WHERE event = 'clerk_sign_up_started' AND timestamp >= now() - INTERVAL 30 DAY GROUP BY paid_source), completed AS (SELECT coalesce(properties['paid_source'], lower(properties['utm_source']), 'unknown') AS paid_source, uniq(distinct_id) AS users_completed FROM events WHERE event = 'clerk_sign_up_completed' AND timestamp >= now() - INTERVAL 30 DAY GROUP BY paid_source) SELECT coalesce(started.paid_source, completed.paid_source) AS paid_source, coalesce(started.users_started, 0) AS users_started, coalesce(completed.users_completed, 0) AS users_completed, if(coalesce(started.users_started, 0) = 0, 0, round(100.0 * coalesce(completed.users_completed, 0) / started.users_started, 2)) AS signup_cvr_percent FROM started FULL OUTER JOIN completed ON started.paid_source = completed.paid_source ORDER BY signup_cvr_percent DESC"
+    },
+    {
+      "id": "onboarding-cvr-by-source",
+      "title": "Onboarding completion by source",
+      "type": "table",
+      "hogql": "WITH viewed AS (SELECT coalesce(properties['paid_source'], lower(properties['utm_source']), 'unknown') AS paid_source, uniq(distinct_id) AS users_viewed FROM events WHERE event IN ('onboarding_viewed','onboarding_step_viewed') AND timestamp >= now() - INTERVAL 30 DAY GROUP BY paid_source), completed AS (SELECT coalesce(properties['paid_source'], lower(properties['utm_source']), 'unknown') AS paid_source, uniq(distinct_id) AS users_completed FROM events WHERE event IN ('onboarding_assessment_complete','onboarding_completed') AND timestamp >= now() - INTERVAL 30 DAY GROUP BY paid_source) SELECT coalesce(viewed.paid_source, completed.paid_source) AS paid_source, coalesce(viewed.users_viewed, 0) AS users_viewed, coalesce(completed.users_completed, 0) AS users_completed, if(coalesce(viewed.users_viewed, 0) = 0, 0, round(100.0 * coalesce(completed.users_completed, 0) / viewed.users_viewed, 2)) AS onboarding_cvr_percent FROM viewed FULL OUTER JOIN completed ON viewed.paid_source = completed.paid_source ORDER BY onboarding_cvr_percent DESC"
+    },
+    {
+      "id": "dropoff-by-step-and-source",
+      "title": "Step volume and dropoff by source",
+      "type": "table",
+      "hogql": "SELECT coalesce(properties['paid_source'], lower(properties['utm_source']), 'unknown') AS paid_source, coalesce(properties['step_name'], properties['step'], properties['funnel_step'], 'n/a') AS funnel_step, count() AS events, uniq(distinct_id) AS users FROM events WHERE event IN ('onboarding_step_viewed','onboarding_step_completed','onboarding_assessment_funnel_step') AND timestamp >= now() - INTERVAL 30 DAY GROUP BY paid_source, funnel_step ORDER BY paid_source ASC, users DESC"
+    },
+    {
+      "id": "cta-to-dashboard-rate",
+      "title": "Assessment complete to dashboard welcome rate",
+      "type": "table",
+      "hogql": "WITH completed AS (SELECT coalesce(properties['paid_source'], lower(properties['utm_source']), 'unknown') AS paid_source, uniq(distinct_id) AS users_completed FROM events WHERE event IN ('onboarding_assessment_complete','onboarding_completed') AND timestamp >= now() - INTERVAL 30 DAY GROUP BY paid_source), welcomed AS (SELECT coalesce(properties['paid_source'], lower(properties['utm_source']), 'unknown') AS paid_source, uniq(distinct_id) AS users_welcomed FROM events WHERE event = 'dashboard_welcome_viewed' AND timestamp >= now() - INTERVAL 30 DAY GROUP BY paid_source) SELECT coalesce(completed.paid_source, welcomed.paid_source) AS paid_source, coalesce(completed.users_completed, 0) AS users_completed, coalesce(welcomed.users_welcomed, 0) AS users_welcomed, if(coalesce(completed.users_completed, 0) = 0, 0, round(100.0 * coalesce(welcomed.users_welcomed, 0) / completed.users_completed, 2)) AS activation_percent FROM completed FULL OUTER JOIN welcomed ON completed.paid_source = welcomed.paid_source ORDER BY activation_percent DESC"
+    }
+  ],
+  "filters": {
+    "default_time_window": "Last 30 days",
+    "channel_focus": ["facebook", "x", "linkedin"],
+    "exclude_internal": true
+  }
+}

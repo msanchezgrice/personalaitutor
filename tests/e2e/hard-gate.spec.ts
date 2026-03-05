@@ -11,12 +11,12 @@ test.describe("hard gate browser verification", () => {
     await expect(page.locator("body")).not.toContainText(/cryptographic/i);
   });
 
-  test("onboarding route loads react wizard and onboarding options come from matrix API", async ({ page }) => {
+  test("onboarding route enforces auth-first gate and onboarding options come from matrix API", async ({ page }) => {
     await page.goto("/onboarding");
     await expect(page).toHaveURL(/\/onboarding\/?$/);
     await expect(page.locator("#onboarding-react-root")).toBeVisible();
-    await expect(page.getByText("Career Category")).toBeVisible();
-    await expect(page.getByRole("button", { name: /continue/i })).toBeVisible();
+    await expect(page.getByText("Create your account first")).toBeVisible();
+    await expect(page.getByRole("button", { name: /continue with social login/i })).toBeVisible();
 
     const startResponse = await page.request.post("/api/onboarding/start", {
       data: {
@@ -81,14 +81,11 @@ test.describe("hard gate browser verification", () => {
     await expect(cards.first()).toBeVisible();
   });
 
-  test("onboarding transitions respond quickly and talent detail has no theme toggle", async ({ page }) => {
+  test("onboarding auth gate loads quickly and talent detail has no theme toggle", async ({ page }) => {
+    const startedAt = Date.now();
     await page.goto("/onboarding");
-    await page.locator("input[type='text']").first().fill("QA Automation Lead");
-
-    const clickStartedAt = Date.now();
-    await page.getByRole("button", { name: /^continue/i }).click();
-    await expect(page.getByText("Work Details")).toBeVisible();
-    const transitionMs = Date.now() - clickStartedAt;
+    await expect(page.getByRole("button", { name: /continue with social login/i })).toBeVisible();
+    const transitionMs = Date.now() - startedAt;
     expect(transitionMs).toBeLessThan(2000);
 
     await page.goto("/employers/talent/candidate-002");

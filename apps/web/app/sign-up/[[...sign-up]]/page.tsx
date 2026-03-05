@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { SignUp } from "@clerk/nextjs";
 import { experimental__simple as clerkSimple } from "@clerk/themes";
-import { BRAND_NAME } from "@/lib/site";
+import { BRAND_NAME, getSiteUrl } from "@/lib/site";
 import { AuthWidgetFallback } from "@/components/auth-widget-fallback";
 
 export const metadata: Metadata = {
@@ -14,8 +14,15 @@ export const metadata: Metadata = {
 
 function safeRedirect(input?: string) {
   if (!input || typeof input !== "string") return "/onboarding/";
-  if (!input.startsWith("/")) return "/onboarding/";
-  return input;
+  if (input.startsWith("/")) return input;
+  try {
+    const url = new URL(input);
+    const site = new URL(getSiteUrl());
+    if (url.origin !== site.origin) return "/onboarding/";
+    return `${url.pathname}${url.search}` || "/onboarding/";
+  } catch {
+    return "/onboarding/";
+  }
 }
 
 export default async function SignUpPage({

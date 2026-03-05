@@ -6,6 +6,7 @@ import {
   MODULE_TRACKS,
 } from "./matrix";
 import type {
+  AcquisitionAttribution,
   AgentJob,
   AgentJobEvent,
   AgentJobStatus,
@@ -64,6 +65,7 @@ const defaultUser: UserProfile = {
   published: true,
   tokensUsed: 18430,
   goals: ["upskill_current_job", "ship_ai_projects"],
+  acquisition: undefined,
   createdAt: nowIso(),
   updatedAt: nowIso(),
 };
@@ -269,6 +271,7 @@ export function createUser(input: {
   bio?: string;
   careerPathId?: string;
   goals?: GoalType[];
+  acquisition?: AcquisitionAttribution;
 }) {
   const created: UserProfile = {
     id: id("user"),
@@ -284,6 +287,7 @@ export function createUser(input: {
     published: false,
     tokensUsed: 0,
     goals: input.goals ?? ["learn_foundations"],
+    acquisition: input.acquisition,
     createdAt: nowIso(),
     updatedAt: nowIso(),
   };
@@ -320,6 +324,7 @@ export function createOnboardingSession(input: {
   avatarUrl?: string | null;
   handleBase?: string;
   careerPathId?: string;
+  acquisition?: AcquisitionAttribution;
 }) {
   const user =
     (input.userId ? findUserById(input.userId) : null) ??
@@ -328,6 +333,7 @@ export function createOnboardingSession(input: {
       name: input.name ?? "TEST_USER_ONBOARDING",
       avatarUrl: input.avatarUrl ?? null,
       careerPathId: input.careerPathId,
+      acquisition: input.acquisition,
     });
 
   const session: OnboardingSession = {
@@ -339,6 +345,7 @@ export function createOnboardingSession(input: {
     resumeFilename: null,
     aiKnowledgeScore: null,
     goals: user.goals,
+    acquisition: input.acquisition,
     status: "started",
     createdAt: nowIso(),
     updatedAt: nowIso(),
@@ -854,6 +861,7 @@ export function updateProfile(userId: string, patch: Partial<UserProfile>) {
     "tools",
     "socialLinks",
     "goals",
+    "acquisition",
   ];
 
   for (const key of allowList) {
@@ -952,8 +960,8 @@ export function createSocialDrafts(input: {
     : `http://localhost:6396/api/og/profile/${user.handle}`;
 
   const baseText = project
-    ? `Shipped ${project.title} with ${PLATFORM_NAME}. Platform Verified build log + artifacts.`
-    : `Building AI-native skills with ${PLATFORM_NAME}. Platform Verified projects and proof.`;
+    ? `I shipped ${project.title} with ${PLATFORM_NAME}. Platform Verified build log + artifacts.`
+    : `I am building AI-native skills with ${PLATFORM_NAME}. Platform Verified projects and proof.`;
 
   const linkedinText = `${baseText} ${targetUrl}`;
   const xText = `${baseText} ${targetUrl}`;

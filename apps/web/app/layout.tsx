@@ -13,12 +13,15 @@ import {
   DEFAULT_OG_IMAGE_WIDTH,
   getSiteUrl,
 } from "@/lib/site";
+import { attributionCaptureScript } from "@/lib/attribution";
 import { themeBootScript } from "@/lib/theme-script";
 import "./globals.css";
 const appBaseUrl = getSiteUrl();
 const facebookAppId = process.env.FACEBOOK_APP_ID?.trim() || process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();
 const defaultOgImageUrl = `${appBaseUrl}${DEFAULT_OG_IMAGE_PATH}`;
 const fbPixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID?.trim() || "";
+const linkedinPartnerId = process.env.NEXT_PUBLIC_LINKEDIN_PARTNER_ID?.trim() || "";
+const xPixelId = process.env.NEXT_PUBLIC_X_PIXEL_ID?.trim() || process.env.NEXT_PUBLIC_TWITTER_PIXEL_ID?.trim() || "";
 const posthogProjectApiKey = process.env.NEXT_PUBLIC_POSTHOG_KEY?.trim() || "";
 const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST?.trim() || "https://us.i.posthog.com";
 
@@ -64,7 +67,7 @@ const clerkLocalization = {
   signUp: {
     start: {
       title: `Create your ${BRAND_NAME} account`,
-      subtitle: "Please fill in the details to get started",
+      subtitle: "Use social login for the fastest setup",
     },
   },
 };
@@ -87,6 +90,39 @@ fbq('track', 'PageView');
 }
 
 const fbPixelScript = buildFbPixelScript(fbPixelId);
+
+function buildLinkedInInsightScript(partnerId: string) {
+  if (!partnerId) return "";
+  const safePartnerId = JSON.stringify(partnerId);
+  return `
+window._linkedin_data_partner_ids = window._linkedin_data_partner_ids || [];
+window._linkedin_data_partner_ids.push(${safePartnerId});
+(function(l){
+if (l.linkedin_insight_tag) return;
+var s = document.getElementsByTagName("script")[0];
+var b = document.createElement("script");
+b.type = "text/javascript"; b.async = true;
+b.src = "https://snap.licdn.com/li.lms-analytics/insight.min.js";
+s.parentNode.insertBefore(b, s);
+})(window);
+`;
+}
+
+function buildXPixelScript(pixelId: string) {
+  if (!pixelId) return "";
+  const safePixelId = JSON.stringify(pixelId);
+  return `
+!function(e,t,n,s,u,a){
+e.twq||(s=e.twq=function(){s.exe?s.exe.apply(s,arguments):s.queue.push(arguments);},
+s.version='1.1',s.queue=[],u=t.createElement(n),u.async=!0,u.src='https://static.ads-twitter.com/uwt.js',
+a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a));
+}(window,document,'script');
+twq('config', ${safePixelId});
+`;
+}
+
+const linkedinInsightScript = buildLinkedInInsightScript(linkedinPartnerId);
+const xTrackingScript = buildXPixelScript(xPixelId);
 
 export const metadata: Metadata = {
   metadataBase: new URL(appBaseUrl),
@@ -148,17 +184,22 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const clerkJsUrl = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
-
   return (
     <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
+        <script id="attribution-capture" dangerouslySetInnerHTML={{ __html: attributionCaptureScript }} />
         <script id="theme-boot" dangerouslySetInnerHTML={{ __html: themeBootScript }} />
         {posthogInitScript ? (
           <script id="posthog-init" dangerouslySetInnerHTML={{ __html: posthogInitScript }} />
         ) : null}
         {fbPixelScript ? (
           <script id="fb-pixel" dangerouslySetInnerHTML={{ __html: fbPixelScript }} />
+        ) : null}
+        {linkedinInsightScript ? (
+          <script id="linkedin-insight" dangerouslySetInnerHTML={{ __html: linkedinInsightScript }} />
+        ) : null}
+        {xTrackingScript ? (
+          <script id="x-pixel" dangerouslySetInnerHTML={{ __html: xTrackingScript }} />
         ) : null}
         <link rel="icon" href="/assets/branding/brand_brain_icon.svg" />
         <link rel="stylesheet" href="/styles.css" />
@@ -176,7 +217,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             />
           </noscript>
         ) : null}
-        <ClerkProvider clerkJSUrl={clerkJsUrl} localization={clerkLocalization}>
+        {linkedinPartnerId ? (
+          <noscript>
+            <img
+              height="1"
+              width="1"
+              style={{ display: "none" }}
+              src={`https://px.ads.linkedin.com/collect/?pid=${encodeURIComponent(linkedinPartnerId)}&fmt=gif`}
+              alt=""
+            />
+          </noscript>
+        ) : null}
+        <ClerkProvider localization={clerkLocalization}>
           <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
           {children}
           <SpeedInsights />

@@ -9,6 +9,7 @@ import {
   fbQuizComplete,
   fbOnboardingComplete,
 } from "@/lib/fb-pixel";
+import { trackAdLead } from "@/lib/ad-conversions";
 
 type OnboardingStartResponse = {
   ok: true;
@@ -186,6 +187,11 @@ export function OnboardingWizard() {
       }
       setAssessmentResult(data.assessment);
       fbQuizComplete(data.assessment.score, data.assessment.recommendedCareerPathIds);
+      trackAdLead({
+        score: data.assessment.score,
+        sessionId,
+        source: "legacy_onboarding_wizard",
+      });
       fbOnboardingComplete();
       setStep(5);
     } catch (err) {

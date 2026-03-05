@@ -54,6 +54,7 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const replacements: Record<string, string> = {};
+  const authFirstHref = "/sign-up?redirect_url=/onboarding/";
   const seed = await getAuthSeed();
   if (seed?.userId) {
     const summary = await runtimeGetDashboardSummary(seed.userId, {
@@ -68,17 +69,17 @@ export default async function HomePage() {
     }
   }
   replacements['href="/assessment/" class="btn btn-primary animate-pulse-glow">Start Assessment <i class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>'] =
-    'href="/onboarding/" class="btn btn-primary animate-pulse-glow">Start Assessment <i class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>';
+    `href="${authFirstHref}" class="btn btn-primary animate-pulse-glow">Start Assessment <i class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>`;
   replacements['href="/assessment/" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>'] =
-    'href="/onboarding/" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>';
+    `href="${authFirstHref}" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>`;
   replacements['href="/assessment/" class="btn btn-primary text-xl px-10 py-5 animate-pulse-glow shadow-2xl">Start Your AI'] =
-    'href="/onboarding/" class="btn btn-primary text-xl px-10 py-5 animate-pulse-glow shadow-2xl">Start Your AI';
+    `href="${authFirstHref}" class="btn btn-primary text-xl px-10 py-5 animate-pulse-glow shadow-2xl">Start Your AI`;
   replacements['href="/assessment" class="btn btn-primary animate-pulse-glow">Start Assessment <i class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>'] =
-    'href="/onboarding/" class="btn btn-primary animate-pulse-glow">Start Assessment <i class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>';
+    `href="${authFirstHref}" class="btn btn-primary animate-pulse-glow">Start Assessment <i class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>`;
   replacements['href="/assessment" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>'] =
-    'href="/onboarding/" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>';
-  replacements['href="/assessment/"'] = 'href="/onboarding/"';
-  replacements['href="/assessment"'] = 'href="/onboarding/"';
+    `href="${authFirstHref}" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>`;
+  replacements['href="/assessment/"'] = `href="${authFirstHref}"`;
+  replacements['href="/assessment"'] = `href="${authFirstHref}"`;
   replacements['<img src="/assets/branding/brand_wordmark_logo.png" alt="My AI Skill Tutor" class="h-8 w-auto object-contain" />'] =
     '<img src="/assets/branding/brand_brain_icon.svg" alt="My AI Skill Tutor" class="h-11 w-11 object-contain" /><span class="font-[Outfit] font-bold text-[1.9rem] leading-none tracking-tight text-[var(--text-main)]">My AI Skill Tutor</span>';
   return <GeminiStaticPage template="index.html" replacements={replacements} />;

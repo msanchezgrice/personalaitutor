@@ -15,6 +15,8 @@
   var AUTH_SESSION_CACHE_PREFIX = "ai_tutor_auth_session_v1:";
   var SOCIAL_DRAFTS_CACHE_PREFIX = "ai_tutor_social_drafts_v1:";
   var CHAT_HISTORY_CACHE_PREFIX = "ai_tutor_chat_history_v1:";
+  var ATTRIBUTION_STORAGE_KEY = "ai_tutor_attribution_v1";
+  var SIGNUP_VARIANT_KEY = "ai_tutor_exp_signup_variant_v1";
   var ENABLE_DASHBOARD_SNAPSHOT_CACHE = false;
   var HOME_NEWS_CACHE_PREFIX = "ai_tutor_home_news_v1:";
   var SUMMARY_CACHE_TTL_MS = 120000;
@@ -69,6 +71,24 @@
   function removeSessionObject(key) {
     try {
       window.sessionStorage.removeItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  function readLocalObject(key) {
+    try {
+      var raw = window.localStorage.getItem(key);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  function writeLocalObject(key, value) {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
     } catch {
       return null;
     }
@@ -141,9 +161,24 @@
   }
 
   function baseAnalyticsProps(properties) {
+    var attribution = readAttributionEnvelope();
+    var last = attribution && attribution.last ? attribution.last : {};
+    var source = typeof last.utmSource === "string" ? last.utmSource.toLowerCase() : "";
     var base = {
       app: "web",
       path: currentPath,
+      utm_source: last.utmSource || null,
+      utm_medium: last.utmMedium || null,
+      utm_campaign: last.utmCampaign || null,
+      utm_content: last.utmContent || null,
+      paid_source:
+        source.indexOf("linkedin") !== -1
+          ? "linkedin"
+          : source === "x" || source.indexOf("twitter") !== -1
+            ? "x"
+            : source.indexOf("facebook") !== -1 || source.indexOf("meta") !== -1 || source.indexOf("instagram") !== -1
+              ? "facebook"
+              : "unknown",
     };
     if (ctx && ctx.userId) base.user_id = ctx.userId;
     if (ctx && ctx.sessionId) base.session_id = ctx.sessionId;
@@ -231,6 +266,77 @@
 
   function clearPendingOnboardingSession() {
     removeSessionObject(PENDING_ONBOARDING_SESSION_KEY);
+  }
+
+  function readAttributionEnvelope() {
+    try {
+      var raw = window.localStorage.getItem(ATTRIBUTION_STORAGE_KEY);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  function trafficSourceFromAttribution() {
+    var envelope = readAttributionEnvelope();
+    var source = envelope && envelope.last && typeof envelope.last.utmSource === "string"
+      ? envelope.last.utmSource.toLowerCase()
+      : "";
+    if (!source) return "unknown";
+    if (source.indexOf("linkedin") !== -1) return "linkedin";
+    if (source === "x" || source.indexOf("twitter") !== -1) return "x";
+    if (source.indexOf("facebook") !== -1 || source.indexOf("meta") !== -1 || source.indexOf("instagram") !== -1) {
+      return "facebook";
+    }
+    return source;
+  }
+
+  function getOrAssignSignupVariant() {
+    try {
+      var existing = window.localStorage.getItem(SIGNUP_VARIANT_KEY);
+      if (existing === "control" || existing === "social_first") return existing;
+      var assigned = Math.random() < 0.5 ? "control" : "social_first";
+      window.localStorage.setItem(SIGNUP_VARIANT_KEY, assigned);
+      return assigned;
+    } catch {
+      return "control";
+    }
+  }
+
+  function applyAcquisitionLandingVariant() {
+    if (currentPath !== "/") return;
+
+    var source = trafficSourceFromAttribution();
+    var variant = getOrAssignSignupVariant();
+
+    var heroSubtext = document.querySelector("section.container p.text-xl.text-gray-400");
+    if (heroSubtext && source === "linkedin") {
+      heroSubtext.textContent = "Build AI execution proof that hiring managers can verify in minutes.";
+    } else if (heroSubtext && source === "x") {
+      heroSubtext.textContent = "Ship practical AI workflows fast and show public proof of what you built.";
+    } else if (heroSubtext && source === "facebook") {
+      heroSubtext.textContent = "Turn AI anxiety into a clear career plan, project by project.";
+    }
+
+    var cta = document.querySelector("a.btn.btn-primary.animate-pulse-glow");
+    if (cta) {
+      if (source === "linkedin") {
+        cta.textContent = variant === "social_first" ? "Start with LinkedIn" : "Create Account";
+      } else if (source === "x") {
+        cta.textContent = variant === "social_first" ? "Start with X Login" : "Create Account";
+      } else if (source === "facebook") {
+        cta.textContent = variant === "social_first" ? "Start with Facebook Login" : "Create Account";
+      }
+    }
+
+    captureEvent("acquisition_variant_applied", {
+      source: source,
+      variant: variant,
+      page: "landing",
+    });
   }
 
   function maybeTrackAuthEntryEvents() {
@@ -377,7 +483,7 @@
   function readChatHistoryCache(projectId) {
     var key = chatHistoryCacheKey(projectId);
     if (!key) return null;
-    var payload = readSessionObject(key);
+    var payload = readSessionObject(key) || readLocalObject(key);
     if (!payload || !payload.ts || !Array.isArray(payload.messages)) return null;
     if (Date.now() - Number(payload.ts) > CHAT_HISTORY_CACHE_TTL_MS) return null;
     return payload.messages;
@@ -386,7 +492,9 @@
   function writeChatHistoryCache(projectId, messages) {
     var key = chatHistoryCacheKey(projectId);
     if (!key || !Array.isArray(messages)) return;
-    writeSessionObject(key, { ts: Date.now(), messages: messages });
+    var payload = { ts: Date.now(), messages: messages };
+    writeSessionObject(key, payload);
+    writeLocalObject(key, payload);
   }
 
   function homeNewsCacheKey() {
@@ -1119,6 +1227,12 @@
             node.remove();
           }
         });
+        Array.prototype.forEach.call(
+          aside.querySelectorAll("a[href='/dashboard/updates/'], a[href='/dashboard/updates']"),
+          function (node) {
+            node.remove();
+          },
+        );
       }
       ensureDashboardSettingsMenu();
       ensureMobileDashboardNav();
@@ -1287,6 +1401,7 @@
       handleBase: baseHandle,
       careerPathId: ctx.careerPathId || "product-management",
       avatarUrl: ctx.avatarUrl || null,
+      acquisition: readAttributionEnvelope() || undefined,
     });
     if (!data || !data.session || !data.session.id || !data.sessionToken) {
       throw new Error("Unable to initialize onboarding session");
@@ -1357,11 +1472,21 @@
       return ranked[0];
     }
 
+    var recommendation = summary && Array.isArray(summary.moduleRecommendations) && summary.moduleRecommendations.length
+      ? summary.moduleRecommendations[0]
+      : null;
+    var title = recommendation && recommendation.title
+      ? recommendation.title + " Starter Build"
+      : "Starter AI Build";
+    var description = recommendation && recommendation.title
+      ? "Starter project generated from your " + recommendation.title + " path to begin collecting proof artifacts."
+      : "Starter project generated from your onboarding path to begin collecting proof artifacts.";
+
     var created = await postJson("/api/projects", {
-      title: "Customer Support Copilot",
-      description: "Automated responder project scaffolded from onboarding.",
+      title: title,
+      description: description,
       userId: ctx.userId,
-      slug: "customer-support-copilot",
+      slug: "starter-build",
     });
     ctx.projectId = created.project.id;
     saveCtx(ctx);
@@ -2079,11 +2204,26 @@
       contextLabel: primaryProject ? "Project: " + primaryProject.title : "Profile momentum",
     };
 
+    function enforceFirstPerson(text) {
+      var result = String(text || "");
+      var name = String((summary && summary.user && summary.user.name) || "").trim();
+      if (name) {
+        var escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        result = result.replace(new RegExp("\\b" + escaped + "\\b", "gi"), "I");
+      }
+      result = result
+        .replace(/\b(?:he|she|they)\s+(is|was|has|have|started|built|launched|created|completed|learned|uses|used)\b/gi, "I $1")
+        .replace(/\bhis\b/gi, "my")
+        .replace(/\bher\b/gi, "my")
+        .replace(/\btheir\b/gi, "my");
+      return result;
+    }
+
     function normalizeDraftText(value) {
-      return String(value || "")
+      return enforceFirstPerson(String(value || "")
         .replace(/[ \t]+\n/g, "\n")
         .replace(/\n{3,}/g, "\n\n")
-        .trim();
+        .trim());
     }
 
     function shareUrl(platform, text) {
@@ -3533,6 +3673,7 @@
   async function boot() {
     captureEvent("app_boot_started", { path: currentPath });
     try {
+      applyAcquisitionLandingVariant();
       maybeTrackAuthEntryEvents();
       wireThemeToggle();
       document.documentElement.setAttribute("data-runtime-ready", "1");

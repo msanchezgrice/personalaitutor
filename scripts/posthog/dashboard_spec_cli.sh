@@ -26,14 +26,23 @@ fi
 
 run_query "Canonical funnel step volumes (last 30d)" "
 SELECT
-  properties['step'] AS step,
+  event,
+  coalesce(properties['step_name'], properties['step'], properties['funnel_step'], 'n/a') AS step,
   count() AS events,
   uniq(distinct_id) AS users
 FROM events
-WHERE event = 'onboarding_assessment_funnel_step'
-  AND properties['funnel'] = 'onboarding_assessment'
+WHERE event IN (
+    'onboarding_assessment_funnel_step',
+    'onboarding_viewed',
+    'onboarding_step_viewed',
+    'onboarding_step_completed',
+    'onboarding_assessment_complete',
+    'onboarding_completed',
+    'onboarding_continue_to_dashboard',
+    'dashboard_welcome_viewed'
+  )
   AND timestamp >= now() - INTERVAL 30 DAY
-GROUP BY step
+GROUP BY event, step
 ORDER BY events DESC
 "
 
@@ -63,13 +72,13 @@ WITH
 viewed AS (
   SELECT uniq(distinct_id) AS users_viewed
   FROM events
-  WHERE event = 'onboarding_viewed'
+  WHERE event IN ('onboarding_viewed', 'onboarding_step_viewed')
     AND timestamp >= now() - INTERVAL 30 DAY
 ),
 completed AS (
   SELECT uniq(distinct_id) AS users_completed
   FROM events
-  WHERE event = 'onboarding_completed'
+  WHERE event IN ('onboarding_completed', 'onboarding_assessment_complete')
     AND timestamp >= now() - INTERVAL 30 DAY
 )
 SELECT
@@ -142,7 +151,7 @@ SELECT
   count() AS starts,
   uniq(distinct_id) AS users
 FROM events
-WHERE event = 'onboarding_start_assessment_clicked'
+WHERE event IN ('onboarding_start_assessment_clicked', 'onboarding_step_completed')
   AND timestamp >= now() - INTERVAL 30 DAY
 GROUP BY selected_goals_count
 ORDER BY selected_goals_count ASC

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { fbCompleteRegistration, fbViewContent } from "@/lib/fb-pixel";
+import { fbViewContent } from "@/lib/fb-pixel";
+import { trackAdCompleteRegistration } from "@/lib/ad-conversions";
 
 /**
  * Drop this component on any page to fire a one-time Facebook Pixel event
@@ -26,7 +27,9 @@ export function FbPageEvent({
     fired.current = true;
 
     if (event === "CompleteRegistration") {
-      fbCompleteRegistration("clerk");
+      trackAdCompleteRegistration({
+        source: "fb_page_event_component",
+      });
     } else if (event === "ViewContent" && contentName) {
       fbViewContent(contentName);
     }

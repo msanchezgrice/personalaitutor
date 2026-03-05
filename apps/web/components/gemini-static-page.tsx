@@ -133,8 +133,8 @@ function applyReplacements(input: string, replacements?: Record<string, string>)
     "http://linkedin.com/company/myaiskilltutor": "https://www.linkedin.com/company/myaiskilltutor",
     "https://linkedin.com/company/myaiskilltutor": "https://www.linkedin.com/company/myaiskilltutor",
     "fa-x-twitter": "fa-twitter",
-    'href="/assessment/"': 'href="/onboarding/"',
-    'href="/assessment"': 'href="/onboarding/"',
+    'href="/assessment/"': 'href="/sign-up?redirect_url=/onboarding/"',
+    'href="/assessment"': 'href="/sign-up?redirect_url=/onboarding/"',
     ...(replacements ?? {}),
   };
 

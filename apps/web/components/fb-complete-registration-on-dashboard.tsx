@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { fbCompleteRegistration } from "@/lib/fb-pixel";
+import { trackAdCompleteRegistration } from "@/lib/ad-conversions";
 
 const PENDING_SESSION_KEY = "ai_tutor_pending_onboarding_session_v1";
 const COMPLETE_REGISTRATION_FIRED_KEY = "ai_tutor_complete_registration_fired_v1";
@@ -40,7 +40,10 @@ export function FbCompleteRegistrationOnDashboard() {
     if (!(welcome === "1" && (onboardingSessionId || hasPendingSession))) return;
 
     firedInSessionRef.current = true;
-    fbCompleteRegistration("clerk");
+    trackAdCompleteRegistration({
+      sessionId: onboardingSessionId ?? null,
+      source: "dashboard_welcome",
+    });
 
     try {
       window.sessionStorage.setItem(COMPLETE_REGISTRATION_FIRED_KEY, "1");

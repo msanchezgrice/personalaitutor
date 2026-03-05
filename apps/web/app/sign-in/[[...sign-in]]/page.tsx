@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { SignIn } from "@clerk/nextjs";
 import { experimental__simple as clerkSimple } from "@clerk/themes";
-import { BRAND_NAME } from "@/lib/site";
+import { SignInOauthButtons } from "@/components/sign-in-oauth-buttons";
+import { BRAND_NAME, getSiteUrl } from "@/lib/site";
 import { AuthWidgetFallback } from "@/components/auth-widget-fallback";
 
 export const metadata: Metadata = {
@@ -14,8 +15,15 @@ export const metadata: Metadata = {
 
 function safeRedirect(input?: string) {
   if (!input || typeof input !== "string") return "/dashboard/";
-  if (!input.startsWith("/")) return "/dashboard/";
-  return input;
+  if (input.startsWith("/")) return input;
+  try {
+    const url = new URL(input);
+    const site = new URL(getSiteUrl());
+    if (url.origin !== site.origin) return "/dashboard/";
+    return `${url.pathname}${url.search}` || "/dashboard/";
+  } catch {
+    return "/dashboard/";
+  }
 }
 
 export default async function SignInPage({
@@ -29,6 +37,7 @@ export default async function SignInPage({
   return (
     <main className="min-h-screen bg-[#eef3f2] text-[#0f172a] flex items-center justify-center px-6 py-10">
       <div className="w-full flex flex-col items-center">
+        <SignInOauthButtons redirectUrl={forceRedirectUrl} />
         <SignIn
           routing="path"
           path="/sign-in"

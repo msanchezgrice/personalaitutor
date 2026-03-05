@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SignUpButton, useAuth } from "@clerk/nextjs";
 import type { GoalType, SituationStatus } from "@aitutor/shared";
 import {
   fbOnboardingComplete,
@@ -9,6 +10,8 @@ import {
   fbQuizStart,
   fbViewContent,
 } from "@/lib/fb-pixel";
+import { trackAdCompleteRegistration, trackAdLead } from "@/lib/ad-conversions";
+import { readClientAttributionEnvelope } from "@/lib/attribution";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -26,11 +29,35 @@ function trackPosthog(event: string, properties?: Record<string, unknown>) {
   try {
     const ph = (window as unknown as { posthog?: { capture: (e: string, p?: Record<string, unknown>) => void } }).posthog;
     if (ph?.capture) {
-      ph.capture(event, { funnel: ONBOARDING_FUNNEL, ...properties });
+      const attribution = readClientAttributionEnvelope();
+      const last = attribution?.last;
+      ph.capture(event, {
+        funnel: ONBOARDING_FUNNEL,
+        utm_source: last?.utmSource ?? null,
+        utm_medium: last?.utmMedium ?? null,
+        utm_campaign: last?.utmCampaign ?? null,
+        utm_content: last?.utmContent ?? null,
+        paid_source:
+          last?.utmSource?.toLowerCase().includes("linkedin")
+            ? "linkedin"
+            : last?.utmSource === "x" || last?.utmSource?.toLowerCase().includes("twitter")
+              ? "x"
+              : last?.utmSource?.toLowerCase().includes("facebook") || last?.utmSource?.toLowerCase().includes("meta")
+                ? "facebook"
+                : "unknown",
+        ...properties,
+      });
     }
   } catch {
     // Ignore tracking failures.
   }
+}
+
+function trackFunnelStep(step: string, properties?: Record<string, unknown>) {
+  trackPosthog("onboarding_assessment_funnel_step", {
+    step,
+    ...properties,
+  });
 }
 
 type OnboardingStartPayload = {
@@ -61,6 +88,22 @@ type ResumeUploadPayload = {
     bucket: string;
   };
   error?: { message?: string };
+};
+
+type OnboardingDraft = {
+  careerCategory: (typeof careerCategoryOptions)[number]["value"];
+  customCareerCategory: string;
+  jobTitle: string;
+  yearsExperience: (typeof yearsExperienceOptions)[number]["value"];
+  companySize: string;
+  situation: SituationStatus;
+  dailyWorkSummary: string;
+  keySkills: string;
+  linkedinUrl: string;
+  selectedGoals: GoalType[];
+  aiComfort: number;
+  uploadedResumeName: string | null;
+  ts: number;
 };
 
 type RiskSeverity = "Low" | "Medium" | "High";
@@ -374,6 +417,9 @@ const aiComfortOptions = [
 
 const PENDING_SESSION_KEY = "ai_tutor_pending_onboarding_session_v1";
 const ONBOARDING_BOOTSTRAP_KEY = "ai_tutor_onboarding_bootstrap_v1";
+const ONBOARDING_DRAFT_KEY = "ai_tutor_onboarding_draft_v1";
+const SIGN_UP_INTENT_KEY = "ai_tutor_clerk_signup_intent_v1";
+const COMPLETE_REGISTRATION_FIRED_KEY = "ai_tutor_complete_registration_fired_v1";
 
 function getRiskBand(score: number): RiskBand {
   if (score >= 70) return "High";
@@ -390,6 +436,26 @@ function getTimeline(score: number): string {
 function sanitizeRedirectPath(path: string) {
   if (!path.startsWith("/")) return "/onboarding";
   return path;
+}
+
+function readSignUpIntent() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(SIGN_UP_INTENT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as { startedAt?: number; source?: string };
+  } catch {
+    return null;
+  }
+}
+
+function preferredSourceLabel(): string {
+  if (typeof window === "undefined") return "social login";
+  const source = readClientAttributionEnvelope()?.last?.utmSource?.toLowerCase() ?? "";
+  if (source.includes("linkedin")) return "LinkedIn sign-in";
+  if (source === "x" || source.includes("twitter")) return "X sign-in";
+  if (source.includes("facebook") || source.includes("meta") || source.includes("instagram")) return "Facebook sign-in";
+  return "social login";
 }
 
 async function postJson<T>(url: string, body: Record<string, unknown>): Promise<T> {
@@ -415,6 +481,8 @@ async function postJson<T>(url: string, body: Record<string, unknown>): Promise<
 }
 
 export function OnboardingIntake() {
+  const { isLoaded: authLoaded, userId: authUserId } = useAuth();
+  const isSignedIn = Boolean(authUserId);
   const [step, setStep] = useState<Step>(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -436,6 +504,7 @@ export function OnboardingIntake() {
   const quizCompleteFired = useRef(false);
   const onboardingCompleteFired = useRef(false);
   const sessionWarmupStarted = useRef(false);
+  const signUpCompletedFired = useRef(false);
 
   const [careerCategory, setCareerCategory] = useState<(typeof careerCategoryOptions)[number]["value"]>("product-manager");
   const [customCareerCategory, setCustomCareerCategory] = useState("");
@@ -484,16 +553,17 @@ export function OnboardingIntake() {
     if (riskBand === "Moderate") return "#d97706";
     return "#16a34a";
   }, [riskBand]);
+  const recommendedAuthSource = useMemo(() => preferredSourceLabel(), []);
 
   const continueAfterSummary = () => {
-    if (!nextRedirectHref) return;
+    if (!nextRedirectHref || !isSignedIn) return;
     trackPosthog("onboarding_continue_to_dashboard", {
       session_id: sessionId,
       destination: nextRedirectHref,
       career_category: careerCategory,
       score: normalizedScore,
       risk_band: riskBand,
-      requires_signup: nextRedirectHref.includes("sign-up"),
+      requires_signup: !isSignedIn,
     });
     setNavigatingAfterSummary(true);
     window.location.href = nextRedirectHref;
@@ -540,14 +610,122 @@ export function OnboardingIntake() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(ONBOARDING_DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as Partial<OnboardingDraft>;
+      if (draft.careerCategory) setCareerCategory(draft.careerCategory);
+      if (typeof draft.customCareerCategory === "string") setCustomCareerCategory(draft.customCareerCategory);
+      if (typeof draft.jobTitle === "string") setJobTitle(draft.jobTitle);
+      if (draft.yearsExperience) setYearsExperience(draft.yearsExperience);
+      if (typeof draft.companySize === "string") setCompanySize(draft.companySize);
+      if (draft.situation) setSituation(draft.situation);
+      if (typeof draft.dailyWorkSummary === "string") setDailyWorkSummary(draft.dailyWorkSummary);
+      if (typeof draft.keySkills === "string") setKeySkills(draft.keySkills);
+      if (typeof draft.linkedinUrl === "string") setLinkedinUrl(draft.linkedinUrl);
+      if (Array.isArray(draft.selectedGoals) && draft.selectedGoals.length) setSelectedGoals(draft.selectedGoals);
+      if (typeof draft.aiComfort === "number") setAiComfort(draft.aiComfort);
+      if (typeof draft.uploadedResumeName === "string") setUploadedResumeName(draft.uploadedResumeName);
+      trackPosthog("onboarding_draft_restored", {
+        has_resume_name: Boolean(draft.uploadedResumeName),
+      });
+    } catch {
+      // Ignore draft parsing failures.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const payload: OnboardingDraft = {
+      careerCategory,
+      customCareerCategory,
+      jobTitle,
+      yearsExperience,
+      companySize,
+      situation,
+      dailyWorkSummary,
+      keySkills,
+      linkedinUrl,
+      selectedGoals,
+      aiComfort,
+      uploadedResumeName,
+      ts: Date.now(),
+    };
+    try {
+      window.localStorage.setItem(ONBOARDING_DRAFT_KEY, JSON.stringify(payload));
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [
+    careerCategory,
+    customCareerCategory,
+    jobTitle,
+    yearsExperience,
+    companySize,
+    situation,
+    dailyWorkSummary,
+    keySkills,
+    linkedinUrl,
+    selectedGoals,
+    aiComfort,
+    uploadedResumeName,
+  ]);
+
+  useEffect(() => {
+    if (!authLoaded || !isSignedIn || signUpCompletedFired.current) return;
+    const intent = readSignUpIntent();
+    if (!intent?.startedAt) return;
+    signUpCompletedFired.current = true;
+    trackPosthog("clerk_sign_up_completed", {
+      auth_provider: "clerk",
+      signup_started_at: intent.startedAt,
+      source: intent.source ?? "onboarding_auth_gate",
+    });
+    trackPosthog("auth_clerk_sign_up_completed", {
+      auth_provider: "clerk",
+      signup_started_at: intent.startedAt,
+      source: intent.source ?? "onboarding_auth_gate",
+    });
+    trackFunnelStep("clerk_sign_up_completed", {
+      auth_provider: "clerk",
+      signup_started_at: intent.startedAt,
+      source: intent.source ?? "onboarding_auth_gate",
+    });
+    try {
+      if (window.sessionStorage.getItem(COMPLETE_REGISTRATION_FIRED_KEY) !== "1") {
+        trackAdCompleteRegistration({
+          sessionId,
+          source: "onboarding_auth_gate",
+        });
+        window.sessionStorage.setItem(COMPLETE_REGISTRATION_FIRED_KEY, "1");
+      }
+      window.sessionStorage.removeItem(SIGN_UP_INTENT_KEY);
+    } catch {
+      // Ignore strict privacy mode storage errors.
+    }
+  }, [authLoaded, isSignedIn, sessionId]);
+
+  useEffect(() => {
     if (viewContentFired.current) return;
     viewContentFired.current = true;
+    const signUpIntent = readSignUpIntent();
     fbViewContent("onboarding_quiz", {
       flow: "pre_signup_onboarding",
       step: 1,
     });
+    trackPosthog("onboarding_viewed", {
+      entry_point: signUpIntent ? "clerk_sign_up" : "direct",
+      has_existing_session: Boolean(sessionId),
+      career_category: careerCategory,
+    });
+    trackFunnelStep("onboarding_viewed", {
+      entry_point: signUpIntent ? "clerk_sign_up" : "direct",
+      has_existing_session: Boolean(sessionId),
+      career_category: careerCategory,
+    });
     trackPosthog("onboarding_step_viewed", { step: 1, step_name: STEP_NAMES[1] });
-  }, []);
+  }, [careerCategory, sessionId]);
 
   // Track every step transition in PostHog
   const prevStepRef = useRef<Step>(1);
@@ -556,6 +734,11 @@ export function OnboardingIntake() {
     trackPosthog("onboarding_step_viewed", {
       step,
       step_name: STEP_NAMES[step],
+      session_id: sessionId,
+      career_category: careerCategory,
+    });
+    trackFunnelStep(STEP_NAMES[step], {
+      step,
       session_id: sessionId,
       career_category: careerCategory,
     });
@@ -589,6 +772,18 @@ export function OnboardingIntake() {
       score: normalizedScore,
       risk_band: riskBand,
     });
+    trackPosthog("onboarding_completed", {
+      session_id: sessionId,
+      career_category: careerCategory,
+      score: normalizedScore,
+      risk_band: riskBand,
+    });
+    trackFunnelStep("onboarding_completed", {
+      session_id: sessionId,
+      career_category: careerCategory,
+      score: normalizedScore,
+      risk_band: riskBand,
+    });
   }, [step, sessionId, careerCategory, normalizedScore, riskBand]);
 
   const toggleGoal = (goal: GoalType) => {
@@ -604,10 +799,12 @@ export function OnboardingIntake() {
       }
       return { id: sessionId, userId: sessionUserId ?? "", token: sessionToken };
     }
+    const acquisition = readClientAttributionEnvelope();
     const payload = await postJson<OnboardingStartPayload>("/api/onboarding/start", {
       name: jobTitle.trim() || "New Learner",
       handleBase: (jobTitle.trim() || "new-learner").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
       careerPathId: selectedCareer.path,
+      acquisition: acquisition ?? undefined,
     });
     if (!payload.session?.id || !payload.session?.userId) {
       throw new Error("Unable to initialize onboarding session");
@@ -647,15 +844,11 @@ export function OnboardingIntake() {
     if (careerCategory === "other" && !customCareerCategory.trim()) {
       return "Please specify your career category.";
     }
-    if (!jobTitle.trim()) return "Enter your job title.";
     if (!yearsExperience) return "Select years of experience.";
     return null;
   };
 
   const validateStepTwo = () => {
-    if (dailyWorkSummary.trim().length < 50) {
-      return "Add at least 50 characters for your daily work summary.";
-    }
     if (!selectedGoals.length) return "Select at least one primary goal.";
     if (linkedinUrl.trim().length > 0) {
       try {
@@ -774,7 +967,7 @@ export function OnboardingIntake() {
         sessionToken: session.token,
         careerPathId: selectedCareer.path,
         careerCategoryLabel: selectedCareerLabel,
-        jobTitle: jobTitle.trim(),
+        jobTitle: jobTitle.trim() || undefined,
         yearsExperience,
         companySize: companySize || null,
         dailyWorkSummary: dailyWorkSummary.trim(),
@@ -794,8 +987,19 @@ export function OnboardingIntake() {
       if (!quizCompleteFired.current) {
         quizCompleteFired.current = true;
         fbQuizComplete(score, recommended);
+        trackAdLead({
+          score,
+          sessionId: session.id,
+          careerCategory,
+          source: "onboarding_assessment_complete",
+        });
       }
       setStep(5);
+      try {
+        window.localStorage.removeItem(ONBOARDING_DRAFT_KEY);
+      } catch {
+        // Ignore storage failures.
+      }
 
       if (completed.signedIn) {
         setNextRedirectHref(`/dashboard/?welcome=1&onboardingSessionId=${encodeURIComponent(session.id)}`);
@@ -813,7 +1017,7 @@ export function OnboardingIntake() {
       }
 
       const redirectPath = `/dashboard/?welcome=1&onboardingSessionId=${encodeURIComponent(session.id)}`;
-      setNextRedirectHref(`/sign-up?redirect_url=${encodeURIComponent(redirectPath)}`);
+      setNextRedirectHref(redirectPath);
       setNextRedirectLabel("Create Account to Continue");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to complete onboarding");
@@ -830,6 +1034,66 @@ export function OnboardingIntake() {
     if (step === 4) return 85;
     return 100;
   }, [step]);
+
+  if (!isSignedIn) {
+    return (
+      <div
+        id="onboarding-react-root"
+        className="relative min-h-screen bg-[#f8fafc] text-[#1e293b] overflow-x-hidden px-4 py-10 md:px-6"
+        data-onboarding-react-root="1"
+      >
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-8">
+            <a href="/" className="inline-flex items-center gap-3 mb-5">
+              <img src="/assets/branding/brand_brain_icon.svg" alt="My AI Skill Tutor" className="h-11 w-11 object-contain" />
+              <span className="font-[Outfit] font-bold text-4xl tracking-tight text-[#0f172a]">My AI Skill Tutor</span>
+            </a>
+          </div>
+          <div className="bg-white p-8 md:p-10 rounded-2xl border border-slate-200 shadow-sm">
+            <h2 className="text-3xl font-[Outfit] font-semibold text-[#0f172a]">Create your account first</h2>
+            <p className="mt-3 text-slate-600">
+              Start with {recommendedAuthSource} for the fastest setup, then finish your personalized assessment.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <SignUpButton mode="modal" forceRedirectUrl="/onboarding/?post_signup=1" fallbackRedirectUrl="/onboarding/?post_signup=1">
+                <button
+                  type="button"
+                  className="btn btn-primary px-8"
+                  onClick={() => {
+                    try {
+                      window.sessionStorage.setItem(
+                        SIGN_UP_INTENT_KEY,
+                        JSON.stringify({ startedAt: Date.now(), source: "onboarding_auth_gate" }),
+                      );
+                    } catch {
+                      // Ignore storage failures.
+                    }
+                    trackPosthog("clerk_sign_up_started", {
+                      auth_provider: "clerk",
+                      source: "onboarding_auth_gate",
+                    });
+                    trackFunnelStep("clerk_sign_up_started", {
+                      auth_provider: "clerk",
+                      source: "onboarding_auth_gate",
+                    });
+                    trackPosthog("auth_clerk_sign_up_viewed", {
+                      auth_provider: "clerk",
+                      source: "onboarding_auth_gate",
+                    });
+                  }}
+                >
+                  Continue with Social Login
+                </button>
+              </SignUpButton>
+              <a className="btn btn-secondary" href="/sign-in?redirect_url=/onboarding/">
+                I already have an account
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -919,7 +1183,7 @@ export function OnboardingIntake() {
               ) : null}
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-[#334155]">Job Title</label>
+                <label className="block text-sm font-medium mb-2 text-[#334155]">Job Title (Optional)</label>
                 <input
                   type="text"
                   value={jobTitle}
@@ -975,7 +1239,7 @@ export function OnboardingIntake() {
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[#1e293b] placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 transition-colors"
                 />
                 <p className="mt-2 text-sm text-slate-500">
-                  {dailyWorkSummary.trim().length}/300 characters (minimum 50)
+                  {dailyWorkSummary.trim().length}/300 characters (recommended 20+ for better recommendations)
                 </p>
               </div>
 
@@ -1284,16 +1548,46 @@ export function OnboardingIntake() {
                 <p className="text-sm text-slate-500">
                   Review complete. Continue to activate your tutor dashboard and personalized modules.
                 </p>
-
-                <button
-                  type="button"
-                  className="btn btn-primary px-8"
-                  onClick={continueAfterSummary}
-                  disabled={!nextRedirectHref || navigatingAfterSummary}
-                >
-                  {navigatingAfterSummary ? "Opening..." : nextRedirectLabel}
-                  <i className="fa-solid fa-arrow-right ml-2" />
-                </button>
+                {!isSignedIn ? (
+                  <SignUpButton mode="modal" forceRedirectUrl={nextRedirectHref ?? "/dashboard/?welcome=1"} fallbackRedirectUrl={nextRedirectHref ?? "/dashboard/?welcome=1"}>
+                    <button
+                      type="button"
+                      className="btn btn-primary px-8"
+                      disabled={!nextRedirectHref || navigatingAfterSummary}
+                      onClick={() => {
+                        try {
+                          window.sessionStorage.setItem(
+                            SIGN_UP_INTENT_KEY,
+                            JSON.stringify({ startedAt: Date.now(), source: "assessment_complete_cta" }),
+                          );
+                        } catch {
+                          // Ignore storage failures.
+                        }
+                        trackPosthog("clerk_sign_up_started", {
+                          auth_provider: "clerk",
+                          source: "assessment_complete_cta",
+                        });
+                        trackFunnelStep("clerk_sign_up_started", {
+                          auth_provider: "clerk",
+                          source: "assessment_complete_cta",
+                        });
+                      }}
+                    >
+                      {nextRedirectLabel}
+                      <i className="fa-solid fa-arrow-right ml-2" />
+                    </button>
+                  </SignUpButton>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-primary px-8"
+                    onClick={continueAfterSummary}
+                    disabled={!nextRedirectHref || navigatingAfterSummary}
+                  >
+                    {navigatingAfterSummary ? "Opening..." : nextRedirectLabel}
+                    <i className="fa-solid fa-arrow-right ml-2" />
+                  </button>
+                )}
               </div>
             </div>
           ) : null}

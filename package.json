@@ -14,6 +14,7 @@
     "verify:deploy": "bash scripts/verify_deploy_builds.sh",
     "checklist:env": "bash scripts/generate_launch_checklist.sh",
     "posthog:dashboard:spec": "bash scripts/posthog/dashboard_spec_cli.sh",
+    "posthog:weekly:report": "bash scripts/posthog/weekly_optimization_report_cli.sh",
     "verify:all": "pnpm checklist:env && pnpm lint && pnpm typecheck && pnpm test && pnpm test:integration && pnpm test:e2e && pnpm build && pnpm verify:migrations && pnpm verify:deploy"
   },
   "devDependencies": {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { fbQuizStart, fbQuizComplete } from "@/lib/fb-pixel";
+import { trackAdLead } from "@/lib/ad-conversions";
 
 const questions = [
   "I can choose the right model for a business task.",
@@ -66,6 +67,10 @@ export function AssessmentQuiz() {
         recommendedCareerPathIds: data.assessment.recommendedCareerPathIds,
       });
       fbQuizComplete(data.assessment.score, data.assessment.recommendedCareerPathIds);
+      trackAdLead({
+        score: data.assessment.score,
+        source: "assessment_quiz_component",
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to submit assessment");
     } finally {

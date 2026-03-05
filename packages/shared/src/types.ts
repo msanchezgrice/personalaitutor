@@ -16,6 +16,27 @@ export type GoalType =
   | "learn_foundations"
   | "ship_ai_projects";
 
+export type AcquisitionAttributionPoint = {
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+  utmTerm?: string;
+  fbclid?: string;
+  twclid?: string;
+  liFatId?: string;
+  gclid?: string;
+  msclkid?: string;
+  referrer?: string;
+  landingPath?: string;
+  capturedAt?: string;
+};
+
+export type AcquisitionAttribution = {
+  first?: AcquisitionAttributionPoint;
+  last?: AcquisitionAttributionPoint;
+};
+
 export type CareerPath = {
   id: string;
   name: string;
@@ -64,6 +85,7 @@ export type UserProfile = {
   published: boolean;
   tokensUsed: number;
   goals: GoalType[];
+  acquisition?: AcquisitionAttribution;
   createdAt: string;
   updatedAt: string;
 };
@@ -137,6 +159,7 @@ export type OnboardingSession = {
   resumeFilename: string | null;
   aiKnowledgeScore: number | null;
   goals: GoalType[];
+  acquisition?: AcquisitionAttribution;
   status: "started" | "collecting" | "assessment_pending" | "ready_for_dashboard";
   createdAt: string;
   updatedAt: string;
