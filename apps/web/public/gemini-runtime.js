@@ -8,6 +8,9 @@
   }
   var CTX_KEY = "ai_tutor_user_ctx_v1";
   var isDashboardPath = currentPath === "/dashboard" || currentPath.indexOf("/dashboard/") === 0;
+  var isLandingPath = currentPath === "/";
+  var isPublicProfilePath = currentPath.indexOf("/u/") === 0;
+  var shouldGateInitialRender = isDashboardPath || isLandingPath || isPublicProfilePath;
   var isTalentListPath = currentPath === "/employers/talent";
   var isTalentDetailPath = currentPath.indexOf("/employers/talent/") === 0 && !isTalentListPath;
   var DASHBOARD_SUMMARY_CACHE_PREFIX = "ai_tutor_dashboard_summary_v2:";
@@ -27,7 +30,7 @@
   var PENDING_ONBOARDING_SESSION_KEY = "ai_tutor_pending_onboarding_session_v1";
   var ONBOARDING_ASSESSMENT_FUNNEL = "onboarding_assessment";
 
-  if (!isDashboardPath && document && document.documentElement) {
+  if (!shouldGateInitialRender && document && document.documentElement) {
     // Non-dashboard pages should render immediately to avoid visible reflow flashes.
     document.documentElement.setAttribute("data-runtime-ready", "1");
   }
@@ -3817,7 +3820,7 @@
 
   async function boot() {
     captureEvent("app_boot_started", { path: currentPath });
-    var holdRevealUntilHydrated = isDashboardPath;
+    var holdRevealUntilHydrated = shouldGateInitialRender;
     try {
       applyAcquisitionLandingVariant();
       maybeTrackAuthEntryEvents();

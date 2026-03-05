@@ -4,13 +4,15 @@ export const themeBootScript = `
     var p = (window.location && window.location.pathname ? window.location.pathname : "/").replace(/\\/+$/, "") || "/";
     document.documentElement.setAttribute("data-path", p);
     document.documentElement.setAttribute("data-runtime-ready", "0");
+    var isLandingPath = p === "/";
     var isDashboardPath = p === "/dashboard" || p.indexOf("/dashboard/") === 0;
+    var isPublicProfilePath = p.indexOf("/u/") === 0;
 
     document.documentElement.setAttribute("data-theme", "light");
     document.documentElement.style.colorScheme = "light";
     document.documentElement.style.backgroundColor = "#f8fafc";
 
-    var needsGate = isDashboardPath;
+    var needsGate = isDashboardPath || isLandingPath || isPublicProfilePath;
     if (needsGate) {
       var s = document.createElement("style");
       s.id = "runtime-gate";
@@ -20,7 +22,7 @@ export const themeBootScript = `
         'html[data-runtime-ready="1"] [data-gemini-shell="1"]{opacity:1!important;pointer-events:auto!important;transition:opacity 100ms ease-out}';
       document.head.appendChild(s);
     }
-    if (!isDashboardPath) {
+    if (!needsGate) {
       document.documentElement.setAttribute("data-runtime-ready", "1");
     }
   } catch (e) {
