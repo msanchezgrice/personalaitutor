@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import Script from "next/script";
 import { DashboardRouteHydrator } from "@/components/dashboard-route-hydrator";
+import { DashboardSettingsMenu } from "@/components/dashboard-settings-menu";
 
 type DashboardTab = "home" | "chat" | "projects" | "social" | "ai-news" | "activity" | "profile";
 
@@ -180,7 +181,7 @@ export function DashboardShell({ activeTab, headerTitle, headerSubtitle, headerA
               <h1 className="text-xl font-[Outfit] font-semibold">{headerTitle}</h1>
               {headerSubtitle ? <p className="text-xs text-gray-400">{headerSubtitle}</p> : null}
             </div>
-            <div className="flex items-center gap-4">{headerActions}</div>
+            <div className="flex items-center gap-4">{headerActions}<DashboardSettingsMenu /></div>
           </header>
           {children}
         </main>
