@@ -3856,6 +3856,53 @@
     }
   }
 
+  function syncPathAttributes() {
+    currentPath = normalizedPath(window.location.pathname);
+    if (document && document.documentElement) {
+      document.documentElement.setAttribute("data-path", currentPath);
+    }
+    if (document && document.body) {
+      document.body.setAttribute("data-path", currentPath);
+    }
+  }
+
+  async function routeHydrate() {
+    syncPathAttributes();
+    wireThemeToggle();
+    if (isDashboardPath) {
+      document.documentElement.setAttribute("data-mobile-nav", "closed");
+    }
+    try {
+      if (needsAuth()) {
+        await syncAuthContext();
+      }
+    } catch (err) {
+      if (isDashboardPath) {
+        renderDashboardHydrationError(err);
+        return;
+      }
+      throw err;
+    }
+    try {
+      await hydrateCurrentPath();
+    } catch (err) {
+      captureEvent("app_route_hydrate_failed", {
+        path: currentPath,
+        reason: err && err.message ? err.message : "unknown_error",
+      });
+      if (isDashboardPath) {
+        renderDashboardHydrationError(err);
+        return;
+      }
+      throw err;
+    }
+    clearDashboardSkeletons();
+    persistDashboardSnapshot(currentPath);
+    document.documentElement.setAttribute("data-runtime-ready", "1");
+  }
+
+  window.__AITUTOR_ROUTE_HYDRATE = routeHydrate;
+
   async function boot() {
     captureEvent("app_boot_started", { path: currentPath });
     var holdRevealUntilHydrated = false;

@@ -206,6 +206,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       </head>
       <body>
+        <div data-shell-loader="1" aria-hidden="true">
+          <div className="first-paint-loader">
+            <div className="first-paint-loader__brand">
+              <img
+                src="/assets/branding/brand_brain_icon.svg"
+                alt=""
+                className="first-paint-loader__icon"
+              />
+              <span>My AI Skill Tutor</span>
+            </div>
+            <div className="first-paint-loader__spinner"></div>
+          </div>
+        </div>
         {fbPixelId ? (
           <noscript>
             <img

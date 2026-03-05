@@ -12,14 +12,6 @@ export default function DashboardPage() {
         activeTab="home"
         headerTitle="Good Morning, New 👋"
         headerSubtitle="Ready to build something new today?"
-        headerActions={(
-          <a
-            href="/employers/talent/"
-            className="text-xs text-emerald-400 border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 rounded-full hover:bg-emerald-500/20 transition"
-          >
-            <i className="fa-solid fa-eye mr-1"></i> View Talent Board
-          </a>
-        )}
       >
         <div className="p-10 max-w-6xl mx-auto w-full pb-24">
           <div className="glass-panel p-6 rounded-2xl mb-8 flex flex-col md:flex-row items-center justify-between gap-6 border border-emerald-500/30 overflow-hidden relative">

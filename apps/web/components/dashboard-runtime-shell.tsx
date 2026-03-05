@@ -1,5 +1,7 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import Script from "next/script";
+import { DashboardRouteHydrator } from "@/components/dashboard-route-hydrator";
 
 type DashboardTab = "home" | "chat" | "projects" | "social" | "ai-news" | "activity" | "profile";
 
@@ -12,9 +14,17 @@ type DashboardShellProps = {
   decor?: ReactNode;
 };
 
+type DashboardHref =
+  | "/dashboard"
+  | "/dashboard/chat"
+  | "/dashboard/projects"
+  | "/dashboard/social"
+  | "/dashboard/ai-news"
+  | "/dashboard/updates";
+
 type NavItem = {
   key: Exclude<DashboardTab, "profile">;
-  href: string;
+  href: DashboardHref;
   label: string;
   icon: string;
   activeClassName: string;
@@ -24,7 +34,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   {
     key: "home",
-    href: "/dashboard/",
+    href: "/dashboard",
     label: "Home",
     icon: "fa-house",
     activeClassName: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
@@ -32,7 +42,7 @@ const navItems: NavItem[] = [
   },
   {
     key: "chat",
-    href: "/dashboard/chat/",
+    href: "/dashboard/chat",
     label: "Chat Tutor",
     icon: "fa-message",
     activeClassName: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
@@ -40,7 +50,7 @@ const navItems: NavItem[] = [
   },
   {
     key: "projects",
-    href: "/dashboard/projects/",
+    href: "/dashboard/projects",
     label: "Projects",
     icon: "fa-folder-open",
     activeClassName: "bg-amber-500/20 text-amber-400 border border-amber-500/30",
@@ -48,7 +58,7 @@ const navItems: NavItem[] = [
   },
   {
     key: "social",
-    href: "/dashboard/social/",
+    href: "/dashboard/social",
     label: "Social Drafts",
     icon: "fa-share-nodes",
     activeClassName: "bg-[#0077b5]/20 text-[#0077b5] border border-[#0077b5]/30",
@@ -56,7 +66,7 @@ const navItems: NavItem[] = [
   },
   {
     key: "ai-news",
-    href: "/dashboard/ai-news/",
+    href: "/dashboard/ai-news",
     label: "AI News",
     icon: "fa-newspaper",
     activeClassName: "bg-sky-500/20 text-sky-400 border border-sky-500/30",
@@ -64,7 +74,7 @@ const navItems: NavItem[] = [
   },
   {
     key: "activity",
-    href: "/dashboard/updates/",
+    href: "/dashboard/updates",
     label: "Activity",
     icon: "fa-clock-rotate-left",
     activeClassName: "bg-white/10 text-white border border-white/15",
@@ -89,6 +99,7 @@ function navIconClassName(item: NavItem, active: boolean) {
 export function DashboardShell({ activeTab, headerTitle, headerSubtitle, headerActions, children, decor }: DashboardShellProps) {
   return (
     <>
+      <DashboardRouteHydrator />
       <div
         data-gemini-shell="1"
         className="bg-[#0f111a] text-white lg:flex lg:h-screen lg:overflow-hidden min-h-screen text-sm"
@@ -96,15 +107,15 @@ export function DashboardShell({ activeTab, headerTitle, headerSubtitle, headerA
       >
         <aside className="w-full lg:w-72 glass border-y-0 border-l-0 rounded-none flex flex-col lg:h-full bg-black/20 flex-shrink-0 z-20 relative">
           <div className="p-6">
-            <a href="/" className="flex items-center gap-2 mb-8">
+            <Link href="/" className="flex items-center gap-2 mb-8">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl shadow-[0_0_15px_rgba(79,70,229,0.5)]">
                 <i className="fa-solid fa-brain text-sm"></i>
               </div>
               <span className="font-[Outfit] font-bold text-lg tracking-tight text-white">My AI Skill Tutor</span>
-            </a>
+            </Link>
 
-            <a
-              href="/dashboard/profile/"
+            <Link
+              href="/dashboard/profile"
               className={
                 activeTab === "profile"
                   ? "flex items-center gap-3 p-3 rounded-lg border border-white/20 bg-white/5 mb-8 cursor-pointer shadow-[0_0_15px_rgba(255,255,255,0.05)]"
@@ -120,16 +131,16 @@ export function DashboardShell({ activeTab, headerTitle, headerSubtitle, headerA
                 <div className="font-medium text-white truncate">New Learner</div>
                 <div className="text-xs text-emerald-400 truncate">AI Builder</div>
               </div>
-            </a>
+            </Link>
 
             <nav className="space-y-1">
               {navItems.map((item) => {
                 const active = activeTab === item.key;
                 return (
-                  <a key={item.href} href={item.href} className={navLinkClassName(active, item.activeClassName)}>
+                  <Link key={item.href} href={item.href} className={navLinkClassName(active, item.activeClassName)}>
                     <i className={navIconClassName(item, active)}></i>
                     <span>{item.label}</span>
-                  </a>
+                  </Link>
                 );
               })}
             </nav>

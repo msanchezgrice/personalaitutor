@@ -14,3 +14,72 @@ html {
 * {
   box-sizing: border-box;
 }
+
+[data-shell-loader="1"] {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at top, rgba(16, 185, 129, 0.10), transparent 34%),
+    linear-gradient(180deg, #f8fbfb 0%, #eef3f2 100%);
+  color: #0f172a;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+
+.first-paint-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.first-paint-loader__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  font: 700 1.05rem/1 "Outfit", "Inter", sans-serif;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.first-paint-loader__icon {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.first-paint-loader__spinner {
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 9999px;
+  border: 2px solid rgba(16, 185, 129, 0.18);
+  border-top-color: rgba(16, 185, 129, 0.95);
+  animation: first-paint-spin 0.8s linear infinite;
+}
+
+html[data-style-ready="0"][data-path="/"] [data-gemini-shell="1"],
+html[data-style-ready="0"][data-path^="/dashboard"] [data-gemini-shell="1"] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+html[data-style-ready="1"][data-path="/"] [data-gemini-shell="1"],
+html[data-style-ready="1"][data-path^="/dashboard"] [data-gemini-shell="1"] {
+  opacity: 1;
+}
+
+html[data-style-ready="0"][data-path="/"] [data-shell-loader="1"],
+html[data-style-ready="0"][data-path^="/dashboard"] [data-shell-loader="1"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@keyframes first-paint-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

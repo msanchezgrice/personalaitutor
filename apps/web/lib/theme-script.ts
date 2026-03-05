@@ -2,17 +2,83 @@ export const themeBootScript = `
 (function () {
   try {
     var p = (window.location && window.location.pathname ? window.location.pathname : "/").replace(/\\/+$/, "") || "/";
+    var shouldHoldForStyles = p === "/" || p === "/dashboard" || p.indexOf("/dashboard/") === 0;
+    var revealed = false;
+    var probeId = "__aitutor_style_probe__";
+
     document.documentElement.setAttribute("data-path", p);
     document.documentElement.setAttribute("data-runtime-ready", "1");
+    document.documentElement.setAttribute("data-style-ready", shouldHoldForStyles ? "0" : "1");
 
     document.documentElement.setAttribute("data-theme", "light");
     document.documentElement.style.colorScheme = "light";
     document.documentElement.style.backgroundColor = "#f8fafc";
+
+    function syncBodyPath() {
+      if (!document.body) {
+        window.requestAnimationFrame(syncBodyPath);
+        return;
+      }
+      document.body.setAttribute("data-path", p);
+    }
+
+    function styleProbeReady() {
+      if (!document.body) return false;
+      var probe = document.getElementById(probeId);
+      if (!probe) {
+        probe = document.createElement("div");
+        probe.id = probeId;
+        probe.setAttribute("aria-hidden", "true");
+        probe.className = "sticky top-0 px-4 py-2";
+        probe.style.position = "fixed";
+        probe.style.left = "-9999px";
+        probe.style.top = "-9999px";
+        probe.style.visibility = "hidden";
+        probe.style.pointerEvents = "none";
+        document.body.appendChild(probe);
+      }
+      var styles = window.getComputedStyle(probe);
+      return styles.position === "sticky" && parseFloat(styles.paddingLeft || "0") >= 15;
+    }
+
+    function revealStyles() {
+      if (revealed) return;
+      revealed = true;
+      document.documentElement.setAttribute("data-style-ready", "1");
+      var probe = document.getElementById(probeId);
+      if (probe && probe.parentNode) {
+        probe.parentNode.removeChild(probe);
+      }
+    }
+
+    syncBodyPath();
+
+    if (shouldHoldForStyles) {
+      var startedAt = Date.now();
+      var tick = function () {
+        if (styleProbeReady() || Date.now() - startedAt > 2200) {
+          revealStyles();
+          return;
+        }
+        window.requestAnimationFrame(tick);
+      };
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+          window.requestAnimationFrame(tick);
+        }, { once: true });
+      } else {
+        window.requestAnimationFrame(tick);
+      }
+
+      window.addEventListener("load", revealStyles, { once: true });
+    }
   } catch (e) {
     document.documentElement.setAttribute("data-theme", "light");
     document.documentElement.style.colorScheme = "light";
     document.documentElement.style.backgroundColor = "#f8fafc";
     document.documentElement.setAttribute("data-runtime-ready", "1");
+    document.documentElement.setAttribute("data-style-ready", "1");
   }
 })();
 `;
