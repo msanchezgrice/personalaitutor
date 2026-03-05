@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
-import { runtimeFindProjectBySlug, runtimeFindUserByHandle, runtimeListProjectsByUser } from "@/lib/runtime";
+import { runtimeFindUserByHandle, runtimeListProjectsByUser } from "@/lib/runtime";
 import { notFound, redirect } from "next/navigation";
 import {
   BRAND_NAME,
@@ -41,7 +41,8 @@ function appBaseUrl() {
 export async function generateMetadata({ params }: { params: Promise<{ handle: string; projectSlug: string }> }): Promise<Metadata> {
   const { handle, projectSlug } = await params;
   const profile = await runtimeFindUserByHandle(handle);
-  const project = await runtimeFindProjectBySlug(projectSlug);
+  const projects = profile ? await runtimeListProjectsByUser(profile.id) : [];
+  const project = projects.find((entry) => entry.slug === projectSlug) ?? null;
 
   if (!profile || !profile.published || !project || project.userId !== profile.id) {
     if (handle === "alex-chen-ai" && projectSlug === "customer-support-copilot") {
@@ -99,10 +100,10 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
 export default async function PublicProjectPage({ params }: { params: Promise<{ handle: string; projectSlug: string }> }) {
   const { handle, projectSlug } = await params;
   const profile = await runtimeFindUserByHandle(handle);
-  const project = await runtimeFindProjectBySlug(projectSlug);
+  const projects = profile ? await runtimeListProjectsByUser(profile.id) : [];
+  const project = projects.find((entry) => entry.slug === projectSlug) ?? null;
 
   if (profile?.published && projectSlug === "customer-support-copilot" && (!project || project.userId !== profile.id)) {
-    const projects = await runtimeListProjectsByUser(profile.id);
     const fallbackProject = projects[0];
     if (fallbackProject) {
       redirect(`/u/${profile.handle}/projects/${fallbackProject.slug}/`);
