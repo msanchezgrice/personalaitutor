@@ -110,6 +110,33 @@
     }
   }
 
+  function storageKeys(storage) {
+    var keys = [];
+    if (!storage || typeof storage.length !== "number" || typeof storage.key !== "function") return keys;
+    try {
+      for (var index = 0; index < storage.length; index += 1) {
+        var key = storage.key(index);
+        if (key) keys.push(key);
+      }
+    } catch {
+      return keys;
+    }
+    return keys;
+  }
+
+  function removeStorageKeysWithPrefix(storage, prefix) {
+    if (!storage || !prefix) return;
+    storageKeys(storage).forEach(function (key) {
+      if (key && key.indexOf(prefix) === 0) {
+        try {
+          storage.removeItem(key);
+        } catch {
+          return null;
+        }
+      }
+    });
+  }
+
   function uuidv4() {
     if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (char) {
@@ -421,14 +448,14 @@
     return String(userId);
   }
 
-  function authSessionCacheKey() {
-    var scope = cacheScope();
+  function authSessionCacheKey(explicitUserId) {
+    var scope = cacheScope(explicitUserId);
     if (!scope) return null;
     return AUTH_SESSION_CACHE_PREFIX + scope;
   }
 
-  function readAuthSessionCache() {
-    var key = authSessionCacheKey();
+  function readAuthSessionCache(explicitUserId) {
+    var key = authSessionCacheKey(explicitUserId);
     if (!key) return null;
     var payload = readSessionObject(key);
     if (!payload || !payload.ts || !payload.data) return null;
@@ -436,8 +463,8 @@
     return payload.data;
   }
 
-  function writeAuthSessionCache(data) {
-    var key = authSessionCacheKey();
+  function writeAuthSessionCache(data, explicitUserId) {
+    var key = authSessionCacheKey(explicitUserId);
     if (!key || !data) return;
     writeSessionObject(key, { ts: Date.now(), data: data });
   }
@@ -474,6 +501,35 @@
     var scope = cacheScope();
     if (!scope) return null;
     return DASHBOARD_SNAPSHOT_CACHE_PREFIX + scope + ":" + normalizedPath(pathname);
+  }
+
+  function clearScopedCaches(scope) {
+    if (!scope) return;
+    removeSessionObject(DASHBOARD_SUMMARY_CACHE_PREFIX + scope);
+    removeSessionObject(AUTH_SESSION_CACHE_PREFIX + scope);
+    removeStorageKeysWithPrefix(window.sessionStorage, DASHBOARD_SNAPSHOT_CACHE_PREFIX + scope + ":");
+    removeStorageKeysWithPrefix(window.sessionStorage, SOCIAL_DRAFTS_CACHE_PREFIX + scope + ":");
+    removeStorageKeysWithPrefix(window.localStorage, SOCIAL_DRAFTS_CACHE_PREFIX + scope + ":");
+    removeStorageKeysWithPrefix(window.sessionStorage, CHAT_HISTORY_CACHE_PREFIX + scope + ":");
+    removeStorageKeysWithPrefix(window.localStorage, CHAT_HISTORY_CACHE_PREFIX + scope + ":");
+    removeStorageKeysWithPrefix(window.sessionStorage, HOME_NEWS_CACHE_PREFIX + scope + ":");
+    removeStorageKeysWithPrefix(window.localStorage, HOME_NEWS_CACHE_PREFIX + scope + ":");
+  }
+
+  function resetCtxIdentity() {
+    var previousScope = cacheScope();
+    if (previousScope) {
+      clearScopedCaches(previousScope);
+    }
+    ctx.userId = null;
+    ctx.handle = null;
+    ctx.sessionId = null;
+    ctx.projectId = null;
+    ctx.avatarUrl = null;
+    ctx.email = null;
+    ctx.headline = null;
+    ctx.name = "New Learner";
+    saveCtx(ctx);
   }
 
   function socialDraftCacheKey(projectId) {
@@ -671,6 +727,7 @@
   showDashboardSkeletons();
 
   function applyCtxImmediately() {
+    if (isDashboardPath && !hasAppliedAuthCtx) return;
     if (!isDashboardPath) return;
     var sidebarProfileLink = document.querySelector("[data-sidebar-profile='1']") ||
       document.querySelector("aside a[href='/dashboard/profile/'], aside a[href='/dashboard/profile']");
@@ -1000,9 +1057,11 @@
       if (!data || !data.auth) return null;
       var incomingUserId = data.auth.userId || null;
       if (incomingUserId && ctx.userId && incomingUserId !== ctx.userId) {
+        clearScopedCaches(String(ctx.userId));
         ctx.sessionId = null;
         ctx.projectId = null;
         ctx.handle = null;
+        ctx.headline = null;
       }
       ctx.userId = incomingUserId || ctx.userId;
       if (data.auth.name) ctx.name = data.auth.name;
@@ -1019,6 +1078,9 @@
       saveCtx(ctx);
       identifyPosthogUser();
       maybeTrackSignUpCompletion("sync_auth_context");
+      if (incomingUserId) {
+        writeAuthSessionCache(data, incomingUserId);
+      }
       captureEvent("auth_session_synced", {
         scope: "required_path",
         has_summary: Boolean(data.summary),
@@ -1029,15 +1091,8 @@
       return data;
     };
 
-    var cached = readAuthSessionCache();
-    if (cached) {
-      applyAuthData(cached, "session_cache");
-      return cached;
-    }
-
     var fresh = await getJson("/api/auth/session");
     if (!fresh || !fresh.auth) return null;
-    writeAuthSessionCache(fresh);
     return applyAuthData(fresh, "network");
   }
 
@@ -1136,26 +1191,14 @@
         ensureGlobalSignOutControl(true);
         captureEvent("auth_session_synced", { scope: "landing", signed_in: true });
       } else {
-        ctx.userId = null;
-        ctx.handle = null;
-        ctx.sessionId = null;
-        ctx.projectId = null;
-        ctx.avatarUrl = null;
-        ctx.email = null;
-        saveCtx(ctx);
+        resetCtxIdentity();
         lastPosthogIdentifiedUserId = null;
         applyLandingAuthUi(null);
         ensureGlobalSignOutControl(false);
         captureEvent("auth_session_synced", { scope: "landing", signed_in: false });
       }
     } catch {
-      ctx.userId = null;
-      ctx.handle = null;
-      ctx.sessionId = null;
-      ctx.projectId = null;
-      ctx.avatarUrl = null;
-      ctx.email = null;
-      saveCtx(ctx);
+      resetCtxIdentity();
       lastPosthogIdentifiedUserId = null;
       applyLandingAuthUi(null);
       ensureGlobalSignOutControl(false);
@@ -1168,6 +1211,11 @@
     try {
       var data = await getJson("/api/auth/session");
       if (data && data.auth) {
+        var previousScope = cacheScope();
+        var incomingUserId = data.auth.userId ? String(data.auth.userId) : null;
+        if (previousScope && incomingUserId && previousScope !== incomingUserId) {
+          clearScopedCaches(previousScope);
+        }
         if (data.auth.userId) ctx.userId = data.auth.userId;
         if (data.auth.name) ctx.name = data.auth.name;
         if (data.auth.avatarUrl) ctx.avatarUrl = data.auth.avatarUrl;
@@ -1183,6 +1231,7 @@
     } catch {
       // not signed in
     }
+    resetCtxIdentity();
     lastPosthogIdentifiedUserId = null;
     ensureGlobalSignOutControl(false);
     captureEvent("auth_session_synced", { scope: "optional", signed_in: false });
