@@ -22,9 +22,7 @@
   var SUMMARY_CACHE_TTL_MS = 120000;
   var AUTH_SESSION_CACHE_TTL_MS = 45000;
   var SNAPSHOT_CACHE_TTL_MS = 1800000;
-  var SOCIAL_DRAFTS_CACHE_TTL_MS = 600000;
   var CHAT_HISTORY_CACHE_TTL_MS = 604800000;
-  var HOME_NEWS_CACHE_TTL_MS = 600000;
   var SIGN_UP_INTENT_KEY = "ai_tutor_clerk_signup_intent_v1";
   var PENDING_ONBOARDING_SESSION_KEY = "ai_tutor_pending_onboarding_session_v1";
   var ONBOARDING_ASSESSMENT_FUNNEL = "onboarding_assessment";
@@ -48,6 +46,23 @@
 
   function normalizedPath(pathname) {
     return (pathname || "/").replace(/\/+$/, "") || "/";
+  }
+
+  function localDayKey(timestamp) {
+    var date = new Date(Number(timestamp || Date.now()));
+    if (Number.isNaN(date.getTime())) date = new Date();
+    var year = String(date.getFullYear());
+    var month = String(date.getMonth() + 1).padStart(2, "0");
+    var day = String(date.getDate()).padStart(2, "0");
+    return year + "-" + month + "-" + day;
+  }
+
+  function payloadIsFreshForToday(payload) {
+    if (!payload || typeof payload !== "object") return false;
+    var today = localDayKey();
+    if (typeof payload.dayKey === "string") return payload.dayKey === today;
+    if (payload.ts) return localDayKey(payload.ts) === today;
+    return false;
   }
 
   function readSessionObject(key) {
@@ -456,22 +471,28 @@
   function socialDraftCacheKey(projectId) {
     var scope = cacheScope();
     if (!scope) return null;
-    return SOCIAL_DRAFTS_CACHE_PREFIX + scope + ":" + String(projectId || "none");
+    return SOCIAL_DRAFTS_CACHE_PREFIX + scope + ":" + String(projectId || "none") + ":" + localDayKey();
   }
 
   function readSocialDraftCache(projectId) {
     var key = socialDraftCacheKey(projectId);
     if (!key) return null;
-    var payload = readSessionObject(key);
-    if (!payload || !payload.ts || !payload.drafts) return null;
-    if (Date.now() - Number(payload.ts) > SOCIAL_DRAFTS_CACHE_TTL_MS) return null;
+    var payload = readSessionObject(key) || readLocalObject(key);
+    if (!payload || !payload.drafts) return null;
+    if (!payloadIsFreshForToday(payload)) return null;
     return payload.drafts;
   }
 
   function writeSocialDraftCache(projectId, drafts) {
     var key = socialDraftCacheKey(projectId);
     if (!key || !drafts) return;
-    writeSessionObject(key, { ts: Date.now(), drafts: drafts });
+    var payload = {
+      ts: Date.now(),
+      dayKey: localDayKey(),
+      drafts: drafts,
+    };
+    writeSessionObject(key, payload);
+    writeLocalObject(key, payload);
   }
 
   function chatHistoryCacheKey(projectId) {
@@ -500,27 +521,30 @@
   function homeNewsCacheKey() {
     var scope = cacheScope();
     if (!scope) return null;
-    return HOME_NEWS_CACHE_PREFIX + scope;
+    return HOME_NEWS_CACHE_PREFIX + scope + ":" + localDayKey();
   }
 
   function readHomeNewsCache() {
     var key = homeNewsCacheKey();
     if (!key) return null;
-    var payload = readSessionObject(key);
-    if (!payload || !payload.ts || !Array.isArray(payload.insights)) return null;
-    if (Date.now() - Number(payload.ts) > HOME_NEWS_CACHE_TTL_MS) return null;
+    var payload = readSessionObject(key) || readLocalObject(key);
+    if (!payload || !Array.isArray(payload.insights)) return null;
+    if (!payloadIsFreshForToday(payload)) return null;
     return payload;
   }
 
   function writeHomeNewsCache(payload) {
     var key = homeNewsCacheKey();
     if (!key || !payload || !Array.isArray(payload.insights)) return;
-    writeSessionObject(key, {
+    var normalized = {
       ts: Date.now(),
+      dayKey: localDayKey(),
       insights: payload.insights,
       source: payload.source || null,
       focusSummary: payload.focusSummary || null,
-    });
+    };
+    writeSessionObject(key, normalized);
+    writeLocalObject(key, normalized);
   }
 
   function persistDashboardSnapshot(pathname) {
@@ -1733,9 +1757,6 @@
       var cachedTweet = cachedDrafts && typeof cachedDrafts.x === "string" ? cachedDrafts.x : "";
       if (normalizeInlineText(cachedTweet)) {
         applySocialQuote(cachedTweet);
-        void loadHomeTweetDraft(socialProjectId).catch(function () {
-          return null;
-        });
       } else {
         var loadedTweet = await loadHomeTweetDraft(socialProjectId);
         if (!loadedTweet) {
@@ -1838,9 +1859,6 @@
         var cachedNews = readHomeNewsCache();
         if (cachedNews && Array.isArray(cachedNews.insights) && cachedNews.insights.length) {
           renderHomeNews(cachedNews.insights);
-          void refreshHomeNews().catch(function () {
-            return null;
-          });
         } else {
           try {
             await refreshHomeNews();
@@ -2212,10 +2230,16 @@
         result = result.replace(new RegExp("\\b" + escaped + "\\b", "gi"), "I");
       }
       result = result
-        .replace(/\b(?:he|she|they)\s+(is|was|has|have|started|built|launched|created|completed|learned|uses|used)\b/gi, "I $1")
+        .replace(/\b(?:he|she|they)\s+(am|is|was|has|have|started|built|launched|created|completed|learned|uses|used|shipped|ship|write|writes|share|shares)\b/gi, "I $1")
+        .replace(/\byou\s+(are|were|have|had|built|launched|created|completed|learned|use|used|share|shared)\b/gi, "I $1")
+        .replace(/\byour\b/gi, "my")
         .replace(/\bhis\b/gi, "my")
         .replace(/\bher\b/gi, "my")
-        .replace(/\btheir\b/gi, "my");
+        .replace(/\btheir\b/gi, "my")
+        .replace(/\bthem\b/gi, "me");
+      if (!/\b(i|i'm|i've|my|me|mine)\b/i.test(result)) {
+        result = "I'm sharing this update: " + result;
+      }
       return result;
     }
 
@@ -2377,10 +2401,6 @@
       updateDraftInputs();
       if (sourceNode) sourceNode.textContent = cachedDrafts.source === "llm" ? "Cached personalized ideas" : "Cached draft ideas";
       captureEvent("social_ideas_cache_hit", { source: cachedDrafts.source || "cached" });
-      void loadIdeas(false).catch(function (err) {
-        if (sourceNode) sourceNode.textContent = "Generator unavailable (cached ideas shown)";
-        captureEvent("social_ideas_failed", { reason: err && err.message ? err.message : "unknown_error" });
-      });
     } else {
       try {
         await loadIdeas(false);
@@ -2613,6 +2633,11 @@
           refreshButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Refreshing';
           try {
             var refreshed = await postJson("/api/news/recommendations", { maxStories: 6 });
+            writeHomeNewsCache({
+              insights: Array.isArray(refreshed && refreshed.insights) ? refreshed.insights : [],
+              source: refreshed && refreshed.source ? refreshed.source : null,
+              focusSummary: refreshed && refreshed.focusSummary ? refreshed.focusSummary : null,
+            });
             renderNews(refreshed);
             toast("AI news refreshed.", false);
           } catch (err) {
@@ -2625,8 +2650,19 @@
       }
     }
 
+    var cachedNews = readHomeNewsCache();
+    if (cachedNews && Array.isArray(cachedNews.insights) && cachedNews.insights.length) {
+      renderNews(cachedNews);
+      return;
+    }
+
     try {
       var initial = await postJson("/api/news/recommendations", { maxStories: 6 });
+      writeHomeNewsCache({
+        insights: Array.isArray(initial && initial.insights) ? initial.insights : [],
+        source: initial && initial.source ? initial.source : null,
+        focusSummary: initial && initial.focusSummary ? initial.focusSummary : null,
+      });
       renderNews(initial);
     } catch (err) {
       contentWrap.innerHTML =
@@ -3672,18 +3708,21 @@
 
   async function boot() {
     captureEvent("app_boot_started", { path: currentPath });
+    var holdRevealUntilHydrated = currentPath === "/dashboard/chat";
     try {
       applyAcquisitionLandingVariant();
       maybeTrackAuthEntryEvents();
       wireThemeToggle();
-      document.documentElement.setAttribute("data-runtime-ready", "1");
+      if (!holdRevealUntilHydrated) {
+        document.documentElement.setAttribute("data-runtime-ready", "1");
+      }
       await trySyncLandingAuth();
       await syncOptionalAuthUi();
 
-      if (isDashboardPath && !restoredDashboardSnapshot) {
+      if (!holdRevealUntilHydrated && isDashboardPath && !restoredDashboardSnapshot) {
         // Reveal immediately with skeletons, then progressively hydrate.
         document.documentElement.setAttribute("data-runtime-ready", "1");
-      } else if (restoredDashboardSnapshot) {
+      } else if (!holdRevealUntilHydrated && restoredDashboardSnapshot) {
         document.documentElement.setAttribute("data-runtime-ready", "1");
       }
 

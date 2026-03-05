@@ -1963,12 +1963,21 @@ function enforceFirstPersonDraft(text: string, learnerName: string) {
     .replace(/\b(?:he|she|they)\s+(am|is)\b/gi, "I am")
     .replace(/\b(?:he|she|they)\s+(was|were)\b/gi, "I was")
     .replace(/\b(?:he|she|they)\s+(has|have)\b/gi, "I have")
-    .replace(/\b(?:he|she|they)\s+(started|built|launched|created|completed|learned|ships|shipped|uses|used|is)\b/gi, "I $1")
+    .replace(
+      /\b(?:he|she|they)\s+(started|built|launched|created|completed|learned|ships|shipped|uses|used|is|write|writes|share|shares)\b/gi,
+      "I $1",
+    )
+    .replace(/\byou\s+(are|were|have|had|built|launched|created|completed|learned|use|used|share|shared)\b/gi, "I $1")
+    .replace(/\byour\b/gi, "my")
     .replace(/\bhis\b/gi, "my")
     .replace(/\bher\b/gi, "my")
     .replace(/\btheir\b/gi, "my")
     .replace(/\bhim\b/gi, "me")
     .replace(/\bthem\b/gi, "me");
+
+  if (!/\b(i|i'm|i've|my|me|mine)\b/i.test(normalized)) {
+    normalized = `I'm sharing this update: ${normalized}`;
+  }
 
   return normalized;
 }
@@ -2758,8 +2767,8 @@ export async function runtimeCreateSocialDrafts(input: {
     : `${baseUrl}/api/og/profile/${profile.handle}`;
 
   const baseText = project
-    ? `Shipped ${project.title} with ${BRAND_NAME}. Platform Verified build log + artifacts.`
-    : `Building AI-native skills with ${BRAND_NAME}. Platform Verified projects and proof.`;
+    ? `I shipped ${project.title} with ${BRAND_NAME}. Platform Verified build log plus artifacts.`
+    : `I'm building AI-native skills with ${BRAND_NAME}. Platform Verified projects and proof.`;
 
   const makeDraft = (platform: SocialPlatform, text: string): SocialDraft => ({
     id: randomUUID(),
