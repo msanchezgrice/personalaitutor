@@ -122,15 +122,20 @@ export function DashboardShell({ activeTab, headerTitle, headerSubtitle, headerA
                   ? "flex items-center gap-3 p-3 rounded-lg border border-white/20 bg-white/5 mb-8 cursor-pointer shadow-[0_0_15px_rgba(255,255,255,0.05)]"
                   : "flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition border border-transparent hover:border-white/10 mb-8 cursor-pointer"
               }
+              data-sidebar-profile="1"
             >
               <img
                 src="/assets/avatar.png"
                 className="w-10 h-10 rounded-full object-cover border border-white/20"
-                alt="New Learner"
+                alt=""
               />
               <div className="overflow-hidden">
-                <div className="font-medium text-white truncate">New Learner</div>
-                <div className="text-xs text-emerald-400 truncate">AI Builder</div>
+                <div data-sidebar-profile-name="1" className="font-medium text-white truncate min-h-[1.25rem]">
+                  Loading profile
+                </div>
+                <div data-sidebar-profile-role="1" className="text-xs text-emerald-400 truncate min-h-[1rem]">
+                  Syncing learner data
+                </div>
               </div>
             </Link>
 
@@ -148,23 +153,29 @@ export function DashboardShell({ activeTab, headerTitle, headerSubtitle, headerA
           </div>
 
           <div className="mt-auto p-6 space-y-4">
-            <div className="bg-gradient-to-br from-emerald-900/40 to-teal-900/40 border border-emerald-500/20 p-4 rounded-xl relative overflow-hidden">
+            <div
+              data-sidebar-level-card="1"
+              className="bg-gradient-to-br from-emerald-900/40 to-teal-900/40 border border-emerald-500/20 p-4 rounded-xl relative overflow-hidden"
+            >
               <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/20 blur-2xl rounded-full translate-x-1/2 -translate-y-1/2"></div>
-              <div className="flex items-center gap-2 text-white font-medium mb-1">
+              <div data-sidebar-level-label="1" className="flex items-center gap-2 text-white font-medium mb-1">
                 <img src="/assets/badge.png" className="w-5 h-5" alt="badge" /> Level 1
               </div>
-              <p className="text-xs text-gray-400 mb-3">Starter Builder</p>
+              <p data-sidebar-level-subtitle="1" className="text-xs text-gray-400 mb-3">Syncing progress</p>
               <div className="w-full bg-black/40 h-1.5 rounded-full">
-                <div className="bg-gradient-to-r from-emerald-500 to-cyan-400 w-[20%] h-full rounded-full shadow-[0_0_5px_rgba(79,70,229,0.5)]"></div>
+                <div
+                  data-sidebar-level-progress="1"
+                  className="bg-gradient-to-r from-emerald-500 to-cyan-400 w-[20%] h-full rounded-full shadow-[0_0_5px_rgba(79,70,229,0.5)]"
+                ></div>
               </div>
-              <p className="text-[10px] text-gray-500 mt-2 text-right">Start building to level up</p>
+              <p data-sidebar-level-progress-text="1" className="text-[10px] text-gray-500 mt-2 text-right">Preparing progress</p>
             </div>
 
             <a
-              href="/u/alex-chen-ai/"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-between px-4 py-2 text-gray-400 hover:text-white text-xs border border-white/10 rounded-lg hover:border-white/20 transition"
+              href="#"
+              aria-disabled="true"
+              data-public-profile-link="1"
+              className="flex items-center justify-between px-4 py-2 text-gray-400 text-xs border border-white/10 rounded-lg opacity-50 pointer-events-none transition"
             >
               <span className="flex items-center gap-2">
                 <i className="fa-solid fa-globe"></i> Public Profile
@@ -183,7 +194,9 @@ export function DashboardShell({ activeTab, headerTitle, headerSubtitle, headerA
             </div>
             <div className="flex items-center gap-4">{headerActions}<DashboardSettingsMenu /></div>
           </header>
-          {children}
+          <div data-dashboard-route="1" className="contents">
+            {children}
+          </div>
         </main>
       </div>
       <Script src="/gemini-runtime.js" strategy="afterInteractive" />

@@ -169,6 +169,12 @@
   var hasAppliedAuthCtx = false;
   var restoredDashboardSnapshot = false;
   var lastPosthogIdentifiedUserId = null;
+  var routeHydrateInFlight = null;
+  var lastHydratedPath = null;
+
+  if (typeof window !== "undefined") {
+    window.__AITUTOR_LAST_HYDRATED_PATH = null;
+  }
 
   function posthogClient() {
     if (!window || !window.posthog) return null;
@@ -666,10 +672,11 @@
 
   function applyCtxImmediately() {
     if (!isDashboardPath) return;
-    var sidebarProfileLink = document.querySelector("aside a[href='/dashboard/profile/'], aside a[href='/dashboard/profile']");
+    var sidebarProfileLink = document.querySelector("[data-sidebar-profile='1']") ||
+      document.querySelector("aside a[href='/dashboard/profile/'], aside a[href='/dashboard/profile']");
     if (sidebarProfileLink && ctx && ctx.name) {
-      var nameEl = sidebarProfileLink.querySelector(".font-medium");
-      var roleEl = sidebarProfileLink.querySelector(".text-xs");
+      var nameEl = sidebarProfileLink.querySelector("[data-sidebar-profile-name='1']") || sidebarProfileLink.querySelector(".font-medium");
+      var roleEl = sidebarProfileLink.querySelector("[data-sidebar-profile-role='1']") || sidebarProfileLink.querySelector(".text-xs");
       if (nameEl) nameEl.textContent = ctx.name;
       if (roleEl && ctx.headline) roleEl.textContent = ctx.headline;
       var sidebarAvatar = sidebarProfileLink.querySelector("img");
@@ -681,9 +688,11 @@
     }
     if (ctx && ctx.handle) {
       Array.prototype.forEach.call(
-        document.querySelectorAll("a[href='/u/alex-chen-ai/'], a[href='/u/test-user-0001/'], a[href='/u/alex-chen-ai'], a[href='/u/test-user-0001']"),
+        document.querySelectorAll("[data-public-profile-link='1'], a[href='/u/alex-chen-ai/'], a[href='/u/test-user-0001/'], a[href='/u/alex-chen-ai'], a[href='/u/test-user-0001']"),
         function (node) {
           node.setAttribute("href", "/u/" + ctx.handle + "/");
+          node.removeAttribute("aria-disabled");
+          node.classList.remove("opacity-50", "pointer-events-none");
         },
       );
     }
@@ -713,10 +722,11 @@
     var displayName = sidebarNameNode ? (sidebarNameNode.textContent || "").trim() : "";
     if (!displayName && ctx && ctx.name) displayName = ctx.name || "";
     if (displayName) {
-      var greetingNode = Array.prototype.find.call(document.querySelectorAll("header h1"), function (el) {
-        var text = (el.textContent || "").toLowerCase();
-        return text.indexOf("good morning") !== -1 || text.indexOf("good afternoon") !== -1 || text.indexOf("good evening") !== -1;
-      });
+      var greetingNode = document.querySelector("[data-dashboard-greeting='1']") ||
+        Array.prototype.find.call(document.querySelectorAll("header h1"), function (el) {
+          var text = (el.textContent || "").toLowerCase();
+          return text.indexOf("good morning") !== -1 || text.indexOf("good afternoon") !== -1 || text.indexOf("good evening") !== -1;
+        });
       if (greetingNode) {
         var firstName = displayName.split(" ")[0] || displayName;
         greetingNode.textContent = greetingForLocalTime() + ", " + firstName + " 👋";
@@ -888,7 +898,7 @@
 
   function renderDashboardHydrationError(err) {
     if (!isDashboardPath) return;
-    var main = document.querySelector("main");
+    var main = document.querySelector("[data-dashboard-route='1']") || document.querySelector("main");
     if (!main) return;
     var message = err && err.message ? String(err.message) : "Unknown dashboard runtime error";
     main.innerHTML =
@@ -1276,20 +1286,21 @@
     var progressWidth = level === 1 ? "20%" : level === 2 ? "60%" : "100%";
     var progressText = level >= 3 ? "Max level reached" : "Keep shipping to reach Level " + (level + 1);
 
-    var levelNode = Array.prototype.find.call(document.querySelectorAll("aside *"), function (node) {
-      var text = (node.textContent || "").trim();
-      return /^level\s+\d+$/i.test(text);
-    });
+    var levelNode = document.querySelector("[data-sidebar-level-label='1']") ||
+      Array.prototype.find.call(document.querySelectorAll("aside *"), function (node) {
+        var text = (node.textContent || "").trim();
+        return /^level\s+\d+$/i.test(text);
+      });
 
     if (levelNode) {
       levelNode.textContent = levelLabel;
-      var card = levelNode.closest("div.bg-gradient-to-br");
+      var card = levelNode.closest("[data-sidebar-level-card='1']") || levelNode.closest("div.bg-gradient-to-br");
       if (card) {
-        var bodyText = card.querySelector("p.text-xs.text-gray-400");
+        var bodyText = card.querySelector("[data-sidebar-level-subtitle='1']") || card.querySelector("p.text-xs.text-gray-400");
         if (bodyText) bodyText.textContent = subtitle;
-        var progressBar = card.querySelector("div.bg-gradient-to-r");
+        var progressBar = card.querySelector("[data-sidebar-level-progress='1']") || card.querySelector("div.bg-gradient-to-r");
         if (progressBar) progressBar.style.width = progressWidth;
-        var progressLabel = card.querySelector("p.text-[10px].text-gray-500");
+        var progressLabel = card.querySelector("[data-sidebar-level-progress-text='1']") || card.querySelector("p.text-[10px].text-gray-500");
         if (progressLabel) progressLabel.textContent = progressText;
       }
     }
@@ -1310,10 +1321,11 @@
     saveCtx(ctx);
     maybeWarmHomeNews(user.id ? String(user.id) : ctx.userId);
 
-    var sidebarProfileLink = document.querySelector("aside a[href='/dashboard/profile/'], aside a[href='/dashboard/profile']");
+    var sidebarProfileLink = document.querySelector("[data-sidebar-profile='1']") ||
+      document.querySelector("aside a[href='/dashboard/profile/'], aside a[href='/dashboard/profile']");
     if (sidebarProfileLink) {
-      var nameEl = sidebarProfileLink.querySelector(".font-medium");
-      var roleEl = sidebarProfileLink.querySelector(".text-xs");
+      var nameEl = sidebarProfileLink.querySelector("[data-sidebar-profile-name='1']") || sidebarProfileLink.querySelector(".font-medium");
+      var roleEl = sidebarProfileLink.querySelector("[data-sidebar-profile-role='1']") || sidebarProfileLink.querySelector(".text-xs");
       setText(nameEl, resolvedName);
       setText(roleEl, headlineForUser(user));
       var avatar = sidebarProfileLink.querySelector("img");
@@ -1326,15 +1338,18 @@
       }
     }
 
-    var publicProfileLinks = document.querySelectorAll("a[href='/u/alex-chen-ai/'], a[href='/u/test-user-0001/'], a[href='/u/alex-chen-ai'], a[href='/u/test-user-0001']");
+    var publicProfileLinks = document.querySelectorAll("[data-public-profile-link='1'], a[href='/u/alex-chen-ai/'], a[href='/u/test-user-0001/'], a[href='/u/alex-chen-ai'], a[href='/u/test-user-0001']");
     Array.prototype.forEach.call(publicProfileLinks, function (link) {
       setHref(link, "/u/" + user.handle + "/");
+      link.removeAttribute("aria-disabled");
+      link.classList.remove("opacity-50", "pointer-events-none");
     });
 
-    var greeting = Array.prototype.find.call(document.querySelectorAll("header h1"), function (el) {
-      var text = (el.textContent || "").toLowerCase();
-      return text.indexOf("good morning") !== -1 || text.indexOf("good afternoon") !== -1 || text.indexOf("good evening") !== -1;
-    });
+    var greeting = document.querySelector("[data-dashboard-greeting='1']") ||
+      Array.prototype.find.call(document.querySelectorAll("header h1"), function (el) {
+        var text = (el.textContent || "").toLowerCase();
+        return text.indexOf("good morning") !== -1 || text.indexOf("good afternoon") !== -1 || text.indexOf("good evening") !== -1;
+      });
 
     if (greeting) {
       var firstName = resolvedName.split(" ")[0] || resolvedName;
@@ -1366,60 +1381,12 @@
           }
         });
       }
-      ensureDashboardSettingsMenu();
       ensureMobileDashboardNav();
     }
   }
 
   function ensureDashboardSettingsMenu() {
-    if (!isDashboardPath) return;
-    if (document.getElementById("dashboard-settings-menu")) return;
-
-    var header = document.querySelector("main header");
-    if (!header) return;
-
-    var rightControls = header.querySelector(".flex.items-center.gap-4") || header.querySelector(".flex.items-center.gap-2");
-    if (!rightControls) {
-      rightControls = document.createElement("div");
-      rightControls.className = "flex items-center gap-2";
-      header.appendChild(rightControls);
-    }
-
-    var menu = document.createElement("div");
-    menu.id = "dashboard-settings-menu";
-    menu.className = "relative";
-    menu.innerHTML =
-      '<button type="button" class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-gray-300" data-settings-toggle="1">' +
-      '<i class="fa-solid fa-gear"></i><span class="hidden md:inline">Settings</span></button>' +
-      '<div class="hidden absolute right-0 top-full mt-2 min-w-[170px] rounded-xl border border-white/10 bg-[#0f111a]/95 backdrop-blur-xl shadow-2xl p-1 z-40" data-settings-panel="1">' +
-      '<a href="/dashboard/profile/" class="block px-3 py-2 text-sm text-gray-200 rounded-lg hover:bg-white/10"><i class="fa-regular fa-user mr-2"></i>Profile Settings</a>' +
-      '<button type="button" class="w-full text-left px-3 py-2 text-sm text-red-300 rounded-lg hover:bg-red-500/20" data-sign-out="1"><i class="fa-solid fa-right-from-bracket mr-2"></i>Sign Out</button>' +
-      "</div>";
-
-    rightControls.appendChild(menu);
-    var toggle = menu.querySelector("[data-settings-toggle='1']");
-    var panel = menu.querySelector("[data-settings-panel='1']");
-    var signOut = menu.querySelector("[data-sign-out='1']");
-
-    if (toggle && panel) {
-      toggle.addEventListener("click", function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-        panel.classList.toggle("hidden");
-      });
-
-      document.addEventListener("click", function (event) {
-        if (!menu.contains(event.target)) {
-          panel.classList.add("hidden");
-        }
-      });
-    }
-
-    if (signOut) {
-      signOut.addEventListener("click", async function () {
-        void performSignOut();
-      });
-    }
+    return;
   }
 
   function ensureMobileDashboardNav() {
@@ -1432,6 +1399,15 @@
 
     var header = main.querySelector(":scope > header");
     if (!header) return;
+
+    if (!isNarrowViewport()) {
+      document.documentElement.setAttribute("data-mobile-nav", "closed");
+      var desktopOverlay = document.querySelector(".dashboard-mobile-nav-overlay");
+      if (desktopOverlay) desktopOverlay.remove();
+      var desktopToggle = document.getElementById("dashboard-mobile-nav-toggle") || header.querySelector("[data-mobile-nav-toggle='1']");
+      if (desktopToggle) desktopToggle.remove();
+      return;
+    }
 
     var existingOverlay = document.querySelector(".dashboard-mobile-nav-overlay");
     if (!existingOverlay) {
@@ -2000,10 +1976,12 @@
       }
     }
 
-    var talentButton = document.querySelector("header a[href='/employers/talent/']");
-    if (talentButton && isNarrowViewport()) {
-      talentButton.innerHTML = '<i class="fa-solid fa-eye mr-1"></i> Talent';
-    }
+    Array.prototype.forEach.call(document.querySelectorAll("header a, header button"), function (node) {
+      var label = (node.textContent || "").trim().toLowerCase();
+      if (label.indexOf("view talent board") !== -1) {
+        node.remove();
+      }
+    });
   }
 
   async function hydrateProjectsPage() {
@@ -3866,45 +3844,67 @@
     }
   }
 
-  async function routeHydrate() {
+  function markRouteHydrated(pathname) {
+    lastHydratedPath = normalizedPath(pathname || currentPath);
+    if (typeof window !== "undefined") {
+      window.__AITUTOR_LAST_HYDRATED_PATH = lastHydratedPath;
+    }
+  }
+
+  function routeHydrate() {
     syncPathAttributes();
-    wireThemeToggle();
-    if (isDashboardPath) {
-      document.documentElement.setAttribute("data-mobile-nav", "closed");
+    if (routeHydrateInFlight) return routeHydrateInFlight;
+    if (lastHydratedPath === currentPath && document.documentElement.getAttribute("data-runtime-ready") === "1") {
+      return Promise.resolve();
     }
-    try {
-      if (needsAuth()) {
-        await syncAuthContext();
-      }
-    } catch (err) {
+
+    routeHydrateInFlight = (async function () {
+      wireThemeToggle();
       if (isDashboardPath) {
-        renderDashboardHydrationError(err);
-        return;
+        document.documentElement.setAttribute("data-mobile-nav", "closed");
       }
-      throw err;
-    }
-    try {
-      await hydrateCurrentPath();
-    } catch (err) {
-      captureEvent("app_route_hydrate_failed", {
-        path: currentPath,
-        reason: err && err.message ? err.message : "unknown_error",
-      });
-      if (isDashboardPath) {
-        renderDashboardHydrationError(err);
-        return;
+      try {
+        if (needsAuth()) {
+          await syncAuthContext();
+        }
+      } catch (err) {
+        if (isDashboardPath) {
+          renderDashboardHydrationError(err);
+          markRouteHydrated(currentPath);
+          return;
+        }
+        throw err;
       }
-      throw err;
-    }
-    clearDashboardSkeletons();
-    persistDashboardSnapshot(currentPath);
-    document.documentElement.setAttribute("data-runtime-ready", "1");
+      try {
+        await hydrateCurrentPath();
+      } catch (err) {
+        captureEvent("app_route_hydrate_failed", {
+          path: currentPath,
+          reason: err && err.message ? err.message : "unknown_error",
+        });
+        if (isDashboardPath) {
+          renderDashboardHydrationError(err);
+          markRouteHydrated(currentPath);
+          return;
+        }
+        throw err;
+      }
+      clearDashboardSkeletons();
+      persistDashboardSnapshot(currentPath);
+      document.documentElement.setAttribute("data-runtime-ready", "1");
+      markRouteHydrated(currentPath);
+    })().finally(function () {
+      routeHydrateInFlight = null;
+    });
+
+    return routeHydrateInFlight;
   }
 
   window.__AITUTOR_ROUTE_HYDRATE = routeHydrate;
 
   async function boot() {
     captureEvent("app_boot_started", { path: currentPath });
+    markRouteHydrated(currentPath);
     var holdRevealUntilHydrated = false;
     try {
       applyAcquisitionLandingVariant();
@@ -3960,6 +3960,7 @@
       clearDashboardSkeletons();
       persistDashboardSnapshot(currentPath);
       document.documentElement.setAttribute("data-runtime-ready", "1");
+      markRouteHydrated(currentPath);
     }
   }
 

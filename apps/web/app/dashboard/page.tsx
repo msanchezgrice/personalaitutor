@@ -10,8 +10,8 @@ export default function DashboardPage() {
       </Suspense>
       <DashboardShell
         activeTab="home"
-        headerTitle="Good Morning, New 👋"
-        headerSubtitle="Ready to build something new today?"
+        headerTitle={<span data-dashboard-greeting="1">Loading your dashboard...</span>}
+        headerSubtitle="Preparing your tutor workspace."
       >
         <div className="p-10 max-w-6xl mx-auto w-full pb-24">
           <div className="glass-panel p-6 rounded-2xl mb-8 flex flex-col md:flex-row items-center justify-between gap-6 border border-emerald-500/30 overflow-hidden relative">
