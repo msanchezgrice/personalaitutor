@@ -43,7 +43,7 @@ function appBaseUrl() {
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
   const { handle } = await params;
   const profile = await runtimeFindUserByHandle(handle);
-  if (!profile && handle === EXAMPLE_PROFILE_HANDLE) {
+  if (handle === EXAMPLE_PROFILE_HANDLE && (!profile || !profile.published)) {
     return {
       title: "Alex Chen | My AI Skill Tutor Profile",
       description: "Example verified AI builder profile.",
@@ -100,7 +100,7 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
 export default async function PublicProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
   const profile = await runtimeFindUserByHandle(handle);
-  if (!profile && handle === EXAMPLE_PROFILE_HANDLE) {
+  if (handle === EXAMPLE_PROFILE_HANDLE && (!profile || !profile.published)) {
     return <GeminiStaticPage template="u/alex-chen-ai/index.html" runtime="none" />;
   }
   let canViewUnpublished = false;

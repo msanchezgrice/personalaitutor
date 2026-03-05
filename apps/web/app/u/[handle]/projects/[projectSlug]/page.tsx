@@ -44,7 +44,7 @@ function appBaseUrl() {
 export async function generateMetadata({ params }: { params: Promise<{ handle: string; projectSlug: string }> }): Promise<Metadata> {
   const { handle, projectSlug } = await params;
   const profile = await runtimeFindUserByHandle(handle);
-  if (!profile && handle === EXAMPLE_PROFILE_HANDLE && projectSlug === EXAMPLE_PROJECT_SLUG) {
+  if (handle === EXAMPLE_PROFILE_HANDLE && projectSlug === EXAMPLE_PROJECT_SLUG && (!profile || !profile.published)) {
     return {
       title: "Customer Support Copilot | Alex Chen",
       description: "Example project proof page.",
@@ -104,7 +104,7 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
 export default async function PublicProjectPage({ params }: { params: Promise<{ handle: string; projectSlug: string }> }) {
   const { handle, projectSlug } = await params;
   const profile = await runtimeFindUserByHandle(handle);
-  if (!profile && handle === EXAMPLE_PROFILE_HANDLE && projectSlug === EXAMPLE_PROJECT_SLUG) {
+  if (handle === EXAMPLE_PROFILE_HANDLE && projectSlug === EXAMPLE_PROJECT_SLUG && (!profile || !profile.published)) {
     return (
       <GeminiStaticPage
         template="u/alex-chen-ai/projects/customer-support-copilot/index.html"
