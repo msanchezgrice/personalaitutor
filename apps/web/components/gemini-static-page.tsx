@@ -152,6 +152,9 @@ function applyReplacements(input: string, replacements?: Record<string, string>)
     /<div class="mt-8 text-center border-t border-white\/10 pt-6">[\s\S]*?Go directly to\s*Dashboard[\s\S]*?<\/div>/gi,
     "",
   );
+  output = output.replace(/<!-- AI Message -->[\s\S]*?<!-- User Message -->/gi, "<!-- AI Message --><!-- User Message -->");
+  output = output.replace(/<!-- User Message -->[\s\S]*?<!-- AI Typing Indicator -->/gi, "<!-- User Message --><!-- AI Typing Indicator -->");
+  output = output.replace(/<!-- AI Typing Indicator -->[\s\S]*?<!-- Chat Input Area -->/gi, "<!-- AI Typing Indicator --><!-- Chat Input Area -->");
   output = output.replace(
     /<div[^>]*class="fixed top-4 right-4 z-\[100\]"[^>]*>[\s\S]*?id="theme-toggle"[\s\S]*?<\/div>/gi,
     "",

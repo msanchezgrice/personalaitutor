@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { SignIn } from "@clerk/nextjs";
 import { experimental__simple as clerkSimple } from "@clerk/themes";
-import { SignInOauthButtons } from "@/components/sign-in-oauth-buttons";
 import { BRAND_NAME, getSiteUrl } from "@/lib/site";
 import { AuthWidgetFallback } from "@/components/auth-widget-fallback";
 
@@ -37,7 +36,6 @@ export default async function SignInPage({
   return (
     <main className="min-h-screen bg-[#eef3f2] text-[#0f172a] flex items-center justify-center px-6 py-10">
       <div className="w-full flex flex-col items-center">
-        <SignInOauthButtons redirectUrl={forceRedirectUrl} />
         <SignIn
           routing="path"
           path="/sign-in"

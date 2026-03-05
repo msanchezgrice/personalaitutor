@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
-import { runtimeFindUserByHandle, runtimeListProjectsByUser } from "@/lib/runtime";
+import { runtimeFindUserByHandle, runtimeFindUserById, runtimeListProjectsByUser } from "@/lib/runtime";
 import { notFound, redirect } from "next/navigation";
+import { getAuthSeed } from "@/lib/auth";
 import {
   BRAND_NAME,
   BRAND_X_HANDLE,
@@ -45,12 +46,6 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   const project = projects.find((entry) => entry.slug === projectSlug) ?? null;
 
   if (!profile || !profile.published || !project || project.userId !== profile.id) {
-    if (handle === "alex-chen-ai" && projectSlug === "customer-support-copilot") {
-      return {
-        title: `Customer Support Copilot | Alex Chen | ${BRAND_NAME}`,
-        description: "Customer Support Copilot build log and active implementation proof.",
-      };
-    }
     return {
       title: "Project not found",
       robots: {
@@ -102,18 +97,23 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
   const profile = await runtimeFindUserByHandle(handle);
   const projects = profile ? await runtimeListProjectsByUser(profile.id) : [];
   const project = projects.find((entry) => entry.slug === projectSlug) ?? null;
+  let canViewUnpublished = false;
+  if (profile && !profile.published) {
+    const seed = await getAuthSeed();
+    if (seed?.userId) {
+      const viewerProfile = await runtimeFindUserById(seed.userId);
+      canViewUnpublished = Boolean(viewerProfile && viewerProfile.id === profile.id);
+    }
+  }
 
-  if (profile?.published && projectSlug === "customer-support-copilot" && (!project || project.userId !== profile.id)) {
+  if (profile && (profile.published || canViewUnpublished) && projectSlug === "customer-support-copilot" && (!project || project.userId !== profile.id)) {
     const fallbackProject = projects[0];
     if (fallbackProject) {
       redirect(`/u/${profile.handle}/projects/${fallbackProject.slug}/`);
     }
   }
 
-  if (!profile || !profile.published || !project || project.userId !== profile.id) {
-    if (handle === "alex-chen-ai" && projectSlug === "customer-support-copilot") {
-      return <GeminiStaticPage template="u/alex-chen-ai/projects/customer-support-copilot/index.html" runtime="none" />;
-    }
+  if (!profile || (!profile.published && !canViewUnpublished) || !project || project.userId !== profile.id) {
     return notFound();
   }
 

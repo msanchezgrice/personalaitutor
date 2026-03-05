@@ -31,30 +31,12 @@ function buildRedirectTarget(req: NextRequest, status: "linkedin_connected" | "l
 
 function resolveRedirectUri(req: NextRequest) {
   const fallback = `${req.nextUrl.origin}/api/auth/linkedin/callback`;
-  const appBase = process.env.APP_BASE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim();
-  const appBaseUrl = appBase
-    ? (() => {
-      try {
-        return new URL(appBase);
-      } catch {
-        return null;
-      }
-    })()
-    : null;
   const configured = process.env.LINKEDIN_REDIRECT_URI;
-  const fromAppBase = appBaseUrl ? new URL("/api/auth/linkedin/callback", appBaseUrl).toString() : null;
-
-  if (!configured || !configured.trim()) {
-    return fromAppBase ?? fallback;
-  }
+  if (!configured || !configured.trim()) return fallback;
   try {
-    const parsed = new URL(configured.trim());
-    if (appBaseUrl && parsed.host !== appBaseUrl.host) {
-      return fromAppBase ?? fallback;
-    }
-    return parsed.toString();
+    return new URL(configured.trim()).toString();
   } catch {
-    return fromAppBase ?? fallback;
+    return fallback;
   }
 }
 
@@ -211,11 +193,20 @@ export async function GET(req: NextRequest) {
   const profileConnection = await runtimeConnectOAuth(userId, "linkedin_profile", accountLabel);
   const postConnection = await runtimeConnectOAuth(userId, "linkedin", "LinkedIn Posting");
 
-  if (pictureUrl) {
+  const shouldApplyName =
+    typeof accountLabel === "string" &&
+    accountLabel.trim().length >= 2 &&
+    accountLabel !== "LinkedIn Profile" &&
+    !accountLabel.includes("@");
+
+  if (pictureUrl || shouldApplyName) {
     try {
-      await runtimeUpdateProfile(userId, { avatarUrl: pictureUrl });
+      await runtimeUpdateProfile(userId, {
+        ...(pictureUrl ? { avatarUrl: pictureUrl } : {}),
+        ...(shouldApplyName ? { name: accountLabel.trim() } : {}),
+      });
     } catch {
-      // Non-blocking avatar enrichment.
+      // Non-blocking profile enrichment.
     }
   }
 

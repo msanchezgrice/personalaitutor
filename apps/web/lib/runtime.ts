@@ -1973,7 +1973,22 @@ function enforceFirstPersonDraft(text: string, learnerName: string) {
     .replace(/\bher\b/gi, "my")
     .replace(/\btheir\b/gi, "my")
     .replace(/\bhim\b/gi, "me")
-    .replace(/\bthem\b/gi, "me");
+    .replace(/\bthem\b/gi, "me")
+    .replace(/\bhimself\b/gi, "myself")
+    .replace(/\bherself\b/gi, "myself")
+    .replace(/\bthemself\b/gi, "myself")
+    .replace(/\bthemselves\b/gi, "myself")
+    .replace(/\bI\s+is\b/gi, "I am")
+    .replace(/\bI\s+has\b/gi, "I have")
+    .replace(/\bI\s+was\s+positioning\s+myself\b/gi, "I positioned myself")
+    .replace(/\bBy\s+structuring\s+my\b/gi, "I structured my")
+    .replace(/\bBy\s+sharing\b/gi, "I shared")
+    .replace(/\bBy\s+building\b/gi, "I built");
+
+  normalized = normalized
+    .replace(/\s+/g, " ")
+    .replace(/\s([,.!?;:])/g, "$1")
+    .trim();
 
   if (!/\b(i|i'm|i've|my|me|mine)\b/i.test(normalized)) {
     normalized = `I'm sharing this update: ${normalized}`;
@@ -3015,6 +3030,35 @@ export async function runtimeRefreshRelevantNews(options?: {
   const supabase = getSupabaseAdmin();
   const maxStories = Math.max(3, Math.min(8, Number(options?.maxStories ?? 5)));
 
+  const mapNewsInsightRow = (row: {
+    id: string;
+    title: string;
+    url: string;
+    summary: string;
+    career_path_ids: string[];
+    published_at: string;
+    learner_profile_id: string | null;
+    metadata: Record<string, unknown>;
+  }): NewsInsight => ({
+    id: row.id,
+    title: row.title,
+    url: row.url,
+    summary: row.summary,
+    careerPathIds: row.career_path_ids,
+    publishedAt: row.published_at,
+    learnerProfileId: row.learner_profile_id,
+    category: (row.metadata.category as NewsInsight["category"]) ?? "workflow",
+    relevanceScore: Number(row.metadata.relevance_score ?? 0),
+    rankingScore: Number(row.metadata.ranking_score ?? 0),
+    whyRelevant: String(row.metadata.why_relevant ?? ""),
+    recommendedAction: String(row.metadata.recommended_action ?? ""),
+    impact: (row.metadata.impact as NewsInsight["impact"]) ?? "medium",
+    source: typeof row.metadata.source === "string" ? row.metadata.source : null,
+    contextSignals: Array.isArray(row.metadata.context_signals)
+      ? row.metadata.context_signals.filter((entry): entry is string => typeof entry === "string")
+      : [],
+  });
+
   if (!options?.userId) {
     const now = new Date().toISOString();
     const rows = [
@@ -3111,6 +3155,47 @@ export async function runtimeRefreshRelevantNews(options?: {
     return { ok: false as const, errorCode: "USER_NOT_FOUND", insights: [] };
   }
 
+  const { data: cachedPersonalizedRows } = await supabase
+    .from("news_insights")
+    .select("id,title,url,summary,career_path_ids,published_at,learner_profile_id,metadata")
+    .eq("learner_profile_id", context.user.id)
+    .order("published_at", { ascending: false })
+    .limit(maxStories);
+
+  const todayUtc = new Date().toISOString().slice(0, 10);
+  const newestCached = (cachedPersonalizedRows ?? [])[0];
+  const newestCachedDay =
+    newestCached && typeof newestCached.published_at === "string" ? newestCached.published_at.slice(0, 10) : "";
+
+  if ((cachedPersonalizedRows?.length ?? 0) >= 3 && newestCachedDay === todayUtc) {
+    const metadata = (newestCached?.metadata ?? {}) as Record<string, unknown>;
+    const source =
+      typeof metadata.generated_source === "string" && metadata.generated_source.trim().length
+        ? metadata.generated_source
+        : "cache";
+    return {
+      ok: true as const,
+      source,
+      contextSignals: Array.isArray(metadata.context_signals)
+        ? metadata.context_signals.filter((entry): entry is string => typeof entry === "string")
+        : context.focusSignals,
+      focusSummary:
+        typeof metadata.focus_summary === "string" && metadata.focus_summary.trim().length
+          ? metadata.focus_summary
+          : "Daily AI news briefing from your latest context.",
+      selectionRationale:
+        typeof metadata.selection_rationale === "string" && metadata.selection_rationale.trim().length
+          ? metadata.selection_rationale
+          : "Loaded cached personalized AI news for the current day.",
+      insights: (cachedPersonalizedRows ?? []).map((row) =>
+        mapNewsInsightRow({
+          ...row,
+          metadata: (row.metadata ?? {}) as Record<string, unknown>,
+        }),
+      ),
+    };
+  }
+
   const generated = await generateNewsFromOpenAi({
     context,
     count: maxStories,
@@ -3156,25 +3241,12 @@ export async function runtimeRefreshRelevantNews(options?: {
     contextSignals: context.focusSignals,
     focusSummary: generated.focusSummary,
     selectionRationale: generated.selectionRationale,
-    insights: rows.map((row) => ({
-      id: row.id,
-      title: row.title,
-      url: row.url,
-      summary: row.summary,
-      careerPathIds: row.career_path_ids,
-      publishedAt: row.published_at,
-      learnerProfileId: row.learner_profile_id,
-      category: row.metadata.category as NewsInsight["category"],
-      relevanceScore: Number(row.metadata.relevance_score ?? 0),
-      rankingScore: Number(row.metadata.ranking_score ?? 0),
-      whyRelevant: String(row.metadata.why_relevant ?? ""),
-      recommendedAction: String(row.metadata.recommended_action ?? ""),
-      impact: row.metadata.impact as NewsInsight["impact"],
-      source: typeof row.metadata.source === "string" ? row.metadata.source : null,
-      contextSignals: Array.isArray(row.metadata.context_signals)
-        ? row.metadata.context_signals.filter((entry): entry is string => typeof entry === "string")
-        : [],
-    })),
+    insights: rows.map((row) =>
+      mapNewsInsightRow({
+        ...row,
+        metadata: row.metadata as Record<string, unknown>,
+      }),
+    ),
   };
 }
 

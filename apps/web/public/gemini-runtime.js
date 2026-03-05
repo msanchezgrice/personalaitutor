@@ -408,9 +408,10 @@
     });
   }
 
-  function cacheScope() {
-    if (!ctx || !ctx.userId) return null;
-    return String(ctx.userId);
+  function cacheScope(explicitUserId) {
+    var userId = explicitUserId || (ctx && ctx.userId ? ctx.userId : null);
+    if (!userId) return null;
+    return String(userId);
   }
 
   function authSessionCacheKey() {
@@ -518,14 +519,14 @@
     writeLocalObject(key, payload);
   }
 
-  function homeNewsCacheKey() {
-    var scope = cacheScope();
+  function homeNewsCacheKey(userId) {
+    var scope = cacheScope(userId);
     if (!scope) return null;
     return HOME_NEWS_CACHE_PREFIX + scope + ":" + localDayKey();
   }
 
-  function readHomeNewsCache() {
-    var key = homeNewsCacheKey();
+  function readHomeNewsCache(userId) {
+    var key = homeNewsCacheKey(userId);
     if (!key) return null;
     var payload = readSessionObject(key) || readLocalObject(key);
     if (!payload || !Array.isArray(payload.insights)) return null;
@@ -533,8 +534,8 @@
     return payload;
   }
 
-  function writeHomeNewsCache(payload) {
-    var key = homeNewsCacheKey();
+  function writeHomeNewsCache(payload, userId) {
+    var key = homeNewsCacheKey(userId);
     if (!key || !payload || !Array.isArray(payload.insights)) return;
     var normalized = {
       ts: Date.now(),
@@ -569,11 +570,7 @@
   }
 
   function showDashboardSkeletons() {
-    if (!isDashboardPath || restoredDashboardSnapshot) return;
-    var cards = document.querySelectorAll("main .glass, main .glass-panel, main .panel");
-    Array.prototype.forEach.call(cards, function (node) {
-      node.classList.add("runtime-skeleton");
-    });
+    return;
   }
 
   function clearDashboardSkeletons() {
@@ -1557,15 +1554,21 @@
       if (!isDashboardPath || !summary) return;
       var prewarmProject = topProjectForPrewarm(summary);
       var prewarmProjectId = prewarmProject && prewarmProject.id ? prewarmProject.id : null;
+      var summaryUserId = summary && summary.user && summary.user.id ? String(summary.user.id) : null;
 
-      if (!readHomeNewsCache()) {
+      if (summaryUserId && (!ctx.userId || ctx.userId !== summaryUserId)) {
+        ctx.userId = summaryUserId;
+        saveCtx(ctx);
+      }
+
+      if (!readHomeNewsCache(summaryUserId)) {
         void postJson("/api/news/recommendations", { maxStories: 6 })
           .then(function (newsResult) {
             writeHomeNewsCache({
               insights: Array.isArray(newsResult && newsResult.insights) ? newsResult.insights : [],
               source: newsResult && newsResult.source ? newsResult.source : null,
               focusSummary: newsResult && newsResult.focusSummary ? newsResult.focusSummary : null,
-            });
+            }, summaryUserId);
             captureEvent("dashboard_news_prewarmed", { source: "background" });
           })
           .catch(function (error) {
@@ -1662,6 +1665,7 @@
   async function hydrateDashboardHome() {
     captureEvent("dashboard_tab_viewed", { tab: "home" });
     var summary = await getDashboardSummary();
+    var summaryUserId = summary && summary.user && summary.user.id ? String(summary.user.id) : null;
     updateSharedUserUi(summary);
     var topRecommendation = Array.isArray(summary.moduleRecommendations) && summary.moduleRecommendations.length
       ? summary.moduleRecommendations[0]
@@ -1878,11 +1882,10 @@
       if (normalizeInlineText(cachedTweet)) {
         applySocialQuote(cachedTweet);
       } else {
-        try {
-          await loadHomeTweetDraft(socialProjectId);
-        } catch {
+        applySocialQuote("Generating today's tweet draft from your latest project context.");
+        void loadHomeTweetDraft(socialProjectId).catch(function () {
           applySocialQuote("Social drafts are unavailable right now. Open Social Drafts to regenerate.");
-        }
+        });
       }
     }
 
@@ -1922,11 +1925,12 @@
 
         function renderHomeNews(insights, unavailableReason) {
           var rows = normalizeHomeNews(insights);
+          var isLoading = unavailableReason && unavailableReason.toLowerCase().indexOf("generating") !== -1;
           while (rows.length < 3) {
             rows.push({
-              title: "AI News unavailable",
+              title: isLoading ? "Generating AI News" : "AI News unavailable",
               summary: unavailableReason || "News generation is currently unavailable. Open AI News to retry.",
-              source: "Error",
+              source: isLoading ? "Loading" : "Error",
             });
           }
           updatesList.innerHTML = rows
@@ -1955,19 +1959,18 @@
             insights: insights,
             source: fresh && fresh.source ? fresh.source : null,
             focusSummary: fresh && fresh.focusSummary ? fresh.focusSummary : null,
-          });
+          }, summaryUserId);
           renderHomeNews(insights);
         }
 
-        var cachedNews = readHomeNewsCache();
+        var cachedNews = readHomeNewsCache(summaryUserId);
         if (cachedNews && Array.isArray(cachedNews.insights) && cachedNews.insights.length) {
           renderHomeNews(cachedNews.insights);
         } else {
-          try {
-            await refreshHomeNews();
-          } catch (err) {
+          renderHomeNews([], "Generating today's AI news briefing. Open AI News for live status.");
+          void refreshHomeNews().catch(function (err) {
             renderHomeNews([], err && err.message ? String(err.message) : "Unable to load AI News.");
-          }
+          });
         }
       }
     }
@@ -2106,6 +2109,17 @@
 
   async function hydrateChatPage() {
     captureEvent("dashboard_tab_viewed", { tab: "chat" });
+    var history = document.querySelector("main .flex-1.overflow-y-auto");
+    var textarea = document.querySelector("textarea");
+    var sendBtn = Array.prototype.find.call(document.querySelectorAll("button"), function (btn) {
+      return btn.querySelector(".fa-paper-plane");
+    });
+
+    if (!history || !textarea || !sendBtn) return;
+
+    history.innerHTML = "";
+    history.appendChild(createBubble("Loading your latest session context...", false));
+
     var summary = await getDashboardSummary();
     updateSharedUserUi(summary);
     var projectPromise = ensurePrimaryProject(summary);
@@ -2118,14 +2132,6 @@
     }).catch(function () {
       return null;
     });
-
-    var history = document.querySelector("main .flex-1.overflow-y-auto");
-    var textarea = document.querySelector("textarea");
-    var sendBtn = Array.prototype.find.call(document.querySelectorAll("button"), function (btn) {
-      return btn.querySelector(".fa-paper-plane");
-    });
-
-    if (!history || !textarea || !sendBtn) return;
 
     var sending = false;
     var chatHistoryState = [];
@@ -2177,9 +2183,9 @@
         renderMessage(entry.role, entry.text);
       });
     } else {
-      var introText = "Welcome back. I’m your AI Tutor. Share what you’re trying to build and I’ll map the next steps with proof artifacts.";
+      var introText = "I’m your AI Tutor. Share your current blocker and I’ll give concrete next steps plus a verification check.";
       if (project && project.title) {
-        introText = "Welcome back. I’m your AI Tutor. Let’s continue " +
+        introText = "I’m your AI Tutor. Let’s continue " +
           project.title +
           ". Share your current blocker and I’ll give concrete next steps plus a verification check.";
       }
@@ -2647,6 +2653,7 @@
   async function hydrateAiNewsPage() {
     captureEvent("dashboard_tab_viewed", { tab: "ai_news" });
     var summary = await getDashboardSummary();
+    var summaryUserId = summary && summary.user && summary.user.id ? String(summary.user.id) : null;
     updateSharedUserUi(summary);
     var contentWrap = document.querySelector("main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-4");
     if (!contentWrap) return;
@@ -2741,7 +2748,7 @@
               insights: Array.isArray(refreshed && refreshed.insights) ? refreshed.insights : [],
               source: refreshed && refreshed.source ? refreshed.source : null,
               focusSummary: refreshed && refreshed.focusSummary ? refreshed.focusSummary : null,
-            });
+            }, summaryUserId);
             renderNews(refreshed);
             toast("AI news refreshed.", false);
           } catch (err) {
@@ -2754,7 +2761,7 @@
       }
     }
 
-    var cachedNews = readHomeNewsCache();
+    var cachedNews = readHomeNewsCache(summaryUserId);
     if (cachedNews && Array.isArray(cachedNews.insights) && cachedNews.insights.length) {
       renderNews(cachedNews);
       return;
@@ -2766,7 +2773,7 @@
         insights: Array.isArray(initial && initial.insights) ? initial.insights : [],
         source: initial && initial.source ? initial.source : null,
         focusSummary: initial && initial.focusSummary ? initial.focusSummary : null,
-      });
+      }, summaryUserId);
       renderNews(initial);
     } catch (err) {
       contentWrap.innerHTML =

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SignUpButton, useAuth } from "@clerk/nextjs";
+import { SignUpButton, useAuth, useUser } from "@clerk/nextjs";
 import type { GoalType, SituationStatus } from "@aitutor/shared";
 import {
   fbOnboardingComplete,
@@ -91,6 +91,7 @@ type ResumeUploadPayload = {
 };
 
 type OnboardingDraft = {
+  fullName: string;
   careerCategory: (typeof careerCategoryOptions)[number]["value"];
   customCareerCategory: string;
   jobTitle: string;
@@ -482,6 +483,7 @@ async function postJson<T>(url: string, body: Record<string, unknown>): Promise<
 
 export function OnboardingIntake() {
   const { isLoaded: authLoaded, userId: authUserId } = useAuth();
+  const { user } = useUser();
   const isSignedIn = Boolean(authUserId);
   const [step, setStep] = useState<Step>(1);
   const [busy, setBusy] = useState(false);
@@ -507,6 +509,7 @@ export function OnboardingIntake() {
   const signUpCompletedFired = useRef(false);
 
   const [careerCategory, setCareerCategory] = useState<(typeof careerCategoryOptions)[number]["value"]>("product-manager");
+  const [fullName, setFullName] = useState("");
   const [customCareerCategory, setCustomCareerCategory] = useState("");
   const [jobTitle, setJobTitle] = useState("");
   const [yearsExperience, setYearsExperience] = useState<(typeof yearsExperienceOptions)[number]["value"]>("1-3");
@@ -615,6 +618,7 @@ export function OnboardingIntake() {
       const raw = window.localStorage.getItem(ONBOARDING_DRAFT_KEY);
       if (!raw) return;
       const draft = JSON.parse(raw) as Partial<OnboardingDraft>;
+      if (typeof draft.fullName === "string") setFullName(draft.fullName);
       if (draft.careerCategory) setCareerCategory(draft.careerCategory);
       if (typeof draft.customCareerCategory === "string") setCustomCareerCategory(draft.customCareerCategory);
       if (typeof draft.jobTitle === "string") setJobTitle(draft.jobTitle);
@@ -636,8 +640,18 @@ export function OnboardingIntake() {
   }, []);
 
   useEffect(() => {
+    const candidateName =
+      user?.fullName?.trim() ||
+      [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
+      "";
+    if (!candidateName) return;
+    setFullName((prev) => (prev.trim() ? prev : candidateName));
+  }, [user?.fullName, user?.firstName, user?.lastName]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     const payload: OnboardingDraft = {
+      fullName,
       careerCategory,
       customCareerCategory,
       jobTitle,
@@ -658,6 +672,7 @@ export function OnboardingIntake() {
       // Ignore storage failures.
     }
   }, [
+    fullName,
     careerCategory,
     customCareerCategory,
     jobTitle,
@@ -800,9 +815,11 @@ export function OnboardingIntake() {
       return { id: sessionId, userId: sessionUserId ?? "", token: sessionToken };
     }
     const acquisition = readClientAttributionEnvelope();
+    const normalizedName = fullName.trim();
+    const handleSeed = normalizedName || jobTitle.trim() || "new-learner";
     const payload = await postJson<OnboardingStartPayload>("/api/onboarding/start", {
-      name: jobTitle.trim() || "New Learner",
-      handleBase: (jobTitle.trim() || "new-learner").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      name: normalizedName || "New Learner",
+      handleBase: handleSeed.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
       careerPathId: selectedCareer.path,
       acquisition: acquisition ?? undefined,
     });
@@ -840,6 +857,7 @@ export function OnboardingIntake() {
   }, [step, sessionId]);
 
   const validateStepOne = () => {
+    if (!fullName.trim()) return "Enter your full name.";
     if (!careerCategory) return "Select your career category.";
     if (careerCategory === "other" && !customCareerCategory.trim()) {
       return "Please specify your career category.";
@@ -1152,6 +1170,17 @@ export function OnboardingIntake() {
 
           {step === 1 ? (
             <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-[#334155]">Full Name</label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(event) => setFullName(event.target.value)}
+                  placeholder="e.g., Miguel Sanchez-Grice"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[#1e293b] placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 transition-colors"
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-2 text-[#334155]">Career Category</label>
                 <select

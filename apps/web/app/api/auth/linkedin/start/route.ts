@@ -25,32 +25,11 @@ function sanitizeRedirectPath(path: string | null) {
 
 function resolveRedirectUri(req: NextRequest, configured: string | undefined, fallbackPath: string) {
   const fallback = `${req.nextUrl.origin}${fallbackPath}`;
-  const appBase = process.env.APP_BASE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim();
-  const appBaseUrl = appBase
-    ? (() => {
-      try {
-        return new URL(appBase);
-      } catch {
-        return null;
-      }
-    })()
-    : null;
-
-  const fromAppBase = appBaseUrl ? new URL(fallbackPath, appBaseUrl).toString() : null;
-
-  if (!configured || !configured.trim()) {
-    return fromAppBase ?? fallback;
-  }
-
+  if (!configured || !configured.trim()) return fallback;
   try {
-    const parsed = new URL(configured.trim());
-    // If a stale host is configured, prefer canonical APP_BASE_URL for prod consistency.
-    if (appBaseUrl && parsed.host !== appBaseUrl.host) {
-      return fromAppBase ?? fallback;
-    }
-    return parsed.toString();
+    return new URL(configured.trim()).toString();
   } catch {
-    return fromAppBase ?? fallback;
+    return fallback;
   }
 }
 

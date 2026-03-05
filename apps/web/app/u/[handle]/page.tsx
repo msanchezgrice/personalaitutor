@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
-import { runtimeFindUserByHandle, runtimeListProjectsByUser } from "@/lib/runtime";
+import { runtimeFindUserByHandle, runtimeFindUserById, runtimeListProjectsByUser } from "@/lib/runtime";
 import { notFound } from "next/navigation";
+import { getAuthSeed } from "@/lib/auth";
 import {
   BRAND_NAME,
   BRAND_X_HANDLE,
@@ -42,33 +43,6 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   const { handle } = await params;
   const profile = await runtimeFindUserByHandle(handle);
   if (!profile || !profile.published) {
-    if (handle === "alex-chen-ai") {
-      return {
-        title: `Alex Chen | Verified AI Builder Profile | ${BRAND_NAME}`,
-        description: "View mapped skills, built projects, and verified AI implementation experience.",
-        openGraph: {
-          title: `Alex Chen - Verified AI Builder Profile | ${BRAND_NAME}`,
-          description: "View mapped skills, built projects, and verified AI implementation experience.",
-          url: "/u/alex-chen-ai",
-          type: "profile",
-          images: [{
-            url: DEFAULT_OG_IMAGE_PATH,
-            width: DEFAULT_OG_IMAGE_WIDTH,
-            height: DEFAULT_OG_IMAGE_HEIGHT,
-            alt: DEFAULT_OG_IMAGE_ALT,
-            type: "image/png",
-          }],
-        },
-        twitter: {
-          card: "summary_large_image",
-          site: BRAND_X_HANDLE,
-          creator: BRAND_X_HANDLE,
-          title: `Alex Chen - Verified AI Builder Profile | ${BRAND_NAME}`,
-          description: "View mapped skills, built projects, and verified AI implementation experience.",
-          images: [DEFAULT_OG_IMAGE_PATH],
-        },
-      };
-    }
     return {
       title: "Profile not found",
       robots: {
@@ -118,11 +92,16 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
 export default async function PublicProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
   const profile = await runtimeFindUserByHandle(handle);
-
-  if (!profile || !profile.published) {
-    if (handle === "alex-chen-ai") {
-      return <GeminiStaticPage template="u/alex-chen-ai/index.html" runtime="none" />;
+  let canViewUnpublished = false;
+  if (profile && !profile.published) {
+    const seed = await getAuthSeed();
+    if (seed?.userId) {
+      const viewerProfile = await runtimeFindUserById(seed.userId);
+      canViewUnpublished = Boolean(viewerProfile && viewerProfile.id === profile.id);
     }
+  }
+
+  if (!profile || (!profile.published && !canViewUnpublished)) {
     return notFound();
   }
 
