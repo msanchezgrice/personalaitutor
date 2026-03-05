@@ -2,247 +2,396 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hire AI Talent | AI Tutor platform</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hire AI Talent | My AI Skill Tutor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
-<body class="relative min-h-screen flex flex-col bg-[#0f111a]">
-    <!-- Glows -->
-    <div class="bg-glow top-[-200px] left-[-100px] bg-gradient-to-br from-emerald-500/20 to-transparent"></div>
-    <div class="bg-glow top-[40%] right-[-200px] bg-gradient-to-br from-cyan-500/20 to-transparent"></div>
+<body class="relative min-h-screen flex flex-col">
+  <!-- Background Glows -->
+  <div class="bg-glow top-[-200px] left-[-100px]"></div>
+  <div class="bg-glow top-[20%] right-[-200px]"
+    style="background: radial-gradient(circle, var(--secondary-glow) 0%, rgba(0,0,0,0) 70%);"></div>
 
-    <!-- Navigation -->
-    <header class="glass sticky top-0 z-50 border-x-0 border-t-0 rounded-none bg-opacity-80 backdrop-blur-xl">
-        <div class="container nav">
-            <a href="/" class="flex items-center gap-2">
-                <img src="/assets/branding/brand_wordmark_logo.png" alt="My AI Skill Tutor" class="h-8 w-auto object-contain" />
-            </a>
-            <nav class="hidden md:flex nav-links">
-                <a href="#how" class="nav-link text-gray-300">How it works</a>
-                <a href="#talent" class="nav-link text-gray-300">Browse Talent</a>
-                <a href="/" class="nav-link text-emerald-400">For Learners Instead?</a>
-            </nav>
-            <div class="flex gap-4">
-                <a href="/employers/talent/" class="btn bg-white text-[#0f111a] hover:bg-gray-200">Start Hiring <i
-                        class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>
-            </div>
-        </div>
+  <!-- Navigation -->
+  <header class="glass sticky top-0 z-50 border-x-0 border-t-0 rounded-none bg-opacity-80 backdrop-blur-xl">
+    <div class="container nav">
+      <a href="/" class="flex items-center gap-2">
+        <img src="/assets/branding/brand_wordmark_logo.png" alt="My AI Skill Tutor"
+          class="h-8 w-auto object-contain" />
+      </a>
+      <nav class="hidden md:flex nav-links">
+        <a href="#how" class="nav-link">How it works</a>
+        <a href="#talent" class="nav-link">Browse Talent</a>
+        <a href="/" class="nav-link text-emerald-400">For Learners</a>
+      </nav>
+      <div class="flex gap-4">
+        <a href="/sign-in?redirect_url=/dashboard/" class="btn btn-secondary">Log In</a>
+        <a href="/employers/talent/" class="btn btn-primary animate-pulse-glow">Start Hiring <i
+            class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>
+      </div>
+    </div>
     <div class="fixed top-4 right-4 z-[100]">
-<button id="theme-toggle" class="btn bg-white/10 hover:bg-white/20 text-white border border-white/10 px-3 py-2 rounded-lg flex items-center justify-center transition-colors">
-  <i class="fa-solid fa-sun" id="theme-icon"></i>
-</button>
-</div>\n</header>
+      <button id="theme-toggle"
+        class="btn bg-white/10 hover:bg-white/20 text-white border border-white/10 px-3 py-2 rounded-lg flex items-center justify-center transition-colors">
+        <i class="fa-solid fa-sun" id="theme-icon"></i>
+      </button>
+    </div>
+  </header>
 
-    <!-- Hero -->
-    <main class="flex-grow">
-        <section class="container pt-24 pb-20 text-center max-w-5xl mx-auto">
-            <div
-                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-sm font-medium mb-8">
-                <i class="fa-solid fa-shield-check"></i> 100% System Verified Skill Proofs
-            </div>
-
-            <h1 class="text-5xl lg:text-7xl mb-8 font-[Outfit] text-white">Hire talent that actually <br>knows how to
-                use AI.</h1>
-            <p class="text-xl text-gray-400 mb-10 max-w-3xl mx-auto">
-                Stop guessing from resumes. We provide access to professionals who have built, deployed, and verified
-                their AI competence through our interactive tutor platform.
-            </p>
-
-            <div class="flex flex-col sm:flex-row justify-center gap-4 mb-16">
-                <a href="/employers/talent/"
-                    class="btn bg-white text-[#0f111a] hover:bg-gray-200 text-lg px-8 py-4">Browse Talent Pool</a>
-                <a href="#" class="btn btn-secondary text-lg px-8 py-4">Post a Role</a>
-            </div>
-
-            <div class="grid md:grid-cols-3 gap-8 text-left">
-                <div class="glass p-8">
-                    <i class="fa-solid fa-eye text-emerald-400 text-3xl mb-4"></i>
-                    <h3 class="text-xl text-white mb-2">See the Build Log</h3>
-                    <p class="text-gray-400 text-sm">Don't just trust a bullet point. View the exact prompts, bug fixes,
-                        and architectural choices candidates made during real projects.</p>
-                </div>
-                <div class="glass p-8">
-                    <i class="fa-solid fa-check-double text-cyan-400 text-3xl mb-4"></i>
-                    <h3 class="text-xl text-white mb-2">Verified Execution</h3>
-                    <p class="text-gray-400 text-sm">Skills are granted automatically by our AI Tutor only after
-                        successful code compilation and API testing. Completely unforgeable.</p>
-                </div>
-                <div class="glass p-8">
-                    <i class="fa-solid fa-bolt text-amber-400 text-3xl mb-4"></i>
-                    <h3 class="text-xl text-white mb-2">Instant ROI</h3>
-                    <p class="text-gray-400 text-sm">Hire professionals who can already automate their own workflows,
-                        write Python scripts, and leverage LLM APIs from day one.</p>
-                </div>
-            </div>
-        </section>
-
-        <section id="how" class="py-20 border-t border-white/10 bg-black/20">
-            <div class="container max-w-6xl mx-auto">
-                <div class="text-center mb-14 max-w-3xl mx-auto">
-                    <h2 class="text-4xl text-white mb-4">How system verification works</h2>
-                    <p class="text-gray-400 text-lg">Every candidate skill score is grounded in execution data, not
-                        self-reported quizzes.</p>
-                </div>
-
-                <div class="grid md:grid-cols-3 gap-6">
-                    <div class="glass p-7">
-                        <div
-                            class="w-11 h-11 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg mb-5">
-                            <i class="fa-solid fa-code-branch"></i>
-                        </div>
-                        <h3 class="text-lg text-white mb-3">1. Capture Build Signals</h3>
-                        <p class="text-gray-400 text-sm">We track project milestones, prompt iterations, tool usage,
-                            and successful runs as the learner builds with their AI Tutor.</p>
-                    </div>
-                    <div class="glass p-7">
-                        <div
-                            class="w-11 h-11 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-lg mb-5">
-                            <i class="fa-solid fa-list-check"></i>
-                        </div>
-                        <h3 class="text-lg text-white mb-3">2. Score Against Rubrics</h3>
-                        <p class="text-gray-400 text-sm">Signals are evaluated against role-specific competency
-                            rubrics, then promoted from in-progress to verified once standards are met.</p>
-                    </div>
-                    <div class="glass p-7">
-                        <div
-                            class="w-11 h-11 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg mb-5">
-                            <i class="fa-solid fa-file-signature"></i>
-                        </div>
-                        <h3 class="text-lg text-white mb-3">3. Publish Evidence Package</h3>
-                        <p class="text-gray-400 text-sm">Recruiters can inspect the public profile, project artifacts,
-                            and build logs before outreach.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="talent" class="py-20 border-t border-white/10">
-            <div class="container max-w-6xl mx-auto">
-                <div class="grid lg:grid-cols-2 gap-10 items-start">
-                    <div>
-                        <h2 class="text-4xl text-white mb-4">What you can evaluate before interviews</h2>
-                        <p class="text-gray-400 mb-8 text-lg">Use proof-backed filters so your shortlist reflects real
-                            capability with AI tools in production-like workflows.</p>
-                        <div class="space-y-4">
-                            <div class="glass p-5 flex items-start gap-4">
-                                <i class="fa-solid fa-filter text-emerald-400 mt-1"></i>
-                                <div>
-                                    <p class="text-white font-medium mb-1">Role and Tool Fit</p>
-                                    <p class="text-gray-400 text-sm">Filter by role path, verified skills, and tool
-                                        usage such as Python, APIs, Cursor, SQL, and RAG.</p>
-                                </div>
-                            </div>
-                            <div class="glass p-5 flex items-start gap-4">
-                                <i class="fa-solid fa-magnifying-glass-chart text-emerald-400 mt-1"></i>
-                                <div>
-                                    <p class="text-white font-medium mb-1">Execution Evidence</p>
-                                    <p class="text-gray-400 text-sm">Review delivered project summaries, completion
-                                        status, and audit logs for how each candidate solved technical blockers.</p>
-                                </div>
-                            </div>
-                            <div class="glass p-5 flex items-start gap-4">
-                                <i class="fa-solid fa-bullseye text-emerald-400 mt-1"></i>
-                                <div>
-                                    <p class="text-white font-medium mb-1">Readiness Signals</p>
-                                    <p class="text-gray-400 text-sm">Assess current build momentum, response quality,
-                                        and verification freshness before scheduling recruiter calls.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="glass-panel p-8 rounded-2xl border border-white/10">
-                        <h3 class="text-2xl text-white mb-6">Hiring outcomes from the network</h3>
-                        <div class="grid grid-cols-2 gap-4 mb-6">
-                            <div class="bg-white/5 rounded-xl p-4 border border-white/10">
-                                <p class="text-3xl font-[Outfit] text-white">74%</p>
-                                <p class="text-xs text-gray-400 mt-2">of sourced candidates reach interview stage</p>
-                            </div>
-                            <div class="bg-white/5 rounded-xl p-4 border border-white/10">
-                                <p class="text-3xl font-[Outfit] text-white">3.2x</p>
-                                <p class="text-xs text-gray-400 mt-2">faster technical screening cycle</p>
-                            </div>
-                            <div class="bg-white/5 rounded-xl p-4 border border-white/10">
-                                <p class="text-3xl font-[Outfit] text-white">92%</p>
-                                <p class="text-xs text-gray-400 mt-2">pass hands-on workflow simulation</p>
-                            </div>
-                            <div class="bg-white/5 rounded-xl p-4 border border-white/10">
-                                <p class="text-3xl font-[Outfit] text-white">24h</p>
-                                <p class="text-xs text-gray-400 mt-2">typical response time for first outreach</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col sm:flex-row gap-3">
-                            <a href="/employers/talent/"
-                                class="btn bg-white text-[#0f111a] hover:bg-gray-200 text-center w-full">Open Talent
-                                Marketplace</a>
-                            <a href="#"
-                                class="btn btn-secondary text-center w-full">Book Platform Demo</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <footer class="border-t border-white/10 py-10 mt-auto">
-        <div class="container flex flex-col md:flex-row justify-between items-center gap-6 text-sm">
-            <a href="/" class="font-[Outfit] font-bold text-white">
-                <img src="/assets/branding/brand_wordmark_logo.png" alt="My AI Skill Tutor" class="h-7 w-auto object-contain" />
-            </a>
-            <div class="flex items-center gap-4">
-                <a href="https://x.com/myaiskilltu" target="_blank" rel="noreferrer"
-                    class="text-gray-400 hover:text-white transition w-9 h-9 rounded-full border border-white/10 flex items-center justify-center"
-                    aria-label="My AI Skill Tutor on X">
-                    <i class="fa-brands fa-x-twitter text-base"></i>
-                </a>
-                <a href="http://linkedin.com/company/myaiskilltutor" target="_blank" rel="noreferrer"
-                    class="text-gray-400 hover:text-white transition w-9 h-9 rounded-full border border-white/10 flex items-center justify-center"
-                    aria-label="My AI Skill Tutor on LinkedIn">
-                    <i class="fa-brands fa-linkedin text-[#0077b5] text-base"></i>
-                </a>
-            </div>
+  <!-- Hero -->
+  <main class="flex-grow">
+    <section class="container pt-20 pb-32 grid lg:grid-cols-2 gap-12 items-center relative">
+      <div class="z-10">
+        <div
+          class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 text-sm font-medium mb-6">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          100% System Verified Skill Proofs
         </div>
-    </footer>
+        <h1 class="text-5xl lg:text-7xl mb-6">Hire talent that <br><span class="text-gradient">actually knows
+            AI.</span></h1>
+        <p class="text-xl text-gray-400 mb-8 max-w-lg leading-relaxed">
+          Stop guessing from resumes. We provide access to professionals who have built, deployed, and verified
+          their AI competence through our interactive tutor platform.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 mb-10">
+          <a href="/employers/talent/" class="btn btn-primary text-lg px-8 py-4">Browse Talent Pool</a>
+          <a href="#how" class="btn btn-secondary text-lg px-8 py-4">See How It Works</a>
+        </div>
+        <div class="flex items-center gap-4 text-sm text-gray-500">
+          <div class="flex -space-x-2">
+            <div
+              class="w-8 h-8 rounded-full border-2 border-gray-900 bg-emerald-600 flex items-center justify-center text-white text-xs font-bold">
+              74%</div>
+            <div
+              class="w-8 h-8 rounded-full border-2 border-gray-900 bg-cyan-600 flex items-center justify-center text-white text-xs font-bold">
+              3.2x</div>
+          </div>
+          <p>74% interview rate &middot; 3.2x faster screening</p>
+        </div>
+      </div>
 
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const themeToggle = document.getElementById('theme-toggle');
-    const themeIcon = document.getElementById('theme-icon');
-    
-    // Check local storage for theme
-    const currentTheme = localStorage.getItem('theme') || 'dark';
-    if (currentTheme === 'light') {
-      document.documentElement.setAttribute('data-theme', 'light');
-      themeIcon.classList.replace('fa-sun', 'fa-moon');
-      if (themeToggle) {
-        themeToggle.classList.replace('text-white', 'text-gray-800');
-        themeToggle.classList.replace('border-white/10', 'border-gray-300');
-      }
-    }
-    
-    if (themeToggle) {
-      themeToggle.addEventListener('click', () => {
-        let theme = document.documentElement.getAttribute('data-theme');
-        if (theme === 'light') {
-          document.documentElement.removeAttribute('data-theme');
-          localStorage.setItem('theme', 'dark');
-          themeIcon.classList.replace('fa-moon', 'fa-sun');
-          themeToggle.classList.replace('text-gray-800', 'text-white');
-          themeToggle.classList.replace('border-gray-300', 'border-white/10');
-        } else {
-          document.documentElement.setAttribute('data-theme', 'light');
-          localStorage.setItem('theme', 'light');
-          themeIcon.classList.replace('fa-sun', 'fa-moon');
+      <div class="relative z-10 hidden lg:block perspective-1000">
+        <div
+          class="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl transform -rotate-y-5 rotate-x-5 perspective-1000 origin-center bg-[#0f111a] border border-gray-200 dark:border-white/20">
+          <img src="/assets/screenshot_profile.png" alt="Talent profile preview"
+            class="w-full h-full object-contain p-2" />
+        </div>
+
+        <!-- Floating Badge -->
+        <div class="absolute bottom-[-20px] left-[-40px] glass-panel p-4 flex items-center gap-4 animate-float"
+          style="animation-delay: 1s;">
+          <div
+            class="w-12 h-12 bg-emerald-500/20 rounded-lg flex items-center justify-center text-emerald-400 text-xl">
+            <i class="fa-solid fa-shield-check"></i>
+          </div>
+          <div>
+            <p class="text-white font-bold text-sm">System Verified</p>
+            <p class="text-emerald-400 text-xs font-semibold">Proof-Backed Skills</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Feature Cards -->
+    <section class="pb-20">
+      <div class="container">
+        <div class="grid md:grid-cols-3 gap-8">
+          <div class="glass p-8 hover:bg-white/5 transition duration-300">
+            <div
+              class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl mb-6">
+              <i class="fa-solid fa-eye"></i>
+            </div>
+            <h3 class="text-xl mb-3">See the Build Log</h3>
+            <p class="text-gray-400 text-sm">Don't just trust a bullet point. View the exact prompts, bug fixes,
+              and architectural choices candidates made during real projects.</p>
+          </div>
+          <div class="glass p-8 hover:bg-white/5 transition duration-300">
+            <div
+              class="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xl mb-6">
+              <i class="fa-solid fa-check-double"></i>
+            </div>
+            <h3 class="text-xl mb-3">Verified Execution</h3>
+            <p class="text-gray-400 text-sm">Skills are granted automatically by our AI Tutor only after
+              successful code compilation and API testing. Completely unforgeable.</p>
+          </div>
+          <div class="glass p-8 hover:bg-white/5 transition duration-300">
+            <div
+              class="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center text-xl mb-6">
+              <i class="fa-solid fa-bolt"></i>
+            </div>
+            <h3 class="text-xl mb-3">Instant ROI</h3>
+            <p class="text-gray-400 text-sm">Hire professionals who can already automate their own workflows,
+              write Python scripts, and leverage LLM APIs from day one.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how" class="py-24 relative border-t border-white/5 bg-black/20">
+      <div class="container">
+        <div class="text-center mb-16 max-w-2xl mx-auto">
+          <h2 class="text-4xl mb-4">How system verification works</h2>
+          <p class="text-gray-400">Every candidate skill score is grounded in execution data, not
+            self-reported quizzes.</p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8">
+          <div class="glass p-8 hover:bg-white/5 transition duration-300">
+            <div
+              class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl mb-6">
+              <i class="fa-solid fa-code-branch"></i>
+            </div>
+            <h3 class="text-xl mb-3">1. Capture Build Signals</h3>
+            <p class="text-gray-400 text-sm">We track project milestones, prompt iterations, tool usage,
+              and successful runs as the learner builds with their AI Tutor.</p>
+          </div>
+          <div class="glass p-8 hover:bg-white/5 transition duration-300">
+            <div
+              class="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xl mb-6">
+              <i class="fa-solid fa-list-check"></i>
+            </div>
+            <h3 class="text-xl mb-3">2. Score Against Rubrics</h3>
+            <p class="text-gray-400 text-sm">Signals are evaluated against role-specific competency
+              rubrics, then promoted from in-progress to verified once standards are met.</p>
+          </div>
+          <div class="glass p-8 hover:bg-white/5 transition duration-300">
+            <div
+              class="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center text-xl mb-6">
+              <i class="fa-solid fa-file-signature"></i>
+            </div>
+            <h3 class="text-xl mb-3">3. Publish Evidence Package</h3>
+            <p class="text-gray-400 text-sm">Recruiters can inspect the public profile, project artifacts,
+              and build logs before outreach.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Deep Dive -->
+    <section class="py-24 relative">
+      <div class="container">
+        <div class="text-center mb-16 max-w-3xl mx-auto">
+          <h2 class="text-4xl mb-4 text-white">What you can evaluate before interviews</h2>
+          <p class="text-gray-400">Use proof-backed filters so your shortlist reflects real capability with AI
+            tools in production-like workflows.</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-12 items-center mb-24">
+          <div>
+            <div
+              class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl mb-6">
+              <i class="fa-solid fa-filter"></i>
+            </div>
+            <h3 class="text-3xl mb-4 text-white">Role and Tool Fit</h3>
+            <p class="text-gray-400 mb-6 leading-relaxed">Filter candidates by verified skills, tools, and role
+              alignment. See exactly which Python libraries, APIs, and AI frameworks each candidate has used in
+              real projects &mdash; not just listed on a resume.</p>
+            <ul class="space-y-3">
+              <li class="flex items-center gap-3 text-sm text-gray-300"><i
+                  class="fa-solid fa-check text-emerald-400"></i> Filter by verified tool proficiency</li>
+              <li class="flex items-center gap-3 text-sm text-gray-300"><i
+                  class="fa-solid fa-check text-emerald-400"></i> Role-specific competency mapping</li>
+              <li class="flex items-center gap-3 text-sm text-gray-300"><i
+                  class="fa-solid fa-check text-emerald-400"></i> Real usage data, not self-reported</li>
+            </ul>
+          </div>
+          <div class="relative perspective-1000">
+            <div
+              class="glass-panel p-2 rounded-2xl transform -rotateY-5 shadow-2xl overflow-hidden aspect-[4/3] bg-white/5 border border-gray-200 dark:border-white/20">
+              <img src="/assets/screenshot_profile.png" alt="Talent Profile"
+                class="w-full h-full object-contain rounded-xl border border-white/5 opacity-90 p-2" />
+            </div>
+          </div>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-12 items-center mb-24">
+          <div class="order-2 md:order-1 relative perspective-1000">
+            <div
+              class="glass-panel p-2 rounded-2xl transform rotateY-5 shadow-2xl overflow-hidden aspect-[4/3] bg-white/5 border border-gray-200 dark:border-white/20">
+              <img src="/assets/screenshot_projects.png" alt="Build Logs"
+                class="w-full h-full object-contain rounded-xl border border-white/5 opacity-90 p-2" />
+            </div>
+          </div>
+          <div class="order-1 md:order-2">
+            <div
+              class="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xl mb-6">
+              <i class="fa-solid fa-magnifying-glass-chart"></i>
+            </div>
+            <h3 class="text-3xl mb-4 text-white">Execution Evidence</h3>
+            <p class="text-gray-400 mb-6 leading-relaxed">Review delivered project summaries, completion status,
+              and audit logs for how each candidate solved technical blockers. See the actual build process, not
+              just the final output.</p>
+            <ul class="space-y-3">
+              <li class="flex items-center gap-3 text-sm text-gray-300"><i
+                  class="fa-solid fa-check text-cyan-400"></i> Full project build audit trails</li>
+              <li class="flex items-center gap-3 text-sm text-gray-300"><i
+                  class="fa-solid fa-check text-cyan-400"></i> Problem-solving approach visibility</li>
+              <li class="flex items-center gap-3 text-sm text-gray-300"><i
+                  class="fa-solid fa-check text-cyan-400"></i> Code quality and iteration history</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-12 items-center">
+          <div>
+            <div
+              class="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center text-xl mb-6">
+              <i class="fa-solid fa-bullseye"></i>
+            </div>
+            <h3 class="text-3xl mb-4 text-white">Readiness Signals</h3>
+            <p class="text-gray-400 mb-6 leading-relaxed">Assess current build momentum, response quality,
+              and verification freshness before scheduling recruiter calls. Know who is actively building
+              and ready to start &mdash; not who completed a course two years ago.</p>
+            <ul class="space-y-3">
+              <li class="flex items-center gap-3 text-sm text-gray-300"><i
+                  class="fa-solid fa-check text-amber-500"></i> Real-time activity indicators</li>
+              <li class="flex items-center gap-3 text-sm text-gray-300"><i
+                  class="fa-solid fa-check text-amber-500"></i> Skill verification freshness dates</li>
+              <li class="flex items-center gap-3 text-sm text-gray-300"><i
+                  class="fa-solid fa-check text-amber-500"></i> Engagement and momentum scoring</li>
+            </ul>
+          </div>
+          <div class="relative perspective-1000">
+            <div
+              class="glass-panel p-2 rounded-2xl transform -rotateY-5 shadow-2xl overflow-hidden aspect-[4/3] bg-white/5 border border-gray-200 dark:border-white/20">
+              <img src="/assets/screenshot_dashboard.png" alt="Readiness Dashboard"
+                class="w-full h-full object-contain rounded-xl border border-white/5 opacity-90 p-2" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats Panel -->
+    <section id="talent" class="py-24 border-t border-white/5 bg-black/20">
+      <div class="container max-w-6xl mx-auto">
+        <div class="text-center mb-16 max-w-2xl mx-auto">
+          <h2 class="text-4xl mb-4 text-white">Hiring outcomes from the network</h2>
+          <p class="text-gray-400">Real metrics from employers using proof-backed talent sourcing.</p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <div class="glass p-8 text-center hover:bg-white/5 transition duration-300">
+            <p class="text-5xl font-[Outfit] font-bold text-white mb-3">74%</p>
+            <p class="text-sm text-gray-400">of sourced candidates reach interview stage</p>
+          </div>
+          <div class="glass p-8 text-center hover:bg-white/5 transition duration-300">
+            <p class="text-5xl font-[Outfit] font-bold text-white mb-3">3.2x</p>
+            <p class="text-sm text-gray-400">faster technical screening cycle</p>
+          </div>
+          <div class="glass p-8 text-center hover:bg-white/5 transition duration-300">
+            <p class="text-5xl font-[Outfit] font-bold text-white mb-3">92%</p>
+            <p class="text-sm text-gray-400">pass hands-on workflow simulation</p>
+          </div>
+          <div class="glass p-8 text-center hover:bg-white/5 transition duration-300">
+            <p class="text-5xl font-[Outfit] font-bold text-white mb-3">24h</p>
+            <p class="text-sm text-gray-400">typical response time for first outreach</p>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-center gap-4">
+          <a href="/employers/talent/" class="btn btn-primary text-lg px-8 py-4">Open Talent Marketplace</a>
+          <a href="#" class="btn btn-secondary text-lg px-8 py-4">Book Platform Demo</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Testimonial -->
+    <section class="py-24 border-y border-white/5 bg-black/40">
+      <div class="container text-center max-w-4xl mx-auto">
+        <i class="fa-solid fa-quote-left text-4xl text-emerald-500/40 mb-6 relative -left-4"></i>
+        <h2 class="text-3xl md:text-5xl font-[Outfit] text-white leading-tight mb-10">"We replaced our
+          take-home coding test entirely. The build logs tell us more about a candidate in 5 minutes than a
+          3-hour assessment ever did."</h2>
+
+        <div class="flex items-center justify-center gap-4">
+          <img src="/assets/avatar.png" class="w-16 h-16 rounded-full border-2 border-emerald-500 object-cover"
+            alt="David R.">
+          <div class="text-left">
+            <p class="text-white font-bold text-lg">David R.</p>
+            <p class="text-emerald-400 text-sm">VP of Engineering, Series B Startup</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="py-24 relative overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-b from-transparent to-emerald-900/20"></div>
+      <div class="container relative z-10 text-center max-w-3xl mx-auto">
+        <h2 class="text-5xl font-[Outfit] text-white mb-6">Stop screening. Start verifying.</h2>
+        <p class="text-xl text-gray-400 mb-10">Join companies that hire AI talent backed by execution proof, not
+          promises.</p>
+        <a href="/employers/talent/"
+          class="btn btn-primary text-xl px-10 py-5 animate-pulse-glow shadow-2xl">Browse
+          Verified Talent</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-white/10 py-12 mt-auto">
+    <div class="container flex flex-col md:flex-row justify-between items-center gap-6">
+      <a href="/" class="flex items-center gap-2">
+        <img src="/assets/branding/brand_wordmark_logo.png" alt="My AI Skill Tutor"
+          class="h-7 w-auto object-contain" />
+      </a>
+      <div class="flex items-center gap-4 text-sm">
+        <a href="https://x.com/myaiskilltu" target="_blank" rel="noreferrer"
+          class="text-gray-400 hover:text-white transition w-9 h-9 rounded-full border border-white/10 flex items-center justify-center"
+          aria-label="My AI Skill Tutor on X">
+          <i class="fa-brands fa-x-twitter text-base"></i>
+        </a>
+        <a href="http://linkedin.com/company/myaiskilltutor" target="_blank" rel="noreferrer"
+          class="text-gray-400 hover:text-white transition w-9 h-9 rounded-full border border-white/10 flex items-center justify-center"
+          aria-label="My AI Skill Tutor on LinkedIn">
+          <i class="fa-brands fa-linkedin text-[#0077b5] text-base"></i>
+        </a>
+      </div>
+      <p class="text-sm text-gray-500">&copy; 2026 My AI Skill Tutor. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const themeToggle = document.getElementById('theme-toggle');
+      const themeIcon = document.getElementById('theme-icon');
+
+      const currentTheme = localStorage.getItem('theme') || 'dark';
+      if (currentTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        themeIcon.classList.replace('fa-sun', 'fa-moon');
+        if (themeToggle) {
           themeToggle.classList.replace('text-white', 'text-gray-800');
           themeToggle.classList.replace('border-white/10', 'border-gray-300');
         }
-      });
-    }
-  });
-</script>
-\n</body>
+      }
+
+      if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+          let theme = document.documentElement.getAttribute('data-theme');
+          if (theme === 'light') {
+            document.documentElement.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'dark');
+            themeIcon.classList.replace('fa-moon', 'fa-sun');
+            themeToggle.classList.replace('text-gray-800', 'text-white');
+            themeToggle.classList.replace('border-gray-300', 'border-white/10');
+          } else {
+            document.documentElement.setAttribute('data-theme', 'light');
+            localStorage.setItem('theme', 'light');
+            themeIcon.classList.replace('fa-sun', 'fa-moon');
+            themeToggle.classList.replace('text-white', 'text-gray-800');
+            themeToggle.classList.replace('border-white/10', 'border-gray-300');
+          }
+        });
+      }
+    });
+  </script>
+
+</body>
 
 </html>
