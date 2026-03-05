@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
-import { runtimeFindProjectBySlug, runtimeFindUserByHandle } from "@/lib/runtime";
-import { notFound } from "next/navigation";
+import { runtimeFindProjectBySlug, runtimeFindUserByHandle, runtimeListProjectsByUser } from "@/lib/runtime";
+import { notFound, redirect } from "next/navigation";
 import {
   BRAND_NAME,
   BRAND_X_HANDLE,
@@ -100,6 +100,14 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
   const { handle, projectSlug } = await params;
   const profile = await runtimeFindUserByHandle(handle);
   const project = await runtimeFindProjectBySlug(projectSlug);
+
+  if (profile?.published && projectSlug === "customer-support-copilot" && (!project || project.userId !== profile.id)) {
+    const projects = await runtimeListProjectsByUser(profile.id);
+    const fallbackProject = projects[0];
+    if (fallbackProject) {
+      redirect(`/u/${profile.handle}/projects/${fallbackProject.slug}/`);
+    }
+  }
 
   if (!profile || !profile.published || !project || project.userId !== profile.id) {
     if (handle === "alex-chen-ai" && projectSlug === "customer-support-copilot") {

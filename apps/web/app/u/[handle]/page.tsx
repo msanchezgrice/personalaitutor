@@ -133,6 +133,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   const replacements: Record<string, string> = {
     "/u/alex-chen-ai/": `/u/${profile.handle}/`,
     "/u/alex-chen-ai": `/u/${profile.handle}/`,
+    "/u/alex-chen-ai/projects/customer-support-copilot/": `/u/${profile.handle}/`,
     "Alex Chen": escapeHtml(profile.name),
     "Product Manager": escapeHtml(profile.headline || "AI Builder"),
     "Contact Alex": escapeHtml(`Contact ${profile.name.split(" ")[0] || profile.name}`),

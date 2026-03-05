@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { SignUp } from "@clerk/nextjs";
 import { experimental__simple as clerkSimple } from "@clerk/themes";
 import { BRAND_NAME } from "@/lib/site";
+import { AuthWidgetFallback } from "@/components/auth-widget-fallback";
 
 export const metadata: Metadata = {
   title: `${BRAND_NAME} | Sign Up`,
@@ -27,22 +28,25 @@ export default async function SignUpPage({
 
   return (
     <main className="min-h-screen bg-[#eef3f2] text-[#0f172a] flex items-center justify-center px-6 py-10">
-      <SignUp
-        routing="path"
-        path="/sign-up"
-        forceRedirectUrl={forceRedirectUrl}
-        fallbackRedirectUrl="/onboarding/"
-        appearance={{
-          baseTheme: clerkSimple,
-          variables: {
-            colorPrimary: "#10b981",
-            colorBackground: "#f8fafc",
-            colorInputBackground: "#ffffff",
-            colorText: "#0f172a",
-            colorTextSecondary: "#475569",
-          },
-        }}
-      />
+      <div className="w-full flex flex-col items-center">
+        <SignUp
+          routing="path"
+          path="/sign-up"
+          forceRedirectUrl={forceRedirectUrl}
+          fallbackRedirectUrl="/onboarding/"
+          appearance={{
+            baseTheme: clerkSimple,
+            variables: {
+              colorPrimary: "#10b981",
+              colorBackground: "#f8fafc",
+              colorInputBackground: "#ffffff",
+              colorText: "#0f172a",
+              colorTextSecondary: "#475569",
+            },
+          }}
+        />
+        <AuthWidgetFallback mode="sign-up" />
+      </div>
     </main>
   );
 }
