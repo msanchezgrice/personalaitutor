@@ -1617,6 +1617,9 @@
       }
       return response.summary;
     } catch (err) {
+      if (!isUnauthenticatedError(err)) {
+        throw err;
+      }
       await ensureSession();
       var retry = await getJson("/api/dashboard/summary");
       if (retry && retry.summary) {

@@ -14,6 +14,12 @@ type SessionTokenPayload = {
 function tokenSecret() {
   const explicit = process.env.ONBOARDING_SESSION_SECRET?.trim();
   if (explicit) return explicit;
+  const fallback =
+    process.env.AUTH_SECRET?.trim() ||
+    process.env.NEXTAUTH_SECRET?.trim() ||
+    process.env.CLERK_SECRET_KEY?.trim() ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (fallback) return fallback;
   if (process.env.NODE_ENV === "production") {
     throw new Error("ONBOARDING_SESSION_SECRET_MISSING");
   }
@@ -73,4 +79,3 @@ export function verifyOnboardingSessionToken(
     return null;
   }
 }
-
