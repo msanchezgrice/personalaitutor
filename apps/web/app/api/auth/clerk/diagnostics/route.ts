@@ -54,6 +54,21 @@ function publishableKeyMode(publishableKey: string | undefined) {
   return "unknown";
 }
 
+function secretKeyMode(secretKey: string | undefined) {
+  if (!secretKey) return "missing";
+  if (secretKey.startsWith("sk_test_")) return "test";
+  if (secretKey.startsWith("sk_live_")) return "live";
+  return "unknown";
+}
+
+function hostnameFromOrigin(origin: string) {
+  try {
+    return new URL(origin).hostname;
+  } catch {
+    return "";
+  }
+}
+
 function resolveRequestOrigin(req: NextRequest) {
   const explicitOrigin = req.headers.get("origin")?.trim();
   if (explicitOrigin) return explicitOrigin;
@@ -124,14 +139,19 @@ export async function GET(req: NextRequest) {
   }
 
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim();
+  const secretKey = process.env.CLERK_SECRET_KEY?.trim();
   const frontendApiFromEnv = process.env.NEXT_PUBLIC_CLERK_FRONTEND_API?.trim() || process.env.CLERK_FRONTEND_API?.trim();
   const frontendApiFromKey = publishableKey ? decodeFrontendApiFromPublishableKey(publishableKey) : null;
   const frontendApiHost = frontendApiFromEnv ? normalizeHost(frontendApiFromEnv) : frontendApiFromKey;
   const appOrigin = resolveRequestOrigin(req);
+  const appHostname = hostnameFromOrigin(appOrigin);
+  const appOriginMode = isLocalHost(appHostname) ? "local" : "non-local";
 
   const diagnostics: {
     appOrigin: string;
+    appOriginMode: string;
     publishableKeyMode: string;
+    secretKeyMode: string;
     frontendApiHost: string | null;
     clientStatus: number | null;
     clientErrorCode: string | null;
@@ -141,7 +161,9 @@ export async function GET(req: NextRequest) {
     hints: string[];
   } = {
     appOrigin,
+    appOriginMode,
     publishableKeyMode: publishableKeyMode(publishableKey),
+    secretKeyMode: secretKeyMode(secretKey),
     frontendApiHost: frontendApiHost ?? null,
     clientStatus: null,
     clientErrorCode: null,
@@ -154,13 +176,29 @@ export async function GET(req: NextRequest) {
   if (!publishableKey) {
     diagnostics.hints.push("Set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY in apps/web/.env.local.");
   }
+  if (!secretKey) {
+    diagnostics.hints.push("Set CLERK_SECRET_KEY in apps/web/.env.local.");
+  }
 
   if (!frontendApiHost) {
     diagnostics.hints.push("Unable to derive Clerk frontend API host from publishable key. Check your Clerk key format.");
   }
 
   if (diagnostics.publishableKeyMode === "live") {
-    diagnostics.hints.push("Local development should usually use a pk_test publishable key.");
+    diagnostics.hints.push("Local development should use a pk_test publishable key and matching sk_test secret key.");
+  }
+  if (
+    diagnostics.publishableKeyMode !== "missing" &&
+    diagnostics.secretKeyMode !== "missing" &&
+    diagnostics.publishableKeyMode !== diagnostics.secretKeyMode
+  ) {
+    diagnostics.hints.push("Publishable and secret keys are in different modes. Keep both test or both live.");
+  }
+  if (appHostname === "127.0.0.1") {
+    diagnostics.hints.push("Use http://localhost:6396 for local auth and add that exact origin/redirect in Clerk.");
+  }
+  if (frontendApiFromEnv && frontendApiFromKey && normalizeHost(frontendApiFromEnv) !== frontendApiFromKey) {
+    diagnostics.hints.push("NEXT_PUBLIC_CLERK_FRONTEND_API does not match the host encoded in NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.");
   }
 
   if (frontendApiHost) {
@@ -172,7 +210,7 @@ export async function GET(req: NextRequest) {
     diagnostics.clientNetworkError = probe.networkError;
 
     if (probe.errorCode === "origin_invalid") {
-      diagnostics.hints.push(`Add ${appOrigin} to Clerk Allowed Origins and allowed redirect URLs.`);
+      diagnostics.hints.push(`Add ${appOrigin} to Clerk Allowed Origins and allowed redirect URLs in the same Clerk instance as your keys.`);
     }
     if (probe.status === 401 || probe.status === 403) {
       diagnostics.hints.push("Verify publishable key and Clerk domain belong to the same Clerk instance.");

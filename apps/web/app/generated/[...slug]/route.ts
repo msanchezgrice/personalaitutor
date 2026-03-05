@@ -273,6 +273,123 @@ function buildDocxBuffer(lines: string[]) {
   ]);
 }
 
+function buildPptxBuffer(lines: string[]) {
+  const title = lines[0]?.trim() || "Generated Artifact";
+  const bulletLines = lines.slice(1, 8).map((line) => line.trim()).filter(Boolean);
+
+  const titleParagraph = [
+    "<a:p>",
+    '<a:r><a:rPr lang="en-US" sz="3600" b="1"/><a:t>',
+    escapeXml(title),
+    "</a:t></a:r>",
+    '<a:endParaRPr lang="en-US" sz="3600"/>',
+    "</a:p>",
+  ].join("");
+
+  const bulletParagraphs = bulletLines.length
+    ? bulletLines
+      .map((line) => [
+        '<a:p><a:pPr marL="342900" indent="-171450"><a:buChar char="-"/></a:pPr>',
+        '<a:r><a:rPr lang="en-US" sz="2000"/><a:t>',
+        escapeXml(line),
+        "</a:t></a:r>",
+        '<a:endParaRPr lang="en-US" sz="2000"/></a:p>',
+      ].join(""))
+      .join("")
+    : '<a:p><a:r><a:rPr lang="en-US" sz="2000"/><a:t>Generated presentation content.</a:t></a:r><a:endParaRPr lang="en-US" sz="2000"/></a:p>';
+
+  const contentTypes = [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
+    '<Default Extension="xml" ContentType="application/xml"/>',
+    '<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>',
+    '<Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>',
+    '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>',
+    '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>',
+    "</Types>",
+  ].join("");
+
+  const rootRels = [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>',
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>',
+    '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>',
+    "</Relationships>",
+  ].join("");
+
+  const presentationRels = [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>',
+    "</Relationships>",
+  ].join("");
+
+  const presentationXml = [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">',
+    '<p:sldIdLst><p:sldId id="256" r:id="rId1"/></p:sldIdLst>',
+    '<p:sldSz cx="9144000" cy="6858000" type="screen4x3"/>',
+    '<p:notesSz cx="6858000" cy="9144000"/>',
+    "</p:presentation>",
+  ].join("");
+
+  const slideXml = [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">',
+    "<p:cSld><p:spTree>",
+    '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>',
+    '<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>',
+    '<p:sp><p:nvSpPr><p:cNvPr id="2" name="Title"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>',
+    '<a:xfrm><a:off x="457200" y="274320"/><a:ext cx="8229600" cy="1143000"/></a:xfrm>',
+    "</p:spPr><p:txBody><a:bodyPr/><a:lstStyle/>",
+    titleParagraph,
+    "</p:txBody></p:sp>",
+    '<p:sp><p:nvSpPr><p:cNvPr id="3" name="Body"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>',
+    '<a:xfrm><a:off x="457200" y="1714500"/><a:ext cx="8229600" cy="4381500"/></a:xfrm>',
+    "</p:spPr><p:txBody><a:bodyPr/><a:lstStyle/>",
+    bulletParagraphs,
+    "</p:txBody></p:sp>",
+    "</p:spTree></p:cSld>",
+    "<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>",
+    "</p:sld>",
+  ].join("");
+
+  const now = new Date().toISOString();
+  const coreXml = [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+    "<dc:title>Generated Artifact</dc:title>",
+    "<dc:creator>My AI Skill Tutor</dc:creator>",
+    `<dcterms:created xsi:type="dcterms:W3CDTF">${escapeXml(now)}</dcterms:created>`,
+    `<dcterms:modified xsi:type="dcterms:W3CDTF">${escapeXml(now)}</dcterms:modified>`,
+    "</cp:coreProperties>",
+  ].join("");
+
+  const appXml = [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">',
+    "<Application>My AI Skill Tutor</Application>",
+    "<Slides>1</Slides>",
+    "<Notes>0</Notes>",
+    "<HiddenSlides>0</HiddenSlides>",
+    "<MMClips>0</MMClips>",
+    "<ScaleCrop>false</ScaleCrop>",
+    "</Properties>",
+  ].join("");
+
+  return buildZip([
+    { name: "[Content_Types].xml", data: Buffer.from(contentTypes, "utf8") },
+    { name: "_rels/.rels", data: Buffer.from(rootRels, "utf8") },
+    { name: "ppt/presentation.xml", data: Buffer.from(presentationXml, "utf8") },
+    { name: "ppt/_rels/presentation.xml.rels", data: Buffer.from(presentationRels, "utf8") },
+    { name: "ppt/slides/slide1.xml", data: Buffer.from(slideXml, "utf8") },
+    { name: "docProps/core.xml", data: Buffer.from(coreXml, "utf8") },
+    { name: "docProps/app.xml", data: Buffer.from(appXml, "utf8") },
+  ]);
+}
+
 function buildHtmlArtifact(descriptor: ArtifactDescriptor) {
   const title = escapeHtml(descriptor.title);
   const description = escapeHtml(descriptor.description);
@@ -315,8 +432,9 @@ function mimeByExtension(ext: string) {
       return "application/pdf";
     case "docx":
       return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-    case "txt":
     case "pptx":
+      return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+    case "txt":
       return "text/plain; charset=utf-8";
     default:
       return "application/octet-stream";
@@ -329,10 +447,6 @@ function safeFilename(name: string, ext: string) {
     .replace(/[^a-zA-Z0-9._-]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80) || "artifact";
-
-  if (ext === "pptx") {
-    return `${base}.txt`;
-  }
   return `${base}.${ext}`;
 }
 
@@ -359,6 +473,8 @@ export async function GET(_req: Request, context: { params: Promise<{ slug?: str
     ? Buffer.from(buildHtmlArtifact(descriptor), "utf8")
     : ext === "pdf"
       ? buildPdfBuffer(lines)
+      : ext === "pptx"
+        ? buildPptxBuffer(lines)
       : ext === "docx"
         ? buildDocxBuffer(lines)
         : Buffer.from(lines.join("\n"), "utf8");

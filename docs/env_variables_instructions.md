@@ -69,6 +69,16 @@ This document lists every environment variable required or recommended for `myai
 - `LINKEDIN_REDIRECT_URI=https://myaiskilltutor.com/api/auth/linkedin/callback`
 - `X_REDIRECT_URI=https://myaiskilltutor.com/api/auth/x/callback`
 
+## Local Clerk Alignment (Development)
+- Use `http://localhost:6396` as the canonical local origin (avoid mixing `127.0.0.1` and `localhost`).
+- In Clerk dashboard for your **test** instance, add `http://localhost:6396` to:
+  - Allowed Origins
+  - Allowed Redirect URLs
+- Keep key modes aligned locally:
+  - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...`
+  - `CLERK_SECRET_KEY=sk_test_...`
+- Run `curl http://localhost:6396/api/auth/clerk/diagnostics` to verify origin/key wiring before E2E auth tests.
+
 ## Validation Checklist
 1. `PERSISTENCE_MODE=supabase` in Vercel for all environments.
 2. `SUPABASE_URL` and keys point to the same Supabase project.
