@@ -1,7 +1,5 @@
-import { redirect } from "next/navigation";
-
-export const dynamic = "force-dynamic";
+import { GeminiStaticPage } from "@/components/gemini-static-page";
 
 export default async function DashboardUpdatesPage() {
-  redirect("/dashboard");
+  return <GeminiStaticPage template="dashboard/updates/index.html" />;
 }

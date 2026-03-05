@@ -1,16 +1,7 @@
 import { jsonError, jsonOk, runtimeConnectOAuth, runtimeMarkOAuthFailure, runtimeUpdateProfile } from "@/lib/runtime";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUserId } from "@/lib/auth";
-
-function parseState(state: string | null) {
-  if (!state) return null;
-  try {
-    const decoded = Buffer.from(state, "base64url").toString("utf8");
-    return JSON.parse(decoded) as { userId?: string; redirect?: boolean; mock?: boolean; redirectPath?: string };
-  } catch {
-    return null;
-  }
-}
+import { verifyOAuthStateToken } from "@/lib/oauth-state";
 
 function sanitizeRedirectPath(path: string | null | undefined) {
   if (!path || !path.trim()) return null;
@@ -75,11 +66,19 @@ function pickLegacyPictureUrl(payload: unknown): string | null {
 
 export async function GET(req: NextRequest) {
   const error = req.nextUrl.searchParams.get("error");
-  const state = parseState(req.nextUrl.searchParams.get("state"));
+  const state = verifyOAuthStateToken<{
+    userId?: string;
+    redirect?: boolean;
+    mock?: boolean;
+    redirectPath?: string | null;
+  }>(req.nextUrl.searchParams.get("state"), "linkedin");
+  if (!state) {
+    return jsonError("LINKEDIN_OAUTH_STATE_INVALID", "LinkedIn callback state is invalid or expired", 400);
+  }
   const authUserId = await getAuthUserId(req);
-  const userId = authUserId ?? req.headers.get("x-user-id") ?? state?.userId ?? null;
-  const redirectPath = sanitizeRedirectPath(req.nextUrl.searchParams.get("redirectPath")) ?? sanitizeRedirectPath(state?.redirectPath);
-  const shouldRedirect = req.nextUrl.searchParams.get("redirect") === "1" || state?.redirect || Boolean(redirectPath);
+  const userId = authUserId ?? (typeof state.data.userId === "string" ? state.data.userId : null);
+  const redirectPath = sanitizeRedirectPath(state.data.redirectPath);
+  const shouldRedirect = req.nextUrl.searchParams.get("redirect") === "1" || Boolean(state.data.redirect) || Boolean(redirectPath);
 
   if (!userId) {
     if (shouldRedirect) {
@@ -104,7 +103,7 @@ export async function GET(req: NextRequest) {
 
   let accountLabel = "LinkedIn Profile";
   let pictureUrl: string | null = null;
-  if (!state?.mock) {
+  if (!state.data.mock) {
     const clientId = process.env.LINKEDIN_CLIENT_ID;
     const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
     if (!clientId || !clientSecret) {

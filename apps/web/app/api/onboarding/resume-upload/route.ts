@@ -1,8 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 import { jsonError, jsonOk, runtimeFindOnboardingSession } from "@/lib/runtime";
+import { verifyOnboardingSessionToken } from "@/lib/onboarding-session-token";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = new Set(["pdf", "doc", "docx", "txt"]);
+const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+]);
 
 function safeFilename(input: string) {
   return input
@@ -47,15 +54,26 @@ export async function POST(req: Request) {
   try {
     const form = await req.formData();
     const sessionId = String(form.get("sessionId") ?? "").trim();
+    const sessionToken = String(form.get("sessionToken") ?? "").trim();
     const file = form.get("file");
 
     if (!sessionId) {
       return jsonError("INVALID_BODY", "sessionId is required", 400);
     }
+    if (!sessionToken) {
+      return jsonError("INVALID_BODY", "sessionToken is required", 400);
+    }
 
     const session = await runtimeFindOnboardingSession(sessionId);
     if (!session) {
       return jsonError("SESSION_NOT_FOUND", "Onboarding session was not found", 404);
+    }
+    const validToken = verifyOnboardingSessionToken(sessionToken, {
+      sessionId,
+      userId: session.userId,
+    });
+    if (!validToken) {
+      return jsonError("UNAUTHORIZED_SESSION", "Onboarding session token is invalid or expired", 401);
     }
 
     if (!(file instanceof File)) {
@@ -70,6 +88,9 @@ export async function POST(req: Request) {
 
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
     if (!ALLOWED_EXTENSIONS.has(ext)) {
+      return jsonError("FILE_TYPE_NOT_ALLOWED", "Supported formats: PDF, DOC, DOCX, TXT", 400);
+    }
+    if (file.type && !ALLOWED_MIME_TYPES.has(file.type)) {
       return jsonError("FILE_TYPE_NOT_ALLOWED", "Supported formats: PDF, DOC, DOCX, TXT", 400);
     }
 
@@ -126,4 +147,3 @@ export async function POST(req: Request) {
     });
   }
 }
-

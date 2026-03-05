@@ -26,6 +26,9 @@ export async function POST(req: NextRequest) {
     });
 
     if (!result.ok) {
+      if (result.errorCode === "FORBIDDEN") {
+        return jsonError("FORBIDDEN", "Project access denied", 403);
+      }
       return jsonError("SOCIAL_DRAFT_GENERATION_FAILED", "Failed to generate social drafts", 409, {
         failureCode: result.errorCode,
         recoveryAction: "Retry generation after provider recovery",

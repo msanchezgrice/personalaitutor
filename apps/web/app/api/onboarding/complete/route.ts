@@ -11,6 +11,7 @@ import {
   runtimeUpdateOnboardingCareerImport,
   runtimeUpdateOnboardingSituation,
 } from "@/lib/runtime";
+import { verifyOnboardingSessionToken } from "@/lib/onboarding-session-token";
 
 const goalEnum = z.enum([
   "build_business",
@@ -22,6 +23,7 @@ const goalEnum = z.enum([
 
 const schema = z.object({
   sessionId: z.string().min(1),
+  sessionToken: z.string().min(20),
   careerPathId: z.string().min(1),
   careerCategoryLabel: z.string().min(1).max(80).optional(),
   jobTitle: z.string().min(1).max(120).optional(),
@@ -50,6 +52,16 @@ export async function POST(req: NextRequest) {
     if (!existingSession) {
       return jsonError("SESSION_NOT_FOUND", "Onboarding session was not found", 404, {
         recoveryAction: "Restart onboarding and retry the analysis step",
+      });
+    }
+
+    const validToken = verifyOnboardingSessionToken(payload.sessionToken, {
+      sessionId: payload.sessionId,
+      userId: existingSession.userId,
+    });
+    if (!validToken) {
+      return jsonError("UNAUTHORIZED_SESSION", "Onboarding session token is invalid or expired", 401, {
+        recoveryAction: "Restart onboarding to refresh session access",
       });
     }
 

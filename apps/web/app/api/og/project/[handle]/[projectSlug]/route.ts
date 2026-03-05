@@ -3,7 +3,7 @@ import { generateProjectOgSvg, jsonError, runtimeFindProjectBySlug, runtimeFindU
 export async function GET(_req: Request, context: { params: Promise<{ handle: string; projectSlug: string }> }) {
   const { handle, projectSlug } = await context.params;
   const profile = await runtimeFindUserByHandle(handle);
-  if (!profile) {
+  if (!profile || !profile.published) {
     return jsonError("PROFILE_NOT_FOUND", "Profile not found", 404);
   }
 

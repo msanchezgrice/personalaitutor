@@ -43,6 +43,10 @@ test.describe("hard gate browser verification", () => {
     const dashboardChatResponse = await page.request.get("/dashboard/chat", { maxRedirects: 0 });
     expect([307, 308]).toContain(dashboardChatResponse.status());
     expect(dashboardChatResponse.headers().location || "").toContain("/sign-in?");
+
+    const dashboardUpdatesResponse = await page.request.get("/dashboard/updates", { maxRedirects: 0 });
+    expect([307, 308]).toContain(dashboardUpdatesResponse.status());
+    expect(dashboardUpdatesResponse.headers().location || "").toContain("/sign-in?");
   });
 
   test("employer talent page hydrates matrix-driven filters and cards", async ({ page }) => {
@@ -75,5 +79,20 @@ test.describe("hard gate browser verification", () => {
     const firstFilter = skillFilters.first();
     await firstFilter.check();
     await expect(cards.first()).toBeVisible();
+  });
+
+  test("onboarding transitions respond quickly and talent detail has no theme toggle", async ({ page }) => {
+    await page.goto("/onboarding");
+    await page.locator("input[type='text']").first().fill("QA Automation Lead");
+
+    const clickStartedAt = Date.now();
+    await page.getByRole("button", { name: /^continue/i }).click();
+    await expect(page.getByText("Work Details")).toBeVisible();
+    const transitionMs = Date.now() - clickStartedAt;
+    expect(transitionMs).toBeLessThan(2000);
+
+    await page.goto("/employers/talent/candidate-002");
+    await expect(page.locator("#theme-toggle")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: /candidate 002/i })).toBeVisible();
   });
 });

@@ -15,6 +15,7 @@ type Step = 1 | 2 | 3 | 4 | 5;
 type OnboardingStartPayload = {
   ok: boolean;
   session?: { id: string; userId: string };
+  sessionToken?: string;
   user?: { id: string; handle: string; name: string };
   error?: { message?: string };
 };
@@ -400,6 +401,7 @@ export function OnboardingIntake() {
   const [linkedinConnected, setLinkedinConnected] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [assessmentScore, setAssessmentScore] = useState<number | null>(null);
   const [recommendedPaths, setRecommendedPaths] = useState<string[]>([]);
   const [resumeUploadBusy, setResumeUploadBusy] = useState(false);
@@ -412,6 +414,7 @@ export function OnboardingIntake() {
   const quizStartFired = useRef(false);
   const quizCompleteFired = useRef(false);
   const onboardingCompleteFired = useRef(false);
+  const sessionWarmupStarted = useRef(false);
 
   const [careerCategory, setCareerCategory] = useState<(typeof careerCategoryOptions)[number]["value"]>("product-manager");
   const [customCareerCategory, setCustomCareerCategory] = useState("");
@@ -475,10 +478,10 @@ export function OnboardingIntake() {
 
     const params = new URLSearchParams(window.location.search);
     const maybeSessionId = params.get("sessionId");
-    let boot: { sessionId?: string; sessionUserId?: string } | null = null;
+    let boot: { sessionId?: string; sessionUserId?: string; sessionToken?: string } | null = null;
     try {
       const raw = window.sessionStorage.getItem(ONBOARDING_BOOTSTRAP_KEY);
-      boot = raw ? (JSON.parse(raw) as { sessionId?: string; sessionUserId?: string }) : null;
+      boot = raw ? (JSON.parse(raw) as { sessionId?: string; sessionUserId?: string; sessionToken?: string }) : null;
     } catch {
       boot = null;
     }
@@ -488,9 +491,13 @@ export function OnboardingIntake() {
       if (boot?.sessionId === maybeSessionId && boot.sessionUserId) {
         setSessionUserId(boot.sessionUserId);
       }
+      if (boot?.sessionId === maybeSessionId && boot.sessionToken) {
+        setSessionToken(boot.sessionToken);
+      }
     } else if (boot?.sessionId) {
       setSessionId(boot.sessionId);
       if (boot.sessionUserId) setSessionUserId(boot.sessionUserId);
+      if (boot.sessionToken) setSessionToken(boot.sessionToken);
     }
     const oauth = params.get("oauth");
     if (oauth === "linkedin_connected") {
@@ -536,7 +543,10 @@ export function OnboardingIntake() {
 
   const ensureSession = async () => {
     if (sessionId) {
-      return { id: sessionId, userId: sessionUserId ?? "" };
+      if (!sessionToken) {
+        throw new Error("Onboarding session expired. Restart onboarding to continue.");
+      }
+      return { id: sessionId, userId: sessionUserId ?? "", token: sessionToken };
     }
     const payload = await postJson<OnboardingStartPayload>("/api/onboarding/start", {
       name: jobTitle.trim() || "New Learner",
@@ -546,18 +556,35 @@ export function OnboardingIntake() {
     if (!payload.session?.id || !payload.session?.userId) {
       throw new Error("Unable to initialize onboarding session");
     }
+    if (!payload.sessionToken) {
+      throw new Error("Unable to initialize onboarding session token");
+    }
     setSessionId(payload.session.id);
     setSessionUserId(payload.session.userId);
+    setSessionToken(payload.sessionToken);
     try {
       window.sessionStorage.setItem(
         ONBOARDING_BOOTSTRAP_KEY,
-        JSON.stringify({ sessionId: payload.session.id, sessionUserId: payload.session.userId }),
+        JSON.stringify({
+          sessionId: payload.session.id,
+          sessionUserId: payload.session.userId,
+          sessionToken: payload.sessionToken,
+        }),
       );
     } catch {
       // Ignore storage failures.
     }
-    return { id: payload.session.id, userId: payload.session.userId };
+    return { id: payload.session.id, userId: payload.session.userId, token: payload.sessionToken };
   };
+
+  useEffect(() => {
+    if (step < 2) return;
+    if (sessionId || sessionWarmupStarted.current) return;
+    sessionWarmupStarted.current = true;
+    void ensureSession().catch(() => {
+      sessionWarmupStarted.current = false;
+    });
+  }, [step, sessionId]);
 
   const validateStepOne = () => {
     if (!careerCategory) return "Select your career category.";
@@ -598,7 +625,6 @@ export function OnboardingIntake() {
       const href =
         `/api/auth/linkedin/start?redirect=1` +
         `&sessionId=${encodeURIComponent(session.id)}` +
-        `${session.userId ? `&userId=${encodeURIComponent(session.userId)}` : ""}` +
         `&redirectPath=${encodeURIComponent(redirectPath)}`;
       window.location.href = href;
     } catch (err) {
@@ -615,6 +641,7 @@ export function OnboardingIntake() {
       const session = await ensureSession();
       const form = new FormData();
       form.append("sessionId", session.id);
+      form.append("sessionToken", session.token);
       form.append("file", file);
 
       const res = await fetch("/api/onboarding/resume-upload", {
@@ -673,6 +700,7 @@ export function OnboardingIntake() {
 
       const completed = await postJson<OnboardingCompletePayload>("/api/onboarding/complete", {
         sessionId: session.id,
+        sessionToken: session.token,
         careerPathId: selectedCareer.path,
         careerCategoryLabel: selectedCareerLabel,
         jobTitle: jobTitle.trim(),

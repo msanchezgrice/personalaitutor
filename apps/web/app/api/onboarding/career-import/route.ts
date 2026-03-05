@@ -1,8 +1,10 @@
-import { jsonError, jsonOk, runtimeUpdateOnboardingCareerImport } from "@/lib/runtime";
+import { jsonError, jsonOk, runtimeFindOnboardingSession, runtimeUpdateOnboardingCareerImport } from "@/lib/runtime";
 import { z } from "zod";
+import { verifyOnboardingSessionToken } from "@/lib/onboarding-session-token";
 
 const schema = z.object({
   sessionId: z.string().min(1),
+  sessionToken: z.string().min(20),
   careerPathId: z.string().min(1),
   careerCategoryLabel: z.string().min(1).max(80).optional(),
   jobTitle: z.string().min(1).max(120).optional(),
@@ -21,7 +23,31 @@ export async function POST(req: Request) {
     return jsonError("INVALID_BODY", "Invalid career import payload", 400, { issues: parsed.error.issues });
   }
 
-  const session = await runtimeUpdateOnboardingCareerImport(parsed.data);
+  const existing = await runtimeFindOnboardingSession(parsed.data.sessionId);
+  if (!existing) {
+    return jsonError("SESSION_NOT_FOUND", "Onboarding session was not found", 404);
+  }
+  const validToken = verifyOnboardingSessionToken(parsed.data.sessionToken, {
+    sessionId: parsed.data.sessionId,
+    userId: existing.userId,
+  });
+  if (!validToken) {
+    return jsonError("UNAUTHORIZED_SESSION", "Onboarding session token is invalid or expired", 401);
+  }
+
+  const session = await runtimeUpdateOnboardingCareerImport({
+    sessionId: parsed.data.sessionId,
+    careerPathId: parsed.data.careerPathId,
+    careerCategoryLabel: parsed.data.careerCategoryLabel,
+    jobTitle: parsed.data.jobTitle,
+    yearsExperience: parsed.data.yearsExperience,
+    companySize: parsed.data.companySize,
+    dailyWorkSummary: parsed.data.dailyWorkSummary,
+    keySkills: parsed.data.keySkills,
+    aiComfort: parsed.data.aiComfort,
+    linkedinUrl: parsed.data.linkedinUrl,
+    resumeFilename: parsed.data.resumeFilename,
+  });
   if (!session) {
     return jsonError("CAREER_IMPORT_FAILED", "Career import failed due to missing session or invalid career path", 400);
   }

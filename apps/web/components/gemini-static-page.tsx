@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import Script from "next/script";
 import { BRAND_NAME } from "@/lib/site";
 
 type GeminiStaticPageProps = {
@@ -7,6 +8,8 @@ type GeminiStaticPageProps = {
   replacements?: Record<string, string>;
   className?: string;
 };
+
+const templateCache = new Map<string, { className: string; body: string }>();
 
 function sanitizeTemplateHtml(input: string) {
   return input
@@ -41,6 +44,9 @@ function extractFallbackBody(html: string) {
 }
 
 function loadTemplate(template: string) {
+  const cached = templateCache.get(template);
+  if (cached) return cached;
+
   const candidates = [
     path.join(process.cwd(), "mockups", "high_fidelity", template),
     path.join(process.cwd(), "..", "..", "mockups", "high_fidelity", template),
@@ -56,20 +62,24 @@ function loadTemplate(template: string) {
   const bodyMatch = html.match(/<body([^>]*)>([\s\S]*?)<\/body>/i);
 
   if (!bodyMatch) {
-    return {
+    const extracted = {
       className: "",
       body: stripScripts(extractFallbackBody(html)),
     };
+    templateCache.set(template, extracted);
+    return extracted;
   }
 
   const attrs = bodyMatch[1] ?? "";
   const body = stripScripts(bodyMatch[2] ?? "");
   const classMatch = attrs.match(/class=["']([^"']+)["']/i);
 
-  return {
+  const extracted = {
     className: classMatch?.[1] ?? "",
     body,
   };
+  templateCache.set(template, extracted);
+  return extracted;
 }
 
 function escapeRegExp(input: string) {
@@ -141,6 +151,11 @@ function applyReplacements(input: string, replacements?: Record<string, string>)
     /<div class="mt-8 text-center border-t border-white\/10 pt-6">[\s\S]*?Go directly to\s*Dashboard[\s\S]*?<\/div>/gi,
     "",
   );
+  output = output.replace(
+    /<div[^>]*class="fixed top-4 right-4 z-\[100\]"[^>]*>[\s\S]*?id="theme-toggle"[\s\S]*?<\/div>/gi,
+    "",
+  );
+  output = output.replace(/<button[^>]*id="theme-toggle"[\s\S]*?<\/button>/gi, "");
   output = output.replace(/<img[^>]+src="\/assets\/branding\/brand_wordmark_logo\.png"[^>]*>/gi, brandLockup);
   output = output.replace(/\/assets\/branding\/brand_logo_icon\.png/g, "/assets/branding/brand_brain_icon.svg");
   output = output
@@ -155,11 +170,14 @@ export function GeminiStaticPage({ template, replacements, className }: GeminiSt
   const html = applyReplacements(extracted.body, replacements);
 
   return (
-    <div
-      data-gemini-shell="1"
-      className={className ?? extracted.className}
-      dangerouslySetInnerHTML={{ __html: html }}
-      suppressHydrationWarning
-    />
+    <>
+      <div
+        data-gemini-shell="1"
+        className={className ?? extracted.className}
+        dangerouslySetInnerHTML={{ __html: html }}
+        suppressHydrationWarning
+      />
+      <Script src="/gemini-runtime.js" strategy="afterInteractive" />
+    </>
   );
 }

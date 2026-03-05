@@ -4,7 +4,7 @@ export async function GET(_req: Request, context: { params: Promise<{ handle: st
   const { handle } = await context.params;
   const profile = await runtimeFindUserByHandle(handle);
 
-  if (!profile) {
+  if (!profile || !profile.published) {
     return jsonError("PROFILE_NOT_FOUND", "Profile not found", 404);
   }
 

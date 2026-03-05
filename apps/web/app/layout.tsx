@@ -18,9 +18,8 @@ import "./globals.css";
 const appBaseUrl = getSiteUrl();
 const facebookAppId = process.env.FACEBOOK_APP_ID?.trim() || process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();
 const defaultOgImageUrl = `${appBaseUrl}${DEFAULT_OG_IMAGE_PATH}`;
-const fbPixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID?.trim() || "1245045833736130";
-const posthogProjectApiKey =
-  process.env.NEXT_PUBLIC_POSTHOG_KEY?.trim() || "phc_tBkycftNmr65bgnAybwSHxcFQZDaLLIqc8TfUgu5E3y";
+const fbPixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID?.trim() || "";
+const posthogProjectApiKey = process.env.NEXT_PUBLIC_POSTHOG_KEY?.trim() || "";
 const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST?.trim() || "https://us.i.posthog.com";
 
 function buildPosthogInitScript(apiKey: string, host: string) {
@@ -54,7 +53,7 @@ person_profiles:"identified_only"
 `;
 }
 
-const posthogInitScript = buildPosthogInitScript(posthogProjectApiKey, posthogHost);
+const posthogInitScript = posthogProjectApiKey ? buildPosthogInitScript(posthogProjectApiKey, posthogHost) : "";
 const clerkLocalization = {
   signIn: {
     start: {
@@ -155,7 +154,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
         <script id="theme-boot" dangerouslySetInnerHTML={{ __html: themeBootScript }} />
-        <script id="posthog-init" dangerouslySetInnerHTML={{ __html: posthogInitScript }} />
+        {posthogInitScript ? (
+          <script id="posthog-init" dangerouslySetInnerHTML={{ __html: posthogInitScript }} />
+        ) : null}
         {fbPixelScript ? (
           <script id="fb-pixel" dangerouslySetInnerHTML={{ __html: fbPixelScript }} />
         ) : null}
@@ -177,7 +178,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         ) : null}
         <ClerkProvider clerkJSUrl={clerkJsUrl} localization={clerkLocalization}>
           <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
-          <Script src="/gemini-runtime.js" strategy="afterInteractive" />
           {children}
           <SpeedInsights />
           <Analytics />

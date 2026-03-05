@@ -1148,6 +1148,7 @@ export async function runtimeStartAssessment(userId: string) {
 export async function runtimeSubmitAssessment(input: {
   assessmentId: string;
   answers: Array<{ questionId: string; value: number }>;
+  actorUserId?: string;
 }) {
   if (mode() === "memory") return memSubmitAssessment(input);
 
@@ -1158,6 +1159,13 @@ export async function runtimeSubmitAssessment(input: {
     .eq("id", input.assessmentId)
     .maybeSingle();
   if (!attempt) return null;
+
+  if (input.actorUserId) {
+    const actor = await runtimeFindUserById(input.actorUserId);
+    if (!actor || actor.id !== attempt.learner_profile_id) {
+      return null;
+    }
+  }
 
   const total = input.answers.reduce((sum, answer) => sum + Number(answer.value || 0), 0);
   const score = Number((input.answers.length ? total / input.answers.length / 5 : 0).toFixed(4));
@@ -1524,7 +1532,7 @@ export async function runtimeAddProjectChatMessage(input: {
 
   const project = await runtimeFindProjectById(input.projectId);
   const profile = await runtimeFindUserById(input.userId);
-  if (!project || !profile) return null;
+  if (!project || !profile || project.userId !== profile.id) return null;
 
   await appendBuildLog({
     projectId: project.id,
@@ -1659,7 +1667,7 @@ export async function runtimeRequestArtifactGeneration(input: {
 
   const project = await runtimeFindProjectById(input.projectId);
   const profile = await runtimeFindUserById(input.userId);
-  if (!project || !profile) return null;
+  if (!project || !profile || project.userId !== profile.id) return null;
 
   const supabase = getSupabaseAdmin();
 
@@ -2095,6 +2103,12 @@ export async function runtimeCreateSocialDrafts(input: {
   if (!profile) return { ok: false as const, errorCode: "USER_NOT_FOUND", drafts: [] as SocialDraft[] };
 
   const project = input.projectId ? await runtimeFindProjectById(input.projectId) : null;
+  if (input.projectId && !project) {
+    return { ok: false as const, errorCode: "PROJECT_NOT_FOUND", drafts: [] as SocialDraft[] };
+  }
+  if (project && project.userId !== profile.id) {
+    return { ok: false as const, errorCode: "FORBIDDEN", drafts: [] as SocialDraft[] };
+  }
   const baseUrl = appBaseUrl();
   const profileUrl = `${baseUrl}/u/${profile.handle}`;
   const targetUrl = project ? `${profileUrl}/projects/${project.slug}` : profileUrl;
@@ -2144,6 +2158,7 @@ export async function runtimeCreateSocialDrafts(input: {
 export async function runtimePublishSocialDraft(input: {
   draftId: string;
   mode: PublishMode;
+  userId?: string;
   forceFailCode?: string;
 }) {
   if (mode() === "memory") return memPublishSocialDraft(input);
@@ -2156,6 +2171,14 @@ export async function runtimePublishSocialDraft(input: {
     .maybeSingle();
 
   if (!data) return { ok: false as const, errorCode: "DRAFT_NOT_FOUND", draft: null };
+
+  if (input.userId) {
+    const actor = await runtimeFindUserById(input.userId);
+    if (!actor) return { ok: false as const, errorCode: "USER_NOT_FOUND", draft: null };
+    if (data.learner_profile_id !== actor.id) {
+      return { ok: false as const, errorCode: "FORBIDDEN", draft: null };
+    }
+  }
 
   const draft: SocialDraft = {
     id: data.id,

@@ -18,11 +18,10 @@ function safeHandle(input: string) {
     .slice(0, 40);
 }
 
-function fallbackUserId(req?: NextRequest) {
+function userIdFromProxyHeader(req?: NextRequest) {
   if (!req) return null;
-  const fromHeader = req.headers.get("x-user-id");
-  const fromQuery = req.nextUrl.searchParams.get("userId");
-  return fromHeader ?? fromQuery;
+  const fromHeader = req.headers.get("x-user-id")?.trim();
+  return fromHeader || null;
 }
 
 export async function getAuthUserId(req?: NextRequest) {
@@ -30,9 +29,9 @@ export async function getAuthUserId(req?: NextRequest) {
     const session = await auth();
     if (session.userId) return session.userId;
   } catch {
-    // Non-Clerk contexts can still pass x-user-id header as fallback.
+    // Continue with proxy header fallback below.
   }
-  return fallbackUserId(req);
+  return userIdFromProxyHeader(req);
 }
 
 export async function getAuthSeed(req?: NextRequest): Promise<AuthSeed | null> {

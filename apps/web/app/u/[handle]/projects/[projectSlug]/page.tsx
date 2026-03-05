@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
 import { runtimeFindProjectBySlug, runtimeFindUserByHandle } from "@/lib/runtime";
+import { notFound } from "next/navigation";
 import {
   BRAND_NAME,
   BRAND_X_HANDLE,
@@ -11,7 +12,27 @@ import {
   getSiteUrl,
 } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function safeHttpUrl(value: string | undefined) {
+  if (!value) return null;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
 
 function appBaseUrl() {
   return getSiteUrl();
@@ -22,14 +43,20 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   const profile = await runtimeFindUserByHandle(handle);
   const project = await runtimeFindProjectBySlug(projectSlug);
 
-  if (!profile || !project || project.userId !== profile.id) {
+  if (!profile || !profile.published || !project || project.userId !== profile.id) {
     if (handle === "alex-chen-ai" && projectSlug === "customer-support-copilot") {
       return {
         title: `Customer Support Copilot | Alex Chen | ${BRAND_NAME}`,
         description: "Customer Support Copilot build log and active implementation proof.",
       };
     }
-    return { title: "Project not found" };
+    return {
+      title: "Project not found",
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
   }
 
   return {
@@ -74,27 +101,23 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
   const profile = await runtimeFindUserByHandle(handle);
   const project = await runtimeFindProjectBySlug(projectSlug);
 
-  if (!profile || !project || project.userId !== profile.id) {
+  if (!profile || !profile.published || !project || project.userId !== profile.id) {
     if (handle === "alex-chen-ai" && projectSlug === "customer-support-copilot") {
       return <GeminiStaticPage template="u/alex-chen-ai/projects/customer-support-copilot/index.html" />;
     }
-    return (
-      <main className="min-h-screen bg-[#0f111a] text-white p-10">
-        <h1 className="text-2xl font-bold">Project not found</h1>
-        <p className="text-gray-400 mt-2">The requested project does not exist for this profile.</p>
-      </main>
-    );
+    return notFound();
   }
 
   const replacements: Record<string, string> = {
     "/u/alex-chen-ai/": `/u/${profile.handle}/`,
-    "Alex Chen": profile.name,
-    "Customer Support Copilot": project.title,
-    "An automated email responder using RAG to fetch CRM context before drafting replies. Designed to reduce manual ticket triaging time by 60%.": project.description,
+    "Alex Chen": escapeHtml(profile.name),
+    "Customer Support Copilot": escapeHtml(project.title),
+    "An automated email responder using RAG to fetch CRM context before drafting replies. Designed to reduce manual ticket triaging time by 60%.": escapeHtml(project.description),
   };
 
-  if (profile.avatarUrl) {
-    replacements["/assets/avatar.png"] = profile.avatarUrl;
+  const avatarUrl = safeHttpUrl(profile.avatarUrl ?? undefined);
+  if (avatarUrl) {
+    replacements["/assets/avatar.png"] = avatarUrl;
   }
 
   const creativeWorkLd = {

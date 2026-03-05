@@ -1,5 +1,6 @@
-import { runtimeListProjectEvents } from "@/lib/runtime";
+import { jsonError, runtimeFindProjectById, runtimeFindUserById, runtimeListProjectEvents } from "@/lib/runtime";
 import { NextRequest } from "next/server";
+import { getUserId } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,21 @@ function sseLine(event: string, data: unknown) {
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
+  const userId = getUserId(req);
+  if (!userId) {
+    return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+  }
+  const [profile, project] = await Promise.all([
+    runtimeFindUserById(userId),
+    runtimeFindProjectById(id),
+  ]);
+  if (!profile || !project) {
+    return jsonError("PROJECT_NOT_FOUND", "Project was not found", 404);
+  }
+  if (project.userId !== profile.id) {
+    return jsonError("FORBIDDEN", "Project access denied", 403);
+  }
+
   const startCursor = Number(req.nextUrl.searchParams.get("cursor") ?? "0");
 
   let cursor = Number.isFinite(startCursor) && startCursor >= 0 ? startCursor : 0;

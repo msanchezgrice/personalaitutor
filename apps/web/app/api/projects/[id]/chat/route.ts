@@ -1,4 +1,4 @@
-import { jsonError, jsonOk, runtimeAddProjectChatMessage } from "@/lib/runtime";
+import { jsonError, jsonOk, runtimeAddProjectChatMessage, runtimeFindProjectById, runtimeFindUserById } from "@/lib/runtime";
 import { z } from "zod";
 import { NextRequest } from "next/server";
 import { forcedFailCode, getUserId } from "@/lib/api";
@@ -19,6 +19,20 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   if (!userId) {
     return jsonError("UNAUTHENTICATED", "Sign in required", 401);
   }
+  const [profile, project] = await Promise.all([
+    runtimeFindUserById(userId),
+    runtimeFindProjectById(id),
+  ]);
+  if (!profile) {
+    return jsonError("USER_NOT_FOUND", "Profile was not found", 404);
+  }
+  if (!project) {
+    return jsonError("PROJECT_NOT_FOUND", "Project was not found", 404);
+  }
+  if (project.userId !== profile.id) {
+    return jsonError("FORBIDDEN", "Project access denied", 403);
+  }
+
   const result = await runtimeAddProjectChatMessage({
     projectId: id,
     userId,

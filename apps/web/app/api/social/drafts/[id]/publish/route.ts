@@ -1,10 +1,15 @@
 import { jsonError, jsonOk, runtimePublishSocialDraft } from "@/lib/runtime";
 import { NextRequest } from "next/server";
-import { forcedFailCode } from "@/lib/api";
+import { forcedFailCode, getUserId } from "@/lib/api";
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
+    const userId = getUserId(req);
+    if (!userId) {
+      return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+    }
+
     const mode = req.nextUrl.searchParams.get("mode");
     if (mode !== "api" && mode !== "composer") {
       return jsonError("INVALID_MODE", "mode must be api or composer", 400);
@@ -13,10 +18,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const result = await runtimePublishSocialDraft({
       draftId: id,
       mode,
+      userId,
       forceFailCode: forcedFailCode(req),
     });
 
     if (!result.ok) {
+      if (result.errorCode === "FORBIDDEN") {
+        return jsonError("FORBIDDEN", "Draft access denied", 403);
+      }
       return jsonError("SOCIAL_PUBLISH_FAILED", "Unable to publish draft", 409, {
         failureCode: result.errorCode,
         recoveryAction:

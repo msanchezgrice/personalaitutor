@@ -1,12 +1,12 @@
 import { NextRequest } from "next/server";
 
 export function getUserId(req: NextRequest) {
-  const fromHeader = req.headers.get("x-user-id");
-  const fromQuery = req.nextUrl.searchParams.get("userId");
-  return fromHeader ?? fromQuery;
+  const fromHeader = req.headers.get("x-user-id")?.trim();
+  return fromHeader || null;
 }
 
 export function forcedFailCode(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") return undefined;
   return req.headers.get("x-force-fail") ?? req.nextUrl.searchParams.get("forceFailCode") ?? undefined;
 }
 

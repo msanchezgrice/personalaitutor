@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { getUserId } from "@/lib/api";
 import { getAuthSeed } from "@/lib/auth";
 import { randomUUID } from "node:crypto";
+import { issueOnboardingSessionToken } from "@/lib/onboarding-session-token";
 
 const bodySchema = z
   .object({
@@ -33,8 +34,17 @@ export async function POST(req: NextRequest) {
       email: seed?.email ?? payload.data?.email ?? null,
       handleBase: payload.data?.handleBase ?? seed?.handleBase,
     });
+    const sessionToken = issueOnboardingSessionToken({
+      sessionId: session.id,
+      userId: session.userId,
+    });
     const catalog = getCatalogData();
-    return jsonOk({ user, session, onboardingOptions: catalog.careerPaths.map((c) => ({ id: c.id, name: c.name })) });
+    return jsonOk({
+      user,
+      session,
+      sessionToken,
+      onboardingOptions: catalog.careerPaths.map((c) => ({ id: c.id, name: c.name })),
+    });
   } catch (error) {
     return jsonError("ONBOARDING_START_FAILED", "Failed to start onboarding session", 500, {
       reason: error instanceof Error ? error.message : "UNKNOWN",

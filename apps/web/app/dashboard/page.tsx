@@ -1,12 +1,13 @@
 import { GeminiStaticPage } from "@/components/gemini-static-page";
 import { FbCompleteRegistrationOnDashboard } from "@/components/fb-complete-registration-on-dashboard";
-
-export const dynamic = "force-dynamic";
+import { Suspense } from "react";
 
 export default async function DashboardPage() {
   return (
     <>
-      <FbCompleteRegistrationOnDashboard />
+      <Suspense fallback={null}>
+        <FbCompleteRegistrationOnDashboard />
+      </Suspense>
       <GeminiStaticPage template="dashboard/index.html" />
     </>
   );

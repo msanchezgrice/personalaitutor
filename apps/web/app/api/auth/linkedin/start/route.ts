@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonError } from "@aitutor/shared";
-import { getUserId, missingEnv } from "@/lib/api";
+import { missingEnv } from "@/lib/api";
 import { getAuthUserId } from "@/lib/auth";
 import { runtimeFindOnboardingSession } from "@/lib/runtime";
+import { issueOAuthStateToken } from "@/lib/oauth-state";
 
 const required = ["LINKEDIN_CLIENT_ID"];
 
@@ -47,7 +48,7 @@ function resolveRedirectUri(req: NextRequest, configured: string | undefined, fa
 }
 
 export async function GET(req: NextRequest) {
-  let userId = (await getAuthUserId(req)) ?? getUserId(req) ?? req.nextUrl.searchParams.get("userId");
+  let userId = await getAuthUserId(req);
   const sessionId = req.nextUrl.searchParams.get("sessionId");
   if (!userId && sessionId) {
     const session = await runtimeFindOnboardingSession(sessionId);
@@ -61,6 +62,15 @@ export async function GET(req: NextRequest) {
   const mock = req.nextUrl.searchParams.get("mock") === "1";
   const redirect = req.nextUrl.searchParams.get("redirect") === "1";
   const redirectPath = sanitizeRedirectPath(req.nextUrl.searchParams.get("redirectPath"));
+  const stateToken = issueOAuthStateToken({
+    provider: "linkedin",
+    data: {
+      userId,
+      redirect,
+      redirectPath: redirectPath ?? null,
+      mock,
+    },
+  });
 
   if (!mock) {
     const missing = missingEnv(required);
@@ -70,7 +80,6 @@ export async function GET(req: NextRequest) {
 
     const clientId = process.env.LINKEDIN_CLIENT_ID as string;
     const redirectUri = resolveRedirectUri(req, process.env.LINKEDIN_REDIRECT_URI, "/api/auth/linkedin/callback");
-    const state = Buffer.from(JSON.stringify({ userId, ts: Date.now(), redirect, redirectPath })).toString("base64url");
     const scope = process.env.LINKEDIN_OAUTH_SCOPE?.trim() || "r_liteprofile r_emailaddress w_member_social";
 
     const authorizeUrl = new URL("https://www.linkedin.com/oauth/v2/authorization");
@@ -78,17 +87,14 @@ export async function GET(req: NextRequest) {
     authorizeUrl.searchParams.set("client_id", clientId);
     authorizeUrl.searchParams.set("redirect_uri", redirectUri);
     authorizeUrl.searchParams.set("scope", scope);
-    authorizeUrl.searchParams.set("state", state);
+    authorizeUrl.searchParams.set("state", stateToken);
 
     return NextResponse.redirect(authorizeUrl);
   }
 
   const callback = new URL("/api/auth/linkedin/callback", req.nextUrl.origin);
   callback.searchParams.set("code", "mock_linkedin_code");
-  callback.searchParams.set(
-    "state",
-    Buffer.from(JSON.stringify({ userId, mock: true, redirect, redirectPath })).toString("base64url"),
-  );
+  callback.searchParams.set("state", stateToken);
   if (redirect) {
     callback.searchParams.set("redirect", "1");
   }

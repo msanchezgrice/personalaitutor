@@ -28,6 +28,15 @@
     document.documentElement.setAttribute("data-theme", "light");
     document.documentElement.style.colorScheme = "light";
     document.documentElement.style.backgroundColor = "#f8fafc";
+    var staticThemeToggle = document.getElementById("theme-toggle");
+    if (staticThemeToggle) {
+      var toggleWrap = staticThemeToggle.closest(".fixed");
+      if (toggleWrap) {
+        toggleWrap.remove();
+      } else {
+        staticThemeToggle.remove();
+      }
+    }
     document.documentElement.setAttribute("data-runtime-ready", "1");
     return;
   }
@@ -492,6 +501,28 @@
           node.setAttribute("href", "/u/" + ctx.handle + "/");
         },
       );
+    }
+    if (currentPath === "/dashboard/profile") {
+      var topIdentity = document.querySelector("main .flex.items-center.gap-6");
+      if (topIdentity) {
+        var identityName = topIdentity.querySelector("h3");
+        if (identityName) identityName.textContent = ctx.name;
+        if (ctx.email) {
+          var identityEmail = Array.prototype.find.call(topIdentity.querySelectorAll("p"), function (node) {
+            return (node.textContent || "").indexOf("@") !== -1;
+          });
+          if (identityEmail) identityEmail.textContent = ctx.email;
+        }
+      }
+      if (ctx.avatarUrl) {
+        var safeAvatar = sanitizeImageUrl(ctx.avatarUrl);
+        if (safeAvatar) {
+          Array.prototype.forEach.call(document.querySelectorAll("main .flex.items-center.gap-6 img, img[src='/assets/avatar.png']"), function (img) {
+            img.setAttribute("src", safeAvatar);
+            img.setAttribute("alt", ctx.name);
+          });
+        }
+      }
     }
     renameSocialNavLabels();
   }
@@ -993,11 +1024,7 @@
         });
       }
       ensureDashboardSettingsMenu();
-      var staleMobileToggle = document.querySelector("[data-mobile-nav-toggle='1']");
-      if (staleMobileToggle) staleMobileToggle.remove();
-      var staleMobileOverlay = document.querySelector(".dashboard-mobile-nav-overlay");
-      if (staleMobileOverlay) staleMobileOverlay.remove();
-      document.documentElement.setAttribute("data-mobile-nav", "closed");
+      ensureMobileDashboardNav();
     }
   }
 
@@ -1069,18 +1096,20 @@
       overlay.type = "button";
       overlay.className = "dashboard-mobile-nav-overlay";
       overlay.setAttribute("aria-label", "Close menu");
+      overlay.setAttribute("data-mobile-nav-overlay", "1");
       overlay.addEventListener("click", function () {
         document.documentElement.setAttribute("data-mobile-nav", "closed");
       });
       document.body.appendChild(overlay);
     }
 
-    var toggleButton = header.querySelector("[data-mobile-nav-toggle='1']");
+    var toggleButton = document.getElementById("dashboard-mobile-nav-toggle");
     if (!toggleButton) {
-      toggleButton = document.querySelector("[data-mobile-nav-toggle='1']");
+      toggleButton = header.querySelector("[data-mobile-nav-toggle='1']");
     }
     if (!toggleButton) {
       toggleButton = document.createElement("button");
+      toggleButton.id = "dashboard-mobile-nav-toggle";
       toggleButton.type = "button";
       toggleButton.setAttribute("data-mobile-nav-toggle", "1");
       toggleButton.setAttribute("aria-label", "Open menu");
@@ -1088,17 +1117,22 @@
         "hidden lg:hidden mr-3 h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-gray-200";
       toggleButton.innerHTML = '<i class="fa-solid fa-bars text-sm"></i>';
       document.body.appendChild(toggleButton);
+    } else if (toggleButton.parentElement !== document.body) {
+      document.body.appendChild(toggleButton);
     }
 
     var closeMobileMenu = function () {
       document.documentElement.setAttribute("data-mobile-nav", "closed");
     };
 
-    toggleButton.onclick = function () {
-      var isOpen = document.documentElement.getAttribute("data-mobile-nav") === "open";
-      document.documentElement.setAttribute("data-mobile-nav", isOpen ? "closed" : "open");
-      captureEvent("dashboard_mobile_nav_toggled", { is_open: !isOpen });
-    };
+    if (toggleButton.getAttribute("data-mobile-nav-wired") !== "1") {
+      toggleButton.setAttribute("data-mobile-nav-wired", "1");
+      toggleButton.addEventListener("click", function () {
+        var isOpen = document.documentElement.getAttribute("data-mobile-nav") === "open";
+        document.documentElement.setAttribute("data-mobile-nav", isOpen ? "closed" : "open");
+        captureEvent("dashboard_mobile_nav_toggled", { is_open: !isOpen });
+      });
+    }
 
     var settingsMenu = document.getElementById("dashboard-settings-menu");
     if (settingsMenu) {
@@ -1136,7 +1170,18 @@
   }
 
   async function ensureSession() {
-    if (ctx.sessionId) return { id: ctx.sessionId, userId: ctx.userId, onboardingOptions: ctx.onboardingOptions || [] };
+    if (ctx.sessionId && ctx.sessionToken) {
+      return {
+        id: ctx.sessionId,
+        userId: ctx.userId,
+        token: ctx.sessionToken,
+        onboardingOptions: ctx.onboardingOptions || [],
+      };
+    }
+    if (ctx.sessionId && !ctx.sessionToken) {
+      ctx.sessionId = null;
+      saveCtx(ctx);
+    }
 
     var baseHandle = ctx.name
       .toLowerCase()
@@ -1150,8 +1195,12 @@
       careerPathId: ctx.careerPathId || "product-management",
       avatarUrl: ctx.avatarUrl || null,
     });
+    if (!data || !data.session || !data.session.id || !data.sessionToken) {
+      throw new Error("Unable to initialize onboarding session");
+    }
 
     ctx.sessionId = data.session.id;
+    ctx.sessionToken = data.sessionToken;
     if (data.user && data.user.id) ctx.userId = data.user.id;
     if (data.user && data.user.handle) ctx.handle = data.user.handle;
     if (data.user && data.user.name) ctx.name = data.user.name;
@@ -1173,6 +1222,7 @@
     return {
       id: data.session.id,
       userId: data.session.userId || ctx.userId,
+      token: data.sessionToken,
       onboardingOptions: Array.isArray(data.onboardingOptions) ? data.onboardingOptions : [],
     };
   }
@@ -1434,7 +1484,7 @@
     });
   }
 
-  function createBubble(html, isUser) {
+  function createBubble(text, isUser) {
     var wrapper = document.createElement("div");
     var theme = document.documentElement.getAttribute("data-theme") || "light";
     wrapper.className = isUser
@@ -1443,21 +1493,34 @@
 
     if (isUser) {
       var userAvatar = sanitizeImageUrl(ctx.avatarUrl) || "/assets/avatar.png";
-      var userAlt = escapeHtml(ctx.name || "Learner");
-      wrapper.innerHTML =
-        '<div class="chat-user-bubble bg-emerald-600 text-white p-5 rounded-2xl rounded-tr-sm text-sm shadow-[0_5px_15px_rgba(16,185,129,0.2)]"></div>' +
-        '<img src="' + userAvatar + '" class="w-8 h-8 rounded-full object-cover border border-white/20 flex-shrink-0 mt-1" alt="' + userAlt + '">';
-      wrapper.querySelector("div").innerHTML = html;
+      var bubble = document.createElement("div");
+      bubble.className = "chat-user-bubble bg-emerald-600 text-white p-5 rounded-2xl rounded-tr-sm text-sm shadow-[0_5px_15px_rgba(16,185,129,0.2)]";
+      var message = document.createElement("p");
+      message.textContent = String(text || "");
+      bubble.appendChild(message);
+      var avatar = document.createElement("img");
+      avatar.setAttribute("src", userAvatar);
+      avatar.setAttribute("alt", String(ctx.name || "Learner"));
+      avatar.className = "w-8 h-8 rounded-full object-cover border border-white/20 flex-shrink-0 mt-1";
+      wrapper.appendChild(bubble);
+      wrapper.appendChild(avatar);
       if (theme === "light") {
-        wrapper.querySelector(".chat-user-bubble").classList.add("chat-user-bubble-light");
+        bubble.classList.add("chat-user-bubble-light");
       }
     } else {
-      wrapper.innerHTML =
-        '<div class="w-8 h-8 rounded-full bg-gradient-to-b from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 mt-1 shadow-[0_0_10px_rgba(16,185,129,0.3)]"><i class="fa-solid fa-robot text-white text-[10px]"></i></div>' +
-        '<div class="chat-ai-bubble glass p-5 rounded-2xl rounded-tl-sm text-sm border-emerald-500/20 bg-emerald-500/5"></div>';
-      wrapper.querySelector("div.glass").innerHTML = html;
+      var iconWrap = document.createElement("div");
+      iconWrap.className =
+        "w-8 h-8 rounded-full bg-gradient-to-b from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 mt-1 shadow-[0_0_10px_rgba(16,185,129,0.3)]";
+      iconWrap.innerHTML = '<i class="fa-solid fa-robot text-white text-[10px]"></i>';
+      var aiBubble = document.createElement("div");
+      aiBubble.className = "chat-ai-bubble glass p-5 rounded-2xl rounded-tl-sm text-sm border-emerald-500/20 bg-emerald-500/5";
+      var aiText = document.createElement("p");
+      aiText.textContent = String(text || "");
+      aiBubble.appendChild(aiText);
+      wrapper.appendChild(iconWrap);
+      wrapper.appendChild(aiBubble);
       if (theme === "light") {
-        wrapper.querySelector(".chat-ai-bubble").classList.add("chat-ai-bubble-light");
+        aiBubble.classList.add("chat-ai-bubble-light");
       }
     }
 
@@ -1509,8 +1572,7 @@
     }
 
     function renderMessage(role, text) {
-      var bubble = createBubble("<p></p>", role === "user");
-      setText(bubble.querySelector("p"), text);
+      var bubble = createBubble(text, role === "user");
       history.appendChild(bubble);
       history.scrollTop = history.scrollHeight;
     }
@@ -1637,28 +1699,28 @@
     contentWrap.innerHTML =
       '<section class="glass p-6 md:p-8 rounded-2xl border border-white/10 bg-white/5">' +
       '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">' +
-      '<div><h2 class="text-lg font-[Outfit] font-semibold text-white">Social Media Drafts</h2>' +
-      '<p class="text-xs text-gray-400">Edit and share native drafts for LinkedIn and X/Twitter.</p>' +
-      '<p class="text-[11px] text-gray-500 mt-1">Voice: <span data-social-author="1"></span></p></div>' +
+      '<div><h2 class="text-lg font-[Outfit] font-semibold text-slate-900">Social Media Drafts</h2>' +
+      '<p class="text-xs text-slate-600">Edit and share native drafts for LinkedIn and X/Twitter.</p>' +
+      '<p class="text-[11px] text-slate-500 mt-1">Voice: <span data-social-author="1"></span></p></div>' +
       '<button type="button" data-social-refresh="1" class="btn btn-secondary text-sm whitespace-nowrap"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh Ideas</button>' +
       "</div>" +
       '<div class="grid gap-4 md:grid-cols-2">' +
-      '<article class="rounded-xl border border-[#0a66c2]/35 bg-[#0a66c2]/10 p-4 runtime-social-card runtime-social-card-linkedin">' +
-      '<div class="flex items-center justify-between mb-3"><span class="text-[11px] uppercase tracking-wider text-[#53a9ff] font-semibold">LinkedIn</span><span class="text-[10px] text-gray-300">Native share</span></div>' +
-      '<textarea data-social-input="linkedin" class="runtime-social-draft-input w-full min-h-[180px] rounded-lg border border-white/10 bg-[#0f172a]/70 p-3 text-[13px] text-gray-100 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-[#0a66c2]/50" readonly></textarea>' +
+      '<article class="rounded-xl border border-[#0a66c2]/30 bg-[#eef5ff] p-4 runtime-social-card runtime-social-card-linkedin">' +
+      '<div class="flex items-center justify-between mb-3"><span class="text-[11px] uppercase tracking-wider text-[#0a66c2] font-semibold">LinkedIn</span><span class="text-[10px] text-slate-600">Native share</span></div>' +
+      '<textarea data-social-input="linkedin" class="runtime-social-draft-input w-full min-h-[180px] rounded-lg border border-slate-300 bg-white p-3 text-[13px] text-slate-900 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-[#0a66c2]/40" readonly></textarea>' +
       '<div class="flex items-center gap-2 mt-3">' +
       '<button type="button" data-social-edit="linkedin" class="btn btn-secondary text-xs"><i class="fa-solid fa-pen mr-2"></i>Edit</button>' +
       '<button type="button" data-social-share="linkedin" class="btn bg-[#0a66c2] text-white hover:bg-[#095592] text-xs"><i class="fa-brands fa-linkedin-in mr-2"></i>Share</button>' +
       "</div></article>" +
-      '<article class="rounded-xl border border-white/15 bg-black/30 p-4 runtime-social-card runtime-social-card-x">' +
-      '<div class="flex items-center justify-between mb-3"><span class="text-[11px] uppercase tracking-wider text-white font-semibold">Tweet</span><span class="text-[10px] text-gray-300">Native composer</span></div>' +
-      '<textarea data-social-input="x" class="runtime-social-draft-input w-full min-h-[180px] rounded-lg border border-white/10 bg-[#0f172a]/70 p-3 text-[13px] text-gray-100 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-white/30" readonly></textarea>' +
+      '<article class="rounded-xl border border-slate-300 bg-slate-50 p-4 runtime-social-card runtime-social-card-x">' +
+      '<div class="flex items-center justify-between mb-3"><span class="text-[11px] uppercase tracking-wider text-slate-900 font-semibold">Tweet</span><span class="text-[10px] text-slate-600">Native composer</span></div>' +
+      '<textarea data-social-input="x" class="runtime-social-draft-input w-full min-h-[180px] rounded-lg border border-slate-300 bg-white p-3 text-[13px] text-slate-900 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-slate-400" readonly></textarea>' +
       '<div class="flex items-center gap-2 mt-3">' +
       '<button type="button" data-social-edit="x" class="btn btn-secondary text-xs"><i class="fa-solid fa-pen mr-2"></i>Edit</button>' +
       '<button type="button" data-social-share="x" class="btn bg-white text-[#111827] hover:bg-gray-200 text-xs"><i class="fa-brands fa-x-twitter mr-2"></i>Tweet</button>' +
       "</div></article>" +
       "</div>" +
-      '<div class="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-gray-500">' +
+      '<div class="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">' +
       '<span data-social-context="1">Context: loading...</span>' +
       '<span>•</span>' +
       '<span data-social-source="1">Generating...</span>' +
@@ -1685,21 +1747,6 @@
       x: "",
       contextLabel: primaryProject ? "Project: " + primaryProject.title : "Profile momentum",
     };
-
-    function fallbackIdeas() {
-      var projectTitle = primaryProject && primaryProject.title ? primaryProject.title : "my latest AI build";
-      var profileLink = ctx && ctx.handle ? (window.location.origin + "/u/" + ctx.handle + "/") : window.location.origin;
-      return {
-        linkedin:
-          "Built and shipped " + projectTitle + " with My AI Skill Tutor.\n\n" +
-          "This week I focused on shipping proof artifacts, documenting decisions, and sharing learnings in public.\n\n" +
-          "If you're building your AI-native portfolio, here's my public profile: " + profileLink,
-        x:
-          "Shipped " + projectTitle + " with My AI Skill Tutor. Building in public + verified artifacts > passive learning.\n\n" +
-          profileLink + "\n\n#BuildInPublic #AI",
-        contextLabel: primaryProject ? "Project: " + projectTitle : "Profile momentum",
-      };
-    }
 
     function normalizeDraftText(value) {
       return String(value || "")
@@ -1750,7 +1797,6 @@
     async function loadIdeas(showToastOnSuccess) {
       var ideaStart = performance.now();
       var ideasResult = await postJson("/api/social/drafts/ideas", {
-        userId: ctx.userId,
         projectId: primaryProject ? primaryProject.id : null,
       });
       var ideas = ideasResult.ideas || {};
@@ -1758,10 +1804,7 @@
       draftState.x = normalizeDraftText(ideas.x || "");
       draftState.contextLabel = normalizeDraftText(ideas.contextLabel || draftState.contextLabel || "Fresh ideas");
       if (!draftState.linkedin || !draftState.x) {
-        var fallback = fallbackIdeas();
-        if (!draftState.linkedin) draftState.linkedin = fallback.linkedin;
-        if (!draftState.x) draftState.x = fallback.x;
-        if (!draftState.contextLabel) draftState.contextLabel = fallback.contextLabel;
+        throw new Error("Social idea generator returned an empty response.");
       }
       updateDraftInputs();
       if (sourceNode) {
@@ -1864,26 +1907,21 @@
       if (sourceNode) sourceNode.textContent = cachedDrafts.source === "llm" ? "Cached personalized ideas" : "Cached draft ideas";
       captureEvent("social_ideas_cache_hit", { source: cachedDrafts.source || "cached" });
       void loadIdeas(false).catch(function (err) {
-        var fallback = fallbackIdeas();
-        draftState.linkedin = normalizeDraftText(draftState.linkedin || fallback.linkedin);
-        draftState.x = normalizeDraftText(draftState.x || fallback.x);
-        draftState.contextLabel = normalizeDraftText(draftState.contextLabel || fallback.contextLabel);
-        updateDraftInputs();
-        if (sourceNode) sourceNode.textContent = "Using fallback ideas (generator unavailable)";
+        if (sourceNode) sourceNode.textContent = "Generator unavailable (cached ideas shown)";
         captureEvent("social_ideas_failed", { reason: err && err.message ? err.message : "unknown_error" });
       });
     } else {
       try {
         await loadIdeas(false);
       } catch (err) {
-        var fallbackEmpty = fallbackIdeas();
-        draftState.linkedin = normalizeDraftText(fallbackEmpty.linkedin);
-        draftState.x = normalizeDraftText(fallbackEmpty.x);
-        draftState.contextLabel = normalizeDraftText(fallbackEmpty.contextLabel);
+        draftState.linkedin = "";
+        draftState.x = "";
+        draftState.contextLabel = "Unavailable";
         updateDraftInputs();
-        if (sourceNode) sourceNode.textContent = "Using fallback ideas (generator unavailable)";
+        if (contextNode) contextNode.textContent = "Context: unavailable";
+        if (sourceNode) sourceNode.textContent = "Generator unavailable (no fallback)";
         captureEvent("social_ideas_failed", { reason: err && err.message ? err.message : "unknown_error" });
-        toast(err instanceof Error ? err.message : "Generated fallback social ideas", false);
+        toast(err instanceof Error ? err.message : "Unable to generate social ideas", true);
       }
     }
 
@@ -1899,24 +1937,114 @@
     captureEvent("dashboard_tab_viewed", { tab: "updates" });
     var summary = await getDashboardSummary();
     updateSharedUserUi(summary);
+    var contentWrap = document.querySelector("main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-4");
+    if (!contentWrap) return;
 
-    var updates = summary.latestEvents || [];
-    if (updates.length) {
-      var firstTitle = Array.prototype.find.call(document.querySelectorAll("h4.font-medium"), function (el) {
-        return (el.textContent || "").indexOf("Released") !== -1 || (el.textContent || "").indexOf("Daily Task") !== -1;
-      });
-      if (firstTitle) setText(firstTitle, updates[0].message || "New tutor update");
+    var updates = Array.isArray(summary.latestEvents) ? summary.latestEvents.slice(0, 10) : [];
+    var dailyUpdate = summary.dailyUpdate || null;
+
+    function relativeTimeLabel(input) {
+      if (!input) return "Just now";
+      var ts = Date.parse(String(input));
+      if (!Number.isFinite(ts)) return "Just now";
+      var deltaSeconds = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+      if (deltaSeconds < 60) return "Just now";
+      if (deltaSeconds < 3600) return Math.floor(deltaSeconds / 60) + " min ago";
+      if (deltaSeconds < 86400) return Math.floor(deltaSeconds / 3600) + " hr ago";
+      return Math.floor(deltaSeconds / 86400) + " day ago";
     }
 
-    var applyButton = byText("button", "Apply to Project");
-    if (applyButton) {
-      applyButton.addEventListener("click", async function () {
+    function eventClasses(type) {
+      var lowered = String(type || "").toLowerCase();
+      if (lowered.indexOf("failed") !== -1 || lowered.indexOf("error") !== -1) {
+        return {
+          card: "border-red-300 bg-red-50",
+          icon: "bg-red-100 text-red-600",
+          iconName: "fa-triangle-exclamation",
+        };
+      }
+      if (lowered.indexOf("queued") !== -1 || lowered.indexOf("running") !== -1) {
+        return {
+          card: "border-amber-300 bg-amber-50",
+          icon: "bg-amber-100 text-amber-600",
+          iconName: "fa-hourglass-half",
+        };
+      }
+      return {
+        card: "border-emerald-300 bg-emerald-50",
+        icon: "bg-emerald-100 text-emerald-600",
+        iconName: "fa-circle-check",
+      };
+    }
+
+    var eventsHtml = updates
+      .map(function (event) {
+        var tone = eventClasses(event.type);
+        var message = escapeHtml(event.message || "Tutor update");
+        var kind = escapeHtml(String(event.type || "job.update").replace(/\./g, " "));
+        return (
+          '<article class="glass p-5 rounded-xl border ' + tone.card + ' flex gap-4">' +
+          '<div class="w-10 h-10 rounded shrink-0 ' + tone.icon + ' flex items-center justify-center mt-1">' +
+          '<i class="fa-solid ' + tone.iconName + '"></i></div>' +
+          '<div class="min-w-0 flex-1">' +
+          '<div class="flex items-center justify-between gap-3 mb-1">' +
+          '<h4 class="font-medium text-slate-900 text-base truncate">' + message + "</h4>" +
+          '<span class="text-[10px] text-slate-500 whitespace-nowrap">' + relativeTimeLabel(event.createdAt) + "</span>" +
+          "</div>" +
+          '<p class="text-xs text-slate-600 uppercase tracking-wide">Event: ' + kind + "</p>" +
+          "</div></article>"
+        );
+      })
+      .join("");
+
+    var dailyHtml = "";
+    if (dailyUpdate) {
+      var summaryText = escapeHtml(dailyUpdate.summary || "Daily update ready.");
+      var tasks = Array.isArray(dailyUpdate.upcomingTasks) ? dailyUpdate.upcomingTasks : [];
+      dailyHtml =
+        '<section class="glass p-5 rounded-xl border border-sky-300 bg-sky-50">' +
+        '<div class="flex items-center justify-between gap-3 mb-3">' +
+        '<h3 class="font-[Outfit] text-base text-slate-900 flex items-center gap-2"><i class="fa-solid fa-envelope text-sky-600"></i>Latest Daily Update</h3>' +
+        '<span class="text-[10px] text-slate-500">' + relativeTimeLabel(dailyUpdate.createdAt) + "</span>" +
+        "</div>" +
+        '<p class="text-sm text-slate-700 mb-3">' + summaryText + "</p>" +
+        (tasks.length
+          ? '<ul class="list-disc list-inside text-sm text-slate-700 space-y-1">' +
+            tasks
+              .slice(0, 4)
+              .map(function (task) {
+                return "<li>" + escapeHtml(task) + "</li>";
+              })
+              .join("") +
+            "</ul>"
+          : "") +
+        "</section>";
+    }
+
+    contentWrap.innerHTML =
+      '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">' +
+      '<h2 class="text-lg font-[Outfit] font-semibold text-slate-900">Operational Updates</h2>' +
+      '<button type="button" data-updates-refresh="1" class="btn btn-secondary text-xs"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh News + Daily Update</button>' +
+      "</div>" +
+      (dailyHtml || "") +
+      (eventsHtml || '<div class="glass p-5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700">No live events yet. Trigger a tutor action to populate this feed.</div>');
+
+    var refreshButton = contentWrap.querySelector("button[data-updates-refresh='1']");
+    if (refreshButton) {
+      refreshButton.addEventListener("click", async function () {
+        var original = refreshButton.innerHTML;
+        refreshButton.setAttribute("disabled", "true");
+        refreshButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Refreshing';
         try {
           await postJson("/api/scheduler/news-refresh", {});
           await postJson("/api/scheduler/daily-update", {});
-          toast("Update applied and daily digest queued.", false);
+          toast("Updates refreshed.", false);
+          await hydrateUpdatesPage();
         } catch (err) {
-          toast(err instanceof Error ? err.message : "Unable to apply update", true);
+          toast(err instanceof Error ? err.message : "Unable to refresh updates", true);
+        } finally {
+          refreshButton.removeAttribute("disabled");
+          refreshButton.innerHTML = original;
         }
       });
     }
@@ -1953,19 +2081,19 @@
     if (roleInput) roleInput.value = summary.user.headline || "";
     if (bioInput) bioInput.value = summary.user.bio || "";
     if (linkedInInput) linkedInInput.value = (summary.user.socialLinks && summary.user.socialLinks.linkedin) || "";
-    var topName = Array.prototype.find.call(document.querySelectorAll("main h3"), function (node) {
-      var text = (node.textContent || "").trim().toLowerCase();
-      return text === "alex chen" || text === "new learner";
-    });
-    if (topName && summary.user.name) {
-      topName.textContent = summary.user.name;
-    }
-    var topRole = Array.prototype.find.call(document.querySelectorAll("main p"), function (node) {
-      var text = (node.textContent || "").trim().toLowerCase();
-      return text === "product manager" || text === "ai builder";
-    });
-    if (topRole && summary.user.headline) {
-      topRole.textContent = summary.user.headline;
+    var identityHeader = profileForm ? profileForm.parentElement && profileForm.parentElement.querySelector(".flex.items-center.gap-6") : null;
+    if (identityHeader) {
+      var topName = identityHeader.querySelector("h3");
+      if (topName && summary.user.name) {
+        topName.textContent = summary.user.name;
+      }
+      var emailNode = Array.prototype.find.call(identityHeader.querySelectorAll("p"), function (node) {
+        return (node.textContent || "").indexOf("@") !== -1;
+      });
+      var preferredEmail = ctx.email || (summary.user && summary.user.email) || "";
+      if (emailNode && preferredEmail) {
+        emailNode.textContent = preferredEmail;
+      }
     }
     var currentAvatarUrl = ctx.avatarUrl || summary.user.avatarUrl || "";
     function normalizeAvatarValue(input) {
@@ -1977,7 +2105,7 @@
 
     function applyAvatarToUi(nextUrl) {
       if (!nextUrl) return;
-      Array.prototype.forEach.call(document.querySelectorAll("img[src='/assets/avatar.png'], img[data-role='profile-avatar'], main .flex.items-center.gap-6 img"), function (img) {
+      Array.prototype.forEach.call(document.querySelectorAll("img[src='/assets/avatar.png'], img[data-role='profile-avatar'], main .flex.items-center.gap-6 img, img[alt='Alex Chen']"), function (img) {
         img.setAttribute("src", nextUrl);
         img.setAttribute("data-role", "profile-avatar");
       });
@@ -2311,49 +2439,78 @@
     }
   }
 
-  function buildTalentCardHtml(candidate) {
+  function buildTalentCardElement(candidate) {
     var skills = (candidate.topSkills || []).slice(0, 2);
     var tools = (candidate.topTools || []).slice(0, 3);
     var projectCount = Math.max(1, Math.round((candidate.evidenceScore || 45) / 30));
     var candidateHandle = encodeURIComponent(String(candidate.handle || ""));
-    var candidateName = escapeHtml(String(candidate.name || "Candidate"));
-    var candidateRole = escapeHtml(String(candidate.role || "AI Builder"));
+    var candidateName = String(candidate.name || "Candidate");
+    var candidateRole = String(candidate.role || "AI Builder");
     var candidateAvatar = sanitizeImageUrl(candidate.avatarUrl) || "/assets/avatar.png";
+    var card = document.createElement("a");
+    card.setAttribute("href", "/employers/talent/" + candidateHandle + "/");
+    card.className = "glass p-6 rounded-2xl hover:bg-white/5 transition border border-white/10 hover:border-emerald-500/40 group relative cursor-pointer";
 
-    return (
-      '<a href="/employers/talent/' +
-      candidateHandle +
-      '/" class="glass p-6 rounded-2xl hover:bg-white/5 transition border border-white/10 hover:border-emerald-500/40 group relative cursor-pointer">' +
-      '<div class="flex justify-between items-start mb-4">' +
-      '<img src="' +
-      candidateAvatar +
-      '" width="64" height="64" style="width:64px;height:64px;object-fit:cover;" class="w-16 h-16 rounded-full object-cover border border-white/20" alt="' +
-      candidateName +
-      '">' +
-      '<div class="bg-emerald-500/20 text-emerald-400 w-8 h-8 rounded-full flex items-center justify-center border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]" title="Verified Human Builder"><i class="fa-solid fa-check text-sm font-bold"></i></div>' +
-      "</div>" +
-      '<h3 class="text-lg font-medium text-white group-hover:text-emerald-400 transition mb-1">' +
-      candidateName +
-      "</h3>" +
-      '<p class="text-gray-400 text-sm mb-4">' +
-      candidateRole +
-      "</p>" +
-      '<div class="space-y-2 mb-6">' +
-      '<div class="flex items-center gap-2 text-xs"><i class="fa-solid fa-diagram-project text-gray-500 w-4"></i><span class="text-gray-300">' +
-      projectCount +
-      " Verified Projects built</span></div>" +
-      '<div class="flex items-center gap-2 text-xs"><i class="fa-solid fa-code text-gray-500 w-4"></i><span class="text-gray-300">' +
-      tools.map(escapeHtml).join(", ") +
-      "</span></div>" +
-      "</div>" +
-      '<div class="flex flex-wrap gap-2 mt-auto border-t border-white/10 pt-4">' +
-      skills
-        .map(function (skill) {
-          return '<span class="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded px-2 py-0.5">' + escapeHtml(skill) + "</span>";
-        })
-        .join("") +
-      "</div></a>"
-    );
+    var top = document.createElement("div");
+    top.className = "flex justify-between items-start mb-4";
+    var avatar = document.createElement("img");
+    avatar.setAttribute("src", candidateAvatar);
+    avatar.setAttribute("width", "64");
+    avatar.setAttribute("height", "64");
+    avatar.setAttribute("alt", candidateName);
+    avatar.className = "w-16 h-16 rounded-full object-cover border border-white/20";
+    avatar.style.width = "64px";
+    avatar.style.height = "64px";
+    avatar.style.objectFit = "cover";
+    avatar.setAttribute("loading", "lazy");
+    avatar.setAttribute("decoding", "async");
+    top.appendChild(avatar);
+
+    var verified = document.createElement("div");
+    verified.className = "bg-emerald-500/20 text-emerald-400 w-8 h-8 rounded-full flex items-center justify-center border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]";
+    verified.setAttribute("title", "Verified Human Builder");
+    verified.innerHTML = '<i class="fa-solid fa-check text-sm font-bold"></i>';
+    top.appendChild(verified);
+    card.appendChild(top);
+
+    var nameNode = document.createElement("h3");
+    nameNode.className = "text-lg font-medium text-white group-hover:text-emerald-400 transition mb-1";
+    nameNode.textContent = candidateName;
+    card.appendChild(nameNode);
+
+    var roleNode = document.createElement("p");
+    roleNode.className = "text-gray-400 text-sm mb-4";
+    roleNode.textContent = candidateRole;
+    card.appendChild(roleNode);
+
+    var details = document.createElement("div");
+    details.className = "space-y-2 mb-6";
+    var projectRow = document.createElement("div");
+    projectRow.className = "flex items-center gap-2 text-xs";
+    projectRow.innerHTML =
+      '<i class="fa-solid fa-diagram-project text-gray-500 w-4"></i>' +
+      '<span class="text-gray-300">' + projectCount + " Verified Projects built</span>";
+    var toolsRow = document.createElement("div");
+    toolsRow.className = "flex items-center gap-2 text-xs";
+    toolsRow.innerHTML = '<i class="fa-solid fa-code text-gray-500 w-4"></i>';
+    var toolsText = document.createElement("span");
+    toolsText.className = "text-gray-300";
+    toolsText.textContent = tools.join(", ");
+    toolsRow.appendChild(toolsText);
+    details.appendChild(projectRow);
+    details.appendChild(toolsRow);
+    card.appendChild(details);
+
+    var chips = document.createElement("div");
+    chips.className = "flex flex-wrap gap-2 mt-auto border-t border-white/10 pt-4";
+    skills.forEach(function (skill) {
+      var chip = document.createElement("span");
+      chip.className = "text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded px-2 py-0.5";
+      chip.textContent = String(skill);
+      chips.appendChild(chip);
+    });
+    card.appendChild(chips);
+    return card;
   }
 
   async function hydrateEmployerTalentPage() {
@@ -2480,9 +2637,7 @@
       }
 
       rows.forEach(function (candidate) {
-        var wrapper = document.createElement("div");
-        wrapper.innerHTML = buildTalentCardHtml(candidate);
-        var card = wrapper.firstElementChild;
+        var card = buildTalentCardElement(candidate);
         if (card) grid.appendChild(card);
       });
     }
@@ -2653,6 +2808,7 @@
           var session = await ensureSession();
           await postJson("/api/onboarding/career-import", {
             sessionId: session.id,
+            sessionToken: session.token,
             careerPathId: selectedCareerPath,
             linkedinUrl: selectedLinkedIn || null,
             resumeFilename: selectedResumeFilename,
@@ -2677,6 +2833,7 @@
 
           await postJson("/api/onboarding/situation", {
             sessionId: session.id,
+            sessionToken: session.token,
             situation: selectedSituation,
             goals: goals,
           });
@@ -2759,7 +2916,10 @@
         });
         try {
           var session = await ensureSession();
-          var start = await postJson("/api/assessment/start", { sessionId: session.id });
+          var start = await postJson("/api/assessment/start", {
+            sessionId: session.id,
+            sessionToken: session.token,
+          });
           captureEvent("assessment_started", {
             session_id: session.id,
             assessment_id: start.assessment.id,
@@ -2822,6 +2982,7 @@
 
           await postJson("/api/onboarding/situation", {
             sessionId: session.id,
+            sessionToken: session.token,
             situation: selectedSituation,
             goals: selectedGoals,
           });
