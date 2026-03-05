@@ -14,6 +14,7 @@ import {
 } from "@/lib/site";
 
 export const revalidate = 300;
+const EXAMPLE_PROFILE_HANDLE = "alex-chen-ai";
 
 function escapeHtml(value: string) {
   return value
@@ -42,6 +43,13 @@ function appBaseUrl() {
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
   const { handle } = await params;
   const profile = await runtimeFindUserByHandle(handle);
+  if (!profile && handle === EXAMPLE_PROFILE_HANDLE) {
+    return {
+      title: "Alex Chen | My AI Skill Tutor Profile",
+      description: "Example verified AI builder profile.",
+      alternates: { canonical: `/u/${EXAMPLE_PROFILE_HANDLE}` },
+    };
+  }
   if (!profile || !profile.published) {
     return {
       title: "Profile not found",
@@ -92,6 +100,9 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
 export default async function PublicProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
   const profile = await runtimeFindUserByHandle(handle);
+  if (!profile && handle === EXAMPLE_PROFILE_HANDLE) {
+    return <GeminiStaticPage template="u/alex-chen-ai/index.html" runtime="none" />;
+  }
   let canViewUnpublished = false;
   if (profile && !profile.published) {
     const seed = await getAuthSeed();

@@ -14,6 +14,8 @@ import {
 } from "@/lib/site";
 
 export const revalidate = 300;
+const EXAMPLE_PROFILE_HANDLE = "alex-chen-ai";
+const EXAMPLE_PROJECT_SLUG = "customer-support-copilot";
 
 function escapeHtml(value: string) {
   return value
@@ -42,6 +44,13 @@ function appBaseUrl() {
 export async function generateMetadata({ params }: { params: Promise<{ handle: string; projectSlug: string }> }): Promise<Metadata> {
   const { handle, projectSlug } = await params;
   const profile = await runtimeFindUserByHandle(handle);
+  if (!profile && handle === EXAMPLE_PROFILE_HANDLE && projectSlug === EXAMPLE_PROJECT_SLUG) {
+    return {
+      title: "Customer Support Copilot | Alex Chen",
+      description: "Example project proof page.",
+      alternates: { canonical: `/u/${EXAMPLE_PROFILE_HANDLE}/projects/${EXAMPLE_PROJECT_SLUG}` },
+    };
+  }
   const projects = profile ? await runtimeListProjectsByUser(profile.id) : [];
   const project = projects.find((entry) => entry.slug === projectSlug) ?? null;
 
@@ -95,6 +104,14 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
 export default async function PublicProjectPage({ params }: { params: Promise<{ handle: string; projectSlug: string }> }) {
   const { handle, projectSlug } = await params;
   const profile = await runtimeFindUserByHandle(handle);
+  if (!profile && handle === EXAMPLE_PROFILE_HANDLE && projectSlug === EXAMPLE_PROJECT_SLUG) {
+    return (
+      <GeminiStaticPage
+        template="u/alex-chen-ai/projects/customer-support-copilot/index.html"
+        runtime="none"
+      />
+    );
+  }
   const projects = profile ? await runtimeListProjectsByUser(profile.id) : [];
   const project = projects.find((entry) => entry.slug === projectSlug) ?? null;
   let canViewUnpublished = false;

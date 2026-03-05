@@ -19,6 +19,7 @@
   var SIGNUP_VARIANT_KEY = "ai_tutor_exp_signup_variant_v1";
   var ENABLE_DASHBOARD_SNAPSHOT_CACHE = false;
   var HOME_NEWS_CACHE_PREFIX = "ai_tutor_home_news_v1:";
+  var HOME_NEWS_WARM_PROMISES = {};
   var SUMMARY_CACHE_TTL_MS = 120000;
   var AUTH_SESSION_CACHE_TTL_MS = 45000;
   var SNAPSHOT_CACHE_TTL_MS = 1800000;
@@ -546,6 +547,29 @@
     };
     writeSessionObject(key, normalized);
     writeLocalObject(key, normalized);
+  }
+
+  function maybeWarmHomeNews(userId) {
+    var scope = cacheScope(userId);
+    if (!scope) return;
+    if (readHomeNewsCache(userId)) return;
+    if (HOME_NEWS_WARM_PROMISES[scope]) return;
+    HOME_NEWS_WARM_PROMISES[scope] = postJson("/api/news/recommendations", { maxStories: 6 })
+      .then(function (fresh) {
+        var insights = Array.isArray(fresh && fresh.insights) ? fresh.insights : [];
+        if (!insights.length) return;
+        writeHomeNewsCache({
+          insights: insights,
+          source: fresh && fresh.source ? fresh.source : null,
+          focusSummary: fresh && fresh.focusSummary ? fresh.focusSummary : null,
+        }, userId);
+      })
+      .catch(function () {
+        return null;
+      })
+      .finally(function () {
+        delete HOME_NEWS_WARM_PROMISES[scope];
+      });
   }
 
   function persistDashboardSnapshot(pathname) {
@@ -1284,6 +1308,7 @@
     ctx.headline = headlineForUser(user);
     if (user.avatarUrl) ctx.avatarUrl = user.avatarUrl;
     saveCtx(ctx);
+    maybeWarmHomeNews(user.id ? String(user.id) : ctx.userId);
 
     var sidebarProfileLink = document.querySelector("aside a[href='/dashboard/profile/'], aside a[href='/dashboard/profile']");
     if (sidebarProfileLink) {
@@ -1889,9 +1914,9 @@
       }
     }
 
-    var updatesSection = Array.prototype.find.call(document.querySelectorAll("section"), function (section) {
+    var updatesSection = document.querySelector("[data-home-ai-news='1']") || Array.prototype.find.call(document.querySelectorAll("section"), function (section) {
       var text = (section.textContent || "").toLowerCase();
-      return text.indexOf("ai updates") !== -1 || text.indexOf("view inbox") !== -1;
+      return text.indexOf("ai updates") !== -1 || text.indexOf("view inbox") !== -1 || text.indexOf("ai news") !== -1;
     });
     if (updatesSection) {
       var updatesTitle = updatesSection.querySelector("h2");
@@ -2652,11 +2677,25 @@
 
   async function hydrateAiNewsPage() {
     captureEvent("dashboard_tab_viewed", { tab: "ai_news" });
+    var contentWrap = document.querySelector("main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-4");
+    if (!contentWrap) return;
+
+    function renderLoading(message) {
+      contentWrap.innerHTML =
+        '<section class="glass p-6 rounded-xl border border-sky-300 bg-sky-50 runtime-loading-panel">' +
+        '<div class="flex items-center gap-3 text-sky-900 mb-2">' +
+        '<span class="runtime-loader-spinner"></span>' +
+        '<span class="font-semibold">Preparing today&apos;s AI news briefing</span>' +
+        "</div>" +
+        '<p class="text-sm text-slate-700">' + escapeHtml(message || "Fetching and caching personalized stories for this session.") + "</p>" +
+        "</section>";
+    }
+
+    renderLoading("Fetching and caching personalized stories for this session.");
+
     var summary = await getDashboardSummary();
     var summaryUserId = summary && summary.user && summary.user.id ? String(summary.user.id) : null;
     updateSharedUserUi(summary);
-    var contentWrap = document.querySelector("main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-4");
-    if (!contentWrap) return;
 
     function storyTone(category) {
       var value = String(category || "").toLowerCase();
