@@ -129,19 +129,21 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   const projects = await runtimeListProjectsByUser(profile.id);
   const firstProject = projects[0];
   const secondProject = projects[1];
+  const projectPlaceholderPath = `/u/${profile.handle}/projects/customer-support-copilot/`;
 
   const replacements: Record<string, string> = {
     "/u/alex-chen-ai/": `/u/${profile.handle}/`,
     "/u/alex-chen-ai": `/u/${profile.handle}/`,
-    "/u/alex-chen-ai/projects/customer-support-copilot/": `/u/${profile.handle}/`,
     "Alex Chen": escapeHtml(profile.name),
     "Product Manager": escapeHtml(profile.headline || "AI Builder"),
     "Contact Alex": escapeHtml(`Contact ${profile.name.split(" ")[0] || profile.name}`),
     "I'm a PM learning how to automate workflows and build prototypes using AI. Building publicly to track my journey from non-technical to AI-fluent. Demonstrated ability to use Cursor, Python, and external APIs to build functional prototype workflows.": escapeHtml(profile.bio),
   };
 
+  replacements[projectPlaceholderPath] = `/u/${profile.handle}/`;
+
   if (firstProject) {
-    replacements["/u/alex-chen-ai/projects/customer-support-copilot/"] = `/u/${profile.handle}/projects/${firstProject.slug}/`;
+    replacements[projectPlaceholderPath] = `/u/${profile.handle}/projects/${firstProject.slug}/`;
     replacements["Customer Support Copilot"] = escapeHtml(firstProject.title);
   }
 
