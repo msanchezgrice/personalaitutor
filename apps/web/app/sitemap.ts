@@ -12,7 +12,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   const urls = new Set<string>([
     `${appBaseUrl}/`,
-    `${appBaseUrl}/assessment`,
     `${appBaseUrl}/employers`,
     `${appBaseUrl}/employers/talent`,
   ]);

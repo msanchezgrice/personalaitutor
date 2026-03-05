@@ -2574,11 +2574,7 @@
 
       var isDefaultView = !selectedSkill && !selectedStatus && !query;
       if (isDefaultView) {
-        rows = rows
-          .filter(function (candidate) {
-            return /^candidate-\d{3}$/i.test(candidate.handle || "");
-          })
-          .slice(0, 20);
+        rows = rows.slice(0, 20);
       }
       return rows;
     }

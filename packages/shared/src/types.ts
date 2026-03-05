@@ -220,6 +220,15 @@ export type NewsInsight = {
   summary: string;
   careerPathIds: string[];
   publishedAt: string;
+  learnerProfileId?: string | null;
+  source?: string | null;
+  category?: "capabilities" | "tools" | "job_displacement" | "policy" | "workflow";
+  relevanceScore?: number;
+  rankingScore?: number;
+  impact?: "high" | "medium" | "low";
+  whyRelevant?: string;
+  recommendedAction?: string;
+  contextSignals?: string[];
 };
 
 export type DailyUpdate = {

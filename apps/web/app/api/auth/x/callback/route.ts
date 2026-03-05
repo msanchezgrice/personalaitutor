@@ -31,6 +31,13 @@ function resolveRedirectUri(req: NextRequest) {
   }
 }
 
+function allowMockOAuth() {
+  const explicit = process.env.ALLOW_MOCK_OAUTH?.trim().toLowerCase();
+  if (explicit === "1" || explicit === "true") return true;
+  if (explicit === "0" || explicit === "false") return false;
+  return process.env.NODE_ENV !== "production";
+}
+
 export async function GET(req: NextRequest) {
   const clearPkceCookie = (response: NextResponse) => {
     response.cookies.set({
@@ -84,12 +91,21 @@ export async function GET(req: NextRequest) {
 
   const authUserId = await getAuthUserId(req);
   const userId = authUserId ?? (typeof state.data.userId === "string" ? state.data.userId : null);
+  const mockFlow = Boolean(state.data.mock) && allowMockOAuth();
 
   if (!userId) {
     if (shouldRedirect) {
       return clearPkceCookie(NextResponse.redirect(new URL("/dashboard/social?oauth=x_denied", req.nextUrl.origin)));
     }
     return oauthError("UNAUTHENTICATED", "Sign in required", 401);
+  }
+
+  if (state.data.mock && !mockFlow) {
+    await runtimeMarkOAuthFailure(userId, "x", "MOCK_OAUTH_DISABLED");
+    if (shouldRedirect) {
+      return clearPkceCookie(NextResponse.redirect(new URL("/dashboard/social?oauth=x_denied", req.nextUrl.origin)));
+    }
+    return oauthError("MOCK_OAUTH_DISABLED", "Mock OAuth is disabled", 403);
   }
 
   if (error) {
@@ -106,7 +122,7 @@ export async function GET(req: NextRequest) {
     return oauthError("X_OAUTH_CODE_MISSING", "X callback missing authorization code", 400);
   }
 
-  if (!state.data.mock) {
+  if (!mockFlow) {
     const clientId = process.env.X_CLIENT_ID;
     const clientSecret = process.env.X_CLIENT_SECRET;
     if (!clientId || !clientSecret) {

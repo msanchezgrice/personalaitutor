@@ -22,11 +22,12 @@ const config: NextConfig = {
       "frame-ancestors 'none'",
       "object-src 'none'",
       "form-action 'self'",
-      "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://*.posthog.com https://connect.facebook.net",
-      "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com",
+      "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://*.posthog.com https://connect.facebook.net https://va.vercel-scripts.com",
+      "worker-src 'self' blob:",
+      "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com",
       "img-src 'self' data: blob: https:",
-      "font-src 'self' data: https://cdnjs.cloudflare.com",
-      "connect-src 'self' https://api.openai.com https://api.resend.com https://api.linkedin.com https://www.linkedin.com https://api.twitter.com https://*.posthog.com https://www.facebook.com https://connect.facebook.net https://vitals.vercel-insights.com",
+      "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com",
+      "connect-src 'self' https://api.openai.com https://api.resend.com https://api.linkedin.com https://www.linkedin.com https://api.twitter.com https://*.posthog.com https://www.facebook.com https://connect.facebook.net https://vitals.vercel-insights.com https://*.clerk.com https://clerk.myaiskilltutor.com",
     ].join("; ");
 
     return [

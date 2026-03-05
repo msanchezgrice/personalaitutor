@@ -12,6 +12,13 @@ function sanitizeRedirectPath(path: string | null | undefined) {
   return value;
 }
 
+function allowMockOAuth() {
+  const explicit = process.env.ALLOW_MOCK_OAUTH?.trim().toLowerCase();
+  if (explicit === "1" || explicit === "true") return true;
+  if (explicit === "0" || explicit === "false") return false;
+  return process.env.NODE_ENV !== "production";
+}
+
 function buildRedirectTarget(req: NextRequest, status: "linkedin_connected" | "linkedin_denied", redirectPath?: string | null) {
   const fallback = new URL(`/dashboard/social?oauth=${status}`, req.nextUrl.origin);
   const safe = sanitizeRedirectPath(redirectPath);
@@ -79,12 +86,21 @@ export async function GET(req: NextRequest) {
   const userId = authUserId ?? (typeof state.data.userId === "string" ? state.data.userId : null);
   const redirectPath = sanitizeRedirectPath(state.data.redirectPath);
   const shouldRedirect = req.nextUrl.searchParams.get("redirect") === "1" || Boolean(state.data.redirect) || Boolean(redirectPath);
+  const mockFlow = Boolean(state.data.mock) && allowMockOAuth();
 
   if (!userId) {
     if (shouldRedirect) {
       return NextResponse.redirect(buildRedirectTarget(req, "linkedin_denied", redirectPath));
     }
     return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+  }
+
+  if (state.data.mock && !mockFlow) {
+    await runtimeMarkOAuthFailure(userId, "linkedin_profile", "MOCK_OAUTH_DISABLED");
+    if (shouldRedirect) {
+      return NextResponse.redirect(buildRedirectTarget(req, "linkedin_denied", redirectPath));
+    }
+    return jsonError("MOCK_OAUTH_DISABLED", "Mock OAuth is disabled", 403);
   }
 
   if (error) {
@@ -103,7 +119,7 @@ export async function GET(req: NextRequest) {
 
   let accountLabel = "LinkedIn Profile";
   let pictureUrl: string | null = null;
-  if (!state.data.mock) {
+  if (!mockFlow) {
     const clientId = process.env.LINKEDIN_CLIENT_ID;
     const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
     if (!clientId || !clientSecret) {

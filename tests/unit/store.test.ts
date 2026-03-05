@@ -58,6 +58,11 @@ describe("store workflows", () => {
   test("daily update requires news refresh for full payload path", () => {
     const refresh = refreshRelevantNews();
     expect(refresh.ok).toBe(true);
+    if (refresh.ok) {
+      expect(refresh.insights[0]?.category).toBeTruthy();
+      expect(typeof refresh.insights[0]?.relevanceScore).toBe("number");
+      expect(refresh.insights[0]?.recommendedAction).toBeTruthy();
+    }
 
     const update = createDailyUpdate({ userId: defaultUser });
     expect(update.ok).toBe(true);

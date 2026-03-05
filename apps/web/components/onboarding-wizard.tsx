@@ -286,7 +286,7 @@ export function OnboardingWizard() {
               {loading ? "Importing..." : "Import and Start Assessment"}
             </button>
             <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <a className="btn" href="/api/auth/linkedin/start?mock=1&redirect=1">Connect LinkedIn (Mock)</a>
+              <a className="btn" href="/api/auth/linkedin/start?redirect=1">Connect LinkedIn</a>
               <a className="btn" href="/assessment" target="_blank" rel="noreferrer">Open Full Assessment</a>
             </div>
           </article>

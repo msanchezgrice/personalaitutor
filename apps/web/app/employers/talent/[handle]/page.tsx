@@ -10,13 +10,28 @@ import {
   DEFAULT_OG_IMAGE_WIDTH,
 } from "@/lib/site";
 
+function fallbackCandidate(handle: string) {
+  if (handle !== "alex-chen-ai") return null;
+  return {
+    handle: "alex-chen-ai",
+    name: "Alex Chen",
+    avatarUrl: "/assets/avatar.png",
+    careerType: "Employed",
+    role: "Product Manager",
+    status: "verified" as const,
+    topSkills: ["Prompt Engineering", "API Integrations"],
+    topTools: ["Python", "Cursor IDE"],
+    evidenceScore: 83,
+  };
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ handle: string }>;
 }): Promise<Metadata> {
   const { handle } = await params;
-  const candidate = await runtimeGetTalentByHandle(handle);
+  const candidate = (await runtimeGetTalentByHandle(handle)) ?? fallbackCandidate(handle);
   if (!candidate) {
     return {
       title: `${BRAND_NAME} | Candidate Not Found`,
@@ -73,22 +88,7 @@ export async function generateMetadata({
 
 export default async function TalentDetailPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
-  const found = await runtimeGetTalentByHandle(handle);
-  const candidate =
-    found ??
-    (handle === "alex-chen-ai"
-      ? {
-          handle: "alex-chen-ai",
-          name: "Alex Chen",
-          avatarUrl: "/assets/avatar.png",
-          careerType: "Employed",
-          role: "Product Manager",
-          status: "verified" as const,
-          topSkills: ["Prompt Engineering", "API Integrations"],
-          topTools: ["Python", "Cursor IDE"],
-          evidenceScore: 83,
-        }
-      : null);
+  const candidate = (await runtimeGetTalentByHandle(handle)) ?? fallbackCandidate(handle);
 
   if (!candidate) {
     return (

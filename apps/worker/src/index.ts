@@ -291,11 +291,24 @@ async function processMemoryRefreshJob(job: ClaimedJob) {
     .order("created_at", { ascending: false })
     .limit(10);
 
-  const { data: news } = await supabase
+  const { data: personalizedNews } = await supabase
     .from("news_insights")
     .select("id,title,url,published_at")
+    .eq("learner_profile_id", userId)
     .order("published_at", { ascending: false })
     .limit(3);
+
+  const personalized = personalizedNews ?? [];
+  let news = personalized;
+  if (personalized.length < 3) {
+    const { data: globalNews } = await supabase
+      .from("news_insights")
+      .select("id,title,url,published_at")
+      .is("learner_profile_id", null)
+      .order("published_at", { ascending: false })
+      .limit(3 - personalized.length);
+    news = [...personalized, ...(globalNews ?? [])];
+  }
 
   const memoryValue = {
     refreshedAt: now,
@@ -479,31 +492,55 @@ async function refreshRelevantNews() {
   const rows = [
     {
       id: randomUUID(),
-      title: "AI tooling update: model context windows and eval tooling",
-      url: "https://example.com/ai-news/context-evals",
-      summary: "New eval practices improve reliability for production copilots.",
+      title: "Model capability leap: teams are hardening eval gates before release",
+      url: "https://openai.com/news/",
+      summary: "Production teams are emphasizing evaluation coverage and regression checks for reliable AI shipping.",
       career_path_ids: ["software-engineering", "quality-assurance"],
       published_at: publishedAt,
+      learner_profile_id: null,
+      metadata: {
+        category: "capabilities",
+        relevance_score: 80,
+        ranking_score: 80,
+        impact: "high",
+        source: "OpenAI News",
+      },
     },
     {
       id: randomUUID(),
-      title: "Agentic workflows in go-to-market automation",
-      url: "https://example.com/ai-news/gtm-agents",
-      summary: "Marketing and RevOps teams are shipping multi-agent outbound systems.",
-      career_path_ids: ["marketing-seo", "sales-revops"],
+      title: "Tooling shift: agent-first automation is moving into mainstream stacks",
+      url: "https://www.anthropic.com/news",
+      summary: "Teams are using integrated agent tooling to reduce manual orchestration and speed up experiments.",
+      career_path_ids: ["operations", "marketing-seo", "sales-revops"],
       published_at: publishedAt,
+      learner_profile_id: null,
+      metadata: {
+        category: "tools",
+        relevance_score: 76,
+        ranking_score: 76,
+        impact: "medium",
+        source: "Anthropic News",
+      },
     },
     {
       id: randomUUID(),
-      title: "Retrieval best practices for support copilots",
-      url: "https://example.com/ai-news/support-rag",
-      summary: "RAG quality gates and routing now standard for support agents.",
-      career_path_ids: ["customer-support", "operations"],
+      title: "Labor market trend: AI-assisted execution proof is becoming mandatory",
+      url: "https://www.weforum.org/stories/",
+      summary: "Hiring bar is shifting from AI familiarity to demonstrable AI-enabled output and business impact.",
+      career_path_ids: ["product-management", "customer-support", "operations"],
       published_at: publishedAt,
+      learner_profile_id: null,
+      metadata: {
+        category: "job_displacement",
+        relevance_score: 83,
+        ranking_score: 83,
+        impact: "high",
+        source: "World Economic Forum",
+      },
     },
   ];
 
-  await supabase.from("news_insights").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabase.from("news_insights").delete().is("learner_profile_id", null);
   await supabase.from("news_insights").insert(rows);
   console.log(`[worker] news refreshed: ${rows.length}`);
 }
@@ -546,11 +583,24 @@ async function createDailyUpdateForDefaultUser() {
     return;
   }
 
-  const { data: news } = await supabase
+  const { data: personalizedNews } = await supabase
     .from("news_insights")
     .select("id")
+    .eq("learner_profile_id", profileId)
     .order("published_at", { ascending: false })
     .limit(3);
+
+  const personalizedIds = (personalizedNews ?? []).map((entry) => entry.id);
+  let newsIds = personalizedIds;
+  if (newsIds.length < 3) {
+    const { data: globalNews } = await supabase
+      .from("news_insights")
+      .select("id")
+      .is("learner_profile_id", null)
+      .order("published_at", { ascending: false })
+      .limit(3 - newsIds.length);
+    newsIds = [...newsIds, ...(globalNews ?? []).map((entry) => entry.id)];
+  }
 
   await supabase.from("daily_update_emails").insert({
     id: randomUUID(),
@@ -562,7 +612,7 @@ async function createDailyUpdateForDefaultUser() {
       "Generate one new artifact",
       "Publish one social post draft",
     ],
-    news_ids: (news ?? []).map((entry) => entry.id),
+    news_ids: newsIds,
     failure_code: null,
   });
 

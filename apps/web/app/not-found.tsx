@@ -10,7 +10,7 @@ export default function NotFoundPage() {
           <Link className="btn btn-primary" href="/">
             Go home
           </Link>
-          <Link className="btn btn-secondary" href="/assessment">
+          <Link className="btn btn-secondary" href="/onboarding">
             Start assessment
           </Link>
         </div>

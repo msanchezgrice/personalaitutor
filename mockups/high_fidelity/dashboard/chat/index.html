@@ -139,7 +139,7 @@
                         <pre class="p-4 text-xs font-mono text-gray-300 overflow-x-auto"><code>@app.route('/webhook', methods=['POST'])
 def handle_webhook():
     data = request.json
-    # TODO: parse the nested 'customer_data' object safely
+    # Parse the nested 'customer_data' object safely before field access
     return jsonify({"status": "received"}), 200</code></pre>
                     </div>
                 </div>

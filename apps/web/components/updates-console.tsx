@@ -7,6 +7,11 @@ type Insight = {
   title: string;
   url: string;
   summary: string;
+  category?: "capabilities" | "tools" | "job_displacement" | "policy" | "workflow";
+  relevanceScore?: number;
+  impact?: "high" | "medium" | "low";
+  whyRelevant?: string;
+  recommendedAction?: string;
 };
 
 type DailyUpdate = {
@@ -28,7 +33,7 @@ export function UpdatesConsole() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/scheduler/news-refresh", { method: "POST" });
+      const res = await fetch("/api/news/recommendations", { method: "POST" });
       const data = (await res.json()) as { ok: boolean; insights?: Insight[]; error?: { message: string } };
       if (!res.ok || !data.ok || !data.insights) {
         throw new Error(data.error?.message ?? "Unable to refresh relevant AI news");
@@ -73,8 +78,15 @@ export function UpdatesConsole() {
           <strong>Relevant news</strong>
           <ul className="list">
             {insights.map((insight) => (
-              <li key={insight.id}>
+                  <li key={insight.id}>
                 <a href={insight.url} target="_blank" rel="noreferrer">{insight.title}</a>: {insight.summary}
+                {insight.whyRelevant ? <div><strong>Why relevant:</strong> {insight.whyRelevant}</div> : null}
+                {insight.recommendedAction ? <div><strong>Action:</strong> {insight.recommendedAction}</div> : null}
+                {insight.category || insight.relevanceScore ? (
+                  <div>
+                    <strong>Signal:</strong> {insight.category ?? "workflow"} · {insight.relevanceScore ?? "--"}%
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>

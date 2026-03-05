@@ -97,8 +97,8 @@ export function SocialDrafts() {
           ))}
         </select>
         <button type="button" className="btn primary" disabled={loading} onClick={generateDrafts}>Generate Drafts</button>
-        <a className="btn" href="/api/auth/linkedin/start?mock=1&redirect=1">Connect LinkedIn (Mock)</a>
-        <a className="btn" href="/api/auth/x/start?mock=1&redirect=1">Connect X (Mock)</a>
+        <a className="btn" href="/api/auth/linkedin/start?redirect=1">Connect LinkedIn</a>
+        <a className="btn" href="/api/auth/x/start?redirect=1">Connect X</a>
       </div>
 
       {drafts.length ? (

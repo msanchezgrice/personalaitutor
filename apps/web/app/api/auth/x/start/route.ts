@@ -6,6 +6,13 @@ import { createPkceVerifier, issueOAuthStateToken, pkceChallengeS256 } from "@/l
 
 const required = ["X_CLIENT_ID"];
 
+function allowMockOAuth() {
+  const explicit = process.env.ALLOW_MOCK_OAUTH?.trim().toLowerCase();
+  if (explicit === "1" || explicit === "true") return true;
+  if (explicit === "0" || explicit === "false") return false;
+  return process.env.NODE_ENV !== "production";
+}
+
 function resolveRedirectUri(req: NextRequest, configured: string | undefined, fallbackPath: string) {
   const fallback = `${req.nextUrl.origin}${fallbackPath}`;
   const appBase = process.env.APP_BASE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim();
@@ -39,7 +46,11 @@ export async function GET(req: NextRequest) {
   if (!userId) {
     return jsonError("UNAUTHENTICATED", "Sign in required", 401);
   }
-  const mock = req.nextUrl.searchParams.get("mock") === "1";
+  const mockRequested = req.nextUrl.searchParams.get("mock") === "1";
+  const mock = mockRequested && allowMockOAuth();
+  if (mockRequested && !mock) {
+    return jsonError("MOCK_OAUTH_DISABLED", "Mock OAuth is disabled", 403);
+  }
   const redirect = req.nextUrl.searchParams.get("redirect") === "1";
   const stateToken = issueOAuthStateToken({
     provider: "x",

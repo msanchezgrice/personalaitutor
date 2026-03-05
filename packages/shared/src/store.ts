@@ -1034,39 +1034,80 @@ export function publishSocialDraft(input: {
   return { ok: false as const, errorCode: "INVALID_MODE", draft };
 }
 
-export function refreshRelevantNews(options?: { forceFailCode?: string }) {
+export function refreshRelevantNews(options?: { forceFailCode?: string; userId?: string; contextSignals?: string[] }) {
   if (options?.forceFailCode) {
     return { ok: false as const, errorCode: options.forceFailCode, insights: [] as NewsInsight[] };
   }
 
+  const user = options?.userId ? findUserById(options.userId) : null;
+  const careerPath = user ? getCareerPath(user.careerPathId) : null;
+  const focus = options?.contextSignals?.slice(0, 3) ?? [];
+
   const generated: NewsInsight[] = [
     {
       id: id("news"),
-      title: "AI tooling update: model context windows and eval tooling",
-      url: "https://example.com/ai-news/context-evals",
-      summary: "New eval practices improve reliability for production copilots.",
-      careerPathIds: ["software-engineering", "quality-assurance"],
+      title: "Model capability leap: longer-context agents are shipping production eval gates",
+      url: "https://openai.com/news/",
+      summary:
+        "Teams are pairing larger-context models with stricter eval pipelines to reduce regressions before deployment.",
+      careerPathIds: [user?.careerPathId ?? "software-engineering", "quality-assurance"],
       publishedAt: nowIso(),
+      learnerProfileId: user?.id ?? null,
+      source: "OpenAI News",
+      category: "capabilities",
+      relevanceScore: 84,
+      rankingScore: 88,
+      impact: "high",
+      whyRelevant: careerPath
+        ? `Directly impacts ${careerPath.name} execution quality and reliability decisions.`
+        : "Directly impacts AI project reliability decisions.",
+      recommendedAction: "Add one evaluation checklist for every new model or prompt change this week.",
+      contextSignals: focus,
     },
     {
       id: id("news"),
-      title: "Agentic workflows in go-to-market automation",
-      url: "https://example.com/ai-news/gtm-agents",
-      summary: "Marketing and RevOps teams are shipping multi-agent outbound systems.",
-      careerPathIds: ["marketing-seo", "sales-revops"],
+      title: "Tooling shift: workflow automation stacks now bundle built-in AI agents",
+      url: "https://www.anthropic.com/news",
+      summary:
+        "Modern automation platforms are reducing setup time for multi-step AI workflows across GTM, support, and ops.",
+      careerPathIds: [user?.careerPathId ?? "operations", "marketing-seo", "sales-revops"],
       publishedAt: nowIso(),
+      learnerProfileId: user?.id ?? null,
+      source: "Anthropic News",
+      category: "tools",
+      relevanceScore: 80,
+      rankingScore: 84,
+      impact: "medium",
+      whyRelevant: user?.tools.length
+        ? `Matches your current tool stack (${user.tools.slice(0, 3).join(", ")}).`
+        : "Improves execution speed for active AI projects.",
+      recommendedAction: "Prototype one repetitive workflow with an agent-first tool and compare time saved.",
+      contextSignals: focus,
     },
     {
       id: id("news"),
-      title: "Retrieval best practices for support copilots",
-      url: "https://example.com/ai-news/support-rag",
-      summary: "RAG quality gates and routing now standard for support agents.",
-      careerPathIds: ["customer-support", "operations"],
+      title: "Workforce trend: AI copilots are changing entry-level role expectations",
+      url: "https://www.weforum.org/stories/",
+      summary:
+        "Companies are updating hiring rubrics toward AI-augmented execution, emphasizing proof-of-work and adaptation speed.",
+      careerPathIds: [user?.careerPathId ?? "operations", "customer-support", "product-management"],
       publishedAt: nowIso(),
+      learnerProfileId: user?.id ?? null,
+      source: "World Economic Forum",
+      category: "job_displacement",
+      relevanceScore: 86,
+      rankingScore: 90,
+      impact: "high",
+      whyRelevant: user?.goals.length
+        ? `Aligned with your goals (${user.goals.slice(0, 2).join(", ")}) and career positioning.`
+        : "Important for career resilience and role positioning.",
+      recommendedAction: "Ship one public, measurable AI project artifact to strengthen your market signal.",
+      contextSignals: focus,
     },
   ];
 
-  state.newsInsights = generated;
+  const otherRows = state.newsInsights.filter((entry) => entry.learnerProfileId !== (user?.id ?? null));
+  state.newsInsights = [...generated, ...otherRows];
   return { ok: true as const, insights: generated };
 }
 
@@ -1094,7 +1135,9 @@ export function createDailyUpdate(input: { userId: string; forceFailCode?: strin
   }
 
   const projects = listProjectsByUser(user.id);
-  const recentNews = state.newsInsights.slice(0, 3);
+  const recentNews = state.newsInsights
+    .filter((entry) => entry.learnerProfileId === user.id || entry.learnerProfileId == null)
+    .slice(0, 3);
   const update: DailyUpdate = {
     id: id("update"),
     userId: user.id,

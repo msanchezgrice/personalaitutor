@@ -42,6 +42,7 @@ import {
   type BuildLogEntry,
   type DailyUpdate,
   type DashboardSummary,
+  type NewsInsight,
   type OnboardingSession,
   type Project,
   type PublishMode,
@@ -68,6 +69,13 @@ function mode(): PersistenceMode {
   );
   if (hasSupabaseCreds) return "supabase";
   throw new Error("PERSISTENCE_MODE_REQUIRED");
+}
+
+function includeSyntheticTalent() {
+  const explicit = process.env.INCLUDE_SYNTHETIC_TALENT?.trim().toLowerCase();
+  if (explicit === "1" || explicit === "true") return true;
+  if (explicit === "0" || explicit === "false") return false;
+  return process.env.NODE_ENV !== "production";
 }
 
 let cachedClient: SupabaseClient | null = null;
@@ -1944,6 +1952,569 @@ function parseIdeaPayload(raw: string): { linkedin: string; x: string; contextLa
   }
 }
 
+type PersonalizedNewsCategory = "capabilities" | "tools" | "job_displacement" | "policy" | "workflow";
+type StoryImpact = "high" | "medium" | "low";
+
+type PersonalizedNewsStory = {
+  title: string;
+  url: string;
+  summary: string;
+  category: PersonalizedNewsCategory;
+  relevanceScore: number;
+  rankingScore: number;
+  whyRelevant: string;
+  recommendedAction: string;
+  impact: StoryImpact;
+  source: string | null;
+  publishedAt: string;
+};
+
+type PersonalizedNewsPayload = {
+  focusSummary: string;
+  selectionRationale: string;
+  stories: Array<{
+    title: string;
+    url: string;
+    source?: string | null;
+    publishedAt?: string | null;
+    summary: string;
+    category?: string | null;
+    relevanceScore?: number | null;
+    whyRelevant?: string | null;
+    actionForUser?: string | null;
+    impact?: string | null;
+  }>;
+};
+
+type LearnerNewsContext = {
+  user: UserProfile;
+  projects: Project[];
+  latestEvents: DashboardSummary["latestEvents"];
+  onboarding: OnboardingSession | null;
+  assessment:
+    | {
+        score: number;
+        submittedAt: string | null;
+        recommendedCareerPathIds: string[];
+      }
+    | null;
+  memoryRows: Array<{ key: string; value: unknown }>;
+  missionSnapshot: string | null;
+  memorySnapshot: string | null;
+  focusSignals: string[];
+  careerPathIds: string[];
+};
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function normalizeStoryCategory(input?: string | null): PersonalizedNewsCategory {
+  const normalized = String(input ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  if (normalized === "capabilities" || normalized === "capability") return "capabilities";
+  if (normalized === "tools" || normalized === "tooling" || normalized === "infrastructure") return "tools";
+  if (normalized === "job_displacement" || normalized === "job_market" || normalized === "labor" || normalized === "workforce") {
+    return "job_displacement";
+  }
+  if (normalized === "policy" || normalized === "regulation" || normalized === "compliance") return "policy";
+  return "workflow";
+}
+
+function normalizeImpact(input?: string | null): StoryImpact {
+  const normalized = String(input ?? "")
+    .trim()
+    .toLowerCase();
+  if (normalized === "high" || normalized === "critical") return "high";
+  if (normalized === "low") return "low";
+  return "medium";
+}
+
+function sanitizeHttpUrl(input: string) {
+  try {
+    const parsed = new URL(input.trim());
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.toString();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function parseDateOrNow(input?: string | null) {
+  if (!input) return new Date().toISOString();
+  const parsed = new Date(input);
+  if (Number.isNaN(parsed.getTime())) return new Date().toISOString();
+  return parsed.toISOString();
+}
+
+function trimText(value: unknown, max = 320) {
+  if (typeof value !== "string") return "";
+  return value.replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function extractJsonPayload(raw: string) {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const withoutFence = trimmed
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```$/i, "")
+    .trim();
+
+  try {
+    return JSON.parse(withoutFence) as PersonalizedNewsPayload;
+  } catch {
+    return null;
+  }
+}
+
+function keywordSet(parts: Array<string | null | undefined>) {
+  const values = parts
+    .flatMap((entry) => String(entry ?? "").toLowerCase().split(/[^a-z0-9]+/g))
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length >= 3);
+  return new Set(values);
+}
+
+function keywordOverlap(a: Set<string>, b: Set<string>) {
+  let matches = 0;
+  for (const value of a) {
+    if (b.has(value)) matches += 1;
+  }
+  return matches;
+}
+
+function scoreNewsStory(story: PersonalizedNewsStory, context: LearnerNewsContext) {
+  let score = clampNumber(Number(story.relevanceScore || 0), 10, 100);
+  const situation = context.onboarding?.situation ?? null;
+  const userGoals = new Set(context.user.goals);
+  const userKeywords = keywordSet([
+    context.user.headline,
+    context.user.bio,
+    ...context.user.tools,
+    ...context.user.skills.map((entry) => entry.skill),
+    ...context.projects.map((project) => project.title),
+  ]);
+  const storyKeywords = keywordSet([story.title, story.summary, story.whyRelevant, story.recommendedAction]);
+  const overlap = keywordOverlap(userKeywords, storyKeywords);
+
+  score += Math.min(12, overlap * 2);
+
+  if (story.category === "tools" && context.user.tools.length > 0) {
+    score += 8;
+  }
+  if (story.category === "job_displacement" && (situation === "unemployed" || situation === "career_switcher" || situation === "student")) {
+    score += 12;
+  }
+  if (story.category === "capabilities" && (context.user.careerPathId === "software-engineering" || context.user.careerPathId === "quality-assurance")) {
+    score += 6;
+  }
+  if (story.category === "workflow" && context.projects.some((entry) => entry.state === "building" || entry.state === "built")) {
+    score += 5;
+  }
+  if (story.category === "policy" && userGoals.has("showcase_for_job")) {
+    score += 4;
+  }
+
+  return clampNumber(score, 1, 100);
+}
+
+function buildFallbackPersonalizedStories(context: LearnerNewsContext, count: number) {
+  const now = new Date().toISOString();
+  const base: PersonalizedNewsStory[] = [
+    {
+      title: "AI capabilities: teams are adopting stricter eval gates before deployment",
+      url: "https://openai.com/news/",
+      summary: "Organizations are pairing better model quality with regression testing to keep AI workflows stable.",
+      category: "capabilities",
+      relevanceScore: 82,
+      rankingScore: 82,
+      whyRelevant: `This supports your ${context.user.careerPathId} path by reducing production risk while shipping faster.`,
+      recommendedAction: "Create a simple pre-release eval checklist for your next project update.",
+      impact: "high",
+      source: "OpenAI News",
+      publishedAt: now,
+    },
+    {
+      title: "AI tools: automation platforms now ship agent-first workflow builders",
+      url: "https://www.anthropic.com/news",
+      summary: "AI-native automation is lowering setup overhead for multi-step personal and team workflows.",
+      category: "tools",
+      relevanceScore: 80,
+      rankingScore: 80,
+      whyRelevant: context.user.tools.length
+        ? `You already use ${context.user.tools.slice(0, 3).join(", ")}, so this trend can compound your current stack.`
+        : "This can reduce build time and improve experimentation speed for your projects.",
+      recommendedAction: "Automate one recurring task end-to-end and measure weekly time saved.",
+      impact: "medium",
+      source: "Anthropic News",
+      publishedAt: now,
+    },
+    {
+      title: "Job displacement signal: hiring is shifting toward AI-augmented execution proof",
+      url: "https://www.weforum.org/stories/",
+      summary: "Employers are emphasizing practical AI delivery evidence over generic tool familiarity.",
+      category: "job_displacement",
+      relevanceScore: 85,
+      rankingScore: 85,
+      whyRelevant: "This directly impacts your career resilience and positioning in AI-assisted roles.",
+      recommendedAction: "Publish one measurable project artifact to strengthen your portfolio signal.",
+      impact: "high",
+      source: "World Economic Forum",
+      publishedAt: now,
+    },
+    {
+      title: "Workflow pattern: lightweight copilots are replacing manual status reporting",
+      url: "https://ai.google/discover/blog/",
+      summary: "Teams are using AI summaries and automated context assembly to reduce coordination overhead.",
+      category: "workflow",
+      relevanceScore: 76,
+      rankingScore: 76,
+      whyRelevant: "Your ongoing projects can benefit from less manual status work and faster iteration loops.",
+      recommendedAction: "Set up an automated weekly project summary from your build logs and notes.",
+      impact: "medium",
+      source: "Google AI Blog",
+      publishedAt: now,
+    },
+  ];
+
+  return base.slice(0, Math.max(1, Math.min(8, count)));
+}
+
+function extractMissionAndMemory(rows: Array<{ key: string; value: unknown }>) {
+  const missionKeys = ["mission", "mission_markdown", "mission_snapshot"];
+  const memoryKeys = ["memory", "memory_markdown", "memory_snapshot", "refresh_slot"];
+  let missionSnapshot: string | null = null;
+  let memorySnapshot: string | null = null;
+
+  for (const row of rows) {
+    if (!missionSnapshot && missionKeys.includes(row.key) && typeof row.value === "string") {
+      missionSnapshot = trimText(row.value, 1800);
+    }
+    if (!memorySnapshot && memoryKeys.includes(row.key)) {
+      if (typeof row.value === "string") {
+        memorySnapshot = trimText(row.value, 1800);
+      } else if (row.value && typeof row.value === "object") {
+        memorySnapshot = trimText(JSON.stringify(row.value), 1800);
+      }
+    }
+  }
+
+  return { missionSnapshot, memorySnapshot };
+}
+
+async function getLatestOnboardingSessionForUser(userId: string) {
+  const supabase = getSupabaseAdmin();
+  const { data } = await supabase
+    .from("onboarding_sessions")
+    .select("*")
+    .eq("learner_profile_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return null;
+
+  return {
+    id: data.id,
+    userId: data.learner_profile_id,
+    situation: data.situation,
+    careerPathId: data.career_path_id,
+    linkedinUrl: data.linkedin_url,
+    resumeFilename: data.resume_filename,
+    aiKnowledgeScore: data.ai_knowledge_score,
+    goals: data.goals ?? [],
+    status: data.status,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  } as OnboardingSession;
+}
+
+async function getLatestAssessmentAttemptForUser(userId: string) {
+  const supabase = getSupabaseAdmin();
+  const { data } = await supabase
+    .from("assessment_attempts")
+    .select("score,submitted_at,recommended_career_path_ids")
+    .eq("learner_profile_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return null;
+  return {
+    score: Number(data.score ?? 0),
+    submittedAt: data.submitted_at ?? null,
+    recommendedCareerPathIds: data.recommended_career_path_ids ?? [],
+  };
+}
+
+async function getAgentMemoryRowsForUser(userId: string) {
+  const supabase = getSupabaseAdmin();
+  const { data } = await supabase
+    .from("agent_memory")
+    .select("memory_key,memory_value")
+    .eq("learner_profile_id", userId)
+    .order("refreshed_at", { ascending: false })
+    .limit(12);
+
+  return (data ?? []).map((row) => ({
+    key: String(row.memory_key),
+    value: row.memory_value,
+  }));
+}
+
+async function assembleLearnerNewsContext(input: {
+  userId: string;
+  seed?: { name?: string; handleBase?: string; avatarUrl?: string | null; email?: string | null };
+}) {
+  const summary = await runtimeGetDashboardSummary(input.userId, input.seed);
+  if (!summary) return null;
+
+  const [onboarding, assessment, memoryRows] = await Promise.all([
+    getLatestOnboardingSessionForUser(summary.user.id),
+    getLatestAssessmentAttemptForUser(summary.user.id),
+    getAgentMemoryRowsForUser(summary.user.id),
+  ]);
+
+  const { missionSnapshot, memorySnapshot } = extractMissionAndMemory(memoryRows);
+
+  const focusSignals: string[] = [];
+  if (summary.user.goals.length) focusSignals.push(`goals:${summary.user.goals.slice(0, 3).join(",")}`);
+  if (summary.user.tools.length) focusSignals.push(`tools:${summary.user.tools.slice(0, 4).join(",")}`);
+  if (summary.user.skills.length) {
+    const topSkills = summary.user.skills
+      .slice()
+      .sort((a, b) => Number(b.score ?? 0) - Number(a.score ?? 0))
+      .slice(0, 4)
+      .map((entry) => entry.skill);
+    focusSignals.push(`skills:${topSkills.join(",")}`);
+  }
+  if (summary.projects.length) {
+    focusSignals.push(`projects:${summary.projects.slice(0, 3).map((entry) => `${entry.title}(${entry.state})`).join(" | ")}`);
+  }
+  if (onboarding?.situation) {
+    focusSignals.push(`onboarding_situation:${onboarding.situation}`);
+  }
+  if (onboarding?.aiKnowledgeScore != null) {
+    focusSignals.push(`ai_knowledge_score:${Number(onboarding.aiKnowledgeScore).toFixed(2)}`);
+  }
+  if (assessment?.recommendedCareerPathIds?.length) {
+    focusSignals.push(`recommended_paths:${assessment.recommendedCareerPathIds.slice(0, 3).join(",")}`);
+  }
+
+  const careerPathIds = Array.from(
+    new Set([
+      summary.user.careerPathId,
+      ...(assessment?.recommendedCareerPathIds ?? []),
+      ...(onboarding?.careerPathId ? [onboarding.careerPathId] : []),
+    ].filter(Boolean)),
+  );
+
+  return {
+    user: summary.user,
+    projects: summary.projects,
+    latestEvents: summary.latestEvents,
+    onboarding,
+    assessment,
+    memoryRows,
+    missionSnapshot,
+    memorySnapshot,
+    focusSignals,
+    careerPathIds,
+  } satisfies LearnerNewsContext;
+}
+
+async function generateNewsFromOpenAi(input: {
+  context: LearnerNewsContext;
+  count: number;
+}): Promise<{ source: "llm_web" | "fallback"; focusSummary: string; selectionRationale: string; stories: PersonalizedNewsStory[] }> {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) {
+    return {
+      source: "fallback",
+      focusSummary: "Fallback stories generated from local learner context.",
+      selectionRationale: "OpenAI API key missing; using deterministic context-based recommendations.",
+      stories: buildFallbackPersonalizedStories(input.context, input.count),
+    };
+  }
+
+  const model = process.env.OPENAI_NEWS_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || "gpt-4.1";
+  const contextForPrompt = {
+    profile: {
+      name: input.context.user.name,
+      headline: input.context.user.headline,
+      bio: input.context.user.bio,
+      careerPathId: input.context.user.careerPathId,
+      goals: input.context.user.goals,
+      tools: input.context.user.tools,
+      topSkills: input.context.user.skills
+        .slice(0, 6)
+        .map((entry) => ({ skill: entry.skill, score: Number(entry.score ?? 0), status: entry.status })),
+    },
+    onboarding: input.context.onboarding
+      ? {
+          situation: input.context.onboarding.situation,
+          goals: input.context.onboarding.goals,
+          aiKnowledgeScore: input.context.onboarding.aiKnowledgeScore,
+          careerPathId: input.context.onboarding.careerPathId,
+        }
+      : null,
+    assessment: input.context.assessment,
+    projects: input.context.projects.slice(0, 5).map((project) => ({
+      title: project.title,
+      description: project.description,
+      state: project.state,
+      recentLog: project.buildLog.slice(-2).map((entry) => entry.message).join(" | "),
+    })),
+    recentEvents: input.context.latestEvents.slice(0, 8).map((event) => event.message),
+    missionSnapshot: input.context.missionSnapshot,
+    memorySnapshot: input.context.memorySnapshot,
+    focusSignals: input.context.focusSignals,
+  };
+
+  const prompt = [
+    "You are an AI news curator for a specific user. Identify the most relevant recent AI stories for this person.",
+    "Prioritize these themes: capabilities, tools, job displacement, policy, and workflow changes.",
+    "Use reliable sources and prefer recent stories (last 90 days when possible).",
+    `Return STRICT JSON only with this exact shape:`,
+    "{",
+    '  "focusSummary": "short summary of what this user should watch",',
+    '  "selectionRationale": "why these stories were selected for this user",',
+    '  "stories": [',
+    "    {",
+    '      "title": "story headline",',
+    '      "url": "https://...",',
+    '      "source": "publisher name",',
+    '      "publishedAt": "ISO date or YYYY-MM-DD",',
+    '      "summary": "2-3 sentence summary",',
+    '      "category": "capabilities|tools|job_displacement|policy|workflow",',
+    '      "relevanceScore": 0-100,',
+    '      "whyRelevant": "personal relevance explanation",',
+    '      "actionForUser": "specific next action",',
+    '      "impact": "high|medium|low"',
+    "    }",
+    "  ]",
+    "}",
+    `Return ${input.count} stories.`,
+    "Avoid generic advice. Tie each story directly to user context.",
+    `User context JSON:\n${JSON.stringify(contextForPrompt, null, 2)}`,
+  ].join("\n");
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        input: prompt,
+        temperature: 0.2,
+        tools: [{ type: "web_search_preview" }],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OPENAI_RESPONSE_FAILED:${response.status}`);
+    }
+
+    const payload = (await response.json()) as {
+      output_text?: string;
+      output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
+    };
+    const outputText = extractOpenAiOutputText(payload);
+    const parsed = extractJsonPayload(outputText);
+    if (!parsed || !Array.isArray(parsed.stories) || parsed.stories.length === 0) {
+      throw new Error("OPENAI_NEWS_PARSE_FAILED");
+    }
+
+    const normalized: PersonalizedNewsStory[] = parsed.stories
+      .map((story) => {
+        const url = sanitizeHttpUrl(trimText(story.url, 500));
+        if (!url) return null;
+        const title = trimText(story.title, 220);
+        const summary = trimText(story.summary, 520);
+        if (!title || !summary) return null;
+
+        return {
+          title,
+          url,
+          summary,
+          category: normalizeStoryCategory(story.category),
+          relevanceScore: clampNumber(Number(story.relevanceScore ?? 0), 0, 100),
+          rankingScore: 0,
+          whyRelevant: trimText(story.whyRelevant, 360) || "Relevant to your current learning and project priorities.",
+          recommendedAction: trimText(story.actionForUser, 300) || "Review this story and map one concrete application to your current project.",
+          impact: normalizeImpact(story.impact),
+          source: trimText(story.source, 120) || null,
+          publishedAt: parseDateOrNow(story.publishedAt),
+        } satisfies PersonalizedNewsStory;
+      })
+      .filter((entry): entry is PersonalizedNewsStory => Boolean(entry));
+
+    if (!normalized.length) {
+      throw new Error("OPENAI_NEWS_NORMALIZATION_EMPTY");
+    }
+
+    const ranked = normalized
+      .map((story) => ({
+        ...story,
+        rankingScore: scoreNewsStory(story, input.context),
+      }))
+      .sort((a, b) => b.rankingScore - a.rankingScore)
+      .slice(0, Math.max(1, Math.min(8, input.count)));
+
+    return {
+      source: "llm_web",
+      focusSummary: trimText(parsed.focusSummary, 260) || "Latest AI shifts matched to your goals, tools, and active projects.",
+      selectionRationale:
+        trimText(parsed.selectionRationale, 360) ||
+        "Selected for relevance across your goals, onboarding context, and current build activity.",
+      stories: ranked,
+    };
+  } catch {
+    const fallbackStories = buildFallbackPersonalizedStories(input.context, input.count).map((story) => ({
+      ...story,
+      rankingScore: scoreNewsStory(story, input.context),
+    }));
+    return {
+      source: "fallback",
+      focusSummary: "Fallback stories generated from local learner context.",
+      selectionRationale: "Web-enabled generation was unavailable, so recommendations were assembled from stored user context.",
+      stories: fallbackStories,
+    };
+  }
+}
+
+async function preferredNewsIdsForUser(userId: string, limit = 3) {
+  const supabase = getSupabaseAdmin();
+  const { data: personalized } = await supabase
+    .from("news_insights")
+    .select("id")
+    .eq("learner_profile_id", userId)
+    .order("published_at", { ascending: false })
+    .limit(limit);
+
+  const personalizedIds = (personalized ?? []).map((entry) => entry.id);
+  if (personalizedIds.length >= limit) {
+    return personalizedIds.slice(0, limit);
+  }
+
+  const globalNeed = limit - personalizedIds.length;
+  const { data: global } = await supabase
+    .from("news_insights")
+    .select("id")
+    .is("learner_profile_id", null)
+    .order("published_at", { ascending: false })
+    .limit(globalNeed);
+
+  return [...personalizedIds, ...(global ?? []).map((entry) => entry.id)];
+}
+
 export async function runtimeGenerateSocialIdeas(input: {
   userId: string;
   projectId?: string | null;
@@ -2334,55 +2905,178 @@ export async function runtimeQueueAgentMemoryRefreshJob(input: { userId: string;
   return { ok: true as const, queued: true, jobId, errorCode: null };
 }
 
-export async function runtimeRefreshRelevantNews(options?: { forceFailCode?: string }) {
-  if (mode() === "memory") return memRefreshRelevantNews(options);
+export async function runtimeRefreshRelevantNews(options?: {
+  forceFailCode?: string;
+  userId?: string;
+  seed?: { name?: string; handleBase?: string; avatarUrl?: string | null; email?: string | null };
+  maxStories?: number;
+}) {
+  if (mode() === "memory") {
+    const memoryResult = memRefreshRelevantNews({
+      forceFailCode: options?.forceFailCode,
+      userId: options?.userId,
+      contextSignals: [],
+    });
+    if (!memoryResult.ok) {
+      return { ok: false as const, errorCode: memoryResult.errorCode, insights: [] };
+    }
+    return {
+      ok: true as const,
+      source: "memory_fallback" as const,
+      contextSignals: [] as string[],
+      focusSummary: "In-memory personalized AI news recommendations.",
+      selectionRationale: "Generated from local test state.",
+      insights: memoryResult.insights,
+    };
+  }
   if (options?.forceFailCode) {
     return { ok: false as const, errorCode: options.forceFailCode, insights: [] };
   }
 
   const supabase = getSupabaseAdmin();
-  const now = new Date().toISOString();
+  const maxStories = Math.max(3, Math.min(8, Number(options?.maxStories ?? 5)));
 
-  const rows = [
-    {
-      id: randomUUID(),
-      title: "AI tooling update: model context windows and eval tooling",
-      url: "https://example.com/ai-news/context-evals",
-      summary: "New eval practices improve reliability for production copilots.",
-      career_path_ids: ["software-engineering", "quality-assurance"],
-      published_at: now,
-    },
-    {
-      id: randomUUID(),
-      title: "Agentic workflows in go-to-market automation",
-      url: "https://example.com/ai-news/gtm-agents",
-      summary: "Marketing and RevOps teams are shipping multi-agent outbound systems.",
-      career_path_ids: ["marketing-seo", "sales-revops"],
-      published_at: now,
-    },
-    {
-      id: randomUUID(),
-      title: "Retrieval best practices for support copilots",
-      url: "https://example.com/ai-news/support-rag",
-      summary: "RAG quality gates and routing now standard for support agents.",
-      career_path_ids: ["customer-support", "operations"],
-      published_at: now,
-    },
-  ];
+  if (!options?.userId) {
+    const now = new Date().toISOString();
+    const rows = [
+      {
+        id: randomUUID(),
+        title: "Model capability leap: teams are hardening eval gates before release",
+        url: "https://openai.com/news/",
+        summary: "Production teams are emphasizing evaluation coverage and regression checks for reliable AI shipping.",
+        career_path_ids: ["software-engineering", "quality-assurance"],
+        published_at: now,
+        learner_profile_id: null,
+        metadata: {
+          category: "capabilities",
+          relevance_score: 80,
+          ranking_score: 80,
+          impact: "high",
+          source: "OpenAI News",
+        },
+      },
+      {
+        id: randomUUID(),
+        title: "Tooling shift: agent-first automation is moving into mainstream stacks",
+        url: "https://www.anthropic.com/news",
+        summary: "Teams are using integrated agent tooling to reduce manual orchestration and speed up experiments.",
+        career_path_ids: ["operations", "marketing-seo", "sales-revops"],
+        published_at: now,
+        learner_profile_id: null,
+        metadata: {
+          category: "tools",
+          relevance_score: 76,
+          ranking_score: 76,
+          impact: "medium",
+          source: "Anthropic News",
+        },
+      },
+      {
+        id: randomUUID(),
+        title: "Labor market trend: AI-assisted execution proof is becoming mandatory",
+        url: "https://www.weforum.org/stories/",
+        summary: "Hiring bar is shifting from AI familiarity to demonstrable AI-enabled output and business impact.",
+        career_path_ids: ["product-management", "customer-support", "operations"],
+        published_at: now,
+        learner_profile_id: null,
+        metadata: {
+          category: "job_displacement",
+          relevance_score: 83,
+          ranking_score: 83,
+          impact: "high",
+          source: "World Economic Forum",
+        },
+      },
+    ];
 
-  await supabase.from("news_insights").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-  await supabase.from("news_insights").insert(rows);
+    await supabase.from("news_insights").delete().is("learner_profile_id", null);
+    await supabase.from("news_insights").insert(rows);
 
-  const { data: profiles } = await supabase.from("learner_profiles").select("id");
-  for (const profile of profiles ?? []) {
-    await runtimeQueueAgentMemoryRefreshJob({
-      userId: profile.id,
-      reason: "news_refresh",
-    });
+    const { data: profiles } = await supabase.from("learner_profiles").select("id");
+    for (const profile of profiles ?? []) {
+      await runtimeQueueAgentMemoryRefreshJob({
+        userId: profile.id,
+        reason: "news_refresh",
+      });
+    }
+
+    return {
+      ok: true as const,
+      source: "global_fallback" as const,
+      contextSignals: [] as string[],
+      focusSummary: "Global AI trends relevant to platform learners.",
+      selectionRationale: "Refreshed baseline global stories.",
+      insights: rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        url: row.url,
+        summary: row.summary,
+        careerPathIds: row.career_path_ids,
+        publishedAt: row.published_at,
+        learnerProfileId: null,
+        category: row.metadata.category,
+        relevanceScore: row.metadata.relevance_score,
+        rankingScore: row.metadata.ranking_score,
+        impact: row.metadata.impact,
+        source: row.metadata.source,
+      })),
+    };
   }
+
+  const context = await assembleLearnerNewsContext({
+    userId: options.userId,
+    seed: options.seed,
+  });
+
+  if (!context) {
+    return { ok: false as const, errorCode: "USER_NOT_FOUND", insights: [] };
+  }
+
+  const generated = await generateNewsFromOpenAi({
+    context,
+    count: maxStories,
+  });
+
+  const now = new Date().toISOString();
+  const rows = generated.stories.map((story) => ({
+    id: randomUUID(),
+    learner_profile_id: context.user.id,
+    title: story.title,
+    url: story.url,
+    summary: story.summary,
+    career_path_ids: context.careerPathIds.length ? context.careerPathIds : [context.user.careerPathId],
+    published_at: story.publishedAt || now,
+    metadata: {
+      category: story.category,
+      relevance_score: story.relevanceScore,
+      ranking_score: story.rankingScore,
+      why_relevant: story.whyRelevant,
+      recommended_action: story.recommendedAction,
+      impact: story.impact,
+      source: story.source,
+      context_signals: context.focusSignals,
+      focus_summary: generated.focusSummary,
+      selection_rationale: generated.selectionRationale,
+      generated_source: generated.source,
+    },
+  }));
+
+  await supabase.from("news_insights").delete().eq("learner_profile_id", context.user.id);
+  if (rows.length) {
+    await supabase.from("news_insights").insert(rows);
+  }
+
+  await runtimeQueueAgentMemoryRefreshJob({
+    userId: context.user.id,
+    reason: "news_refresh_personalized",
+  });
 
   return {
     ok: true as const,
+    source: generated.source,
+    contextSignals: context.focusSignals,
+    focusSummary: generated.focusSummary,
+    selectionRationale: generated.selectionRationale,
     insights: rows.map((row) => ({
       id: row.id,
       title: row.title,
@@ -2390,6 +3084,17 @@ export async function runtimeRefreshRelevantNews(options?: { forceFailCode?: str
       summary: row.summary,
       careerPathIds: row.career_path_ids,
       publishedAt: row.published_at,
+      learnerProfileId: row.learner_profile_id,
+      category: row.metadata.category as NewsInsight["category"],
+      relevanceScore: Number(row.metadata.relevance_score ?? 0),
+      rankingScore: Number(row.metadata.ranking_score ?? 0),
+      whyRelevant: String(row.metadata.why_relevant ?? ""),
+      recommendedAction: String(row.metadata.recommended_action ?? ""),
+      impact: row.metadata.impact as NewsInsight["impact"],
+      source: typeof row.metadata.source === "string" ? row.metadata.source : null,
+      contextSignals: Array.isArray(row.metadata.context_signals)
+        ? row.metadata.context_signals.filter((entry): entry is string => typeof entry === "string")
+        : [],
     })),
   };
 }
@@ -2431,7 +3136,7 @@ export async function runtimeCreateDailyUpdate(input: { userId: string; forceFai
   }
 
   const projects = await runtimeListProjectsByUser(profile.id);
-  const { data: news } = await supabase.from("news_insights").select("id").order("published_at", { ascending: false }).limit(3);
+  const preferredNewsIds = await preferredNewsIdsForUser(profile.id, 3);
 
   const payload = {
     id: randomUUID(),
@@ -2443,7 +3148,7 @@ export async function runtimeCreateDailyUpdate(input: { userId: string; forceFai
       "Generate one new artifact",
       "Publish one social post draft",
     ],
-    news_ids: (news ?? []).map((entry) => entry.id),
+    news_ids: preferredNewsIds,
     failure_code: null,
   };
 
@@ -2468,7 +3173,8 @@ export async function runtimeListTalent(filters?: Parameters<typeof listTalent>[
   if (mode() === "memory") return listTalent(filters);
 
   const supabase = getSupabaseAdmin();
-  const synthetic = listTalent();
+  const includeSynthetic = includeSyntheticTalent();
+  const synthetic = includeSynthetic ? listTalent() : [];
 
   const { data: profiles, error } = await supabase
     .from("learner_profiles")
@@ -2477,7 +3183,7 @@ export async function runtimeListTalent(filters?: Parameters<typeof listTalent>[
     .limit(200);
 
   if (error || !profiles?.length) {
-    return listTalent(filters);
+    return includeSynthetic ? listTalent(filters) : [];
   }
 
   const profileIds = profiles.map((profile) => profile.id);
@@ -2555,7 +3261,9 @@ export async function runtimeListTalent(filters?: Parameters<typeof listTalent>[
     });
 
   const mergedByHandle = new Map<string, TalentCard>();
-  for (const candidate of synthetic) mergedByHandle.set(candidate.handle, candidate);
+  if (includeSynthetic) {
+    for (const candidate of synthetic) mergedByHandle.set(candidate.handle, candidate);
+  }
   for (const candidate of real) mergedByHandle.set(candidate.handle, candidate);
 
   const all = [...mergedByHandle.values()];
@@ -2605,7 +3313,10 @@ export async function runtimeGetTalentByHandle(handle: string) {
     } as TalentCard;
   }
 
-  return getTalentByHandle(handle);
+  if (includeSyntheticTalent()) {
+    return getTalentByHandle(handle);
+  }
+  return null;
 }
 
 export async function runtimeCreateEmployerLead(input: {
