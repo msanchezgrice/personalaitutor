@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { headers } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
@@ -57,6 +58,9 @@ person_profiles:"identified_only"
 }
 
 const posthogInitScript = posthogProjectApiKey ? buildPosthogInitScript(posthogProjectApiKey, posthogHost) : "";
+const disableClerkForPrototypeInLocalDev =
+  process.env.NODE_ENV === "development" &&
+  (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim().startsWith("pk_live_") ?? false);
 const clerkLocalization = {
   signIn: {
     start: {
@@ -183,7 +187,11 @@ export const metadata: Metadata = {
   ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const requestHeaders = await headers();
+  const pathname = requestHeaders.get("x-pathname") ?? "";
+  const shouldDisableClerk = disableClerkForPrototypeInLocalDev && pathname.startsWith("/chat-onboarding-prototype");
+
   return (
     <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
@@ -206,7 +214,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link id="app-shared-stylesheet" rel="stylesheet" href="/styles.css" fetchPriority="high" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <div data-shell-loader="1" aria-hidden="true">
           <div className="first-paint-loader">
             <div className="first-paint-loader__brand">
@@ -242,12 +250,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             />
           </noscript>
         ) : null}
-        <ClerkProvider localization={clerkLocalization}>
-          <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
-          {children}
-          <SpeedInsights />
-          <Analytics />
-        </ClerkProvider>
+        {shouldDisableClerk ? (
+          <>
+            <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
+            {children}
+            <SpeedInsights />
+            <Analytics />
+          </>
+        ) : (
+          <ClerkProvider localization={clerkLocalization}>
+            <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
+            {children}
+            <SpeedInsights />
+            <Analytics />
+          </ClerkProvider>
+        )}
       </body>
     </html>
   );

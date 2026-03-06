@@ -10,6 +10,7 @@ const isPublicRoute = createRouteMatcher([
   "/onboarding(.*)",
   "/assessment(.*)",
   "/architecture(.*)",
+  "/chat-onboarding-prototype(.*)",
   "/employers(.*)",
   "/learn(.*)",
   "/learning(.*)",
@@ -37,6 +38,8 @@ const isApiRoute = createRouteMatcher(["/api/(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
   const { userId } = await auth();
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", req.nextUrl.pathname);
 
   if (!isPublicRoute(req) && !userId) {
     if (isApiRoute(req)) {
@@ -58,14 +61,17 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (!userId) {
-    return NextResponse.next();
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
   }
 
-  const headers = new Headers(req.headers);
-  headers.set("x-user-id", userId);
+  requestHeaders.set("x-user-id", userId);
   return NextResponse.next({
     request: {
-      headers,
+      headers: requestHeaders,
     },
   });
 });
