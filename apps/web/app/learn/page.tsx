@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LearningHeader } from "@/components/learning-header";
 import { getLearnArticles } from "@/lib/learn-content";
 import {
   BRAND_NAME,
@@ -13,6 +14,11 @@ import {
 
 const appBaseUrl = getSiteUrl();
 const learnArticles = getLearnArticles();
+const quickStartSlugs = [
+  "ai-upskilling-roadmap",
+  "how-to-build-an-ai-portfolio",
+  "prove-ai-skills-to-employers",
+];
 
 export const metadata: Metadata = {
   title: `AI Upskilling Guides and Career Playbooks | ${BRAND_NAME}`,
@@ -69,125 +75,189 @@ function buildLearnHubLd() {
 
 export default function LearnHubPage() {
   const itemListLd = buildLearnHubLd();
+  const quickStartArticles = quickStartSlugs
+    .map((slug) => learnArticles.find((article) => article.slug === slug))
+    .filter((article): article is NonNullable<typeof article> => Boolean(article));
+  const liveGuideCount = learnArticles.length;
+  const topicTrackCount = new Set(learnArticles.map((article) => article.category)).size;
+  const totalReadingMinutes = learnArticles.reduce((total, article) => total + (Number.parseInt(article.readingTime, 10) || 0), 0);
 
   return (
     <>
-      <main className="gemini-light-shell relative min-h-screen overflow-hidden">
+      <main data-gemini-shell="1" className="relative min-h-screen overflow-hidden bg-[#0f111a] pt-20 text-white">
         <div className="bg-glow top-[-180px] left-[-80px] opacity-45"></div>
         <div
           className="bg-glow top-[14%] right-[-220px] opacity-30"
           style={{ background: "radial-gradient(circle, var(--secondary-glow) 0%, rgba(0,0,0,0) 70%)" }}
         ></div>
 
-        <header className="glass sticky top-0 z-50 rounded-none border-x-0 border-t-0 bg-opacity-80 backdrop-blur-xl">
-          <div className="container nav py-4">
-            <Link href="/" className="flex items-center gap-3">
-              <img src="/assets/branding/brand_brain_icon.svg" alt={BRAND_NAME} className="h-11 w-11 object-contain" />
-              <span className="font-[Outfit] text-[1.85rem] font-bold leading-none tracking-tight text-slate-900">
-                {BRAND_NAME}
-              </span>
-            </Link>
-            <div className="flex gap-4">
-              <Link href="/employers" className="btn btn-secondary">For Employers</Link>
-              <a href="/sign-up?redirect_url=/onboarding/" className="btn btn-primary">Start Assessment</a>
-            </div>
-          </div>
-        </header>
+        <LearningHeader
+          active="learning"
+          secondaryAction={{ href: "/u/alex-chen-ai", label: "See Example Profile" }}
+        />
 
-        <section className="container relative py-20 md:py-24">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-sm font-medium text-cyan-300">
-            Evergreen guides for AI skills and career leverage
-          </div>
-          <div className="grid gap-10 lg:grid-cols-[1.1fr,0.9fr] lg:items-end">
-            <div>
-              <div className="mb-4 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-400">Learn</div>
-              <h1 className="max-w-4xl text-5xl font-[Outfit] text-white md:text-6xl">
-                AI upskilling guides for people who need shipped proof, not vague advice.
-              </h1>
-              <p className="mt-6 max-w-3xl text-lg leading-8 text-gray-300">
-                This hub is built around practical AI adoption for working professionals: how to learn the right skills,
-                what projects to build, how to package them into an AI portfolio, and how to prove the work to employers.
-              </p>
-            </div>
-            <div className="glass rounded-3xl border border-white/10 bg-black/25 p-6">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">How to use this hub</div>
-              <div className="space-y-3 text-sm leading-7 text-gray-300">
-                <p>1. Start with the roadmap if you are still defining your AI learning plan.</p>
-                <p>2. Move to the portfolio guide once you have one or two projects in progress.</p>
-                <p>3. Use the employer-proof guide to turn those projects into resume, LinkedIn, and interview assets.</p>
+        <div className="container max-w-6xl py-12">
+          <section className="glass-panel relative mb-12 overflow-hidden p-8 md:p-12">
+            <div className="pointer-events-none absolute right-0 top-0 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl"></div>
+            <div className="pointer-events-none absolute bottom-0 left-1/3 h-56 w-56 rounded-full bg-cyan-500/10 blur-3xl"></div>
+
+            <div className="relative z-10 grid gap-8 xl:grid-cols-[1.12fr,0.88fr] xl:items-end">
+              <div>
+                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-1.5 text-sm font-medium text-cyan-300">
+                  <span className="h-2 w-2 rounded-full bg-cyan-400"></span>
+                  Learning hub
+                </div>
+                <h1 className="max-w-4xl text-5xl font-[Outfit] text-white md:text-6xl">
+                  AI upskilling guides built to feel like shipped product, not detached blog posts.
+                </h1>
+                <p className="mt-6 max-w-3xl text-lg leading-8 text-gray-300">
+                  Start with the roadmap, move into role playbooks and workflow guides, then turn the work into public
+                  proof. This hub is designed to match how professionals actually learn AI inside their jobs.
+                </p>
+
+                <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+                  <a href="/sign-up?redirect_url=/onboarding/" className="btn btn-primary px-8 py-4 text-lg">
+                    Start Assessment
+                  </a>
+                  <a href="#all-guides" className="btn btn-secondary px-8 py-4 text-lg">
+                    Browse Guides
+                  </a>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-2">
+                <div className="glass rounded-2xl border border-white/10 bg-black/30 p-6 md:col-span-3 xl:col-span-2">
+                  <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">How to use this hub</div>
+                  <div className="space-y-3 text-sm leading-7 text-gray-300">
+                    <p>1. Define the career outcome you want and start with the roadmap.</p>
+                    <p>2. Pick a role or workflow page that matches the work you already do.</p>
+                    <p>3. Turn one guide into one shipped project and one public proof page.</p>
+                  </div>
+                </div>
+
+                <div className="glass rounded-2xl border border-white/10 bg-black/30 p-5">
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Live guides</div>
+                  <div className="text-4xl font-[Outfit] text-white">{liveGuideCount}</div>
+                </div>
+                <div className="glass rounded-2xl border border-white/10 bg-black/30 p-5">
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Topic tracks</div>
+                  <div className="text-4xl font-[Outfit] text-white">{topicTrackCount}</div>
+                </div>
+                <div className="glass rounded-2xl border border-white/10 bg-black/30 p-5 md:col-span-3 xl:col-span-2">
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Reading runway</div>
+                  <div className="text-4xl font-[Outfit] text-white">{totalReadingMinutes} min</div>
+                  <p className="mt-2 text-sm leading-6 text-gray-400">Enough depth to build a plan, ship a workflow, and package the proof.</p>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section className="container pb-24">
-          <div className="mb-10 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-400">Featured guides</div>
-              <h2 className="text-4xl font-[Outfit] text-white">Start with the pages that solve the biggest career questions</h2>
+          <section className="mb-12">
+            <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-400">Quick start paths</div>
+                <h2 className="text-4xl font-[Outfit] text-white">Use the hub in the same order you would use the product</h2>
+              </div>
+              <p className="max-w-xl text-sm leading-7 text-gray-400">
+                These three guides give you the most direct path from AI learning, to projects, to employer-facing proof.
+              </p>
             </div>
-            <p className="max-w-xl text-sm leading-7 text-gray-400">
-              Each guide is written to be useful on its own and to connect to the next step in the AI learning and proof-building process.
-            </p>
-          </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            {learnArticles.map((article) => (
-              <a
-                key={article.slug}
-                href={`/learn/${article.slug}`}
-                className="glass group rounded-3xl border border-white/10 bg-black/20 p-6 transition hover:border-emerald-500/40 hover:bg-white/5"
-              >
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-400">
-                    {article.category}
-                  </span>
-                  <span className="text-xs text-gray-500">{article.readingTime}</span>
-                </div>
-                <h3 className="mb-3 text-2xl font-[Outfit] text-white transition group-hover:text-emerald-400">
-                  {article.title}
-                </h3>
-                <p className="mb-5 text-sm leading-7 text-gray-300">{article.description}</p>
-                <div className="mb-5 flex flex-wrap gap-2">
-                  {article.keywords.slice(0, 3).map((keyword) => (
-                    <span key={keyword} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-gray-300">
-                      {keyword}
+            <div className="grid gap-6 lg:grid-cols-3">
+              {quickStartArticles.map((article, index) => (
+                <a
+                  key={article.slug}
+                  href={`/learn/${article.slug}`}
+                  className="glass group relative overflow-hidden rounded-3xl border border-white/10 bg-black/20 p-6 transition hover:border-emerald-500/40 hover:bg-white/5"
+                >
+                  <div className="pointer-events-none absolute right-0 top-0 h-40 w-40 bg-gradient-to-bl from-emerald-500/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+                  <div className="relative z-10">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-400">
+                        Step {index + 1}
+                      </span>
+                      <span className="text-xs text-gray-500">{article.readingTime}</span>
+                    </div>
+                    <h3 className="mb-3 text-2xl font-[Outfit] text-white transition group-hover:text-emerald-400">
+                      {article.title}
+                    </h3>
+                    <p className="mb-5 text-sm leading-7 text-gray-300">{article.description}</p>
+                    <div className="inline-flex items-center gap-2 text-sm font-medium text-emerald-400">
+                      Open guide <span aria-hidden>→</span>
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </section>
+
+          <section id="all-guides" className="mb-12">
+            <div className="mb-10 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-400">All guides</div>
+                <h2 className="text-4xl font-[Outfit] text-white">Start with the page that matches the job-to-be-done</h2>
+              </div>
+              <p className="max-w-xl text-sm leading-7 text-gray-400">
+                Every guide is written to connect to the next step in the learning loop: skill acquisition, workflow design, project shipping, and proof packaging.
+              </p>
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-3">
+              {learnArticles.map((article) => (
+                <a
+                  key={article.slug}
+                  href={`/learn/${article.slug}`}
+                  className="glass group rounded-3xl border border-white/10 bg-black/20 p-6 transition hover:border-emerald-500/40 hover:bg-white/5"
+                >
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-400">
+                      {article.category}
                     </span>
-                  ))}
-                </div>
-                <div className="inline-flex items-center gap-2 text-sm font-medium text-emerald-400">
-                  Read guide <span aria-hidden>→</span>
-                </div>
-              </a>
-            ))}
-          </div>
-        </section>
+                    <span className="text-xs text-gray-500">{article.readingTime}</span>
+                  </div>
+                  <h3 className="mb-3 text-2xl font-[Outfit] text-white transition group-hover:text-emerald-400">
+                    {article.title}
+                  </h3>
+                  <p className="mb-5 text-sm leading-7 text-gray-300">{article.description}</p>
+                  <div className="mb-5 flex flex-wrap gap-2">
+                    {article.keywords.slice(0, 3).map((keyword) => (
+                      <span key={keyword} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-gray-300">
+                        {keyword}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="inline-flex items-center gap-2 text-sm font-medium text-emerald-400">
+                    Read guide <span aria-hidden>→</span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </section>
 
-        <section className="border-y border-white/5 bg-black/25 py-24">
-          <div className="container grid gap-8 md:grid-cols-3">
-            <div className="glass rounded-3xl p-8">
-              <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">Next content batch</div>
-              <h3 className="mb-3 text-2xl font-[Outfit] text-white">Role pages</h3>
+          <section className="grid gap-6 lg:grid-cols-3">
+            <div className="glass rounded-3xl border border-white/10 bg-black/25 p-8">
+              <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">Role playbooks</div>
+              <h3 className="mb-3 text-2xl font-[Outfit] text-white">Role-specific AI skill stacks</h3>
               <p className="text-sm leading-7 text-gray-300">
-                Build role-specific pages for marketers, product managers, operators, sales teams, support leads, and founders.
+                Product, marketing, and operations pages now sit alongside the core roadmap so people can move from broad AI learning into role-level leverage.
               </p>
             </div>
-            <div className="glass rounded-3xl p-8">
-              <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400">Next content batch</div>
-              <h3 className="mb-3 text-2xl font-[Outfit] text-white">Skill pages</h3>
+            <div className="glass rounded-3xl border border-white/10 bg-black/25 p-8">
+              <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400">Workflow guides</div>
+              <h3 className="mb-3 text-2xl font-[Outfit] text-white">Systems and workflow execution</h3>
               <p className="text-sm leading-7 text-gray-300">
-                Add pages for prompt engineering, workflow automation, AI research systems, API integrations, and AI portfolio strategy.
+                Prompt engineering, workflow automation, and portfolio project ideas are framed as systems work rather than disconnected AI tool tips.
               </p>
             </div>
-            <div className="glass rounded-3xl p-8">
-              <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-amber-400">Next content batch</div>
-              <h3 className="mb-3 text-2xl font-[Outfit] text-white">Case studies</h3>
+            <div className="glass rounded-3xl border border-white/10 bg-black/25 p-8">
+              <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-amber-400">What ships next</div>
+              <h3 className="mb-3 text-2xl font-[Outfit] text-white">Case studies and proof stories</h3>
               <p className="text-sm leading-7 text-gray-300">
-                Publish before-and-after stories showing how real learners turned AI projects into visible professional proof.
+                The next content layer should show before-and-after learner stories so search traffic lands on evidence, not just advice.
               </p>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }} />
     </>

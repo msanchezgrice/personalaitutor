@@ -63,6 +63,8 @@ html {
 
 html[data-style-ready="0"][data-path="/"] [data-gemini-shell="1"],
 html[data-style-ready="0"][data-path^="/dashboard"] [data-gemini-shell="1"],
+html[data-style-ready="0"][data-path^="/learn"] [data-gemini-shell="1"],
+html[data-style-ready="0"][data-path^="/learning"] [data-gemini-shell="1"],
 html[data-style-ready="0"][data-path^="/u/"] [data-gemini-shell="1"],
 html[data-style-ready="0"][data-path="/employers"] [data-gemini-shell="1"],
 html[data-style-ready="0"][data-path^="/employers/"] [data-gemini-shell="1"],
@@ -74,6 +76,8 @@ html[data-runtime-ready="0"][data-path="/employers/talent"] [data-gemini-shell="
 
 html[data-style-ready="1"][data-path="/"] [data-gemini-shell="1"],
 html[data-style-ready="1"][data-path^="/dashboard"] [data-gemini-shell="1"],
+html[data-style-ready="1"][data-path^="/learn"] [data-gemini-shell="1"],
+html[data-style-ready="1"][data-path^="/learning"] [data-gemini-shell="1"],
 html[data-style-ready="1"][data-path^="/u/"] [data-gemini-shell="1"],
 html[data-style-ready="1"][data-path="/employers"] [data-gemini-shell="1"],
 html[data-style-ready="1"][data-path^="/employers/"] [data-gemini-shell="1"] {
@@ -82,6 +86,8 @@ html[data-style-ready="1"][data-path^="/employers/"] [data-gemini-shell="1"] {
 
 html[data-style-ready="0"][data-path="/"] [data-shell-loader="1"],
 html[data-style-ready="0"][data-path^="/dashboard"] [data-shell-loader="1"],
+html[data-style-ready="0"][data-path^="/learn"] [data-shell-loader="1"],
+html[data-style-ready="0"][data-path^="/learning"] [data-shell-loader="1"],
 html[data-style-ready="0"][data-path^="/u/"] [data-shell-loader="1"],
 html[data-style-ready="0"][data-path="/employers"] [data-shell-loader="1"],
 html[data-style-ready="0"][data-path^="/employers/"] [data-shell-loader="1"],

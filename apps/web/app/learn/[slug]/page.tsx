@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LearningHeader } from "@/components/learning-header";
 import {
   getLearnArticleBySlug,
   getLearnArticles,
@@ -25,6 +26,37 @@ function formatDate(input: string) {
     day: "numeric",
     year: "numeric",
   }).format(new Date(`${input}T12:00:00Z`));
+}
+
+function renderInlineLinks(text: string) {
+  return text
+    .split(/(\[[^\]]+\]\([^)]+\))/g)
+    .filter(Boolean)
+    .map((part, index) => {
+      const match = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(part);
+
+      if (!match) {
+        return <span key={`${index}-${part.slice(0, 24)}`}>{part}</span>;
+      }
+
+      const [, label, href] = match;
+      const className =
+        "text-emerald-300 underline decoration-emerald-500/40 underline-offset-4 transition hover:text-white";
+
+      if (href.startsWith("/")) {
+        return (
+          <a key={`${index}-${href}`} href={href} className={className}>
+            {label}
+          </a>
+        );
+      }
+
+      return (
+        <a key={`${index}-${href}`} href={href} className={className} target="_blank" rel="noreferrer">
+          {label}
+        </a>
+      );
+    });
 }
 
 export const dynamicParams = false;
@@ -161,80 +193,110 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
 
   return (
     <>
-      <main className="gemini-light-shell relative min-h-screen overflow-hidden">
+      <main data-gemini-shell="1" className="relative min-h-screen overflow-hidden bg-[#0f111a] pt-20 text-white">
         <div className="bg-glow top-[-180px] left-[-120px] opacity-45"></div>
         <div
           className="bg-glow top-[16%] right-[-220px] opacity-30"
           style={{ background: "radial-gradient(circle, var(--secondary-glow) 0%, rgba(0,0,0,0) 70%)" }}
         ></div>
 
-        <header className="glass sticky top-0 z-50 rounded-none border-x-0 border-t-0 bg-opacity-80 backdrop-blur-xl">
-          <div className="container nav py-4">
-            <Link href="/" className="flex items-center gap-3">
-              <img src="/assets/branding/brand_brain_icon.svg" alt={BRAND_NAME} className="h-11 w-11 object-contain" />
-              <span className="font-[Outfit] text-[1.85rem] font-bold leading-none tracking-tight text-slate-900">
-                {BRAND_NAME}
-              </span>
-            </Link>
-            <div className="flex gap-4">
-              <Link href="/learn" className="btn btn-secondary">All Guides</Link>
-              <a href="/sign-up?redirect_url=/onboarding/" className="btn btn-primary">Start Assessment</a>
-            </div>
-          </div>
-        </header>
+        <LearningHeader
+          active="learning"
+          secondaryAction={{ href: "/learn", label: "All Guides" }}
+        />
 
-        <section className="container py-16 md:py-20">
-          <div className="mb-6 flex flex-wrap items-center gap-3 text-sm text-gray-400">
-            <a href="/" className="hover:text-white transition">Home</a>
-            <span>/</span>
-            <a href="/learn" className="hover:text-white transition">Learn</a>
-            <span>/</span>
-            <span className="text-gray-200">{article.title}</span>
-          </div>
-
-          <div className="mb-10 max-w-4xl">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-300">
-              {article.category}
+        <div className="container max-w-6xl py-12">
+          <section className="glass-panel relative mb-10 overflow-hidden p-8 md:p-10">
+            <div className="pointer-events-none absolute right-0 top-0 translate-x-10 -translate-y-10 opacity-10">
+              <i className="fa-solid fa-book-open-reader text-[240px] text-white"></i>
             </div>
-            <h1 className="max-w-5xl text-5xl font-[Outfit] text-white md:text-6xl">{article.title}</h1>
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-gray-300">{article.heroSummary}</p>
-            <div className="mt-6 flex flex-wrap gap-4 text-sm text-gray-400">
-              <span>Published {formatDate(article.publishedAt)}</span>
-              <span>Updated {formatDate(article.updatedAt)}</span>
-              <span>{article.readingTime}</span>
-            </div>
-          </div>
 
-          <div className="grid gap-10 xl:grid-cols-[0.72fr,0.28fr]">
-            <article className="space-y-10">
-              <section className="glass rounded-3xl border border-white/10 bg-black/20 p-8">
-                <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">Key takeaways</div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {article.takeaways.map((takeaway) => (
-                    <div key={takeaway} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-7 text-gray-300">
-                      {takeaway}
-                    </div>
-                  ))}
+            <div className="relative z-10 grid gap-8 xl:grid-cols-[1.08fr,0.92fr] xl:items-start">
+              <div>
+                <div className="mb-5 flex flex-wrap items-center gap-3 text-sm text-gray-400">
+                  <Link href="/" className="hover:text-white transition">Home</Link>
+                  <span>/</span>
+                  <Link href="/learn" className="hover:text-white transition">Learning</Link>
+                  <span>/</span>
+                  <span className="text-gray-300">{article.title}</span>
                 </div>
-              </section>
 
-              {article.sections.map((section) => (
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-sm font-medium text-emerald-300">
+                  {article.category}
+                </div>
+                <h1 className="max-w-5xl text-5xl font-[Outfit] text-white md:text-6xl">{article.title}</h1>
+                <p className="mt-6 max-w-3xl text-lg leading-8 text-gray-300">{article.heroSummary}</p>
+
+                <div className="mt-6 flex flex-wrap gap-3 text-sm text-gray-400">
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">Published {formatDate(article.publishedAt)}</span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">Updated {formatDate(article.updatedAt)}</span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">{article.readingTime}</span>
+                </div>
+
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <a href="/sign-up?redirect_url=/onboarding/" className="btn btn-primary">
+                    Start Assessment
+                  </a>
+                  <Link href="/u/alex-chen-ai" className="btn btn-secondary">
+                    See Example Profile
+                  </Link>
+                </div>
+              </div>
+
+              <div className="grid gap-4">
+                <div className="glass rounded-3xl border border-white/10 bg-black/30 p-6">
+                  <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400">What this guide gives you</div>
+                  <div className="grid gap-3">
+                    {article.takeaways.map((takeaway) => (
+                      <div key={takeaway} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-7 text-gray-300">
+                        {takeaway}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="glass rounded-2xl border border-white/10 bg-black/30 p-5">
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Sections</div>
+                    <div className="text-4xl font-[Outfit] text-white">{article.sections.length}</div>
+                  </div>
+                  <div className="glass rounded-2xl border border-white/10 bg-black/30 p-5">
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">FAQ items</div>
+                    <div className="text-4xl font-[Outfit] text-white">{article.faq.length}</div>
+                  </div>
+                  <div className="glass rounded-2xl border border-white/10 bg-black/30 p-5">
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Keywords</div>
+                    <div className="text-4xl font-[Outfit] text-white">{article.keywords.length}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr),320px]">
+            <article className="space-y-8">
+              {article.sections.map((section, index) => (
                 <section key={section.id} id={section.id} className="glass rounded-3xl border border-white/10 bg-black/20 p-8">
+                  <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">
+                    Section {String(index + 1).padStart(2, "0")}
+                  </div>
                   <h2 className="mb-5 text-3xl font-[Outfit] text-white">{section.title}</h2>
                   <div className="space-y-5 text-base leading-8 text-gray-300">
-                    {section.paragraphs.map((paragraph) => (
-                      <p key={paragraph}>{paragraph}</p>
+                    {section.paragraphs.map((paragraph, paragraphIndex) => (
+                      <p key={`${section.id}-paragraph-${paragraphIndex}`}>{renderInlineLinks(paragraph)}</p>
                     ))}
                   </div>
                   {section.bullets?.length ? (
-                    <ul className="mt-6 space-y-3">
-                      {section.bullets.map((bullet) => (
-                        <li key={bullet} className="flex items-start gap-3 text-sm leading-7 text-gray-300">
-                          <span className="mt-2 h-2 w-2 rounded-full bg-emerald-400"></span>
-                          <span>{bullet}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-5">
+                      <ul className="space-y-3">
+                        {section.bullets.map((bullet, bulletIndex) => (
+                          <li key={`${section.id}-bullet-${bulletIndex}`} className="flex items-start gap-3 text-sm leading-7 text-gray-300">
+                            <span className="mt-2 h-2 w-2 rounded-full bg-emerald-400"></span>
+                            <span>{renderInlineLinks(bullet)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   ) : null}
                 </section>
               ))}
@@ -257,12 +319,13 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
               <section className="glass sticky top-28 rounded-3xl border border-white/10 bg-black/25 p-6">
                 <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">Article outline</div>
                 <div className="space-y-3">
-                  {article.sections.map((section) => (
+                  {article.sections.map((section, index) => (
                     <a
                       key={section.id}
                       href={`#${section.id}`}
                       className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300 transition hover:border-emerald-500/30 hover:text-white"
                     >
+                      <span className="mr-2 text-[11px] uppercase tracking-[0.16em] text-gray-500">{String(index + 1).padStart(2, "0")}</span>
                       {section.title}
                     </a>
                   ))}
@@ -299,11 +362,11 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
                 </section>
               ) : null}
 
-              <section className="glass rounded-3xl border border-emerald-500/20 bg-emerald-500/5 p-6">
+              <section className="glass rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/5 p-6">
                 <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">Turn this into proof</div>
-                <h2 className="mb-3 text-2xl font-[Outfit] text-white">Build the project, then publish the evidence.</h2>
+                <h2 className="mb-3 text-2xl font-[Outfit] text-white">Build the workflow, then publish the evidence.</h2>
                 <p className="mb-5 text-sm leading-7 text-gray-300">
-                  The real upside comes from turning one guide into one workflow, one workflow into one project, and one project into public proof.
+                  The highest-leverage path is still the same: one guide becomes one workflow, one workflow becomes one project, and one project becomes visible proof.
                 </p>
                 <div className="flex flex-col gap-3">
                   <a href="/sign-up?redirect_url=/onboarding/" className="btn btn-primary text-center">Start Assessment</a>
@@ -321,7 +384,7 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
               </section>
             </aside>
           </div>
-        </section>
+        </div>
       </main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />

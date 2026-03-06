@@ -207,6 +207,8 @@ export default async function HomePage() {
     `href="${authFirstHref}" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>`;
   replacements['href="/assessment/"'] = `href="${authFirstHref}"`;
   replacements['href="/assessment"'] = `href="${authFirstHref}"`;
+  replacements['<a href="#public-proof" class="nav-link">Public Proof</a>'] =
+    '<a href="#public-proof" class="nav-link">Public Proof</a><a href="/learn" class="nav-link">Learning</a>';
   replacements["<!-- CTA -->"] = `${homeLearningSectionHtml}\n\n  <!-- CTA -->`;
   replacements['<img src="/assets/branding/brand_wordmark_logo.png" alt="My AI Skill Tutor" class="h-8 w-auto object-contain" />'] =
     '<img src="/assets/branding/brand_brain_icon.svg" alt="My AI Skill Tutor" class="h-11 w-11 object-contain" /><span class="font-[Outfit] font-bold text-[1.9rem] leading-none tracking-tight text-[var(--text-main)]">My AI Skill Tutor</span>';

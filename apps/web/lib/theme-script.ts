@@ -5,7 +5,8 @@ export const themeBootScript = `
     var isDashboardPath = p === "/dashboard" || p.indexOf("/dashboard/") === 0;
     var isPublicProfilePath = p.indexOf("/u/") === 0;
     var isEmployersPath = p === "/employers" || p.indexOf("/employers/") === 0;
-    var shouldHoldForStyles = p === "/" || isDashboardPath || isPublicProfilePath || isEmployersPath;
+    var isLearnPath = p === "/learn" || p.indexOf("/learn/") === 0 || p === "/learning" || p.indexOf("/learning/") === 0;
+    var shouldHoldForStyles = p === "/" || isDashboardPath || isPublicProfilePath || isEmployersPath || isLearnPath;
     var revealed = false;
     var probeId = "__aitutor_style_probe__";
     var shouldHoldForRuntime = isDashboardPath || p === "/employers/talent";
