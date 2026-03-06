@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LearningFooter } from "@/components/learning-footer";
 import { LearningHeader } from "@/components/learning-header";
 import { getLearnArticles } from "@/lib/learn-content";
+import { getLearningCollectionsWithArticles } from "@/lib/learning-taxonomy";
 import {
   BRAND_NAME,
   BRAND_X_HANDLE,
@@ -75,6 +77,7 @@ function buildLearnHubLd() {
 
 export default function LearnHubPage() {
   const itemListLd = buildLearnHubLd();
+  const collections = getLearningCollectionsWithArticles(learnArticles);
   const quickStartArticles = quickStartSlugs
     .map((slug) => learnArticles.find((article) => article.slug === slug))
     .filter((article): article is NonNullable<typeof article> => Boolean(article));
@@ -84,7 +87,7 @@ export default function LearnHubPage() {
 
   return (
     <>
-      <main data-gemini-shell="1" className="relative min-h-screen overflow-hidden bg-[#0f111a] pt-20 text-white">
+      <main data-gemini-shell="1" className="relative min-h-screen overflow-hidden bg-[#0f111a] pt-32 text-white md:pt-36">
         <div className="bg-glow top-[-180px] left-[-80px] opacity-45"></div>
         <div
           className="bg-glow top-[14%] right-[-220px] opacity-30"
@@ -93,6 +96,7 @@ export default function LearnHubPage() {
 
         <LearningHeader
           active="learning"
+          activeTab="start-here"
           secondaryAction={{ href: "/u/alex-chen-ai", label: "See Example Profile" }}
         />
 
@@ -105,14 +109,14 @@ export default function LearnHubPage() {
               <div>
                 <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-1.5 text-sm font-medium text-cyan-300">
                   <span className="h-2 w-2 rounded-full bg-cyan-400"></span>
-                  Learning hub
+                  The Learning Journal
                 </div>
                 <h1 className="max-w-4xl text-5xl font-[Outfit] text-white md:text-6xl">
-                  AI upskilling guides built to feel like shipped product, not detached blog posts.
+                  The editorial home for AI skills, workflow systems, and proof-based career growth.
                 </h1>
                 <p className="mt-6 max-w-3xl text-lg leading-8 text-gray-300">
-                  Start with the roadmap, move into role playbooks and workflow guides, then turn the work into public
-                  proof. This hub is designed to match how professionals actually learn AI inside their jobs.
+                  This is where My AI Skill Tutor publishes the practical side of AI upskilling: what to learn, what to
+                  build, how to evaluate the work, and how to turn it into public proof employers can trust.
                 </p>
 
                 <div className="mt-8 flex flex-col gap-4 sm:flex-row">
@@ -152,14 +156,14 @@ export default function LearnHubPage() {
             </div>
           </section>
 
-          <section className="mb-12">
+          <section id="latest" className="mb-12">
             <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
-                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-400">Quick start paths</div>
-                <h2 className="text-4xl font-[Outfit] text-white">Use the hub in the same order you would use the product</h2>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-400">Start Here</div>
+                <h2 className="text-4xl font-[Outfit] text-white">Begin with the guides that define the whole publication</h2>
               </div>
               <p className="max-w-xl text-sm leading-7 text-gray-400">
-                These three guides give you the most direct path from AI learning, to projects, to employer-facing proof.
+                These three pieces establish the core lens of the journal: learn the right skill, build something real, then package the proof.
               </p>
             </div>
 
@@ -195,7 +199,7 @@ export default function LearnHubPage() {
             <div className="mb-10 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
                 <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-400">All guides</div>
-                <h2 className="text-4xl font-[Outfit] text-white">Start with the page that matches the job-to-be-done</h2>
+                <h2 className="text-4xl font-[Outfit] text-white">Browse the full archive by the job-to-be-done</h2>
               </div>
               <p className="max-w-xl text-sm leading-7 text-gray-400">
                 Every guide is written to connect to the next step in the learning loop: skill acquisition, workflow design, project shipping, and proof packaging.
@@ -234,29 +238,55 @@ export default function LearnHubPage() {
             </div>
           </section>
 
-          <section className="grid gap-6 lg:grid-cols-3">
-            <div className="glass rounded-3xl border border-white/10 bg-black/25 p-8">
-              <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">Role playbooks</div>
-              <h3 className="mb-3 text-2xl font-[Outfit] text-white">Role-specific AI skill stacks</h3>
-              <p className="text-sm leading-7 text-gray-300">
-                Product, marketing, and operations pages now sit alongside the core roadmap so people can move from broad AI learning into role-level leverage.
-              </p>
-            </div>
-            <div className="glass rounded-3xl border border-white/10 bg-black/25 p-8">
-              <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400">Workflow guides</div>
-              <h3 className="mb-3 text-2xl font-[Outfit] text-white">Systems and workflow execution</h3>
-              <p className="text-sm leading-7 text-gray-300">
-                Prompt engineering, workflow automation, and portfolio project ideas are framed as systems work rather than disconnected AI tool tips.
-              </p>
-            </div>
-            <div className="glass rounded-3xl border border-white/10 bg-black/25 p-8">
-              <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-amber-400">What ships next</div>
-              <h3 className="mb-3 text-2xl font-[Outfit] text-white">Case studies and proof stories</h3>
-              <p className="text-sm leading-7 text-gray-300">
-                The next content layer should show before-and-after learner stories so search traffic lands on evidence, not just advice.
-              </p>
-            </div>
+          <section id="collections" className="grid gap-6 lg:grid-cols-3">
+            {collections.map((collection) => (
+              <div
+                key={collection.id}
+                id={`collection-${collection.id}`}
+                className="glass rounded-3xl border border-white/10 bg-black/25 p-8"
+              >
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className={`text-xs font-semibold uppercase tracking-[0.18em] ${
+                    collection.theme === "emerald"
+                      ? "text-emerald-400"
+                      : collection.theme === "cyan"
+                        ? "text-cyan-400"
+                        : "text-amber-400"
+                  }`}>
+                    {collection.label}
+                  </div>
+                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-gray-300">
+                    {collection.articleCount} guides
+                  </div>
+                </div>
+                <h3 className="mb-3 text-2xl font-[Outfit] text-white">{collection.title}</h3>
+                <p className="mb-6 text-sm leading-7 text-gray-300">
+                  {collection.description}
+                </p>
+                <div className="space-y-3">
+                  {collection.articles.slice(0, 3).map((article) => (
+                    <a
+                      key={article.slug}
+                      href={`/learn/${article.slug}`}
+                      className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300 transition hover:border-white/20 hover:text-white"
+                    >
+                      {article.title}
+                    </a>
+                  ))}
+                </div>
+                <div className="mt-6">
+                  <a
+                    href={collection.articles[0] ? `/learn/${collection.articles[0].slug}` : "/learn#all-guides"}
+                    className="btn btn-secondary w-full justify-center"
+                  >
+                    {collection.ctaLabel}
+                  </a>
+                </div>
+              </div>
+            ))}
           </section>
+
+          <LearningFooter />
         </div>
       </main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }} />

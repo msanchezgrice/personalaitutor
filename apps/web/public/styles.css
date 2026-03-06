@@ -850,6 +850,28 @@ footer .container > div.flex.items-center.gap-4 i {
   }
 }
 
+html[data-path^="/learn"] footer.learning-footer,
+body[data-path^="/learn"] footer.learning-footer,
+html[data-path^="/learning"] footer.learning-footer,
+body[data-path^="/learning"] footer.learning-footer {
+  background: linear-gradient(180deg, rgba(6, 10, 18, 0.2), rgba(6, 10, 18, 0.72)) !important;
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+}
+
+html[data-path^="/learn"] footer.learning-footer .glass,
+html[data-path^="/learn"] footer.learning-footer .glass-panel,
+body[data-path^="/learn"] footer.learning-footer .glass,
+body[data-path^="/learn"] footer.learning-footer .glass-panel,
+html[data-path^="/learning"] footer.learning-footer .glass,
+html[data-path^="/learning"] footer.learning-footer .glass-panel,
+body[data-path^="/learning"] footer.learning-footer .glass,
+body[data-path^="/learning"] footer.learning-footer .glass-panel {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.24) !important;
+}
+
 #theme-toggle {
   display: none !important;
 }

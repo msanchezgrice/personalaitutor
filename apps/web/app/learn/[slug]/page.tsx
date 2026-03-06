@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LearningFooter } from "@/components/learning-footer";
 import { LearningHeader } from "@/components/learning-header";
 import {
   getLearnArticleBySlug,
   getLearnArticles,
 } from "@/lib/learn-content";
+import { getLearningCollectionIdForCategory } from "@/lib/learning-taxonomy";
 import {
   BRAND_NAME,
   BRAND_LINKEDIN_URL,
@@ -126,6 +128,7 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
     .map((relatedSlug) => getLearnArticleBySlug(relatedSlug))
     .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
   const articleUrl = `${appBaseUrl}/learn/${article.slug}`;
+  const activeTab = getLearningCollectionIdForCategory(article.category);
 
   const articleLd = {
     "@context": "https://schema.org",
@@ -193,7 +196,7 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
 
   return (
     <>
-      <main data-gemini-shell="1" className="relative min-h-screen overflow-hidden bg-[#0f111a] pt-20 text-white">
+      <main data-gemini-shell="1" className="relative min-h-screen overflow-hidden bg-[#0f111a] pt-32 text-white md:pt-36">
         <div className="bg-glow top-[-180px] left-[-120px] opacity-45"></div>
         <div
           className="bg-glow top-[16%] right-[-220px] opacity-30"
@@ -202,6 +205,7 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
 
         <LearningHeader
           active="learning"
+          activeTab={activeTab}
           secondaryAction={{ href: "/learn", label: "All Guides" }}
         />
 
@@ -216,7 +220,7 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
                 <div className="mb-5 flex flex-wrap items-center gap-3 text-sm text-gray-400">
                   <Link href="/" className="hover:text-white transition">Home</Link>
                   <span>/</span>
-                  <Link href="/learn" className="hover:text-white transition">Learning</Link>
+                  <Link href="/learn" className="hover:text-white transition">Learning Journal</Link>
                   <span>/</span>
                   <span className="text-gray-300">{article.title}</span>
                 </div>
@@ -384,6 +388,8 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
               </section>
             </aside>
           </div>
+
+          <LearningFooter currentSlug={article.slug} />
         </div>
       </main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />

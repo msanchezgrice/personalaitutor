@@ -1,8 +1,14 @@
 import Link from "next/link";
+import { getLearnArticles } from "@/lib/learn-content";
+import {
+  getLearningCollections,
+  type LearningCollectionId,
+} from "@/lib/learning-taxonomy";
 import { BRAND_NAME } from "@/lib/site";
 
 type LearningHeaderProps = {
   active?: "learning" | "proof" | "employers";
+  activeTab?: "start-here" | LearningCollectionId | null;
   secondaryAction?: {
     href: string;
     label: string;
@@ -13,32 +19,68 @@ function navLinkClass(active: boolean) {
   return active ? "nav-link text-emerald-400" : "nav-link text-gray-300";
 }
 
-export function LearningHeader({ active = "learning", secondaryAction }: LearningHeaderProps) {
+function tabClass(active: boolean) {
+  return active
+    ? "rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-300"
+    : "rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-gray-300 transition hover:border-white/20 hover:text-white";
+}
+
+export function LearningHeader({ active = "learning", activeTab = null, secondaryAction }: LearningHeaderProps) {
+  const articles = getLearnArticles();
+  const collections = getLearningCollections();
+
   return (
     <header className="glass fixed top-0 z-50 w-full rounded-none border-x-0 border-t-0 bg-opacity-80 backdrop-blur-xl">
-      <div className="container nav py-4">
-        <Link href="/" className="flex items-center gap-3">
-          <img src="/assets/branding/brand_brain_icon.svg" alt={BRAND_NAME} className="h-11 w-11 object-contain" />
-          <span className="font-[Outfit] text-[1.85rem] font-bold leading-none tracking-tight text-white">
-            {BRAND_NAME}
-          </span>
-        </Link>
+      <div className="container">
+        <div className="nav py-4">
+          <Link href="/" className="flex items-center gap-3">
+            <img src="/assets/branding/brand_brain_icon.svg" alt={BRAND_NAME} className="h-11 w-11 object-contain" />
+            <div className="min-w-0">
+              <div className="font-[Outfit] text-[1.85rem] font-bold leading-none tracking-tight text-white">
+                {BRAND_NAME}
+              </div>
+              <div className="text-xs uppercase tracking-[0.18em] text-cyan-300">Learning Journal</div>
+            </div>
+          </Link>
 
-        <nav className="nav-links hidden md:flex">
-          <Link href="/learn" className={navLinkClass(active === "learning")}>Learning</Link>
-          <Link href="/u/alex-chen-ai" className={navLinkClass(active === "proof")}>Public Proof</Link>
-          <Link href="/employers" className={navLinkClass(active === "employers")}>For Employers</Link>
-        </nav>
+          <nav className="nav-links hidden md:flex">
+            <Link href="/learn" className={navLinkClass(active === "learning")}>Learning</Link>
+            <Link href="/u/alex-chen-ai" className={navLinkClass(active === "proof")}>Public Proof</Link>
+            <Link href="/employers" className={navLinkClass(active === "employers")}>For Employers</Link>
+          </nav>
 
-        <div className="flex items-center gap-3">
-          {secondaryAction ? (
-            <a href={secondaryAction.href} className="btn btn-secondary hidden sm:inline-flex">
-              {secondaryAction.label}
+          <div className="flex items-center gap-3">
+            {secondaryAction ? (
+              <a href={secondaryAction.href} className="btn btn-secondary hidden sm:inline-flex">
+                {secondaryAction.label}
+              </a>
+            ) : null}
+            <a href="/sign-up?redirect_url=/onboarding/" className="btn btn-primary">
+              Start Assessment
             </a>
-          ) : null}
-          <a href="/sign-up?redirect_url=/onboarding/" className="btn btn-primary">
-            Start Assessment
-          </a>
+          </div>
+        </div>
+
+        <div className="border-t border-white/10 py-3">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-col gap-1">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                Practical AI skills, workflow systems, and public proof
+              </div>
+              <div className="text-sm text-gray-400">
+                {articles.length} guides live across role playbooks, workflow systems, and career proof.
+              </div>
+            </div>
+
+            <nav className="flex gap-2 overflow-x-auto pb-1 xl:pb-0">
+              <a href="/learn#latest" className={tabClass(activeTab === "start-here")}>Start Here</a>
+              {collections.map((collection) => (
+                <a key={collection.id} href={collection.href} className={tabClass(activeTab === collection.id)}>
+                  {collection.label}
+                </a>
+              ))}
+            </nav>
+          </div>
         </div>
       </div>
     </header>
