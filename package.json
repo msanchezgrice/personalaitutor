@@ -9,6 +9,7 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test",
     "build": "pnpm -r --if-present build",
+    "seed:talent": "node scripts/seed_talent_roster.mjs",
     "verify:design": "bash scripts/verify_design_conformance.sh",
     "verify:migrations": "bash scripts/verify_migrations.sh",
     "verify:deploy": "bash scripts/verify_deploy_builds.sh",
