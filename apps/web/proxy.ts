@@ -11,6 +11,7 @@ const isPublicRoute = createRouteMatcher([
   "/assessment(.*)",
   "/architecture(.*)",
   "/employers(.*)",
+  "/learn(.*)",
   "/generated/(.*)",
   "/u/(.*)",
   "/api/auth/google/start(.*)",
