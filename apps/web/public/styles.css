@@ -908,6 +908,29 @@ footer .container > div.flex.items-center.gap-4 i {
   color: #475569 !important;
 }
 
+@media (max-width: 767px) {
+  body[data-path^="/learn"] .container,
+  body[data-path^="/learning"] .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  body[data-path^="/learn"] header.learning-header .btn,
+  body[data-path^="/learning"] header.learning-header .btn {
+    min-height: 2.5rem;
+  }
+
+  body[data-path^="/learn"] header.learning-header nav.flex,
+  body[data-path^="/learning"] header.learning-header nav.flex {
+    scrollbar-width: none;
+  }
+
+  body[data-path^="/learn"] header.learning-header nav.flex::-webkit-scrollbar,
+  body[data-path^="/learning"] header.learning-header nav.flex::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 #theme-toggle {
   display: none !important;
 }

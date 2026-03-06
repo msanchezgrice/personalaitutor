@@ -87,7 +87,7 @@ export default function LearnHubPage() {
 
   return (
     <>
-      <main data-gemini-shell="1" className="relative min-h-screen overflow-hidden bg-[#0f111a] pt-32 text-white md:pt-36">
+      <main data-gemini-shell="1" className="relative min-h-screen overflow-hidden bg-[#0f111a] pt-48 text-white md:pt-36">
         <div className="bg-glow top-[-180px] left-[-80px] opacity-45"></div>
         <div
           className="bg-glow top-[14%] right-[-220px] opacity-30"
