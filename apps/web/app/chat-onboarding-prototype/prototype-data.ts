@@ -120,6 +120,45 @@ export const REQUIRED_NOTE_LABELS: Record<RequiredNoteField, string> = {
   aiComfort: "AI comfort",
 };
 
+export const REQUIRED_NOTE_PROMPTS: Record<RequiredNoteField, { title: string; detail: string }> = {
+  fullName: {
+    title: "Lock the learner identity",
+    detail: "Ask for the person's full name so the plan and session can be attached cleanly.",
+  },
+  jobTitle: {
+    title: "Clarify the current role",
+    detail: "Get the exact job title or responsibility anchor before you map the plan.",
+  },
+  careerPathId: {
+    title: "Choose the learning track",
+    detail: "Map the conversation to the best-fit path so the first modules are correct.",
+  },
+  yearsExperience: {
+    title: "Size the experience band",
+    detail: "Capture the range from 0-1 through 10+ so the plan can calibrate pace.",
+  },
+  situation: {
+    title: "Understand the current situation",
+    detail: "Confirm whether they are employed, a founder, a student, or in transition.",
+  },
+  dailyWorkSummary: {
+    title: "Capture the real workflow",
+    detail: "Pull out the day-to-day work so the first project feels grounded in reality.",
+  },
+  keySkills: {
+    title: "List the working stack",
+    detail: "Ask which tools, systems, and skills they already use so the plan compounds rather than resets.",
+  },
+  selectedGoals: {
+    title: "Pin the learning goals",
+    detail: "Find out whether this is for upskilling, hiring proof, foundations, projects, or business building.",
+  },
+  aiComfort: {
+    title: "Gauge AI comfort",
+    detail: "Get a 1 to 5 self-rating so the host can pace the plan and follow-ups correctly.",
+  },
+};
+
 export const REALTIME_TOOL_NAME = "capture_onboarding_state";
 
 export const REALTIME_ONBOARDING_INSTRUCTIONS = `

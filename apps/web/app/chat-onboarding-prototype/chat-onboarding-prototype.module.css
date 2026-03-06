@@ -214,6 +214,7 @@
 .avatarStage,
 .transcriptPanel,
 .notesPanel,
+.previewPanel,
 .planSection {
   border: 1px solid var(--line);
   border-radius: 1.9rem;
@@ -389,8 +390,14 @@
 
 .transcriptPanel,
 .notesPanel,
+.previewPanel,
 .planSection {
   padding: 1.4rem;
+}
+
+.previewPanel {
+  display: grid;
+  gap: 1rem;
 }
 
 .transcriptFeed {
@@ -499,6 +506,14 @@
   margin-bottom: 1rem;
 }
 
+.notesBoardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: end;
+  gap: 0.65rem;
+}
+
 .noteGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -579,6 +594,10 @@
 .followupCard {
   padding: 1rem 1.05rem;
   margin-bottom: 1rem;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, rgba(11, 143, 125, 0.08), transparent 38%),
+    rgba(255, 255, 255, 0.82);
 }
 
 .followupCard span {
@@ -589,6 +608,206 @@
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+.followupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.95rem;
+}
+
+.followupHeader span {
+  margin-bottom: 0;
+}
+
+.followupHeader strong {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.15rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(11, 143, 125, 0.1);
+  color: var(--teal);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.promptSpotlight {
+  padding: 1.1rem 1.05rem;
+  border-radius: 1.2rem;
+  border: 1px solid rgba(11, 143, 125, 0.14);
+  background:
+    linear-gradient(135deg, rgba(11, 143, 125, 0.08), rgba(255, 255, 255, 0.92) 58%),
+    rgba(255, 255, 255, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 18px 36px rgba(11, 143, 125, 0.08);
+  animation: prompt-swap 620ms cubic-bezier(0.2, 0.78, 0.18, 1);
+}
+
+.promptSpotlightMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.promptSpotlightMeta span,
+.promptSpotlightMeta strong {
+  margin-bottom: 0;
+}
+
+.promptSpotlightMeta strong {
+  font-size: 0.88rem;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.promptSpotlight h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1.18rem;
+  letter-spacing: -0.03em;
+}
+
+.promptSpotlight p,
+.readyStateCard p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.promptQueue {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1rem;
+}
+
+.promptChip,
+.promptChipActive {
+  border: 0;
+  border-radius: 999px;
+  min-height: 2.1rem;
+  padding: 0.45rem 0.8rem;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+  cursor: pointer;
+}
+
+.promptChip {
+  background: rgba(20, 33, 31, 0.08);
+  color: var(--muted);
+}
+
+.promptChipActive {
+  background: linear-gradient(135deg, #102c29 0%, #0b8f7d 100%);
+  color: #f7faf9;
+  box-shadow: 0 12px 24px rgba(11, 143, 125, 0.2);
+  animation: active-chip-pulse 2.6s ease-in-out infinite;
+}
+
+.promptChip:hover,
+.promptChipActive:hover {
+  transform: translateY(-1px);
+}
+
+.completionTrail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.95rem;
+  min-height: 2.4rem;
+}
+
+.completedChip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.72rem;
+  border-radius: 999px;
+  background: rgba(11, 143, 125, 0.12);
+  color: var(--teal);
+  font-size: 0.86rem;
+  font-weight: 700;
+  animation: completion-drift 2.2s cubic-bezier(0.16, 0.72, 0.24, 1) forwards;
+}
+
+.readyStateCard {
+  padding: 1rem 1.05rem;
+  border-radius: 1.2rem;
+  border: 1px solid rgba(11, 143, 125, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(11, 143, 125, 0.12), transparent 34%),
+    rgba(240, 251, 248, 0.95);
+}
+
+.readyStateCard strong {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.notesActionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.notesPipeline {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.notesPipeline > div {
+  padding: 0.85rem 0.95rem;
+  border-radius: 1rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.notesPipeline strong {
+  display: block;
+  line-height: 1.55;
+}
+
+.previewPlaceholder {
+  display: grid;
+  place-items: center;
+  gap: 0.7rem;
+  min-height: 20rem;
+  padding: 2rem;
+  border-radius: 1.45rem;
+  border: 1px dashed rgba(20, 33, 31, 0.16);
+  background:
+    radial-gradient(circle at top left, rgba(214, 130, 59, 0.1), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(11, 143, 125, 0.12), transparent 32%),
+    rgba(248, 250, 249, 0.92);
+  text-align: center;
+}
+
+.previewPlaceholder strong {
+  font-size: 1.1rem;
+  letter-spacing: -0.03em;
+}
+
+.previewPlaceholder p {
+  max-width: 28ch;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
 }
 
 .planSection {
@@ -696,6 +915,49 @@
   }
 }
 
+@keyframes prompt-swap {
+  0% {
+    opacity: 0;
+    transform: perspective(900px) rotateX(18deg) translateY(18px) scale(0.97);
+  }
+
+  100% {
+    opacity: 1;
+    transform: perspective(900px) rotateX(0deg) translateY(0) scale(1);
+  }
+}
+
+@keyframes active-chip-pulse {
+  0%,
+  100% {
+    transform: translateY(0);
+    box-shadow: 0 12px 24px rgba(11, 143, 125, 0.2);
+  }
+
+  50% {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 28px rgba(11, 143, 125, 0.28);
+  }
+}
+
+@keyframes completion-drift {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.92);
+  }
+
+  18%,
+  70% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(24px) translateY(-12px) scale(0.94);
+  }
+}
+
 @media (max-width: 1120px) {
   .statusStrip,
   .layout,
@@ -714,7 +976,8 @@
   }
 
   .vendorRow,
-  .noteGrid {
+  .noteGrid,
+  .notesPipeline {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -731,7 +994,8 @@
 
   .vendorRow,
   .noteGrid,
-  .replyComposer {
+  .replyComposer,
+  .notesPipeline {
     grid-template-columns: 1fr;
   }
 

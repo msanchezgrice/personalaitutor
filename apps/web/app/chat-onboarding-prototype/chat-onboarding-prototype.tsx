@@ -22,10 +22,12 @@ import {
   mergeOnboardingNotes,
   REALTIME_TOOL_NAME,
   REQUIRED_NOTE_LABELS,
+  REQUIRED_NOTE_PROMPTS,
   SITUATION_LABELS,
   type LearningPlanPreview,
   type OnboardingNotes,
   type RealtimeOnboardingUpdate,
+  type RequiredNoteField,
   type TranscriptEntry,
   type TranscriptSpeaker,
 } from "./prototype-data";
@@ -55,6 +57,11 @@ type OnboardingCompletePayload = {
   error?: { message?: string };
 };
 
+type CompletedPrompt = {
+  id: string;
+  field: RequiredNoteField;
+};
+
 const synthesiaEmbedUrl =
   process.env.NEXT_PUBLIC_CHAT_ONBOARDING_SYNTHESIA_URL?.trim() ??
   "https://share.synthesia.io/17371f4f-02dc-489c-9b9a-ffc0aae4962b";
@@ -68,20 +75,20 @@ const vendorCards: Array<{
 }> = [
   {
     id: "native",
-    label: "Voice Orb",
-    description: "Uses OpenAI Realtime voice immediately and keeps the visual layer inside the app.",
+    label: "Notes Board",
+    description: "Keep the main stage focused on live intake notes instead of an avatar.",
     url: "",
   },
   {
     id: "synthesia",
     label: "Synthesia",
-    description: "Drop in a hosted Synthesia scene or avatar room URL when you want a vendor-backed face.",
+    description: "Optional side preview using a public Synthesia share page.",
     url: synthesiaEmbedUrl,
   },
   {
     id: "heygen",
     label: "HeyGen",
-    description: "Swap in a HeyGen streaming room URL if you want a different avatar layer.",
+    description: "Optional side preview using a HeyGen-hosted session URL.",
     url: heygenEmbedUrl,
   },
 ];
@@ -220,12 +227,17 @@ export function ChatOnboardingPrototype() {
   const [planBusy, setPlanBusy] = useState(false);
   const [plan, setPlan] = useState<LearningPlanPreview | null>(null);
   const [planSessionId, setPlanSessionId] = useState<string | null>(null);
+  const [rotatingMissingIndex, setRotatingMissingIndex] = useState(0);
+  const [completedPrompts, setCompletedPrompts] = useState<CompletedPrompt[]>([]);
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const notesRef = useRef(notes);
+  const connectionTokenRef = useRef(0);
+  const previousMissingFieldsRef = useRef<RequiredNoteField[]>([]);
+  const completedPromptTimeoutsRef = useRef<number[]>([]);
 
   const selectedVendor = vendorCards.find((card) => card.id === vendor) ?? vendorCards[0];
   const currentCareerPath = useMemo(
@@ -234,6 +246,8 @@ export function ChatOnboardingPrototype() {
   );
   const missingFields = useMemo(() => getMissingRequiredFields(notes), [notes]);
   const coverage = useMemo(() => getCoveragePercent(notes), [notes]);
+  const activeMissingField =
+    missingFields.length > 0 ? missingFields[rotatingMissingIndex % missingFields.length] : null;
   const normalizedScore = useMemo(() => {
     if (!plan) return null;
     return plan.assessmentScore <= 1 ? Math.round(plan.assessmentScore * 100) : Math.round(plan.assessmentScore);
@@ -242,6 +256,53 @@ export function ChatOnboardingPrototype() {
   useEffect(() => {
     notesRef.current = notes;
   }, [notes]);
+
+  useEffect(() => {
+    const previousMissingFields = previousMissingFieldsRef.current;
+    const newlyCompleted = previousMissingFields.filter((field) => !missingFields.includes(field));
+
+    if (newlyCompleted.length) {
+      const nextPrompts = newlyCompleted.map((field) => ({
+        id: `${field}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        field,
+      }));
+
+      setCompletedPrompts((current) => [...nextPrompts, ...current].slice(0, 6));
+
+      nextPrompts.forEach((prompt) => {
+        const timeoutId = window.setTimeout(() => {
+          setCompletedPrompts((current) => current.filter((entry) => entry.id !== prompt.id));
+          completedPromptTimeoutsRef.current = completedPromptTimeoutsRef.current.filter(
+            (activeTimeoutId) => activeTimeoutId !== timeoutId,
+          );
+        }, 2200);
+
+        completedPromptTimeoutsRef.current.push(timeoutId);
+      });
+    }
+
+    previousMissingFieldsRef.current = missingFields;
+    setRotatingMissingIndex((current) => (missingFields.length ? current % missingFields.length : 0));
+  }, [missingFields]);
+
+  useEffect(() => {
+    if (missingFields.length <= 1) return;
+
+    const intervalId = window.setInterval(() => {
+      setRotatingMissingIndex((current) => (current + 1) % missingFields.length);
+    }, 2600);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [missingFields]);
+
+  useEffect(() => {
+    return () => {
+      completedPromptTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      completedPromptTimeoutsRef.current = [];
+    };
+  }, []);
 
   const appendTranscript = useEffectEvent((speaker: TranscriptSpeaker, text: string) => {
     const trimmed = text.trim();
@@ -252,6 +313,7 @@ export function ChatOnboardingPrototype() {
   });
 
   const closeConnection = useEffectEvent((nextState: ConnectionState = "ended") => {
+    connectionTokenRef.current += 1;
     dataChannelRef.current?.close();
     dataChannelRef.current = null;
     peerConnectionRef.current?.close();
@@ -347,9 +409,15 @@ export function ChatOnboardingPrototype() {
 
   async function startOnboardingCall() {
     closeConnection("idle");
+    const connectionToken = connectionTokenRef.current;
     setError(null);
     setPlan(null);
     setPlanSessionId(null);
+    completedPromptTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    completedPromptTimeoutsRef.current = [];
+    previousMissingFieldsRef.current = [];
+    setCompletedPrompts([]);
+    setRotatingMissingIndex(0);
     const emptyNotes = createEmptyNotes();
     setNotes(emptyNotes);
     notesRef.current = emptyNotes;
@@ -369,6 +437,10 @@ export function ChatOnboardingPrototype() {
           noiseSuppression: true,
         },
       });
+      if (connectionToken !== connectionTokenRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
 
       const peerConnection = new RTCPeerConnection();
       localStreamRef.current = stream;
@@ -389,6 +461,7 @@ export function ChatOnboardingPrototype() {
       };
 
       peerConnection.onconnectionstatechange = () => {
+        if (connectionToken !== connectionTokenRef.current) return;
         if (peerConnection.connectionState === "connected") {
           setConnectionState("live");
           setStatusMessage("Live. The onboarding host is ready and the notes panel is listening.");
@@ -404,6 +477,7 @@ export function ChatOnboardingPrototype() {
       dataChannelRef.current = dataChannel;
 
       dataChannel.addEventListener("open", () => {
+        if (connectionToken !== connectionTokenRef.current) return;
         appendTranscript("system", "Voice session connected. The onboarding host is joining.");
         sendRealtimeEvent({
           type: "response.create",
@@ -415,6 +489,7 @@ export function ChatOnboardingPrototype() {
       });
 
       dataChannel.addEventListener("message", (messageEvent) => {
+        if (connectionToken !== connectionTokenRef.current) return;
         try {
           handleRealtimeEvent(JSON.parse(String(messageEvent.data)) as Record<string, unknown>);
         } catch {
@@ -423,6 +498,7 @@ export function ChatOnboardingPrototype() {
       });
 
       dataChannel.addEventListener("close", () => {
+        if (connectionToken !== connectionTokenRef.current) return;
         if (connectionState !== "ended") {
           setConnectionState("ended");
           setStatusMessage("Call ended. Notes stay on screen so you can still generate a plan.");
@@ -431,6 +507,9 @@ export function ChatOnboardingPrototype() {
 
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
+      if (connectionToken !== connectionTokenRef.current || peerConnectionRef.current !== peerConnection) {
+        return;
+      }
 
       const realtimeResponse = await fetch("https://api.openai.com/v1/realtime/calls", {
         method: "POST",
@@ -447,11 +526,30 @@ export function ChatOnboardingPrototype() {
       }
 
       const answerSdp = await realtimeResponse.text();
-      await peerConnection.setRemoteDescription({
-        type: "answer",
-        sdp: answerSdp,
-      });
+      if (connectionToken !== connectionTokenRef.current || peerConnectionRef.current !== peerConnection) {
+        return;
+      }
+      try {
+        await peerConnection.setRemoteDescription({
+          type: "answer",
+          sdp: answerSdp,
+        });
+      } catch (remoteDescriptionError) {
+        const remoteDescriptionMessage =
+          remoteDescriptionError instanceof Error ? remoteDescriptionError.message : "";
+        if (
+          connectionToken !== connectionTokenRef.current ||
+          peerConnectionRef.current !== peerConnection ||
+          remoteDescriptionMessage.includes("signalingState is 'closed'")
+        ) {
+          return;
+        }
+        throw remoteDescriptionError;
+      }
     } catch (startError) {
+      if (connectionToken !== connectionTokenRef.current) {
+        return;
+      }
       closeConnection("error");
       const message = startError instanceof Error ? startError.message : "Unable to start the onboarding call.";
       setError(message);
@@ -467,6 +565,11 @@ export function ChatOnboardingPrototype() {
 
   function resetPrototype() {
     closeConnection("idle");
+    completedPromptTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    completedPromptTimeoutsRef.current = [];
+    previousMissingFieldsRef.current = [];
+    setCompletedPrompts([]);
+    setRotatingMissingIndex(0);
     setError(null);
     setPlan(null);
     setPlanSessionId(null);
@@ -507,6 +610,159 @@ export function ChatOnboardingPrototype() {
       response: {},
     });
   }
+
+  const notesBoard = (
+    <article className={styles.notesPanel}>
+      <div className={styles.panelHeader}>
+        <div>
+          <div className={styles.panelEyebrow}>Structured intake</div>
+          <h2>Live notes</h2>
+        </div>
+        <div className={styles.notesBoardMeta}>
+          <div className={styles.coveragePill}>{coverage}% captured</div>
+          <div className={waitingForAssistant ? styles.liveBadgeHot : styles.liveBadge}>
+            {waitingForAssistant ? "Responding" : connectionState === "live" ? "Listening" : "Waiting"}
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.summaryCard}>
+        <span className={styles.summaryLabel}>Working summary</span>
+        <p>{notes.summary || "The host will keep this summary updated as answers come in."}</p>
+      </div>
+
+      <div className={styles.noteGrid}>
+        <div className={styles.noteTile}>
+          <span>Name</span>
+          <strong>{notes.fullName || "Waiting"}</strong>
+        </div>
+        <div className={styles.noteTile}>
+          <span>Role</span>
+          <strong>{notes.jobTitle || "Waiting"}</strong>
+        </div>
+        <div className={styles.noteTile}>
+          <span>Learning track</span>
+          <strong>{currentCareerPath?.name || notes.careerCategoryLabel || "Waiting"}</strong>
+        </div>
+        <div className={styles.noteTile}>
+          <span>Experience</span>
+          <strong>{notes.yearsExperience ? EXPERIENCE_LABELS[notes.yearsExperience] : "Waiting"}</strong>
+        </div>
+        <div className={styles.noteTile}>
+          <span>Situation</span>
+          <strong>{notes.situation ? SITUATION_LABELS[notes.situation] : "Waiting"}</strong>
+        </div>
+        <div className={styles.noteTile}>
+          <span>Company size</span>
+          <strong>{notes.companySize ? COMPANY_SIZE_LABELS[notes.companySize] : "Optional"}</strong>
+        </div>
+      </div>
+
+      <div className={styles.noteBlock}>
+        <span>Day-to-day work</span>
+        <p>{notes.dailyWorkSummary || "The host will turn the spoken work summary into notes here."}</p>
+      </div>
+
+      <div className={styles.noteBlock}>
+        <span>Tools and skills</span>
+        <div className={styles.chipRow}>
+          {notes.keySkills.length ? notes.keySkills.map((skill) => <span key={skill} className={styles.infoChip}>{skill}</span>) : <span className={styles.emptyInline}>No tools captured yet.</span>}
+        </div>
+      </div>
+
+      <div className={styles.noteBlock}>
+        <span>Goals</span>
+        <div className={styles.chipRow}>
+          {notes.selectedGoals.length ? notes.selectedGoals.map((goal) => <span key={goal} className={styles.goalChip}>{GOAL_LABELS[goal]}</span>) : <span className={styles.emptyInline}>The host still needs to capture the learning goals.</span>}
+        </div>
+      </div>
+
+      <div className={styles.noteBlock}>
+        <span>AI comfort</span>
+        <p>{typeof notes.aiComfort === "number" ? `${notes.aiComfort}/5` : "Waiting"}</p>
+      </div>
+
+      <div className={styles.noteGrid}>
+        <div className={styles.noteTile}>
+          <span>LinkedIn</span>
+          <strong>{notes.linkedinUrl || "Optional"}</strong>
+        </div>
+        <div className={styles.noteTile}>
+          <span>Resume note</span>
+          <strong>{notes.resumeFilename || "Optional"}</strong>
+        </div>
+      </div>
+
+      <div className={styles.followupCard}>
+        <div className={styles.followupHeader}>
+          <span>Prompt choreography</span>
+          <strong>{missingFields.length === 0 ? "Captured" : `${missingFields.length} prompts left`}</strong>
+        </div>
+
+        {activeMissingField ? (
+          <div key={activeMissingField} className={styles.promptSpotlight}>
+            <div className={styles.promptSpotlightMeta}>
+              <span>Now circling</span>
+              <strong>
+                {rotatingMissingIndex % missingFields.length + 1} / {missingFields.length}
+              </strong>
+            </div>
+            <h3>{REQUIRED_NOTE_PROMPTS[activeMissingField].title}</h3>
+            <p>{REQUIRED_NOTE_PROMPTS[activeMissingField].detail}</p>
+
+            <div className={styles.promptQueue}>
+              {missingFields.map((field) => (
+                <button
+                  key={field}
+                  type="button"
+                  className={field === activeMissingField ? styles.promptChipActive : styles.promptChip}
+                  onClick={() => setRotatingMissingIndex(missingFields.indexOf(field))}
+                >
+                  {REQUIRED_NOTE_LABELS[field]}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className={styles.readyStateCard}>
+            <strong>Everything required is locked in.</strong>
+            <p>The intake is complete enough to generate the learning plan whenever you want.</p>
+          </div>
+        )}
+
+        {completedPrompts.length ? (
+          <div className={styles.completionTrail}>
+            {completedPrompts.map((prompt) => (
+              <span key={prompt.id} className={styles.completedChip}>
+                {REQUIRED_NOTE_LABELS[prompt.field]} captured
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      <div className={styles.notesActionRow}>
+        <div className={styles.notesPipeline}>
+          <div>
+            <span className={styles.footerLabel}>Audio path</span>
+            <strong>OpenAI Realtime WebRTC</strong>
+          </div>
+          <div>
+            <span className={styles.footerLabel}>Notes path</span>
+            <strong>Tool-call extraction + live field sync</strong>
+          </div>
+        </div>
+        <button
+          type="button"
+          className={styles.primaryButton}
+          onClick={generateLearningPlan}
+          disabled={planBusy || missingFields.length > 0}
+        >
+          {planBusy ? "Generating plan..." : "Generate learning plan"}
+        </button>
+      </div>
+    </article>
+  );
 
   async function generateLearningPlan() {
     const currentNotes = notesRef.current;
@@ -579,10 +835,10 @@ export function ChatOnboardingPrototype() {
       <section className={styles.hero}>
         <div>
           <div className={styles.eyebrow}>Chat Onboarding Prototype</div>
-          <h1 className={styles.title}>A voice-first onboarding host with a live avatar surface and structured notes.</h1>
+          <h1 className={styles.title}>A voice-first onboarding host with live notes as the main surface.</h1>
           <p className={styles.subtitle}>
-            Start a realtime conversation, let the host ask the onboarding questions one at a time, and watch the intake
-            turn into plan-ready notes beside the call.
+            Start a realtime conversation, let the host ask the onboarding questions one at a time, and let the intake
+            board become the primary visual while the call runs in the background.
           </p>
         </div>
 
@@ -591,9 +847,9 @@ export function ChatOnboardingPrototype() {
             type="button"
             className={styles.primaryButton}
             onClick={startOnboardingCall}
-            disabled={connectionState === "connecting"}
+            disabled={connectionState === "connecting" || connectionState === "live"}
           >
-            {connectionState === "connecting" ? "Connecting..." : "Start onboarding"}
+            {connectionState === "connecting" ? "Connecting..." : connectionState === "live" ? "Live call active" : "Start onboarding"}
           </button>
           <button
             type="button"
@@ -629,71 +885,7 @@ export function ChatOnboardingPrototype() {
 
       <div className={styles.layout}>
         <section className={styles.stageColumn}>
-          <div className={styles.vendorRow}>
-            {vendorCards.map((card) => (
-              <button
-                key={card.id}
-                type="button"
-                className={card.id === vendor ? styles.vendorChipActive : styles.vendorChip}
-                onClick={() => setVendor(card.id)}
-              >
-                <span>{card.label}</span>
-                <small>{card.url ? "Configured" : card.id === "native" ? "Built in" : "Needs URL"}</small>
-              </button>
-            ))}
-          </div>
-
-          <article className={styles.avatarStage}>
-            <div className={styles.avatarStageHeader}>
-              <div>
-                <div className={styles.panelEyebrow}>Avatar surface</div>
-                <h2>{selectedVendor.label}</h2>
-              </div>
-              <div className={waitingForAssistant ? styles.liveBadgeHot : styles.liveBadge}>
-                {waitingForAssistant ? "Responding" : connectionState === "live" ? "Listening" : "Waiting"}
-              </div>
-            </div>
-
-            {selectedVendor.id !== "native" && isHttpUrl(selectedVendor.url) ? (
-              <iframe
-                className={styles.vendorFrame}
-                src={selectedVendor.url}
-                title={`${selectedVendor.label} onboarding avatar`}
-                allow="camera; microphone; autoplay; encrypted-media"
-              />
-            ) : (
-              <div className={styles.avatarCanvas}>
-                <div className={waitingForAssistant ? styles.orbitRingHot : styles.orbitRing}></div>
-                <div className={styles.avatarBody}>
-                  <div className={styles.avatarFace}>
-                    <span className={styles.avatarEye}></span>
-                    <span className={styles.avatarEye}></span>
-                  </div>
-                  <div className={waitingForAssistant ? styles.avatarMouthHot : styles.avatarMouth}></div>
-                </div>
-                <div className={styles.avatarCopy}>
-                  <strong>{selectedVendor.label}</strong>
-                  <p>{selectedVendor.description}</p>
-                  {selectedVendor.id !== "native" && !selectedVendor.url ? (
-                    <span className={styles.integrationHint}>
-                      Add {selectedVendor.id === "synthesia" ? "`NEXT_PUBLIC_CHAT_ONBOARDING_SYNTHESIA_URL`" : "`NEXT_PUBLIC_CHAT_ONBOARDING_HEYGEN_URL`"} to swap the native visual with a hosted vendor avatar.
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-            )}
-
-            <div className={styles.surfaceFooter}>
-              <div>
-                <span className={styles.footerLabel}>Audio path</span>
-                <strong>OpenAI Realtime WebRTC</strong>
-              </div>
-              <div>
-                <span className={styles.footerLabel}>Notes path</span>
-                <strong>Tool-call extraction + live field sync</strong>
-              </div>
-            </div>
-          </article>
+          {notesBoard}
 
           <article className={styles.transcriptPanel}>
             <div className={styles.panelHeader}>
@@ -742,105 +934,51 @@ export function ChatOnboardingPrototype() {
         </section>
 
         <aside className={styles.notesColumn}>
-          <article className={styles.notesPanel}>
+          <article className={styles.previewPanel}>
             <div className={styles.panelHeader}>
               <div>
-                <div className={styles.panelEyebrow}>Structured intake</div>
-                <h2>Live notes</h2>
+                <div className={styles.panelEyebrow}>Visual layer</div>
+                <h2>Optional avatar preview</h2>
               </div>
-              <div className={styles.coveragePill}>{coverage}% captured</div>
+              <span className={styles.transcriptMeta}>{selectedVendor.label}</span>
             </div>
 
-            <div className={styles.summaryCard}>
-              <span className={styles.summaryLabel}>Working summary</span>
-              <p>{notes.summary || "The host will keep this summary updated as answers come in."}</p>
+            <div className={styles.vendorRow}>
+              {vendorCards.map((card) => (
+                <button
+                  key={card.id}
+                  type="button"
+                  className={card.id === vendor ? styles.vendorChipActive : styles.vendorChip}
+                  onClick={() => setVendor(card.id)}
+                >
+                  <span>{card.label}</span>
+                  <small>{card.url ? "Configured" : card.id === "native" ? "Default" : "Needs URL"}</small>
+                </button>
+              ))}
             </div>
 
-            <div className={styles.noteGrid}>
-              <div className={styles.noteTile}>
-                <span>Name</span>
-                <strong>{notes.fullName || "Waiting"}</strong>
-              </div>
-              <div className={styles.noteTile}>
-                <span>Role</span>
-                <strong>{notes.jobTitle || "Waiting"}</strong>
-              </div>
-              <div className={styles.noteTile}>
-                <span>Learning track</span>
-                <strong>{currentCareerPath?.name || notes.careerCategoryLabel || "Waiting"}</strong>
-              </div>
-              <div className={styles.noteTile}>
-                <span>Experience</span>
-                <strong>{notes.yearsExperience ? EXPERIENCE_LABELS[notes.yearsExperience] : "Waiting"}</strong>
-              </div>
-              <div className={styles.noteTile}>
-                <span>Situation</span>
-                <strong>{notes.situation ? SITUATION_LABELS[notes.situation] : "Waiting"}</strong>
-              </div>
-              <div className={styles.noteTile}>
-                <span>Company size</span>
-                <strong>{notes.companySize ? COMPANY_SIZE_LABELS[notes.companySize] : "Optional"}</strong>
-              </div>
-            </div>
-
-            <div className={styles.noteBlock}>
-              <span>Day-to-day work</span>
-              <p>{notes.dailyWorkSummary || "The host will turn the spoken work summary into notes here."}</p>
-            </div>
-
-            <div className={styles.noteBlock}>
-              <span>Tools and skills</span>
-              <div className={styles.chipRow}>
-                {notes.keySkills.length ? notes.keySkills.map((skill) => <span key={skill} className={styles.infoChip}>{skill}</span>) : <span className={styles.emptyInline}>No tools captured yet.</span>}
-              </div>
-            </div>
-
-            <div className={styles.noteBlock}>
-              <span>Goals</span>
-              <div className={styles.chipRow}>
-                {notes.selectedGoals.length ? notes.selectedGoals.map((goal) => <span key={goal} className={styles.goalChip}>{GOAL_LABELS[goal]}</span>) : <span className={styles.emptyInline}>The host still needs to capture the learning goals.</span>}
-              </div>
-            </div>
-
-            <div className={styles.noteBlock}>
-              <span>AI comfort</span>
-              <p>{typeof notes.aiComfort === "number" ? `${notes.aiComfort}/5` : "Waiting"}</p>
-            </div>
-
-            <div className={styles.noteGrid}>
-              <div className={styles.noteTile}>
-                <span>LinkedIn</span>
-                <strong>{notes.linkedinUrl || "Optional"}</strong>
-              </div>
-              <div className={styles.noteTile}>
-                <span>Resume note</span>
-                <strong>{notes.resumeFilename || "Optional"}</strong>
-              </div>
-            </div>
-
-            <div className={styles.followupCard}>
-              <span>Still needed</span>
-              <div className={styles.chipRow}>
-                {missingFields.length ? (
-                  missingFields.map((field) => (
-                    <span key={field} className={styles.missingChip}>
-                      {REQUIRED_NOTE_LABELS[field]}
-                    </span>
-                  ))
+            {selectedVendor.id !== "native" && isHttpUrl(selectedVendor.url) ? (
+              <iframe
+                className={styles.vendorFrame}
+                src={selectedVendor.url}
+                title={`${selectedVendor.label} onboarding preview`}
+                allow="camera; microphone; autoplay; encrypted-media"
+              />
+            ) : (
+              <div className={styles.previewPlaceholder}>
+                <strong>{selectedVendor.label}</strong>
+                <p>{selectedVendor.description}</p>
+                {selectedVendor.id !== "native" && !selectedVendor.url ? (
+                  <span className={styles.integrationHint}>
+                    Add {selectedVendor.id === "synthesia" ? "`NEXT_PUBLIC_CHAT_ONBOARDING_SYNTHESIA_URL`" : "`NEXT_PUBLIC_CHAT_ONBOARDING_HEYGEN_URL`"} to load the hosted preview here.
+                  </span>
                 ) : (
-                  <span className={styles.readyChip}>The intake is complete enough to generate a plan.</span>
+                  <span className={styles.integrationHint}>
+                    The notes board is now the primary visual. External avatar vendors are optional side previews.
+                  </span>
                 )}
               </div>
-            </div>
-
-            <button
-              type="button"
-              className={styles.primaryButton}
-              onClick={generateLearningPlan}
-              disabled={planBusy || missingFields.length > 0}
-            >
-              {planBusy ? "Generating plan..." : "Generate learning plan"}
-            </button>
+            )}
           </article>
         </aside>
       </div>
