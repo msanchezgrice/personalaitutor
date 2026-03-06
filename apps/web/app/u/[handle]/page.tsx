@@ -157,8 +157,11 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
         <header className="glass fixed top-0 z-50 w-full rounded-none border-x-0 border-t-0 bg-opacity-80 backdrop-blur-xl">
           <div className="container nav py-4">
-            <Link href="/" className="flex items-center gap-2">
-              <img src="/assets/branding/brand_wordmark_logo.png" alt={BRAND_NAME} className="h-8 w-auto object-contain" />
+            <Link href="/" className="flex items-center gap-3">
+              <img src="/assets/branding/brand_brain_icon.svg" alt={BRAND_NAME} className="h-11 w-11 object-contain" />
+              <span className="font-[Outfit] text-[1.85rem] font-bold leading-none tracking-tight text-slate-900">
+                {BRAND_NAME}
+              </span>
             </Link>
             <div className="flex gap-4">
               <Link href="/employers/talent" className="btn btn-secondary py-2 px-4 shadow-none">

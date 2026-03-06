@@ -616,7 +616,7 @@
     return String(value || "").replace(/\s+/g, " ").trim().length > 20;
   }
 
-  function warmHomeNews(userId, forceRefresh) {
+  function warmHomeNews(userId, forceRefresh, options) {
     var scope = cacheScope(userId);
     if (!scope) return Promise.resolve(null);
     if (!forceRefresh) {
@@ -626,8 +626,9 @@
       }
     }
     if (!forceRefresh && HOME_NEWS_WARM_PROMISES[scope]) return HOME_NEWS_WARM_PROMISES[scope];
+    var timeoutMs = options && options.timeoutMs ? Number(options.timeoutMs) : 9000;
     HOME_NEWS_WARM_PROMISES[scope] = postJson("/api/news/recommendations", { maxStories: 6 }, {
-      timeoutMs: 7000,
+      timeoutMs: timeoutMs,
       timeoutMessage: "AI news is taking longer than expected",
     })
       .then(function (fresh) {
@@ -2970,7 +2971,7 @@
           refreshButton.setAttribute("disabled", "true");
           refreshButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Refreshing';
           try {
-            var refreshed = await warmHomeNews(summaryUserId, true);
+            var refreshed = await warmHomeNews(summaryUserId, true, { timeoutMs: 45000 });
             if (!refreshed || !Array.isArray(refreshed.insights) || !refreshed.insights.length) {
               throw new Error("Unable to refresh AI news");
             }
@@ -2993,7 +2994,7 @@
     }
 
     try {
-      var initial = await warmHomeNews(summaryUserId, false);
+      var initial = await warmHomeNews(summaryUserId, true, { timeoutMs: 45000 });
       if (!initial || !Array.isArray(initial.insights) || !initial.insights.length) {
         throw new Error("AI news is taking longer than expected. Refresh to retry.");
       }
