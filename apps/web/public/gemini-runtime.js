@@ -2433,7 +2433,13 @@
       '<div class="runtime-social-loading-badge runtime-loading-sheen"></div>' +
       '<div class="runtime-social-loading-label runtime-loading-sheen"></div>' +
       '</div>' +
-      '<div class="runtime-social-loading-editor runtime-loading-sheen"></div>' +
+      '<div class="runtime-social-loading-editor">' +
+      '<div class="runtime-social-loading-line runtime-social-loading-line-full runtime-loading-sheen"></div>' +
+      '<div class="runtime-social-loading-line runtime-social-loading-line-wide runtime-loading-sheen"></div>' +
+      '<div class="runtime-social-loading-line runtime-social-loading-line-full runtime-loading-sheen"></div>' +
+      '<div class="runtime-social-loading-line runtime-social-loading-line-medium runtime-loading-sheen"></div>' +
+      '<div class="runtime-social-loading-line runtime-social-loading-line-short runtime-loading-sheen"></div>' +
+      '</div>' +
       '<div class="runtime-social-loading-actions">' +
       '<div class="runtime-social-loading-button runtime-loading-sheen"></div>' +
       '<div class="runtime-social-loading-button runtime-social-loading-button-primary runtime-loading-sheen"></div>' +
@@ -2453,7 +2459,13 @@
       '<div class="runtime-social-loading-badge runtime-loading-sheen"></div>' +
       '<div class="runtime-social-loading-label runtime-loading-sheen"></div>' +
       '</div>' +
-      '<div class="runtime-social-loading-editor runtime-loading-sheen"></div>' +
+      '<div class="runtime-social-loading-editor">' +
+      '<div class="runtime-social-loading-line runtime-social-loading-line-full runtime-loading-sheen"></div>' +
+      '<div class="runtime-social-loading-line runtime-social-loading-line-wide runtime-loading-sheen"></div>' +
+      '<div class="runtime-social-loading-line runtime-social-loading-line-full runtime-loading-sheen"></div>' +
+      '<div class="runtime-social-loading-line runtime-social-loading-line-medium runtime-loading-sheen"></div>' +
+      '<div class="runtime-social-loading-line runtime-social-loading-line-short runtime-loading-sheen"></div>' +
+      '</div>' +
       '<div class="runtime-social-loading-actions">' +
       '<div class="runtime-social-loading-button runtime-loading-sheen"></div>' +
       '<div class="runtime-social-loading-button runtime-social-loading-button-primary runtime-loading-sheen"></div>' +
