@@ -21,6 +21,7 @@ import {
   GOAL_LABELS,
   mergeOnboardingNotes,
   REALTIME_TOOL_NAME,
+  REQUIRED_NOTE_FIELDS,
   REQUIRED_NOTE_LABELS,
   REQUIRED_NOTE_PROMPTS,
   SITUATION_LABELS,
@@ -321,6 +322,26 @@ export function ChatOnboardingPrototype() {
     return plan.assessmentScore <= 1 ? Math.round(plan.assessmentScore * 100) : Math.round(plan.assessmentScore);
   }, [plan]);
   const notesPayload = useMemo(() => JSON.stringify(notes, null, 2), [notes]);
+  const requiredPromptStates = useMemo(
+    () =>
+      REQUIRED_NOTE_FIELDS.map((field) => ({
+        field,
+        isActive: field === activeMissingField,
+        isCaptured: !missingFields.includes(field),
+      })),
+    [activeMissingField, missingFields],
+  );
+  const capturedRequiredCount = useMemo(
+    () => requiredPromptStates.filter((entry) => entry.isCaptured).length,
+    [requiredPromptStates],
+  );
+  const latestRequiredFields = useMemo(
+    () =>
+      (lastStructuredUpdate?.fields ?? []).filter(
+        (field): field is RequiredNoteField => REQUIRED_NOTE_FIELDS.includes(field as RequiredNoteField),
+      ),
+    [lastStructuredUpdate],
+  );
 
   useEffect(() => {
     notesRef.current = notes;
@@ -726,12 +747,148 @@ export function ChatOnboardingPrototype() {
     });
   }
 
-  const notesBoard = (
+  const promptStagePanel = (
+    <article className={styles.promptStagePanel}>
+      <div className={styles.panelHeader}>
+        <div>
+          <div className={styles.panelEyebrow}>Prompt canvas</div>
+          <h2>What the host is asking now</h2>
+        </div>
+        <div className={styles.notesBoardMeta}>
+          <div className={styles.coveragePill}>
+            {capturedRequiredCount}/{REQUIRED_NOTE_FIELDS.length} locked
+          </div>
+          <div className={waitingForAssistant ? styles.liveBadgeHot : styles.liveBadge}>
+            {waitingForAssistant ? "Responding" : connectionState === "live" ? "Listening" : "Waiting"}
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.vendorRow}>
+        {vendorCards.map((card) => (
+          <button
+            key={card.id}
+            type="button"
+            className={card.id === vendor ? styles.vendorChipActive : styles.vendorChip}
+            onClick={() => setVendor(card.id)}
+          >
+            <span>{card.id === "native" ? "Prompt Stage" : card.label}</span>
+            <small>{card.url ? "Configured" : card.id === "native" ? "Default" : "Needs URL"}</small>
+          </button>
+        ))}
+      </div>
+
+      <div className={styles.visualFrame}>
+        <div className={styles.visualFrameBar}>
+          <div className={styles.visualDots}>
+            <span className={styles.visualDotAmber}></span>
+            <span className={styles.visualDot}></span>
+            <span className={styles.visualDotTeal}></span>
+          </div>
+          <span className={styles.visualFrameLabel}>
+            {selectedVendor.id === "native" ? "Animated prompt surface" : `${selectedVendor.label} backdrop + prompt surface`}
+          </span>
+        </div>
+
+        <div className={styles.visualFrameBody}>
+          {selectedVendor.id !== "native" && isHttpUrl(selectedVendor.url) ? (
+            <iframe
+              className={styles.visualBackdropFrame}
+              src={selectedVendor.url}
+              title={`${selectedVendor.label} prompt backdrop`}
+              allow="camera; microphone; autoplay; encrypted-media"
+            />
+          ) : (
+            <div className={styles.visualBackdropGradient}></div>
+          )}
+
+          <div className={styles.visualBackdropGlow}></div>
+
+          <div className={styles.visualOverlay}>
+            <div className={styles.visualHeroCard}>
+              <span className={styles.summaryLabel}>{activeMissingField ? "Asking now" : "Ready to wrap"}</span>
+              <h3>
+                {activeMissingField
+                  ? REQUIRED_NOTE_PROMPTS[activeMissingField].title
+                  : "Everything required is captured."}
+              </h3>
+              <p>
+                {activeMissingField
+                  ? REQUIRED_NOTE_PROMPTS[activeMissingField].detail
+                  : "The form on the right is complete enough to generate the learning plan whenever you want."}
+              </p>
+
+              <div className={styles.visualMetaRow}>
+                <span className={styles.visualMetaChip}>
+                  {activeMissingField ? REQUIRED_NOTE_LABELS[activeMissingField] : "Plan-ready intake"}
+                </span>
+                <span className={styles.visualMetaChip}>
+                  {lastStructuredUpdate
+                    ? `Last sync: ${lastStructuredUpdate.source}`
+                    : "Waiting for the next captured field"}
+                </span>
+              </div>
+
+              <div className={styles.visualSummaryBand}>
+                <span className={styles.footerLabel}>Live summary</span>
+                <strong>{notes.summary || "The host summary will tighten as more answers come in."}</strong>
+              </div>
+            </div>
+
+            <div className={styles.visualTopicGrid}>
+              {requiredPromptStates.map((entry) => (
+                <button
+                  key={entry.field}
+                  type="button"
+                  className={
+                    entry.isCaptured
+                      ? `${styles.visualTopicCard} ${styles.visualTopicDone}`
+                      : entry.isActive
+                        ? `${styles.visualTopicCard} ${styles.visualTopicActive}`
+                        : `${styles.visualTopicCard} ${styles.visualTopicPending}`
+                  }
+                  onClick={() => {
+                    if (!missingFields.includes(entry.field)) return;
+                    setRotatingMissingIndex(missingFields.indexOf(entry.field));
+                  }}
+                >
+                  <span>{entry.isCaptured ? "Done" : entry.isActive ? "Live" : "Queue"}</span>
+                  <strong>{REQUIRED_NOTE_LABELS[entry.field]}</strong>
+                </button>
+              ))}
+            </div>
+
+            {latestRequiredFields.length ? (
+              <div className={styles.visualUpdateRow}>
+                {latestRequiredFields.map((field) => (
+                  <span key={`${field}-${lastStructuredUpdate?.timestamp ?? 0}`} className={styles.syncChip}>
+                    {NOTE_FIELD_LABELS[field]} updated
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
+            {completedPrompts.length ? (
+              <div className={styles.visualCompletionRail}>
+                {completedPrompts.map((prompt) => (
+                  <span key={prompt.id} className={styles.completedChip}>
+                    {REQUIRED_NOTE_LABELS[prompt.field]} captured
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+
+  const formPanel = (
     <article className={styles.notesPanel}>
       <div className={styles.panelHeader}>
         <div>
           <div className={styles.panelEyebrow}>Structured intake</div>
-          <h2>Live notes</h2>
+          <h2>Bound form</h2>
         </div>
         <div className={styles.notesBoardMeta}>
           <div className={styles.coveragePill}>{coverage}% captured</div>
@@ -978,54 +1135,6 @@ export function ChatOnboardingPrototype() {
         </div>
       </div>
 
-      <div className={styles.followupCard}>
-        <div className={styles.followupHeader}>
-          <span>Prompt choreography</span>
-          <strong>{missingFields.length === 0 ? "Captured" : `${missingFields.length} prompts left`}</strong>
-        </div>
-
-        {activeMissingField ? (
-          <div key={activeMissingField} className={styles.promptSpotlight}>
-            <div className={styles.promptSpotlightMeta}>
-              <span>Now circling</span>
-              <strong>
-                {rotatingMissingIndex % missingFields.length + 1} / {missingFields.length}
-              </strong>
-            </div>
-            <h3>{REQUIRED_NOTE_PROMPTS[activeMissingField].title}</h3>
-            <p>{REQUIRED_NOTE_PROMPTS[activeMissingField].detail}</p>
-
-            <div className={styles.promptQueue}>
-              {missingFields.map((field) => (
-                <button
-                  key={field}
-                  type="button"
-                  className={field === activeMissingField ? styles.promptChipActive : styles.promptChip}
-                  onClick={() => setRotatingMissingIndex(missingFields.indexOf(field))}
-                >
-                  {REQUIRED_NOTE_LABELS[field]}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className={styles.readyStateCard}>
-            <strong>Everything required is locked in.</strong>
-            <p>The intake is complete enough to generate the learning plan whenever you want.</p>
-          </div>
-        )}
-
-        {completedPrompts.length ? (
-          <div className={styles.completionTrail}>
-            {completedPrompts.map((prompt) => (
-              <span key={prompt.id} className={styles.completedChip}>
-                {REQUIRED_NOTE_LABELS[prompt.field]} captured
-              </span>
-            ))}
-          </div>
-        ) : null}
-      </div>
-
       <div className={styles.notesActionRow}>
         <div className={styles.notesPipeline}>
           <div>
@@ -1120,10 +1229,10 @@ export function ChatOnboardingPrototype() {
       <section className={styles.hero}>
         <div>
           <div className={styles.eyebrow}>Chat Onboarding Prototype</div>
-          <h1 className={styles.title}>A voice-first onboarding host with a live avatar surface and structured notes.</h1>
+          <h1 className={styles.title}>A voice-first onboarding host with transcript, prompt canvas, and live form sync.</h1>
           <p className={styles.subtitle}>
-            Start a realtime conversation, let the host ask the onboarding questions one at a time, and watch the intake
-            turn into plan-ready notes beside the call.
+            Keep the exact transcript on the left, the active question and progress canvas in the center, and the bound
+            onboarding form on the right while the host fills the plan variables in realtime.
           </p>
         </div>
 
@@ -1169,78 +1278,12 @@ export function ChatOnboardingPrototype() {
       {error ? <div className={styles.errorBanner}>{error}</div> : null}
 
       <div className={styles.layout}>
-        <section className={styles.stageColumn}>
-          <div className={styles.vendorRow}>
-            {vendorCards.map((card) => (
-              <button
-                key={card.id}
-                type="button"
-                className={card.id === vendor ? styles.vendorChipActive : styles.vendorChip}
-                onClick={() => setVendor(card.id)}
-              >
-                <span>{card.label}</span>
-                <small>{card.url ? "Configured" : card.id === "native" ? "Built in" : "Needs URL"}</small>
-              </button>
-            ))}
-          </div>
-
-          <article className={styles.avatarStage}>
-            <div className={styles.avatarStageHeader}>
-              <div>
-                <div className={styles.panelEyebrow}>Avatar surface</div>
-                <h2>{selectedVendor.label}</h2>
-              </div>
-              <div className={waitingForAssistant ? styles.liveBadgeHot : styles.liveBadge}>
-                {waitingForAssistant ? "Responding" : connectionState === "live" ? "Listening" : "Waiting"}
-              </div>
-            </div>
-
-            {selectedVendor.id !== "native" && isHttpUrl(selectedVendor.url) ? (
-              <iframe
-                className={styles.vendorFrame}
-                src={selectedVendor.url}
-                title={`${selectedVendor.label} onboarding avatar`}
-                allow="camera; microphone; autoplay; encrypted-media"
-              />
-            ) : (
-              <div className={styles.avatarCanvas}>
-                <div className={waitingForAssistant ? styles.orbitRingHot : styles.orbitRing}></div>
-                <div className={styles.avatarBody}>
-                  <div className={styles.avatarFace}>
-                    <span className={styles.avatarEye}></span>
-                    <span className={styles.avatarEye}></span>
-                  </div>
-                  <div className={waitingForAssistant ? styles.avatarMouthHot : styles.avatarMouth}></div>
-                </div>
-                <div className={styles.avatarCopy}>
-                  <strong>{selectedVendor.label}</strong>
-                  <p>{selectedVendor.description}</p>
-                  {selectedVendor.id !== "native" && !selectedVendor.url ? (
-                    <span className={styles.integrationHint}>
-                      Add {selectedVendor.id === "synthesia" ? "`NEXT_PUBLIC_CHAT_ONBOARDING_SYNTHESIA_URL`" : "`NEXT_PUBLIC_CHAT_ONBOARDING_HEYGEN_URL`"} to swap the native visual with a hosted vendor avatar.
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-            )}
-
-            <div className={styles.surfaceFooter}>
-              <div>
-                <span className={styles.footerLabel}>Audio path</span>
-                <strong>OpenAI Realtime WebRTC</strong>
-              </div>
-              <div>
-                <span className={styles.footerLabel}>Notes path</span>
-                <strong>Tool-call extraction + live field sync</strong>
-              </div>
-            </div>
-          </article>
-
+        <aside className={styles.transcriptColumn}>
           <article className={styles.transcriptPanel}>
             <div className={styles.panelHeader}>
               <div>
-                <div className={styles.panelEyebrow}>Conversation</div>
-                <h2>Live transcript</h2>
+                <div className={styles.panelEyebrow}>Transcript</div>
+                <h2>Exact transcript</h2>
               </div>
               <span className={styles.transcriptMeta}>{transcript.length} turns</span>
             </div>
@@ -1280,11 +1323,11 @@ export function ChatOnboardingPrototype() {
               </button>
             </form>
           </article>
-        </section>
-
-        <aside className={styles.notesColumn}>
-          {notesBoard}
         </aside>
+
+        <section className={styles.visualColumn}>{promptStagePanel}</section>
+
+        <aside className={styles.formColumn}>{formPanel}</aside>
       </div>
 
       <section className={styles.planSection}>
