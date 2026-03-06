@@ -2429,20 +2429,12 @@
       '<textarea data-social-input="linkedin" class="runtime-social-draft-input runtime-social-draft-input--loading w-full min-h-[180px] rounded-lg border border-slate-300 bg-white p-3 text-[13px] text-slate-900 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-[#0a66c2]/40" readonly></textarea>' +
       '<div data-social-loading="linkedin" class="runtime-social-loading-overlay">' +
       '<div class="runtime-social-loading-stack">' +
-      '<div class="runtime-social-loading-meta">' +
-      '<div class="runtime-social-loading-badge runtime-loading-sheen"></div>' +
-      '<div class="runtime-social-loading-label runtime-loading-sheen"></div>' +
-      '</div>' +
       '<div class="runtime-social-loading-editor">' +
       '<div class="runtime-social-loading-line runtime-social-loading-line-full runtime-loading-sheen"></div>' +
       '<div class="runtime-social-loading-line runtime-social-loading-line-wide runtime-loading-sheen"></div>' +
       '<div class="runtime-social-loading-line runtime-social-loading-line-full runtime-loading-sheen"></div>' +
       '<div class="runtime-social-loading-line runtime-social-loading-line-medium runtime-loading-sheen"></div>' +
       '<div class="runtime-social-loading-line runtime-social-loading-line-short runtime-loading-sheen"></div>' +
-      '</div>' +
-      '<div class="runtime-social-loading-actions">' +
-      '<div class="runtime-social-loading-button runtime-loading-sheen"></div>' +
-      '<div class="runtime-social-loading-button runtime-social-loading-button-primary runtime-loading-sheen"></div>' +
       '</div>' +
       '</div></div></div>' +
       '<div class="flex items-center gap-2 mt-3">' +
@@ -2455,20 +2447,12 @@
       '<textarea data-social-input="x" class="runtime-social-draft-input runtime-social-draft-input--loading w-full min-h-[180px] rounded-lg border border-slate-300 bg-white p-3 text-[13px] text-slate-900 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-slate-400" readonly></textarea>' +
       '<div data-social-loading="x" class="runtime-social-loading-overlay">' +
       '<div class="runtime-social-loading-stack">' +
-      '<div class="runtime-social-loading-meta">' +
-      '<div class="runtime-social-loading-badge runtime-loading-sheen"></div>' +
-      '<div class="runtime-social-loading-label runtime-loading-sheen"></div>' +
-      '</div>' +
       '<div class="runtime-social-loading-editor">' +
       '<div class="runtime-social-loading-line runtime-social-loading-line-full runtime-loading-sheen"></div>' +
       '<div class="runtime-social-loading-line runtime-social-loading-line-wide runtime-loading-sheen"></div>' +
       '<div class="runtime-social-loading-line runtime-social-loading-line-full runtime-loading-sheen"></div>' +
       '<div class="runtime-social-loading-line runtime-social-loading-line-medium runtime-loading-sheen"></div>' +
       '<div class="runtime-social-loading-line runtime-social-loading-line-short runtime-loading-sheen"></div>' +
-      '</div>' +
-      '<div class="runtime-social-loading-actions">' +
-      '<div class="runtime-social-loading-button runtime-loading-sheen"></div>' +
-      '<div class="runtime-social-loading-button runtime-social-loading-button-primary runtime-loading-sheen"></div>' +
       '</div>' +
       '</div></div></div>' +
       '<div class="flex items-center gap-2 mt-3">' +

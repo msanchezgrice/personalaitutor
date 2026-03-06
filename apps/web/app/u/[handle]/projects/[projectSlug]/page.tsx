@@ -11,13 +11,17 @@ import {
   DEFAULT_OG_IMAGE_WIDTH,
   getSiteUrl,
 } from "@/lib/site";
-import { EXAMPLE_PROFILE_HANDLE, EXAMPLE_PROJECT_SLUG, exampleProfile, exampleProjects, prettyProjectState, safeHttpUrl, stateTone } from "@/app/u/public-profile-utils";
+import {
+  EXAMPLE_PROFILE_HANDLE,
+  EXAMPLE_PROJECT_SLUG,
+  exampleProfile,
+  exampleProjects,
+  prettyProjectState,
+  safeHttpUrl,
+  stateTone,
+} from "@/app/u/public-profile-utils";
 
 export const revalidate = 300;
-
-const shellClass = "rounded-[30px] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]";
-const mutedCardClass = "rounded-2xl border border-slate-200 bg-[#f8fbfa]";
-const secondaryButtonClass = "rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50";
 
 async function resolveProjectView(handle: string, projectSlug: string) {
   const profile = await runtimeFindUserByHandle(handle);
@@ -43,7 +47,7 @@ async function resolveProjectView(handle: string, projectSlug: string) {
   const projects = await runtimeListProjectsByUser(profile.id);
   const project = projects.find((entry) => entry.slug === projectSlug) ?? null;
   if (!project && projectSlug === EXAMPLE_PROJECT_SLUG && projects[0]) {
-    redirect(("/u/" + profile.handle + "/projects/" + projects[0].slug + "/") as never);
+    redirect((`/u/${profile.handle}/projects/${projects[0].slug}/`) as never);
   }
 
   return { profile, project, canView: Boolean(project), isExample: false };
@@ -125,92 +129,98 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
 
   return (
     <>
-      <main className="min-h-screen bg-[#f4f8f5] text-slate-900">
-        <div className="absolute inset-x-0 top-0 h-[360px] bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.14),transparent_58%)] pointer-events-none" />
-        <div className="relative mx-auto max-w-6xl px-6 py-8 md:px-10 md:py-10">
-          <header className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <a href={`/u/${profile.handle}/`} className="text-sm font-medium text-emerald-700 transition hover:text-emerald-800">← Back to {profile.name}</a>
-              <h1 className="mt-3 mb-3 font-[Outfit] text-4xl font-semibold tracking-tight text-slate-900 md:text-5xl">{project.title}</h1>
-              <p className="max-w-3xl text-lg leading-8 text-slate-600">{project.description}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${stateTone(project.state)}`}>
-                {prettyProjectState(project.state)}
-              </span>
-              <a href={`/u/${profile.handle}/`} className={secondaryButtonClass}>
-                View Profile
-              </a>
-            </div>
-          </header>
+      <main data-gemini-shell="1" className="relative min-h-screen flex flex-col pt-20">
+        <div className="bg-glow top-[-200px] left-[-120px] opacity-45"></div>
+        <div
+          className="bg-glow top-[18%] right-[-220px] opacity-35"
+          style={{ background: "radial-gradient(circle, var(--secondary-glow) 0%, rgba(0,0,0,0) 70%)" }}
+        ></div>
 
-          <section className="mb-8 grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
-            <div className={`${shellClass} p-8`}>
-              <div className="mb-6 flex items-start gap-4">
-                <img src={avatarUrl} alt={profile.name} className="h-20 w-20 rounded-[24px] border border-slate-200 object-cover shadow-sm" />
-                <div>
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Builder</div>
-                  <h2 className="font-[Outfit] text-2xl font-semibold text-slate-900">{profile.name}</h2>
-                  <p className="text-emerald-700">{profile.headline || "AI Builder"}</p>
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className={`${mutedCardClass} p-4`}>
-                  <div className="mb-2 text-sm text-slate-500">Artifacts</div>
-                  <div className="font-[Outfit] text-3xl font-semibold text-slate-900">{project.artifacts.length}</div>
-                </div>
-                <div className={`${mutedCardClass} p-4`}>
-                  <div className="mb-2 text-sm text-slate-500">Build log</div>
-                  <div className="font-[Outfit] text-3xl font-semibold text-slate-900">{project.buildLog.length}</div>
-                </div>
-                <div className={`${mutedCardClass} p-4`}>
-                  <div className="mb-2 text-sm text-slate-500">Public URL</div>
-                  <div className="break-all text-sm text-slate-700">{`${getSiteUrl()}/u/${profile.handle}/projects/${project.slug}`}</div>
-                </div>
-              </div>
+        <header className="glass fixed top-0 z-50 w-full rounded-none border-x-0 border-t-0 bg-opacity-80 backdrop-blur-xl">
+          <div className="container nav py-4">
+            <a href={`/u/${profile.handle}/`} className="flex items-center gap-2 text-gray-400 hover:text-white transition">
+              <i className="fa-solid fa-arrow-left"></i>
+              <span>Back to {profile.name}</span>
+            </a>
+            <div className="flex gap-4">
+              <a href={`/u/${profile.handle}/`} className="btn btn-secondary py-2 px-4 shadow-none">View Profile</a>
+              <a href="/dashboard/projects" className="btn btn-primary py-2 px-4 shadow-[0_4px_14px_0_var(--primary-glow)]">Dashboard</a>
+            </div>
+          </div>
+        </header>
+
+        <div className="container max-w-6xl flex-grow py-12">
+          <section className="glass-panel relative mb-10 overflow-hidden p-8 md:p-10">
+            <div className="pointer-events-none absolute right-0 top-0 translate-x-4 -translate-y-4 p-8 opacity-10">
+              <i className={`fa-solid ${project.state === "building" ? "fa-headset" : project.state === "built" || project.state === "showcased" ? "fa-spider" : "fa-diagram-project"} text-[150px] text-emerald-500`}></i>
             </div>
 
-            <div className={`${shellClass} bg-[#f8fbfa] p-8`}>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Project status</div>
-              <h2 className="mb-5 font-[Outfit] text-3xl font-semibold tracking-tight text-slate-900">Current signal</h2>
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 leading-7 text-slate-600">
-                {project.state === "building"
-                  ? "This project is actively being built and the proof page updates as new artifacts and build-log entries arrive."
-                  : project.state === "built" || project.state === "showcased"
-                    ? "This project has shipped enough work to show public execution proof."
-                    : "This project is in setup and planning mode. Public proof will deepen as work lands."}
+            <div className="relative z-10 grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
+              <div>
+                <span className={`mb-4 inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] ${stateTone(project.state)}`}>
+                  {prettyProjectState(project.state)}
+                </span>
+                <h1 className="mb-3 text-4xl font-[Outfit] text-white md:text-5xl">{project.title}</h1>
+                <p className="max-w-3xl text-base leading-8 text-gray-300 md:text-lg">{project.description}</p>
+              </div>
+
+              <div className="glass rounded-2xl border border-white/10 bg-black/30 p-6">
+                <div className="mb-4 flex items-start gap-4">
+                  <img src={avatarUrl} alt={profile.name} className="h-20 w-20 rounded-xl border border-white/20 object-cover" />
+                  <div>
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Builder</div>
+                    <h2 className="font-[Outfit] text-2xl text-white">{profile.name}</h2>
+                    <p className="text-emerald-400">{profile.headline || "AI Builder"}</p>
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                    <div className="mb-1 text-xs uppercase tracking-[0.16em] text-gray-500">Artifacts</div>
+                    <div className="text-3xl font-[Outfit] text-white">{project.artifacts.length}</div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                    <div className="mb-1 text-xs uppercase tracking-[0.16em] text-gray-500">Build log</div>
+                    <div className="text-3xl font-[Outfit] text-white">{project.buildLog.length}</div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                    <div className="mb-1 text-xs uppercase tracking-[0.16em] text-gray-500">Public URL</div>
+                    <div className="break-all text-sm text-gray-300">{`${getSiteUrl()}/u/${profile.handle}/projects/${project.slug}`}</div>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
 
-          <section className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
-            <div className={`${shellClass} p-8`}>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Build log</div>
-              <h2 className="mb-6 font-[Outfit] text-3xl font-semibold tracking-tight text-slate-900">Execution history</h2>
+          <div className="grid gap-8 xl:grid-cols-[1.1fr,0.9fr]">
+            <section className="glass rounded-2xl p-8">
+              <h2 className="mb-6 flex items-center gap-3 text-2xl font-[Outfit] text-white">
+                <i className="fa-solid fa-timeline text-cyan-400"></i>
+                Execution history
+              </h2>
               {project.buildLog.length ? (
                 <div className="space-y-4">
                   {project.buildLog.map((entry) => (
-                    <div key={entry.id} className="rounded-2xl border border-slate-200 bg-[#f8fbfa] p-5">
+                    <div key={entry.id} className="rounded-xl border border-white/10 bg-black/30 p-5">
                       <div className="mb-2 flex items-center justify-between gap-3">
-                        <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${entry.level === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : entry.level === "warn" ? "border-amber-200 bg-amber-50 text-amber-700" : entry.level === "error" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-sky-200 bg-sky-50 text-sky-700"}`}>
+                        <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${entry.level === "success" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : entry.level === "warn" ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : entry.level === "error" ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-cyan-500/30 bg-cyan-500/10 text-cyan-400"}`}>
                           {entry.level}
                         </span>
-                        <span className="text-xs text-slate-400">{new Date(entry.createdAt).toLocaleString()}</span>
+                        <span className="text-xs text-gray-500">{new Date(entry.createdAt).toLocaleString()}</span>
                       </div>
-                      <p className="leading-7 text-slate-700">{entry.message}</p>
+                      <p className="text-sm leading-7 text-gray-300">{entry.message}</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-slate-200 bg-[#f8fbfa] p-5 text-slate-600">
-                  No build-log entries are attached to this project yet.
-                </div>
+                <div className="rounded-xl border border-white/10 bg-black/30 p-5 text-gray-400">No build-log entries are attached to this project yet.</div>
               )}
-            </div>
+            </section>
 
-            <div className={`${shellClass} bg-[#f8fbfa] p-8`}>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Artifacts</div>
-              <h2 className="mb-6 font-[Outfit] text-3xl font-semibold tracking-tight text-slate-900">Attached outputs</h2>
+            <section className="glass rounded-2xl p-8">
+              <h2 className="mb-6 flex items-center gap-3 text-2xl font-[Outfit] text-white">
+                <i className="fa-solid fa-paperclip text-amber-400"></i>
+                Attached outputs
+              </h2>
               {project.artifacts.length ? (
                 <div className="space-y-3">
                   {project.artifacts.map((artifact, index) => (
@@ -219,20 +229,18 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
                       href={artifact.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-emerald-300 hover:bg-emerald-50/40"
+                      className="block rounded-xl border border-white/10 bg-black/30 p-4 transition hover:bg-white/5 hover:border-emerald-500/30"
                     >
-                      <div className="mb-1 text-xs uppercase tracking-[0.18em] text-slate-400">{artifact.kind}</div>
-                      <div className="break-all text-sm text-slate-700">{artifact.url}</div>
+                      <div className="mb-1 text-xs uppercase tracking-[0.18em] text-gray-500">{artifact.kind}</div>
+                      <div className="break-all text-sm text-gray-300">{artifact.url}</div>
                     </a>
                   ))}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 text-slate-600">
-                  No public artifacts are attached yet.
-                </div>
+                <div className="rounded-xl border border-white/10 bg-black/30 p-5 text-gray-400">No public artifacts are attached yet.</div>
               )}
-            </div>
-          </section>
+            </section>
+          </div>
         </div>
       </main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(creativeWorkLd) }} />

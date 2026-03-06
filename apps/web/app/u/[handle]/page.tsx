@@ -12,14 +12,17 @@ import {
   DEFAULT_OG_IMAGE_WIDTH,
   getSiteUrl,
 } from "@/lib/site";
-import { EXAMPLE_PROFILE_HANDLE, exampleProfile, exampleProjects, prettyProjectState, safeHttpUrl, skillTone, stateTone } from "@/app/u/public-profile-utils";
+import {
+  EXAMPLE_PROFILE_HANDLE,
+  exampleProfile,
+  exampleProjects,
+  prettyProjectState,
+  safeHttpUrl,
+  skillTone,
+  stateTone,
+} from "@/app/u/public-profile-utils";
 
 export const revalidate = 300;
-
-const shellClass = "rounded-[30px] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]";
-const mutedCardClass = "rounded-[24px] border border-slate-200 bg-[#f8fbfa] shadow-[0_16px_40px_rgba(15,23,42,0.05)]";
-const secondaryButtonClass = "rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50";
-const eyebrowClass = "inline-flex items-center rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em]";
 
 async function resolveProfileView(handle: string) {
   const profile = await runtimeFindUserByHandle(handle);
@@ -133,182 +136,212 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     knowsAbout: sortedSkills.map((entry) => entry.skill),
   };
 
-  const previewTone = view.isExample
-    ? "border-sky-200 bg-sky-50 text-sky-700"
+  const previewLabel = view.isExample
+    ? "Example profile"
     : profile.published
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-      : "border-amber-200 bg-amber-50 text-amber-700";
+      ? "Public proof profile"
+      : "Private owner preview";
 
   return (
     <>
-      <main className="min-h-screen bg-[#f4f8f5] text-slate-900">
-        <div className="absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.14),transparent_60%)] pointer-events-none" />
-        <div className="relative mx-auto max-w-7xl px-6 py-8 md:px-10 md:py-10">
-          <header className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <Link href="/" className="flex items-center gap-3 text-slate-900">
-              <img src="/assets/branding/brand_brain_icon.svg" alt={BRAND_NAME} className="h-11 w-11 object-contain" />
-              <span className="font-[Outfit] text-[1.7rem] font-semibold tracking-tight">{BRAND_NAME}</span>
+      <main data-gemini-shell="1" className="relative min-h-screen flex flex-col pt-20">
+        <div className="bg-glow top-[-200px] left-[-120px] opacity-45"></div>
+        <div
+          className="bg-glow top-[18%] right-[-220px] opacity-35"
+          style={{ background: "radial-gradient(circle, var(--secondary-glow) 0%, rgba(0,0,0,0) 70%)" }}
+        ></div>
+
+        <header className="glass fixed top-0 z-50 w-full rounded-none border-x-0 border-t-0 bg-opacity-80 backdrop-blur-xl">
+          <div className="container nav py-4">
+            <Link href="/" className="flex items-center gap-2">
+              <img src="/assets/branding/brand_wordmark_logo.png" alt={BRAND_NAME} className="h-8 w-auto object-contain" />
             </Link>
-            <div className="flex flex-wrap items-center gap-3">
-              <Link href="/employers/talent" className={secondaryButtonClass}>
+            <div className="flex gap-4">
+              <Link href="/employers/talent" className="btn btn-secondary py-2 px-4 shadow-none">
                 Browse Talent Pool
               </Link>
-              <Link href="/dashboard/profile" className="rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_44px_rgba(16,185,129,0.24)]">
+              <Link href="/dashboard/profile" className="btn btn-primary py-2 px-4 shadow-[0_4px_14px_0_var(--primary-glow)]">
                 Dashboard
               </Link>
             </div>
-          </header>
+          </div>
+        </header>
 
-          <section className="mb-8 grid gap-6 xl:grid-cols-[1.25fr,0.75fr]">
-            <div className={`${shellClass} p-8 md:p-10`}>
-              <div className="flex flex-col gap-6 md:flex-row md:items-start">
-                <img src={avatarUrl} alt={profile.name} className="h-28 w-28 rounded-[28px] border border-slate-200 object-cover shadow-[0_18px_44px_rgba(15,23,42,0.08)]" />
-                <div className="min-w-0 flex-1">
-                  <div className={`${eyebrowClass} ${previewTone} mb-4`}>
-                    {view.isExample ? "Example profile" : profile.published ? "Public proof profile" : "Private owner preview"}
+        <div className="container max-w-6xl flex-grow py-12">
+          <section className="glass-panel relative mb-12 overflow-hidden p-8 md:p-12">
+            <div className="pointer-events-none absolute right-0 top-0 translate-x-12 -translate-y-12 p-8 opacity-5">
+              <i className="fa-solid fa-certificate text-[250px] text-white"></i>
+            </div>
+
+            <div className="relative z-10 grid gap-8 xl:grid-cols-[1.2fr,0.8fr] xl:items-start">
+              <div className="flex flex-col gap-8 md:flex-row md:items-start">
+                <div className="relative shrink-0">
+                  <img src={avatarUrl} alt={profile.name} className="relative z-10 h-32 w-32 rounded-full border-4 border-white/20 object-cover shadow-[0_0_30px_rgba(79,70,229,0.25)]" />
+                  <div className="absolute -bottom-2 -right-2 z-20 rounded-full bg-black/40 p-1">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-emerald-500/50 bg-emerald-500/20 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.35)]">
+                      <i className="fa-solid fa-check text-sm font-bold"></i>
+                    </div>
                   </div>
-                  <h1 className="mb-3 font-[Outfit] text-4xl font-semibold leading-tight tracking-tight text-slate-900 md:text-5xl">{profile.name}</h1>
-                  <p className="mb-4 text-xl font-medium text-emerald-700">{profile.headline || "AI Builder"}</p>
-                  <p className="mb-6 max-w-3xl text-base leading-8 text-slate-600 md:text-lg">{profile.bio}</p>
-                  <div className="flex flex-wrap gap-3">
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="mb-5 inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-400">
+                    {previewLabel}
+                  </div>
+                  <h1 className="mb-2 text-4xl font-[Outfit] text-white md:text-5xl">{profile.name}</h1>
+                  <p className="mb-5 text-lg font-medium text-emerald-400">{profile.headline || "AI Builder"}</p>
+                  <p className="max-w-2xl border-l-2 border-white/10 py-1 pl-4 text-sm leading-relaxed text-gray-300 md:text-base">
+                    {profile.bio}
+                  </p>
+                  <div className="mt-6 flex flex-wrap gap-3">
                     {linkedInUrl ? (
-                      <a href={linkedInUrl} target="_blank" rel="noreferrer" className="rounded-2xl bg-[#0a66c2] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(10,102,194,0.22)]">
+                      <a href={linkedInUrl} target="_blank" rel="noreferrer" className="btn bg-[#0077b5] px-5 py-3 shadow-[0_10px_30px_rgba(10,119,181,0.22)]">
                         LinkedIn
                       </a>
                     ) : null}
                     {websiteUrl ? (
-                      <a href={websiteUrl} target="_blank" rel="noreferrer" className={secondaryButtonClass}>
+                      <a href={websiteUrl} target="_blank" rel="noreferrer" className="btn btn-secondary px-5 py-3">
                         Website
                       </a>
                     ) : null}
                     {githubUrl ? (
-                      <a href={githubUrl} target="_blank" rel="noreferrer" className={secondaryButtonClass}>
+                      <a href={githubUrl} target="_blank" rel="noreferrer" className="btn btn-secondary px-5 py-3">
                         GitHub
                       </a>
                     ) : null}
                     {xUrl ? (
-                      <a href={xUrl} target="_blank" rel="noreferrer" className={secondaryButtonClass}>
+                      <a href={xUrl} target="_blank" rel="noreferrer" className="btn btn-secondary px-5 py-3">
                         X / Twitter
                       </a>
                     ) : null}
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-              <div className={`${mutedCardClass} p-6`}>
-                <div className="mb-2 text-sm text-slate-500">Projects</div>
-                <div className="font-[Outfit] text-4xl font-semibold text-slate-900">{projectCount}</div>
-              </div>
-              <div className={`${mutedCardClass} p-6`}>
-                <div className="mb-2 text-sm text-slate-500">Verified skills</div>
-                <div className="font-[Outfit] text-4xl font-semibold text-slate-900">{verifiedCount}</div>
-              </div>
-              <div className={`${mutedCardClass} p-6`}>
-                <div className="mb-2 text-sm text-slate-500">Proof artifacts</div>
-                <div className="font-[Outfit] text-4xl font-semibold text-slate-900">{proofCount}</div>
+              <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
+                <div className="glass p-6 rounded-2xl border border-white/10 bg-black/30">
+                  <p className="mb-2 text-sm text-gray-400">Projects</p>
+                  <div className="text-4xl font-[Outfit] text-white">{projectCount}</div>
+                </div>
+                <div className="glass p-6 rounded-2xl border border-white/10 bg-black/30">
+                  <p className="mb-2 text-sm text-gray-400">Verified skills</p>
+                  <div className="text-4xl font-[Outfit] text-white">{verifiedCount}</div>
+                </div>
+                <div className="glass p-6 rounded-2xl border border-white/10 bg-black/30">
+                  <p className="mb-2 text-sm text-gray-400">Proof artifacts</p>
+                  <div className="text-4xl font-[Outfit] text-white">{proofCount}</div>
+                </div>
               </div>
             </div>
           </section>
 
-          <section className="mb-8 grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
-            <div className={`${shellClass} p-8`}>
-              <div className="mb-6 flex items-center justify-between gap-3">
-                <div>
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Verified skill stack</div>
-                  <h2 className="font-[Outfit] text-3xl font-semibold tracking-tight text-slate-900">What this builder can prove</h2>
-                </div>
-              </div>
-              {sortedSkills.length ? (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {sortedSkills.map((entry) => (
-                    <div key={entry.skill} className="rounded-2xl border border-slate-200 bg-[#f8fbfa] p-4">
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <div className="font-medium text-slate-900">{entry.skill}</div>
-                        <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${skillTone(entry.status)}`}>
-                          {entry.status.replace("_", " ")}
-                        </span>
-                      </div>
-                      <div className="mb-2 flex items-center justify-between gap-3 text-xs text-slate-500">
-                        <span>Confidence</span>
-                        <span>{Math.round(entry.score * 100)}%</span>
-                      </div>
-                      <div className="mb-3 h-2 overflow-hidden rounded-full bg-slate-200">
-                        <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500" style={{ width: `${Math.max(8, Math.round(entry.score * 100))}%` }} />
-                      </div>
-                      <div className="text-xs text-slate-500">{entry.evidenceCount} proof artifact{entry.evidenceCount === 1 ? "" : "s"}</div>
+          <div className="grid gap-8 lg:grid-cols-3">
+            <div className="space-y-8">
+              <section className="glass sticky top-28 rounded-2xl p-6">
+                <h2 className="mb-6 flex items-center gap-2 border-b border-white/10 pb-3 text-lg font-[Outfit] text-white">
+                  <i className="fa-solid fa-layer-group text-teal-400"></i>
+                  Verified Skill Stack
+                </h2>
+                <div className="space-y-6">
+                  <div>
+                    <div className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">Core competencies</div>
+                    <div className="flex flex-wrap gap-2">
+                      {sortedSkills.length ? sortedSkills.map((entry) => (
+                        <div key={entry.skill} className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5">
+                          <i className={`fa-solid ${entry.status === "verified" ? "fa-award" : entry.status === "built" ? "fa-check-double" : "fa-wave-square"} text-xs text-emerald-400`}></i>
+                          <span className="text-sm font-medium text-white">{entry.skill}</span>
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${skillTone(entry.status)}`}>
+                            {Math.round(entry.score * 100)}%
+                          </span>
+                        </div>
+                      )) : <span className="text-sm text-gray-400">No verified skills yet.</span>}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-slate-200 bg-[#f8fbfa] p-5 text-slate-600">
-                  No skills have been verified on this profile yet.
-                </div>
-              )}
-            </div>
-
-            <div className={`${shellClass} bg-[#f8fbfa] p-8`}>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Tooling and signals</div>
-              <h2 className="mb-6 font-[Outfit] text-3xl font-semibold tracking-tight text-slate-900">Work context</h2>
-              <div className="mb-8 flex flex-wrap gap-2">
-                {profile.tools.length ? profile.tools.map((tool) => (
-                  <span key={tool} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm">{tool}</span>
-                )) : <span className="text-sm text-slate-500">No tools listed yet.</span>}
-              </div>
-              <div className="space-y-4 text-sm text-slate-600">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="mb-2 text-xs uppercase tracking-[0.18em] text-slate-400">Public URL</div>
-                  <div className="break-all text-slate-700">{`${getSiteUrl()}/u/${profile.handle}`}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="mb-2 text-xs uppercase tracking-[0.18em] text-slate-400">Profile handle</div>
-                  <div className="text-slate-700">@{profile.handle}</div>
-                </div>
-                {!profile.published ? (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-700">
-                    This is an owner preview. Publish from the dashboard to expose the profile publicly.
                   </div>
-                ) : null}
-              </div>
-            </div>
-          </section>
 
-          <section className={`${shellClass} p-8`}>
-            <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <div>
-                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Project proof</div>
-                <h2 className="font-[Outfit] text-3xl font-semibold tracking-tight text-slate-900">Recent builds and proof artifacts</h2>
-              </div>
+                  <div>
+                    <div className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">Tools and systems</div>
+                    <div className="flex flex-wrap gap-2">
+                      {profile.tools.length ? profile.tools.map((tool) => (
+                        <span key={tool} className="rounded bg-white/5 px-2.5 py-1 text-xs text-gray-300 border border-white/10">{tool}</span>
+                      )) : <span className="text-sm text-gray-400">No tools listed yet.</span>}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-white/5 bg-black/30 p-4 text-center">
+                    <i className="fa-solid fa-shield-halved mb-2 text-2xl text-gray-500"></i>
+                    <p className="text-xs text-gray-400">Skills and proof signals are grounded in shipped work, artifacts, and build telemetry.</p>
+                  </div>
+                </div>
+              </section>
+
+              <section className="glass rounded-2xl p-6">
+                <h2 className="mb-6 flex items-center gap-2 border-b border-white/10 pb-3 text-lg font-[Outfit] text-white">
+                  <i className="fa-solid fa-satellite-dish text-cyan-400"></i>
+                  Tooling and signals
+                </h2>
+                <div className="space-y-4 text-sm text-gray-300">
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                    <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Public URL</div>
+                    <div className="break-all">{`${getSiteUrl()}/u/${profile.handle}`}</div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                    <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Profile handle</div>
+                    <div>@{profile.handle}</div>
+                  </div>
+                  {!profile.published ? (
+                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-400">
+                      This is an owner preview. Publish from the dashboard when you are ready to expose the profile publicly.
+                    </div>
+                  ) : null}
+                </div>
+              </section>
             </div>
-            {projects.length ? (
-              <div className="grid gap-4 lg:grid-cols-2">
-                {projects.map((project) => (
-                  <a key={project.id} href={`/u/${profile.handle}/projects/${project.slug}/`} className="rounded-[24px] border border-slate-200 bg-[#f8fbfa] p-6 transition hover:border-emerald-300 hover:bg-white hover:shadow-[0_16px_40px_rgba(16,185,129,0.12)]">
-                    <div className="mb-4 flex items-start justify-between gap-4">
-                      <h3 className="font-[Outfit] text-2xl font-medium text-slate-900">{project.title}</h3>
-                      <span className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${stateTone(project.state)}`}>
-                        {prettyProjectState(project.state)}
-                      </span>
-                    </div>
-                    <p className="mb-5 leading-7 text-slate-600">{project.description}</p>
-                    <div className="mb-4 flex flex-wrap gap-2 text-xs text-slate-500">
-                      <span>{project.artifacts.length} artifact{project.artifacts.length === 1 ? "" : "s"}</span>
-                      <span>•</span>
-                      <span>{project.buildLog.length} build log entr{project.buildLog.length === 1 ? "y" : "ies"}</span>
-                    </div>
-                    <div className="inline-flex items-center gap-2 text-sm font-medium text-emerald-700">
-                      Open project proof <span aria-hidden>→</span>
+
+            <section className="space-y-8 lg:col-span-2">
+              <h2 className="flex items-center gap-3 text-2xl font-[Outfit] text-white">
+                <i className="fa-solid fa-folder-tree text-amber-400"></i>
+                Project Portfolio
+              </h2>
+
+              {projects.length ? (
+                projects.map((project) => (
+                  <a
+                    key={project.id}
+                    href={`/u/${profile.handle}/projects/${project.slug}/`}
+                    className="group relative block overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8 transition hover:bg-white/10 hover:border-emerald-500/40 glass"
+                  >
+                    <div className="pointer-events-none absolute right-0 top-0 h-full w-64 bg-gradient-to-l from-emerald-500/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+                    <div className="flex flex-col gap-6 sm:flex-row">
+                      <div className="relative h-32 w-full shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/50 sm:w-48">
+                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/40 to-teal-900/40 opacity-80 transition duration-500 group-hover:scale-105"></div>
+                        <div className="relative flex h-full w-full items-center justify-center">
+                          <i className={`fa-solid ${project.state === "building" ? "fa-headset" : project.state === "built" || project.state === "showcased" ? "fa-spider" : "fa-diagram-project"} text-3xl ${project.state === "building" ? "text-amber-400" : "text-emerald-400"}`}></i>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-1 flex-col justify-center">
+                        <div className="mb-2 flex items-start justify-between gap-4">
+                          <h3 className="text-xl font-medium text-white transition group-hover:text-emerald-400">{project.title}</h3>
+                          <span className={`hidden whitespace-nowrap rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-wider sm:block ${stateTone(project.state)}`}>
+                            {prettyProjectState(project.state)}
+                          </span>
+                        </div>
+                        <p className="mb-4 line-clamp-3 text-sm text-gray-400">{project.description}</p>
+                        <div className="flex flex-wrap gap-2 text-[10px]">
+                          <span className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-gray-400">{project.artifacts.length} artifact{project.artifacts.length === 1 ? "" : "s"}</span>
+                          <span className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-gray-400">{project.buildLog.length} build log entr{project.buildLog.length === 1 ? "y" : "ies"}</span>
+                        </div>
+                      </div>
                     </div>
                   </a>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-slate-200 bg-[#f8fbfa] p-6 text-slate-600">
-                No public projects are attached to this profile yet.
-              </div>
-            )}
-          </section>
+                ))
+              ) : (
+                <div className="glass rounded-2xl p-6 text-gray-400">
+                  No public projects are attached to this profile yet.
+                </div>
+              )}
+            </section>
+          </div>
         </div>
       </main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personLd) }} />
