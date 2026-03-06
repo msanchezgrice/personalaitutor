@@ -627,7 +627,10 @@
     }
     if (!forceRefresh && HOME_NEWS_WARM_PROMISES[scope]) return HOME_NEWS_WARM_PROMISES[scope];
     var timeoutMs = options && options.timeoutMs ? Number(options.timeoutMs) : 9000;
-    HOME_NEWS_WARM_PROMISES[scope] = postJson("/api/news/recommendations", { maxStories: 6 }, {
+    HOME_NEWS_WARM_PROMISES[scope] = postJson("/api/news/recommendations", {
+      maxStories: 6,
+      preferFresh: Boolean(forceRefresh),
+    }, {
       timeoutMs: timeoutMs,
       timeoutMessage: "AI news is taking longer than expected",
     })
@@ -2716,28 +2719,8 @@
     if (!contentWrap) return;
 
     var updates = Array.isArray(summary.latestEvents) ? summary.latestEvents.slice(0, 12) : [];
-    var condensedUpdates = [];
-    updates.forEach(function (event) {
-      var last = condensedUpdates[condensedUpdates.length - 1];
-      if (
-        last &&
-        String(last.type || "") === String(event.type || "") &&
-        String(last.message || "") === String(event.message || "")
-      ) {
-        last.count = (last.count || 1) + 1;
-        if (event.createdAt && (!last.createdAt || Date.parse(String(event.createdAt)) > Date.parse(String(last.createdAt)))) {
-          last.createdAt = event.createdAt;
-        }
-        return;
-      }
-      condensedUpdates.push({
-        id: event.id,
-        type: event.type,
-        message: event.message,
-        createdAt: event.createdAt,
-        count: 1,
-      });
-    });
+    var groupedUpdates = [];
+    var groupedLifecycleJobs = Object.create(null);
     var dailyUpdate = summary.dailyUpdate || null;
 
     function relativeTimeLabel(input) {
@@ -2774,8 +2757,119 @@
       };
     }
 
-    var eventsHtml = condensedUpdates
-      .map(function (event) {
+    function normalizeLifecycleEvent(event) {
+      var message = String(event && event.message || "").trim();
+      if (!message) return null;
+      var queuedOrDone = message.match(/^([a-z0-9._-]+)\s+(queued|completed|failed)$/i);
+      if (queuedOrDone && queuedOrDone[1] && queuedOrDone[2]) {
+        return {
+          scope: String(queuedOrDone[1]).toLowerCase(),
+          status: String(queuedOrDone[2]).toLowerCase(),
+        };
+      }
+      var running = message.match(/^([a-z0-9._-]+)\s+is\s+(running)$/i);
+      if (running && running[1] && running[2]) {
+        return {
+          scope: String(running[1]).toLowerCase(),
+          status: String(running[2]).toLowerCase(),
+        };
+      }
+      return null;
+    }
+
+    function statusSummaryText(counts) {
+      var parts = [];
+      ["completed", "running", "queued", "failed"].forEach(function (status) {
+        var count = Number(counts && counts[status] || 0);
+        if (!count) return;
+        parts.push(count + " " + status);
+      });
+      return parts.join(" · ");
+    }
+
+    updates.forEach(function (event) {
+      var lifecycle = normalizeLifecycleEvent(event);
+      if (lifecycle && lifecycle.scope.indexOf(".") !== -1) {
+        var existingGroup = groupedLifecycleJobs[lifecycle.scope];
+        if (!existingGroup) {
+          existingGroup = {
+            kind: "group",
+            scope: lifecycle.scope,
+            latestStatus: lifecycle.status,
+            latestCreatedAt: event.createdAt,
+            latestMessage: event.message,
+            counts: Object.create(null),
+            totalCount: 0,
+          };
+          groupedLifecycleJobs[lifecycle.scope] = existingGroup;
+          groupedUpdates.push(existingGroup);
+        }
+        existingGroup.totalCount += 1;
+        existingGroup.counts[lifecycle.status] = Number(existingGroup.counts[lifecycle.status] || 0) + 1;
+        if (
+          event.createdAt &&
+          (!existingGroup.latestCreatedAt || Date.parse(String(event.createdAt)) > Date.parse(String(existingGroup.latestCreatedAt)))
+        ) {
+          existingGroup.latestCreatedAt = event.createdAt;
+          existingGroup.latestStatus = lifecycle.status;
+          existingGroup.latestMessage = event.message;
+        }
+        return;
+      }
+
+      var last = groupedUpdates[groupedUpdates.length - 1];
+      if (
+        last &&
+        last.kind === "event" &&
+        String(last.type || "") === String(event.type || "") &&
+        String(last.message || "") === String(event.message || "")
+      ) {
+        last.count = (last.count || 1) + 1;
+        if (event.createdAt && (!last.createdAt || Date.parse(String(event.createdAt)) > Date.parse(String(last.createdAt)))) {
+          last.createdAt = event.createdAt;
+        }
+        return;
+      }
+
+      groupedUpdates.push({
+        kind: "event",
+        id: event.id,
+        type: event.type,
+        message: event.message,
+        createdAt: event.createdAt,
+        count: 1,
+      });
+    });
+
+    var eventsHtml = groupedUpdates
+      .map(function (entry) {
+        if (entry.kind === "group") {
+          var latestStatus = String(entry.latestStatus || "running");
+          var tone = eventClasses(latestStatus);
+          var totalCount = Number(entry.totalCount || 0);
+          var groupedLabel = escapeHtml(entry.scope + " activity");
+          var groupedSummary = escapeHtml(statusSummaryText(entry.counts) || "Grouped background job updates");
+          return (
+            '<article class="glass p-5 rounded-xl border ' + tone.card + ' flex gap-4">' +
+            '<div class="w-10 h-10 rounded shrink-0 ' + tone.icon + ' flex items-center justify-center mt-1">' +
+            '<i class="fa-solid ' + tone.iconName + '"></i></div>' +
+            '<div class="min-w-0 flex-1">' +
+            '<div class="flex items-center justify-between gap-3 mb-1">' +
+            '<div class="min-w-0 flex items-center gap-2">' +
+            '<h4 class="font-medium text-slate-900 text-base truncate">' + groupedLabel + "</h4>" +
+            (totalCount > 1
+              ? '<span class="inline-flex items-center rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">x' + totalCount + "</span>"
+              : "") +
+            "</div>" +
+            '<span class="text-[10px] text-slate-500 whitespace-nowrap">' + relativeTimeLabel(entry.latestCreatedAt) + "</span>" +
+            "</div>" +
+            '<p class="text-xs text-slate-600 uppercase tracking-wide">Latest state: ' + escapeHtml(latestStatus) + "</p>" +
+            '<p class="text-xs text-slate-500 mt-1">' + groupedSummary + "</p>" +
+            "</div></article>"
+          );
+        }
+
+        var event = entry;
         var tone = eventClasses(event.type);
         var message = escapeHtml(event.message || "Tutor update");
         var kind = escapeHtml(String(event.type || "job.update").replace(/\./g, " "));
@@ -2971,7 +3065,7 @@
           refreshButton.setAttribute("disabled", "true");
           refreshButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Refreshing';
           try {
-            var refreshed = await warmHomeNews(summaryUserId, true, { timeoutMs: 45000 });
+            var refreshed = await warmHomeNews(summaryUserId, true, { timeoutMs: 18000 });
             if (!refreshed || !Array.isArray(refreshed.insights) || !refreshed.insights.length) {
               throw new Error("Unable to refresh AI news");
             }
@@ -2994,7 +3088,7 @@
     }
 
     try {
-      var initial = await warmHomeNews(summaryUserId, true, { timeoutMs: 45000 });
+      var initial = await warmHomeNews(summaryUserId, false, { timeoutMs: 12000 });
       if (!initial || !Array.isArray(initial.insights) || !initial.insights.length) {
         throw new Error("AI news is taking longer than expected. Refresh to retry.");
       }

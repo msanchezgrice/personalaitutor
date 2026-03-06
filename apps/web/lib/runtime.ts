@@ -2517,19 +2517,23 @@ async function generateNewsFromOpenAi(input: {
   ].join("\n");
 
   try {
+    const timeoutMs = Math.max(4000, Math.min(20000, Number(process.env.OPENAI_NEWS_TIMEOUT_MS ?? 12000)));
+    const controller = new AbortController();
+    const timeoutHandle = setTimeout(() => controller.abort(new Error("OPENAI_NEWS_TIMEOUT")), timeoutMs);
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
         authorization: `Bearer ${apiKey}`,
         "content-type": "application/json",
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model,
         input: prompt,
         temperature: 0.2,
         tools: [{ type: "web_search_preview" }],
       }),
-    });
+    }).finally(() => clearTimeout(timeoutHandle));
 
     if (!response.ok) {
       throw new Error(`OPENAI_RESPONSE_FAILED:${response.status}`);
@@ -3025,6 +3029,7 @@ export async function runtimeRefreshRelevantNews(options?: {
   userId?: string;
   seed?: { name?: string; handleBase?: string; avatarUrl?: string | null; email?: string | null };
   maxStories?: number;
+  preferFresh?: boolean;
 }) {
   if (mode() === "memory") {
     const memoryResult = memRefreshRelevantNews({
@@ -3050,6 +3055,7 @@ export async function runtimeRefreshRelevantNews(options?: {
 
   const supabase = getSupabaseAdmin();
   const maxStories = Math.max(3, Math.min(8, Number(options?.maxStories ?? 5)));
+  const preferFresh = Boolean(options?.preferFresh);
 
   const mapNewsInsightRow = (row: {
     id: string;
@@ -3079,6 +3085,51 @@ export async function runtimeRefreshRelevantNews(options?: {
       ? row.metadata.context_signals.filter((entry): entry is string => typeof entry === "string")
       : [],
   });
+
+  const rowsToResponse = (
+    rows: Array<{
+      id: string;
+      title: string;
+      url: string;
+      summary: string;
+      career_path_ids: string[];
+      published_at: string;
+      learner_profile_id: string | null;
+      metadata: Record<string, unknown>;
+    }>,
+    fallback: {
+      source: string;
+      contextSignals: string[];
+      focusSummary: string;
+      selectionRationale: string;
+    },
+  ) => {
+    const newestMetadata = (rows[0]?.metadata ?? {}) as Record<string, unknown>;
+    return {
+      ok: true as const,
+      source:
+        typeof newestMetadata.generated_source === "string" && newestMetadata.generated_source.trim().length
+          ? newestMetadata.generated_source
+          : fallback.source,
+      contextSignals: Array.isArray(newestMetadata.context_signals)
+        ? newestMetadata.context_signals.filter((entry): entry is string => typeof entry === "string")
+        : fallback.contextSignals,
+      focusSummary:
+        typeof newestMetadata.focus_summary === "string" && newestMetadata.focus_summary.trim().length
+          ? newestMetadata.focus_summary
+          : fallback.focusSummary,
+      selectionRationale:
+        typeof newestMetadata.selection_rationale === "string" && newestMetadata.selection_rationale.trim().length
+          ? newestMetadata.selection_rationale
+          : fallback.selectionRationale,
+      insights: rows.map((row) =>
+        mapNewsInsightRow({
+          ...row,
+          metadata: (row.metadata ?? {}) as Record<string, unknown>,
+        }),
+      ),
+    };
+  };
 
   if (!options?.userId) {
     const now = new Date().toISOString();
@@ -3187,40 +3238,71 @@ export async function runtimeRefreshRelevantNews(options?: {
   const newestCached = (cachedPersonalizedRows ?? [])[0];
   const newestCachedDay =
     newestCached && typeof newestCached.published_at === "string" ? newestCached.published_at.slice(0, 10) : "";
+  const hasPersonalizedRows = (cachedPersonalizedRows?.length ?? 0) >= 3;
 
-  if ((cachedPersonalizedRows?.length ?? 0) >= 3 && newestCachedDay === todayUtc) {
-    const metadata = (newestCached?.metadata ?? {}) as Record<string, unknown>;
-    const source =
-      typeof metadata.generated_source === "string" && metadata.generated_source.trim().length
-        ? metadata.generated_source
-        : "cache";
-    return {
-      ok: true as const,
-      source,
-      contextSignals: Array.isArray(metadata.context_signals)
-        ? metadata.context_signals.filter((entry): entry is string => typeof entry === "string")
-        : context.focusSignals,
-      focusSummary:
-        typeof metadata.focus_summary === "string" && metadata.focus_summary.trim().length
-          ? metadata.focus_summary
-          : "Daily AI news briefing from your latest context.",
-      selectionRationale:
-        typeof metadata.selection_rationale === "string" && metadata.selection_rationale.trim().length
-          ? metadata.selection_rationale
-          : "Loaded cached personalized AI news for the current day.",
-      insights: (cachedPersonalizedRows ?? []).map((row) =>
-        mapNewsInsightRow({
-          ...row,
-          metadata: (row.metadata ?? {}) as Record<string, unknown>,
-        }),
-      ),
-    };
+  if (hasPersonalizedRows && newestCachedDay === todayUtc) {
+    return rowsToResponse(cachedPersonalizedRows ?? [], {
+      source: "cache",
+      contextSignals: context.focusSignals,
+      focusSummary: "Daily AI news briefing from your latest context.",
+      selectionRationale: "Loaded cached personalized AI news for the current day.",
+    });
+  }
+
+  const { data: cachedGlobalRows } = await supabase
+    .from("news_insights")
+    .select("id,title,url,summary,career_path_ids,published_at,learner_profile_id,metadata")
+    .is("learner_profile_id", null)
+    .order("published_at", { ascending: false })
+    .limit(maxStories);
+
+  const newestGlobal = (cachedGlobalRows ?? [])[0];
+  const newestGlobalDay =
+    newestGlobal && typeof newestGlobal.published_at === "string" ? newestGlobal.published_at.slice(0, 10) : "";
+  const hasGlobalRows = (cachedGlobalRows?.length ?? 0) >= 3;
+
+  if (!preferFresh) {
+    if (hasPersonalizedRows) {
+      return rowsToResponse(cachedPersonalizedRows ?? [], {
+        source: "stale_cache",
+        contextSignals: context.focusSignals,
+        focusSummary: "Showing your latest stored AI news while a fresh briefing catches up.",
+        selectionRationale: "Returned the most recent personalized AI news to avoid an empty state.",
+      });
+    }
+    if (hasGlobalRows) {
+      return rowsToResponse(cachedGlobalRows ?? [], {
+        source: newestGlobalDay === todayUtc ? "global_cache" : "global_stale_cache",
+        contextSignals: context.focusSignals,
+        focusSummary: "Showing the latest available AI stories matched to your current goals and projects.",
+        selectionRationale: "Returned the latest stored global AI briefing to keep the feed warm.",
+      });
+    }
   }
 
   const generated = await generateNewsFromOpenAi({
     context,
     count: maxStories,
   });
+
+  if (generated.source === "fallback") {
+    if (hasPersonalizedRows) {
+      return rowsToResponse(cachedPersonalizedRows ?? [], {
+        source: "stale_cache",
+        contextSignals: context.focusSignals,
+        focusSummary: "Showing your latest stored AI news while a fresh briefing catches up.",
+        selectionRationale: "Fresh generation timed out, so the most recent personalized AI news was returned.",
+      });
+    }
+    if (hasGlobalRows) {
+      return rowsToResponse(cachedGlobalRows ?? [], {
+        source: newestGlobalDay === todayUtc ? "global_cache" : "global_stale_cache",
+        contextSignals: context.focusSignals,
+        focusSummary: "Showing the latest available AI stories matched to your current goals and projects.",
+        selectionRationale: "Fresh generation timed out, so the latest stored global AI briefing was returned.",
+      });
+    }
+  }
 
   const now = new Date().toISOString();
   const rows = generated.stories.map((story) => ({

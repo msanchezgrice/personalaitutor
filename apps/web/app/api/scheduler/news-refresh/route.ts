@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
   const result = await runtimeRefreshRelevantNews({
     forceFailCode: forcedFailCode(req),
     userId,
+    preferFresh: true,
     seed: seed
       ? {
           name: seed.name,

@@ -6,6 +6,7 @@ import { forcedFailCode, getUserId } from "@/lib/api";
 
 const schema = z.object({
   maxStories: z.number().int().min(3).max(8).optional(),
+  preferFresh: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
       forceFailCode: forcedFailCode(req),
       userId,
       maxStories: parsed.data.maxStories,
+      preferFresh: parsed.data.preferFresh,
       seed: seed
         ? {
             name: seed.name,
@@ -56,4 +58,3 @@ export async function POST(req: NextRequest) {
     });
   }
 }
-
