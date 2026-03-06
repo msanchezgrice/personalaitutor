@@ -123,8 +123,12 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   const githubUrl = safeHttpUrl(profile.socialLinks.github);
   const xUrl = safeHttpUrl(profile.socialLinks.x);
   const sortedSkills = [...profile.skills].sort((a, b) => b.score - a.score || b.evidenceCount - a.evidenceCount);
-  const projectCount = projects.length;
-  const proofCount = sortedSkills.reduce((sum, entry) => sum + entry.evidenceCount, 0);
+  const isWarmupPreview = !profile.published
+    && projects.length <= 1
+    && projects.every((project) => project.slug === "starter-build" && project.state === "planned" && !project.artifacts.length && !project.buildLog.length)
+    && sortedSkills.every((entry) => entry.status === "in_progress");
+  const projectCount = isWarmupPreview ? 0 : projects.length;
+  const proofCount = isWarmupPreview ? 0 : sortedSkills.reduce((sum, entry) => sum + entry.evidenceCount, 0);
   const verifiedCount = sortedSkills.filter((entry) => entry.status === "verified").length;
   const personLd = {
     "@context": "https://schema.org",
@@ -144,7 +148,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   return (
     <>
-      <main data-gemini-shell="1" className="relative min-h-screen flex flex-col pt-20">
+      <main data-gemini-shell="1" className="gemini-light-shell public-profile-shell relative min-h-screen flex flex-col pt-20">
         <div className="bg-glow top-[-200px] left-[-120px] opacity-45"></div>
         <div
           className="bg-glow top-[18%] right-[-220px] opacity-35"
@@ -191,7 +195,9 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                   <h1 className="mb-2 text-4xl font-[Outfit] text-white md:text-5xl">{profile.name}</h1>
                   <p className="mb-5 text-lg font-medium text-emerald-400">{profile.headline || "AI Builder"}</p>
                   <p className="max-w-2xl border-l-2 border-white/10 py-1 pl-4 text-sm leading-relaxed text-gray-300 md:text-base">
-                    {profile.bio}
+                    {isWarmupPreview
+                      ? "Your public proof site is connected, but the portfolio is still warming up. Ship the first real milestone or artifact from the dashboard and these sections will swap from starter scaffolding into verified public proof."
+                      : profile.bio}
                   </p>
                   <div className="mt-6 flex flex-wrap gap-3">
                     {linkedInUrl ? (
@@ -220,7 +226,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
               <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
                 <div className="glass p-6 rounded-2xl border border-white/10 bg-black/30">
-                  <p className="mb-2 text-sm text-gray-400">Projects</p>
+                  <p className="mb-2 text-sm text-gray-400">{isWarmupPreview ? "Published projects" : "Projects"}</p>
                   <div className="text-4xl font-[Outfit] text-white">{projectCount}</div>
                 </div>
                 <div className="glass p-6 rounded-2xl border border-white/10 bg-black/30">
@@ -228,7 +234,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                   <div className="text-4xl font-[Outfit] text-white">{verifiedCount}</div>
                 </div>
                 <div className="glass p-6 rounded-2xl border border-white/10 bg-black/30">
-                  <p className="mb-2 text-sm text-gray-400">Proof artifacts</p>
+                  <p className="mb-2 text-sm text-gray-400">{isWarmupPreview ? "Proof artifacts shipped" : "Proof artifacts"}</p>
                   <div className="text-4xl font-[Outfit] text-white">{proofCount}</div>
                 </div>
               </div>
@@ -240,37 +246,63 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
               <section className="glass sticky top-28 rounded-2xl p-6">
                 <h2 className="mb-6 flex items-center gap-2 border-b border-white/10 pb-3 text-lg font-[Outfit] text-white">
                   <i className="fa-solid fa-layer-group text-teal-400"></i>
-                  Verified Skill Stack
+                  {isWarmupPreview ? "Proof status" : "Verified Skill Stack"}
                 </h2>
                 <div className="space-y-6">
-                  <div>
-                    <div className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">Core competencies</div>
-                    <div className="flex flex-wrap gap-2">
-                      {sortedSkills.length ? sortedSkills.map((entry) => (
-                        <div key={entry.skill} className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5">
-                          <i className={`fa-solid ${entry.status === "verified" ? "fa-award" : entry.status === "built" ? "fa-check-double" : "fa-wave-square"} text-xs text-emerald-400`}></i>
-                          <span className="text-sm font-medium text-white">{entry.skill}</span>
-                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${skillTone(entry.status)}`}>
-                            {Math.round(entry.score * 100)}%
-                          </span>
+                  {isWarmupPreview ? (
+                    <>
+                      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+                        <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-500">
+                          <i className="fa-solid fa-wand-magic-sparkles"></i>
+                          Public proof is still warming up
                         </div>
-                      )) : <span className="text-sm text-gray-400">No verified skills yet.</span>}
-                    </div>
-                  </div>
+                        <p className="text-sm leading-7 text-gray-400">
+                          This profile is connected, but it has not shipped enough real work yet to populate verified proof cards.
+                        </p>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                          <div className="mb-1 text-sm font-medium text-white">First shipped milestone</div>
+                          <p className="text-xs leading-6 text-gray-400">Complete the first real project step from the dashboard to replace the starter scaffolding.</p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                          <div className="mb-1 text-sm font-medium text-white">Artifact generation</div>
+                          <p className="text-xs leading-6 text-gray-400">Once build logs or artifacts exist, verified skill and project proof sections will populate automatically.</p>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <div className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">Core competencies</div>
+                        <div className="flex flex-wrap gap-2">
+                          {sortedSkills.length ? sortedSkills.map((entry) => (
+                            <div key={entry.skill} className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5">
+                              <i className={`fa-solid ${entry.status === "verified" ? "fa-award" : entry.status === "built" ? "fa-check-double" : "fa-wave-square"} text-xs text-emerald-400`}></i>
+                              <span className="text-sm font-medium text-white">{entry.skill}</span>
+                              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${skillTone(entry.status)}`}>
+                                {Math.round(entry.score * 100)}%
+                              </span>
+                            </div>
+                          )) : <span className="text-sm text-gray-400">No verified skills yet.</span>}
+                        </div>
+                      </div>
 
-                  <div>
-                    <div className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">Tools and systems</div>
-                    <div className="flex flex-wrap gap-2">
-                      {profile.tools.length ? profile.tools.map((tool) => (
-                        <span key={tool} className="rounded bg-white/5 px-2.5 py-1 text-xs text-gray-300 border border-white/10">{tool}</span>
-                      )) : <span className="text-sm text-gray-400">No tools listed yet.</span>}
-                    </div>
-                  </div>
+                      <div>
+                        <div className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">Tools and systems</div>
+                        <div className="flex flex-wrap gap-2">
+                          {profile.tools.length ? profile.tools.map((tool) => (
+                            <span key={tool} className="rounded bg-white/5 px-2.5 py-1 text-xs text-gray-300 border border-white/10">{tool}</span>
+                          )) : <span className="text-sm text-gray-400">No tools listed yet.</span>}
+                        </div>
+                      </div>
 
-                  <div className="rounded-xl border border-white/5 bg-black/30 p-4 text-center">
-                    <i className="fa-solid fa-shield-halved mb-2 text-2xl text-gray-500"></i>
-                    <p className="text-xs text-gray-400">Skills and proof signals are grounded in shipped work, artifacts, and build telemetry.</p>
-                  </div>
+                      <div className="rounded-xl border border-white/5 bg-black/30 p-4 text-center">
+                        <i className="fa-solid fa-shield-halved mb-2 text-2xl text-gray-500"></i>
+                        <p className="text-xs text-gray-400">Skills and proof signals are grounded in shipped work, artifacts, and build telemetry.</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </section>
 
@@ -300,7 +332,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
             <section className="space-y-8 lg:col-span-2">
               <h2 className="flex items-center gap-3 text-2xl font-[Outfit] text-white">
                 <i className="fa-solid fa-folder-tree text-amber-400"></i>
-                Project Portfolio
+                {isWarmupPreview ? "Project pipeline" : "Project Portfolio"}
               </h2>
 
               {projects.length ? (
@@ -326,7 +358,11 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                             {prettyProjectState(project.state)}
                           </span>
                         </div>
-                        <p className="mb-4 line-clamp-3 text-sm text-gray-400">{project.description}</p>
+                        <p className="mb-4 line-clamp-3 text-sm text-gray-400">
+                          {isWarmupPreview
+                            ? "Starter build detected. Public proof cards activate after the first real milestone, artifact, or shipped workflow is recorded."
+                            : project.description}
+                        </p>
                         <div className="flex flex-wrap gap-2 text-[10px]">
                           <span className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-gray-400">{project.artifacts.length} artifact{project.artifacts.length === 1 ? "" : "s"}</span>
                           <span className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-gray-400">{project.buildLog.length} build log entr{project.buildLog.length === 1 ? "y" : "ies"}</span>

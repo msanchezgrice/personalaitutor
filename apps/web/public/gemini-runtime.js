@@ -2437,7 +2437,7 @@
       '<div class="runtime-social-loading-line runtime-social-loading-line-short runtime-loading-sheen"></div>' +
       '</div>' +
       '</div></div></div>' +
-      '<div class="flex items-center gap-2 mt-3">' +
+      '<div class="flex items-center gap-2 mt-3 runtime-social-action-row">' +
       '<button type="button" data-social-edit="linkedin" class="btn btn-secondary text-xs"><i class="fa-solid fa-pen mr-2"></i>Edit</button>' +
       '<button type="button" data-social-share="linkedin" class="btn bg-[#0a66c2] text-white hover:bg-[#095592] text-xs"><i class="fa-brands fa-linkedin-in mr-2"></i>Share</button>' +
       "</div></article>" +
@@ -2455,7 +2455,7 @@
       '<div class="runtime-social-loading-line runtime-social-loading-line-short runtime-loading-sheen"></div>' +
       '</div>' +
       '</div></div></div>' +
-      '<div class="flex items-center gap-2 mt-3">' +
+      '<div class="flex items-center gap-2 mt-3 runtime-social-action-row">' +
       '<button type="button" data-social-edit="x" class="btn btn-secondary text-xs"><i class="fa-solid fa-pen mr-2"></i>Edit</button>' +
       '<button type="button" data-social-share="x" class="btn bg-white text-[#111827] hover:bg-gray-200 text-xs"><i class="fa-brands fa-x-twitter mr-2"></i>Tweet</button>' +
       "</div></article>" +

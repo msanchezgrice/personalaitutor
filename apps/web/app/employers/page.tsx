@@ -51,7 +51,7 @@ export default async function EmployersPage() {
   const featuredTalent = (await runtimeListTalent()).slice(0, 4);
 
   return (
-    <main data-gemini-shell="1" className="relative min-h-screen flex flex-col">
+    <main data-gemini-shell="1" className="gemini-light-shell employer-shell relative min-h-screen flex flex-col">
       <div className="bg-glow top-[-200px] left-[-100px]"></div>
       <div
         className="bg-glow top-[20%] right-[-200px]"

@@ -104,7 +104,7 @@ export default async function TalentPage({
   ]);
 
   return (
-    <main data-gemini-shell="1" className="relative min-h-screen flex flex-col">
+    <main data-gemini-shell="1" className="gemini-light-shell talent-pool-shell relative min-h-screen flex flex-col">
       <div className="bg-glow top-[-200px] left-[-100px] opacity-45"></div>
       <div
         className="bg-glow top-[22%] right-[-200px] opacity-35"

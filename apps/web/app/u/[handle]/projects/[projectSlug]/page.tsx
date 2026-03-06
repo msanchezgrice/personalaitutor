@@ -129,7 +129,7 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
 
   return (
     <>
-      <main data-gemini-shell="1" className="relative min-h-screen flex flex-col pt-20">
+      <main data-gemini-shell="1" className="gemini-light-shell public-project-shell relative min-h-screen flex flex-col pt-20">
         <div className="bg-glow top-[-200px] left-[-120px] opacity-45"></div>
         <div
           className="bg-glow top-[18%] right-[-220px] opacity-35"
