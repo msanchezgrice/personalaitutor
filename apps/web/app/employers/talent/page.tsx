@@ -120,10 +120,6 @@ export default async function TalentPage({
               {BRAND_NAME}
             </span>
           </Link>
-          <div className="flex gap-4">
-            <Link href="/dashboard" className="btn btn-secondary">Dashboard</Link>
-            <Link href="/" className="btn btn-primary">Start Assessment</Link>
-          </div>
         </div>
       </header>
 
@@ -135,10 +131,6 @@ export default async function TalentPage({
             </Link>
             <h1 className="mb-3 text-5xl font-[Outfit] text-white">Browse Talent Pool</h1>
             <p className="max-w-3xl text-lg text-gray-400">Filter public proof profiles by role, toolset, and verified skill signals.</p>
-          </div>
-          <div className="flex gap-3">
-            <Link href="/dashboard" className="btn btn-secondary">Dashboard</Link>
-            <Link href="/" className="btn btn-primary">Start Assessment</Link>
           </div>
         </div>
 

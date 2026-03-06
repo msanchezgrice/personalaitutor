@@ -4216,7 +4216,7 @@
   async function boot() {
     captureEvent("app_boot_started", { path: currentPath });
     markRouteHydrated(currentPath);
-    var holdRevealUntilHydrated = isDashboardPath || currentPath === "/employers/talent";
+    var holdRevealUntilHydrated = isDashboardPath;
     try {
       applyAcquisitionLandingVariant();
       maybeTrackAuthEntryEvents();

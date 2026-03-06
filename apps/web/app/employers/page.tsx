@@ -71,10 +71,7 @@ export default async function EmployersPage() {
             <a href="#talent" className="nav-link">Browse Talent</a>
             <Link href="/" className="nav-link text-emerald-400">For Learners</Link>
           </nav>
-          <div className="flex gap-4">
-            <Link href="/dashboard" className="btn btn-secondary">Dashboard</Link>
-            <Link href="/employers/talent" className="btn btn-primary animate-pulse-glow">Browse Talent Pool</Link>
-          </div>
+          <Link href="/employers/talent" className="btn btn-primary animate-pulse-glow">Browse Talent Pool</Link>
         </div>
       </header>
 
