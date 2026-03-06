@@ -99,6 +99,7 @@ export default async function TalentPage({
       skill: skill || undefined,
       tool: tool || undefined,
       status: (status as "not_started" | "in_progress" | "built" | "verified" | "") || undefined,
+      realOnly: true,
     }),
     Promise.resolve(getEmployerFacets()),
   ]);

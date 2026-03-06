@@ -52,7 +52,7 @@ import {
   type TalentCard,
   type UserProfile,
 } from "@aitutor/shared";
-import { BRAND_NAME } from "./site";
+import { BRAND_NAME, getSiteUrl } from "./site";
 import { mergeAttribution } from "./attribution";
 
 const DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001";
@@ -100,11 +100,7 @@ function getSupabaseAdmin() {
 }
 
 function appBaseUrl() {
-  const explicit = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL;
-  if (explicit) return explicit.replace(/\/+$/, "");
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) return `https://${vercelUrl.replace(/\/+$/, "")}`;
-  return "http://localhost:6396";
+  return getSiteUrl();
 }
 
 function welcomeFromAddress() {
@@ -3423,12 +3419,16 @@ export async function runtimeCreateDailyUpdate(input: { userId: string; forceFai
   };
 }
 
-export async function runtimeListTalent(filters?: Parameters<typeof listTalent>[0]) {
-  if (mode() === "memory") return listTalent(filters);
+type RuntimeTalentFilters = Parameters<typeof listTalent>[0] & { realOnly?: boolean };
+
+export async function runtimeListTalent(filters?: RuntimeTalentFilters) {
+  const { realOnly = false, ...queryFilters } = filters ?? {};
+
+  if (mode() === "memory") return listTalent(queryFilters);
 
   const supabase = getSupabaseAdmin();
-  const includeSynthetic = includeSyntheticTalent();
-  const synthetic = includeSynthetic ? listTalent() : [];
+  const includeSynthetic = !realOnly && includeSyntheticTalent();
+  const synthetic = includeSynthetic ? listTalent(queryFilters) : [];
 
   const { data: profiles, error } = await supabase
     .from("learner_profiles")
@@ -3437,7 +3437,7 @@ export async function runtimeListTalent(filters?: Parameters<typeof listTalent>[
     .limit(200);
 
   if (error || !profiles?.length) {
-    return includeSynthetic ? listTalent(filters) : [];
+    return includeSynthetic ? listTalent(queryFilters) : [];
   }
 
   const profileIds = profiles.map((profile) => profile.id);
@@ -3520,14 +3520,14 @@ export async function runtimeListTalent(filters?: Parameters<typeof listTalent>[
   }
   for (const candidate of real) mergedByHandle.set(candidate.handle, candidate);
 
-  const all = [...mergedByHandle.values()];
-  const query = filters?.q?.toLowerCase().trim();
+  const all = includeSynthetic ? [...mergedByHandle.values()] : real;
+  const query = queryFilters.q?.toLowerCase().trim();
 
   return all.filter((candidate) => {
-    if (filters?.role && candidate.role !== filters.role) return false;
-    if (filters?.skill && !candidate.topSkills.includes(filters.skill)) return false;
-    if (filters?.tool && !candidate.topTools.includes(filters.tool)) return false;
-    if (filters?.status && candidate.status !== filters.status) return false;
+    if (queryFilters.role && candidate.role !== queryFilters.role) return false;
+    if (queryFilters.skill && !candidate.topSkills.includes(queryFilters.skill)) return false;
+    if (queryFilters.tool && !candidate.topTools.includes(queryFilters.tool)) return false;
+    if (queryFilters.status && candidate.status !== queryFilters.status) return false;
     if (query) {
       const haystack = `${candidate.handle} ${candidate.name} ${candidate.role} ${candidate.topSkills.join(" ")} ${candidate.topTools.join(" ")}`.toLowerCase();
       if (!haystack.includes(query)) return false;

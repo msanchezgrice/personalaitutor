@@ -48,7 +48,7 @@ function scoreTone(score: number) {
 }
 
 export default async function EmployersPage() {
-  const featuredTalent = (await runtimeListTalent()).slice(0, 4);
+  const featuredTalent = (await runtimeListTalent({ realOnly: true })).slice(0, 4);
 
   return (
     <main data-gemini-shell="1" className="gemini-light-shell employer-shell relative min-h-screen flex flex-col">

@@ -134,7 +134,7 @@ export const metadata: Metadata = {
   },
   title: {
     default: `${BRAND_NAME} | Build AI Skills and Public Proof`,
-    template: `%s | ${BRAND_NAME}`,
+    template: "%s",
   },
   description: "Learn AI, build proof artifacts, and publish system-verified skills.",
   alternates: {
