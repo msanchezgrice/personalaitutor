@@ -506,6 +506,161 @@
   margin-bottom: 1rem;
 }
 
+.variablePanel {
+  margin-bottom: 1rem;
+  padding: 1rem 1.05rem;
+  border-radius: 1.35rem;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(circle at top right, rgba(11, 143, 125, 0.08), transparent 34%),
+    rgba(255, 255, 255, 0.82);
+}
+
+.variableHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.variableCopy {
+  max-width: 48ch;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.syncBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.15rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(11, 143, 125, 0.1);
+  color: var(--teal);
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.syncTrail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-bottom: 0.9rem;
+}
+
+.syncChip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.72rem;
+  border-radius: 999px;
+  background: rgba(20, 33, 31, 0.08);
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.fieldCard {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.95rem 1rem;
+  border-radius: 1.1rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.fieldCardWide {
+  grid-column: span 2;
+}
+
+.fieldLabel {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fieldInput,
+.fieldTextarea {
+  width: 100%;
+  border: 1px solid rgba(20, 33, 31, 0.12);
+  border-radius: 0.95rem;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--ink);
+  font: inherit;
+}
+
+.fieldInput {
+  min-height: 2.9rem;
+  padding: 0.75rem 0.85rem;
+}
+
+.fieldTextarea {
+  min-height: 7rem;
+  padding: 0.8rem 0.9rem;
+  resize: vertical;
+}
+
+.fieldInput:focus,
+.fieldTextarea:focus {
+  outline: 2px solid rgba(11, 143, 125, 0.22);
+  outline-offset: 2px;
+}
+
+.goalChecklist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.goalOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(214, 130, 59, 0.1);
+  color: var(--ink);
+}
+
+.goalOption input {
+  margin: 0;
+  accent-color: var(--teal);
+}
+
+.goalOption span {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: inherit;
+}
+
+.payloadPreview {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  background: #13211f;
+  color: #d9f7f0;
+  font-family: "SFMono-Regular", "Consolas", monospace;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  overflow: auto;
+}
+
 .notesBoardMeta {
   display: flex;
   flex-wrap: wrap;
@@ -977,7 +1132,8 @@
 
   .vendorRow,
   .noteGrid,
-  .notesPipeline {
+  .notesPipeline,
+  .fieldGrid {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -995,13 +1151,22 @@
   .vendorRow,
   .noteGrid,
   .replyComposer,
-  .notesPipeline {
+  .notesPipeline,
+  .fieldGrid {
     grid-template-columns: 1fr;
   }
 
   .vendorRow,
   .replyComposer {
     display: grid;
+  }
+
+  .fieldCardWide {
+    grid-column: span 1;
+  }
+
+  .variableHeader {
+    flex-direction: column;
   }
 
   .heroActions {

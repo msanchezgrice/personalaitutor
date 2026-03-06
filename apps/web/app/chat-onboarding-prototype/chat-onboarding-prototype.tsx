@@ -62,6 +62,14 @@ type CompletedPrompt = {
   field: RequiredNoteField;
 };
 
+type SyncSource = "voice" | "typed" | "manual";
+
+type StructuredUpdate = {
+  fields: Array<keyof OnboardingNotes>;
+  source: SyncSource;
+  timestamp: number;
+};
+
 const synthesiaEmbedUrl =
   process.env.NEXT_PUBLIC_CHAT_ONBOARDING_SYNTHESIA_URL?.trim() ??
   "https://share.synthesia.io/17371f4f-02dc-489c-9b9a-ffc0aae4962b";
@@ -92,6 +100,40 @@ const vendorCards: Array<{
     url: heygenEmbedUrl,
   },
 ];
+
+const TRACKED_NOTE_KEYS: Array<keyof OnboardingNotes> = [
+  "summary",
+  "fullName",
+  "jobTitle",
+  "careerPathId",
+  "careerCategoryLabel",
+  "yearsExperience",
+  "companySize",
+  "situation",
+  "dailyWorkSummary",
+  "keySkills",
+  "selectedGoals",
+  "aiComfort",
+  "linkedinUrl",
+  "resumeFilename",
+];
+
+const NOTE_FIELD_LABELS: Record<keyof OnboardingNotes, string> = {
+  summary: "Working summary",
+  fullName: "Name",
+  jobTitle: "Role",
+  careerPathId: "Learning track",
+  careerCategoryLabel: "Track label",
+  yearsExperience: "Experience",
+  companySize: "Company size",
+  situation: "Situation",
+  dailyWorkSummary: "Day-to-day work",
+  keySkills: "Tools and skills",
+  selectedGoals: "Goals",
+  aiComfort: "AI comfort",
+  linkedinUrl: "LinkedIn",
+  resumeFilename: "Resume note",
+};
 
 function makeTranscriptEntry(speaker: TranscriptSpeaker, text: string): TranscriptEntry {
   return {
@@ -189,6 +231,30 @@ function normalizeToolUpdate(raw: string): RealtimeOnboardingUpdate {
   }
 }
 
+function parseDelimitedList(value: string, maxItems = 12) {
+  return Array.from(
+    new Set(
+      value
+        .split(/[\n,]/)
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, maxItems);
+}
+
+function getChangedNoteFields(previous: OnboardingNotes, next: OnboardingNotes): Array<keyof OnboardingNotes> {
+  return TRACKED_NOTE_KEYS.filter((field) => {
+    const previousValue = previous[field];
+    const nextValue = next[field];
+
+    if (Array.isArray(previousValue) && Array.isArray(nextValue)) {
+      return previousValue.join("||") !== nextValue.join("||");
+    }
+
+    return previousValue !== nextValue;
+  });
+}
+
 async function postJson<T>(url: string, body: Record<string, unknown>) {
   const response = await fetch(url, {
     method: "POST",
@@ -229,6 +295,7 @@ export function ChatOnboardingPrototype() {
   const [planSessionId, setPlanSessionId] = useState<string | null>(null);
   const [rotatingMissingIndex, setRotatingMissingIndex] = useState(0);
   const [completedPrompts, setCompletedPrompts] = useState<CompletedPrompt[]>([]);
+  const [lastStructuredUpdate, setLastStructuredUpdate] = useState<StructuredUpdate | null>(null);
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
@@ -238,6 +305,7 @@ export function ChatOnboardingPrototype() {
   const connectionTokenRef = useRef(0);
   const previousMissingFieldsRef = useRef<RequiredNoteField[]>([]);
   const completedPromptTimeoutsRef = useRef<number[]>([]);
+  const pendingInputSourceRef = useRef<SyncSource | null>(null);
 
   const selectedVendor = vendorCards.find((card) => card.id === vendor) ?? vendorCards[0];
   const currentCareerPath = useMemo(
@@ -252,6 +320,7 @@ export function ChatOnboardingPrototype() {
     if (!plan) return null;
     return plan.assessmentScore <= 1 ? Math.round(plan.assessmentScore * 100) : Math.round(plan.assessmentScore);
   }, [plan]);
+  const notesPayload = useMemo(() => JSON.stringify(notes, null, 2), [notes]);
 
   useEffect(() => {
     notesRef.current = notes;
@@ -334,11 +403,52 @@ export function ChatOnboardingPrototype() {
     channel.send(JSON.stringify(payload));
   }, []);
 
+  const applyNotesUpdate = useCallback((nextNotes: OnboardingNotes, source: SyncSource) => {
+    const previousNotes = notesRef.current;
+    notesRef.current = nextNotes;
+    setNotes(nextNotes);
+
+    const changedFields = getChangedNoteFields(previousNotes, nextNotes);
+    if (changedFields.length) {
+      setLastStructuredUpdate({
+        fields: changedFields,
+        source,
+        timestamp: Date.now(),
+      });
+    }
+  }, []);
+
+  const updateNoteField = useCallback(
+    (field: keyof OnboardingNotes, value: OnboardingNotes[keyof OnboardingNotes]) => {
+      applyNotesUpdate(
+        {
+          ...notesRef.current,
+          [field]: value,
+        } as OnboardingNotes,
+        "manual",
+      );
+    },
+    [applyNotesUpdate],
+  );
+
+  const toggleGoal = useCallback(
+    (goal: OnboardingNotes["selectedGoals"][number]) => {
+      const currentGoals = notesRef.current.selectedGoals;
+      const nextGoals = currentGoals.includes(goal)
+        ? currentGoals.filter((entry) => entry !== goal)
+        : [...currentGoals, goal];
+
+      updateNoteField("selectedGoals", nextGoals);
+    },
+    [updateNoteField],
+  );
+
   const handleRealtimeEvent = useCallback((event: Record<string, unknown>) => {
     const type = typeof event.type === "string" ? event.type : "";
 
     if (type === "conversation.item.input_audio_transcription.completed") {
       const transcriptText = typeof event.transcript === "string" ? event.transcript : "";
+      pendingInputSourceRef.current = "voice";
       appendTranscript("user", transcriptText);
       setWaitingForAssistant(true);
       return;
@@ -359,8 +469,8 @@ export function ChatOnboardingPrototype() {
         notesRef.current,
         normalizeToolUpdate(typeof event.arguments === "string" ? event.arguments : "{}"),
       );
-      notesRef.current = nextNotes;
-      setNotes(nextNotes);
+      applyNotesUpdate(nextNotes, pendingInputSourceRef.current ?? "voice");
+      pendingInputSourceRef.current = null;
       setStatusMessage(nextNotes.summary || "Notes updated live from the conversation.");
 
       const callId = typeof event.call_id === "string" ? event.call_id : "";
@@ -399,7 +509,7 @@ export function ChatOnboardingPrototype() {
     if (type === "response.done") {
       setWaitingForAssistant(false);
     }
-  }, [appendTranscript, sendRealtimeEvent]);
+  }, [appendTranscript, applyNotesUpdate, sendRealtimeEvent]);
 
   useEffect(() => {
     return () => {
@@ -413,9 +523,11 @@ export function ChatOnboardingPrototype() {
     setError(null);
     setPlan(null);
     setPlanSessionId(null);
+    setLastStructuredUpdate(null);
     completedPromptTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
     completedPromptTimeoutsRef.current = [];
     previousMissingFieldsRef.current = [];
+    pendingInputSourceRef.current = null;
     setCompletedPrompts([]);
     setRotatingMissingIndex(0);
     const emptyNotes = createEmptyNotes();
@@ -573,6 +685,7 @@ export function ChatOnboardingPrototype() {
     setError(null);
     setPlan(null);
     setPlanSessionId(null);
+    setLastStructuredUpdate(null);
     setTranscript([]);
     const empty = createEmptyNotes();
     setNotes(empty);
@@ -592,6 +705,8 @@ export function ChatOnboardingPrototype() {
     setDraftReply("");
     appendTranscript("user", message);
     setWaitingForAssistant(true);
+    pendingInputSourceRef.current = "typed";
+    sendRealtimeEvent({ type: "response.cancel" });
     sendRealtimeEvent({
       type: "conversation.item.create",
       item: {
@@ -631,65 +746,235 @@ export function ChatOnboardingPrototype() {
         <p>{notes.summary || "The host will keep this summary updated as answers come in."}</p>
       </div>
 
-      <div className={styles.noteGrid}>
-        <div className={styles.noteTile}>
-          <span>Name</span>
-          <strong>{notes.fullName || "Waiting"}</strong>
+      <div className={styles.variablePanel}>
+        <div className={styles.variableHeader}>
+          <div>
+            <span className={styles.summaryLabel}>Direct variable sync</span>
+            <p className={styles.variableCopy}>
+              Voice transcript and typed replies write directly into these bound fields. These are the exact values the
+              learning-plan generator uses.
+            </p>
+          </div>
+          <div className={styles.syncBadge}>
+            {lastStructuredUpdate
+              ? `${lastStructuredUpdate.source === "voice" ? "Voice" : lastStructuredUpdate.source === "typed" ? "Typed" : "Manual"} sync`
+              : "Waiting"}
+          </div>
         </div>
-        <div className={styles.noteTile}>
-          <span>Role</span>
-          <strong>{notes.jobTitle || "Waiting"}</strong>
-        </div>
-        <div className={styles.noteTile}>
-          <span>Learning track</span>
-          <strong>{currentCareerPath?.name || notes.careerCategoryLabel || "Waiting"}</strong>
-        </div>
-        <div className={styles.noteTile}>
-          <span>Experience</span>
-          <strong>{notes.yearsExperience ? EXPERIENCE_LABELS[notes.yearsExperience] : "Waiting"}</strong>
-        </div>
-        <div className={styles.noteTile}>
-          <span>Situation</span>
-          <strong>{notes.situation ? SITUATION_LABELS[notes.situation] : "Waiting"}</strong>
-        </div>
-        <div className={styles.noteTile}>
-          <span>Company size</span>
-          <strong>{notes.companySize ? COMPANY_SIZE_LABELS[notes.companySize] : "Optional"}</strong>
-        </div>
-      </div>
 
-      <div className={styles.noteBlock}>
-        <span>Day-to-day work</span>
-        <p>{notes.dailyWorkSummary || "The host will turn the spoken work summary into notes here."}</p>
-      </div>
-
-      <div className={styles.noteBlock}>
-        <span>Tools and skills</span>
-        <div className={styles.chipRow}>
-          {notes.keySkills.length ? notes.keySkills.map((skill) => <span key={skill} className={styles.infoChip}>{skill}</span>) : <span className={styles.emptyInline}>No tools captured yet.</span>}
+        <div className={styles.syncTrail}>
+          {lastStructuredUpdate?.fields.length ? (
+            lastStructuredUpdate.fields.map((field) => (
+              <span key={`${field}-${lastStructuredUpdate.timestamp}`} className={styles.syncChip}>
+                {NOTE_FIELD_LABELS[field]}
+              </span>
+            ))
+          ) : (
+            <span className={styles.emptyInline}>No structured variables captured yet.</span>
+          )}
         </div>
-      </div>
 
-      <div className={styles.noteBlock}>
-        <span>Goals</span>
-        <div className={styles.chipRow}>
-          {notes.selectedGoals.length ? notes.selectedGoals.map((goal) => <span key={goal} className={styles.goalChip}>{GOAL_LABELS[goal]}</span>) : <span className={styles.emptyInline}>The host still needs to capture the learning goals.</span>}
-        </div>
-      </div>
+        <div className={styles.fieldGrid}>
+          <label className={styles.fieldCard}>
+            <span className={styles.fieldLabel}>Name</span>
+            <input
+              className={styles.fieldInput}
+              name="fullName"
+              value={notes.fullName}
+              onChange={(event) => updateNoteField("fullName", event.target.value)}
+              placeholder="Captured from chat"
+            />
+          </label>
 
-      <div className={styles.noteBlock}>
-        <span>AI comfort</span>
-        <p>{typeof notes.aiComfort === "number" ? `${notes.aiComfort}/5` : "Waiting"}</p>
-      </div>
+          <label className={styles.fieldCard}>
+            <span className={styles.fieldLabel}>Role</span>
+            <input
+              className={styles.fieldInput}
+              name="jobTitle"
+              value={notes.jobTitle}
+              onChange={(event) => updateNoteField("jobTitle", event.target.value)}
+              placeholder="Captured from chat"
+            />
+          </label>
 
-      <div className={styles.noteGrid}>
-        <div className={styles.noteTile}>
-          <span>LinkedIn</span>
-          <strong>{notes.linkedinUrl || "Optional"}</strong>
-        </div>
-        <div className={styles.noteTile}>
-          <span>Resume note</span>
-          <strong>{notes.resumeFilename || "Optional"}</strong>
+          <label className={styles.fieldCard}>
+            <span className={styles.fieldLabel}>Learning track</span>
+            <select
+              className={styles.fieldInput}
+              name="careerPathId"
+              value={notes.careerPathId}
+              onChange={(event) =>
+                updateNoteField("careerPathId", event.target.value as OnboardingNotes["careerPathId"])
+              }
+            >
+              <option value="">Waiting to capture</option>
+              {CAREER_PATHS.map((path) => (
+                <option key={path.id} value={path.id}>
+                  {path.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.fieldCard}>
+            <span className={styles.fieldLabel}>Track label</span>
+            <input
+              className={styles.fieldInput}
+              name="careerCategoryLabel"
+              value={notes.careerCategoryLabel}
+              onChange={(event) => updateNoteField("careerCategoryLabel", event.target.value)}
+              placeholder={currentCareerPath?.name ?? "Human-readable track label"}
+            />
+          </label>
+
+          <label className={styles.fieldCard}>
+            <span className={styles.fieldLabel}>Experience</span>
+            <select
+              className={styles.fieldInput}
+              name="yearsExperience"
+              value={notes.yearsExperience}
+              onChange={(event) =>
+                updateNoteField("yearsExperience", event.target.value as OnboardingNotes["yearsExperience"])
+              }
+            >
+              <option value="">Waiting to capture</option>
+              {Object.entries(EXPERIENCE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.fieldCard}>
+            <span className={styles.fieldLabel}>Situation</span>
+            <select
+              className={styles.fieldInput}
+              name="situation"
+              value={notes.situation}
+              onChange={(event) => updateNoteField("situation", event.target.value as OnboardingNotes["situation"])}
+            >
+              <option value="">Waiting to capture</option>
+              {Object.entries(SITUATION_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.fieldCard}>
+            <span className={styles.fieldLabel}>Company size</span>
+            <select
+              className={styles.fieldInput}
+              name="companySize"
+              value={notes.companySize}
+              onChange={(event) => updateNoteField("companySize", event.target.value as OnboardingNotes["companySize"])}
+            >
+              <option value="">Optional</option>
+              {Object.entries(COMPANY_SIZE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.fieldCard}>
+            <span className={styles.fieldLabel}>AI comfort</span>
+            <select
+              className={styles.fieldInput}
+              name="aiComfort"
+              value={notes.aiComfort ?? ""}
+              onChange={(event) => updateNoteField("aiComfort", event.target.value ? Number(event.target.value) : null)}
+            >
+              <option value="">Waiting to capture</option>
+              {[1, 2, 3, 4, 5].map((value) => (
+                <option key={value} value={value}>
+                  {value}/5
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={`${styles.fieldCard} ${styles.fieldCardWide}`}>
+            <span className={styles.fieldLabel}>Working summary</span>
+            <textarea
+              className={styles.fieldTextarea}
+              name="summary"
+              value={notes.summary}
+              onChange={(event) => updateNoteField("summary", event.target.value)}
+              placeholder="The host keeps this synced from the conversation"
+              rows={3}
+            />
+          </label>
+
+          <label className={`${styles.fieldCard} ${styles.fieldCardWide}`}>
+            <span className={styles.fieldLabel}>Day-to-day work</span>
+            <textarea
+              className={styles.fieldTextarea}
+              name="dailyWorkSummary"
+              value={notes.dailyWorkSummary}
+              onChange={(event) => updateNoteField("dailyWorkSummary", event.target.value)}
+              placeholder="Captured from the learner's spoken workflow"
+              rows={4}
+            />
+          </label>
+
+          <label className={`${styles.fieldCard} ${styles.fieldCardWide}`}>
+            <span className={styles.fieldLabel}>Tools and skills</span>
+            <textarea
+              className={styles.fieldTextarea}
+              name="keySkills"
+              value={notes.keySkills.join(", ")}
+              onChange={(event) => updateNoteField("keySkills", parseDelimitedList(event.target.value))}
+              placeholder="Comma-separated tools, systems, or skills"
+              rows={3}
+            />
+          </label>
+
+          <div className={`${styles.fieldCard} ${styles.fieldCardWide}`}>
+            <span className={styles.fieldLabel}>Goals</span>
+            <div className={styles.goalChecklist}>
+              {Object.entries(GOAL_LABELS).map(([goal, label]) => (
+                <label key={goal} className={styles.goalOption}>
+                  <input
+                    type="checkbox"
+                    checked={notes.selectedGoals.includes(goal as OnboardingNotes["selectedGoals"][number])}
+                    onChange={() => toggleGoal(goal as OnboardingNotes["selectedGoals"][number])}
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <label className={styles.fieldCard}>
+            <span className={styles.fieldLabel}>LinkedIn</span>
+            <input
+              className={styles.fieldInput}
+              name="linkedinUrl"
+              value={notes.linkedinUrl}
+              onChange={(event) => updateNoteField("linkedinUrl", event.target.value)}
+              placeholder="Optional profile URL"
+            />
+          </label>
+
+          <label className={styles.fieldCard}>
+            <span className={styles.fieldLabel}>Resume note</span>
+            <input
+              className={styles.fieldInput}
+              name="resumeFilename"
+              value={notes.resumeFilename}
+              onChange={(event) => updateNoteField("resumeFilename", event.target.value)}
+              placeholder="Optional resume filename"
+            />
+          </label>
+
+          <div className={`${styles.fieldCard} ${styles.fieldCardWide}`}>
+            <span className={styles.fieldLabel}>Live payload</span>
+            <pre className={styles.payloadPreview}>{notesPayload}</pre>
+          </div>
         </div>
       </div>
 

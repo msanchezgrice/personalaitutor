@@ -199,6 +199,8 @@ Mapping guidance:
 
 Tool rule:
 - After every meaningful user answer, call ${REALTIME_TOOL_NAME} with the structured state you currently know.
+- If the user just gave you a clear field value, put that value in the tool call immediately instead of only mentioning it in your spoken reply.
+- The UI binds tool-call fields directly into live form inputs, so do not rely on prose alone when a field can be structured.
 - Always include needsFollowup with the required fields that are still missing or unclear.
 - When all required fields are captured, tell the user you have enough to generate the plan and ask if they want you to wrap it up.
 `.trim();
