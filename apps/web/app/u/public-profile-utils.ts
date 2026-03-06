@@ -38,28 +38,28 @@ export function prettyProjectState(state: Project["state"]) {
 export function stateTone(state: Project["state"]) {
   switch (state) {
     case "showcased":
-      return "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
     case "built":
-      return "border-sky-400/30 bg-sky-400/10 text-sky-200";
+      return "border-sky-200 bg-sky-50 text-sky-700";
     case "building":
-      return "border-amber-400/30 bg-amber-400/10 text-amber-200";
+      return "border-amber-200 bg-amber-50 text-amber-700";
     case "planned":
-      return "border-violet-400/30 bg-violet-400/10 text-violet-200";
+      return "border-violet-200 bg-violet-50 text-violet-700";
     default:
-      return "border-white/10 bg-white/5 text-slate-300";
+      return "border-slate-200 bg-slate-50 text-slate-600";
   }
 }
 
 export function skillTone(status: UserProfile["skills"][number]["status"]) {
   switch (status) {
     case "verified":
-      return "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
     case "built":
-      return "border-sky-400/30 bg-sky-400/10 text-sky-200";
+      return "border-sky-200 bg-sky-50 text-sky-700";
     case "in_progress":
-      return "border-amber-400/30 bg-amber-400/10 text-amber-200";
+      return "border-amber-200 bg-amber-50 text-amber-700";
     default:
-      return "border-white/10 bg-white/5 text-slate-300";
+      return "border-slate-200 bg-slate-50 text-slate-600";
   }
 }
 

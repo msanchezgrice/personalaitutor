@@ -15,6 +15,10 @@ import { EXAMPLE_PROFILE_HANDLE, EXAMPLE_PROJECT_SLUG, exampleProfile, examplePr
 
 export const revalidate = 300;
 
+const shellClass = "rounded-[30px] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]";
+const mutedCardClass = "rounded-2xl border border-slate-200 bg-[#f8fbfa]";
+const secondaryButtonClass = "rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50";
+
 async function resolveProjectView(handle: string, projectSlug: string) {
   const profile = await runtimeFindUserByHandle(handle);
   if (handle === EXAMPLE_PROFILE_HANDLE && projectSlug === EXAMPLE_PROJECT_SLUG && (!profile || !profile.published)) {
@@ -121,55 +125,55 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
 
   return (
     <>
-      <main className="min-h-screen bg-[#07111f] text-white">
-        <div className="absolute inset-x-0 top-0 h-[360px] bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.18),transparent_58%)] pointer-events-none" />
-        <div className="relative max-w-6xl mx-auto px-6 py-8 md:px-10 md:py-10">
-          <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-10">
+      <main className="min-h-screen bg-[#f4f8f5] text-slate-900">
+        <div className="absolute inset-x-0 top-0 h-[360px] bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.14),transparent_58%)] pointer-events-none" />
+        <div className="relative mx-auto max-w-6xl px-6 py-8 md:px-10 md:py-10">
+          <header className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <a href={`/u/${profile.handle}/`} className="text-sm text-emerald-300 hover:text-emerald-200 transition">← Back to {profile.name}</a>
-              <h1 className="font-[Outfit] text-4xl md:text-5xl font-semibold tracking-tight mt-3 mb-3">{project.title}</h1>
-              <p className="max-w-3xl text-slate-300 text-lg leading-8">{project.description}</p>
+              <a href={`/u/${profile.handle}/`} className="text-sm font-medium text-emerald-700 transition hover:text-emerald-800">← Back to {profile.name}</a>
+              <h1 className="mt-3 mb-3 font-[Outfit] text-4xl font-semibold tracking-tight text-slate-900 md:text-5xl">{project.title}</h1>
+              <p className="max-w-3xl text-lg leading-8 text-slate-600">{project.description}</p>
             </div>
             <div className="flex items-center gap-3">
               <span className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${stateTone(project.state)}`}>
                 {prettyProjectState(project.state)}
               </span>
-              <a href={`/u/${profile.handle}/`} className="rounded-2xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-200 hover:bg-white/5 transition">
+              <a href={`/u/${profile.handle}/`} className={secondaryButtonClass}>
                 View Profile
               </a>
             </div>
           </header>
 
-          <section className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr] mb-8">
-            <div className="rounded-[28px] border border-white/10 bg-white/5 p-8 shadow-[0_24px_80px_rgba(2,6,23,0.35)]">
-              <div className="flex items-start gap-4 mb-6">
-                <img src={avatarUrl} alt={profile.name} className="h-20 w-20 rounded-[24px] object-cover border border-white/10" />
+          <section className="mb-8 grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
+            <div className={`${shellClass} p-8`}>
+              <div className="mb-6 flex items-start gap-4">
+                <img src={avatarUrl} alt={profile.name} className="h-20 w-20 rounded-[24px] border border-slate-200 object-cover shadow-sm" />
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200 mb-2">Builder</div>
-                  <h2 className="font-[Outfit] text-2xl font-semibold text-white">{profile.name}</h2>
-                  <p className="text-emerald-200">{profile.headline || "AI Builder"}</p>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Builder</div>
+                  <h2 className="font-[Outfit] text-2xl font-semibold text-slate-900">{profile.name}</h2>
+                  <p className="text-emerald-700">{profile.headline || "AI Builder"}</p>
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <div className="text-sm text-slate-400 mb-2">Artifacts</div>
-                  <div className="font-[Outfit] text-3xl font-semibold text-white">{project.artifacts.length}</div>
+                <div className={`${mutedCardClass} p-4`}>
+                  <div className="mb-2 text-sm text-slate-500">Artifacts</div>
+                  <div className="font-[Outfit] text-3xl font-semibold text-slate-900">{project.artifacts.length}</div>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <div className="text-sm text-slate-400 mb-2">Build log</div>
-                  <div className="font-[Outfit] text-3xl font-semibold text-white">{project.buildLog.length}</div>
+                <div className={`${mutedCardClass} p-4`}>
+                  <div className="mb-2 text-sm text-slate-500">Build log</div>
+                  <div className="font-[Outfit] text-3xl font-semibold text-slate-900">{project.buildLog.length}</div>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <div className="text-sm text-slate-400 mb-2">Public URL</div>
-                  <div className="text-sm text-slate-200 break-all">{`${getSiteUrl()}/u/${profile.handle}/projects/${project.slug}`}</div>
+                <div className={`${mutedCardClass} p-4`}>
+                  <div className="mb-2 text-sm text-slate-500">Public URL</div>
+                  <div className="break-all text-sm text-slate-700">{`${getSiteUrl()}/u/${profile.handle}/projects/${project.slug}`}</div>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-white/10 bg-[#0b1728] p-8 shadow-[0_24px_80px_rgba(2,6,23,0.35)]">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200 mb-2">Project status</div>
-              <h2 className="font-[Outfit] text-3xl font-semibold tracking-tight mb-5">Current signal</h2>
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-5 text-slate-300 leading-7">
+            <div className={`${shellClass} bg-[#f8fbfa] p-8`}>
+              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Project status</div>
+              <h2 className="mb-5 font-[Outfit] text-3xl font-semibold tracking-tight text-slate-900">Current signal</h2>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 leading-7 text-slate-600">
                 {project.state === "building"
                   ? "This project is actively being built and the proof page updates as new artifacts and build-log entries arrive."
                   : project.state === "built" || project.state === "showcased"
@@ -180,33 +184,33 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
           </section>
 
           <section className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
-            <div className="rounded-[28px] border border-white/10 bg-white/5 p-8 shadow-[0_20px_64px_rgba(2,6,23,0.28)]">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200 mb-2">Build log</div>
-              <h2 className="font-[Outfit] text-3xl font-semibold tracking-tight mb-6">Execution history</h2>
+            <div className={`${shellClass} p-8`}>
+              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Build log</div>
+              <h2 className="mb-6 font-[Outfit] text-3xl font-semibold tracking-tight text-slate-900">Execution history</h2>
               {project.buildLog.length ? (
                 <div className="space-y-4">
                   {project.buildLog.map((entry) => (
-                    <div key={entry.id} className="rounded-2xl border border-white/10 bg-black/20 p-5">
-                      <div className="flex items-center justify-between gap-3 mb-2">
-                        <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${entry.level === "success" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : entry.level === "warn" ? "border-amber-400/30 bg-amber-400/10 text-amber-200" : entry.level === "error" ? "border-rose-400/30 bg-rose-400/10 text-rose-200" : "border-sky-400/30 bg-sky-400/10 text-sky-200"}`}>
+                    <div key={entry.id} className="rounded-2xl border border-slate-200 bg-[#f8fbfa] p-5">
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${entry.level === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : entry.level === "warn" ? "border-amber-200 bg-amber-50 text-amber-700" : entry.level === "error" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-sky-200 bg-sky-50 text-sky-700"}`}>
                           {entry.level}
                         </span>
-                        <span className="text-xs text-slate-500">{new Date(entry.createdAt).toLocaleString()}</span>
+                        <span className="text-xs text-slate-400">{new Date(entry.createdAt).toLocaleString()}</span>
                       </div>
-                      <p className="text-slate-200 leading-7">{entry.message}</p>
+                      <p className="leading-7 text-slate-700">{entry.message}</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-5 text-slate-300">
+                <div className="rounded-2xl border border-slate-200 bg-[#f8fbfa] p-5 text-slate-600">
                   No build-log entries are attached to this project yet.
                 </div>
               )}
             </div>
 
-            <div className="rounded-[28px] border border-white/10 bg-[#0b1728] p-8 shadow-[0_20px_64px_rgba(2,6,23,0.28)]">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200 mb-2">Artifacts</div>
-              <h2 className="font-[Outfit] text-3xl font-semibold tracking-tight mb-6">Attached outputs</h2>
+            <div className={`${shellClass} bg-[#f8fbfa] p-8`}>
+              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Artifacts</div>
+              <h2 className="mb-6 font-[Outfit] text-3xl font-semibold tracking-tight text-slate-900">Attached outputs</h2>
               {project.artifacts.length ? (
                 <div className="space-y-3">
                   {project.artifacts.map((artifact, index) => (
@@ -215,15 +219,15 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
                       href={artifact.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="block rounded-2xl border border-white/10 bg-black/20 p-4 hover:bg-white/5 transition"
+                      className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-emerald-300 hover:bg-emerald-50/40"
                     >
-                      <div className="text-xs uppercase tracking-[0.18em] text-slate-500 mb-1">{artifact.kind}</div>
-                      <div className="text-sm text-slate-200 break-all">{artifact.url}</div>
+                      <div className="mb-1 text-xs uppercase tracking-[0.18em] text-slate-400">{artifact.kind}</div>
+                      <div className="break-all text-sm text-slate-700">{artifact.url}</div>
                     </a>
                   ))}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-5 text-slate-300">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 text-slate-600">
                   No public artifacts are attached yet.
                 </div>
               )}

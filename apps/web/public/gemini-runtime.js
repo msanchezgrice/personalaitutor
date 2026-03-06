@@ -626,7 +626,10 @@
       }
     }
     if (!forceRefresh && HOME_NEWS_WARM_PROMISES[scope]) return HOME_NEWS_WARM_PROMISES[scope];
-    HOME_NEWS_WARM_PROMISES[scope] = postJson("/api/news/recommendations", { maxStories: 6 })
+    HOME_NEWS_WARM_PROMISES[scope] = postJson("/api/news/recommendations", { maxStories: 6 }, {
+      timeoutMs: 7000,
+      timeoutMessage: "AI news is taking longer than expected",
+    })
       .then(function (fresh) {
         var insights = Array.isArray(fresh && fresh.insights) ? fresh.insights : [];
         if (!insights.length) return null;
@@ -1342,7 +1345,7 @@
     captureEvent("auth_session_synced", { scope: "optional", signed_in: false });
   }
 
-  async function postJson(url, body) {
+  async function postJson(url, body, options) {
     var payload = body || {};
     if (payload && typeof payload === "object" && !Array.isArray(payload)) {
       var cleaned = {};
@@ -1354,25 +1357,48 @@
       });
       payload = cleaned;
     }
-    var res = await fetch(url, {
-      method: "POST",
-      headers: requestHeaders(true),
-      cache: "no-store",
-      credentials: "same-origin",
-      body: JSON.stringify(payload),
-    });
-    var data = await res.json().catch(function () {
-      return {};
-    });
-    if (!res.ok || !data.ok) {
-      var details = data && data.error && data.error.details ? data.error.details : {};
-      var message = data && data.error && data.error.message ? data.error.message : "Request failed";
-      var err = new Error(message);
-      err.code = data && data.error ? data.error.code : "REQUEST_FAILED";
-      err.details = details;
+    var timeoutMs = options && options.timeoutMs ? Number(options.timeoutMs) : 0;
+    var timeoutMessage = options && options.timeoutMessage ? String(options.timeoutMessage) : "Request timed out";
+    var controller = typeof AbortController === "function" && timeoutMs > 0 ? new AbortController() : null;
+    var timeoutId = null;
+    try {
+      if (controller) {
+        timeoutId = window.setTimeout(function () {
+          controller.abort();
+        }, timeoutMs);
+      }
+      var res = await fetch(url, {
+        method: "POST",
+        headers: requestHeaders(true),
+        cache: "no-store",
+        credentials: "same-origin",
+        body: JSON.stringify(payload),
+        signal: controller ? controller.signal : undefined,
+      });
+      var data = await res.json().catch(function () {
+        return {};
+      });
+      if (!res.ok || !data.ok) {
+        var details = data && data.error && data.error.details ? data.error.details : {};
+        var message = data && data.error && data.error.message ? data.error.message : "Request failed";
+        var err = new Error(message);
+        err.code = data && data.error ? data.error.code : "REQUEST_FAILED";
+        err.details = details;
+        throw err;
+      }
+      return data;
+    } catch (err) {
+      if (err && err.name === "AbortError") {
+        var timeoutErr = new Error(timeoutMessage);
+        timeoutErr.code = "REQUEST_TIMEOUT";
+        throw timeoutErr;
+      }
       throw err;
+    } finally {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
     }
-    return data;
   }
 
   async function getJson(url) {
@@ -1554,12 +1580,22 @@
     var header = main.querySelector(":scope > header");
     if (!header) return;
 
+    function setMobileNavState(isOpen) {
+      document.documentElement.setAttribute("data-mobile-nav", isOpen ? "open" : "closed");
+      if (toggleButton) {
+        toggleButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        toggleButton.setAttribute("aria-label", isOpen ? "Close menu" : "Open menu");
+      }
+    }
+
     if (!isNarrowViewport()) {
       document.documentElement.setAttribute("data-mobile-nav", "closed");
       var desktopOverlay = document.querySelector(".dashboard-mobile-nav-overlay");
       if (desktopOverlay) desktopOverlay.remove();
       var desktopToggle = document.getElementById("dashboard-mobile-nav-toggle") || header.querySelector("[data-mobile-nav-toggle='1']");
-      if (desktopToggle) desktopToggle.remove();
+      if (desktopToggle && desktopToggle.getAttribute("data-mobile-nav-generated") === "1") {
+        desktopToggle.remove();
+      }
       return;
     }
 
@@ -1571,7 +1607,7 @@
       overlay.setAttribute("aria-label", "Close menu");
       overlay.setAttribute("data-mobile-nav-overlay", "1");
       overlay.addEventListener("click", function () {
-        document.documentElement.setAttribute("data-mobile-nav", "closed");
+        setMobileNavState(false);
       });
       document.body.appendChild(overlay);
     }
@@ -1585,34 +1621,29 @@
       toggleButton.id = "dashboard-mobile-nav-toggle";
       toggleButton.type = "button";
       toggleButton.setAttribute("data-mobile-nav-toggle", "1");
+      toggleButton.setAttribute("data-mobile-nav-generated", "1");
+      toggleButton.setAttribute("aria-controls", "dashboard-sidebar");
+      toggleButton.setAttribute("aria-expanded", "false");
       toggleButton.setAttribute("aria-label", "Open menu");
       toggleButton.className = "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-gray-200";
       toggleButton.innerHTML = '<i class="fa-solid fa-bars text-sm"></i>';
     }
 
-    if (toggleButton.parentElement !== header) {
+    if (toggleButton.parentElement !== header && toggleButton.getAttribute("data-mobile-nav-generated") === "1") {
       header.insertBefore(toggleButton, header.firstChild);
     }
 
     var closeMobileMenu = function () {
-      document.documentElement.setAttribute("data-mobile-nav", "closed");
+      setMobileNavState(false);
     };
 
     if (toggleButton.getAttribute("data-mobile-nav-wired") !== "1") {
       toggleButton.setAttribute("data-mobile-nav-wired", "1");
       toggleButton.addEventListener("click", function () {
         var isOpen = document.documentElement.getAttribute("data-mobile-nav") === "open";
-        document.documentElement.setAttribute("data-mobile-nav", isOpen ? "closed" : "open");
+        setMobileNavState(!isOpen);
         captureEvent("dashboard_mobile_nav_toggled", { is_open: !isOpen });
       });
-    }
-
-    var settingsMenu = document.getElementById("dashboard-settings-menu");
-    if (settingsMenu) {
-      var rightControls = header.querySelector(".flex.items-center.gap-4") || header.querySelector(".flex.items-center.gap-2");
-      if (rightControls && settingsMenu.parentElement !== rightControls) {
-        rightControls.appendChild(settingsMenu);
-      }
     }
 
     Array.prototype.forEach.call(aside.querySelectorAll("a[href]"), function (node) {
@@ -1624,9 +1655,11 @@
     });
 
     if (!isNarrowViewport()) {
-      document.documentElement.setAttribute("data-mobile-nav", "closed");
+      setMobileNavState(false);
     } else if (!document.documentElement.getAttribute("data-mobile-nav")) {
-      document.documentElement.setAttribute("data-mobile-nav", "closed");
+      setMobileNavState(false);
+    } else {
+      setMobileNavState(document.documentElement.getAttribute("data-mobile-nav") === "open");
     }
 
     if (document.documentElement.getAttribute("data-mobile-nav-resize-wired") !== "1") {
@@ -2018,6 +2051,18 @@
         function renderHomeNews(insights, unavailableReason) {
           var rows = normalizeHomeNews(insights);
           var isLoading = unavailableReason && unavailableReason.toLowerCase().indexOf("generating") !== -1;
+          if (isLoading && !rows.length) {
+            updatesList.innerHTML =
+              '<a href="/dashboard/ai-news/" class="block glass p-4 rounded-xl border border-sky-500/20 bg-sky-500/5 hover:bg-white/5 transition flex gap-3">' +
+              '<div class="w-8 h-8 rounded shrink-0 bg-sky-500/20 flex items-center justify-center text-sky-400">' +
+              '<span class="runtime-loader-spinner runtime-loader-spinner-sm"></span></div>' +
+              "<div>" +
+              '<h4 class="font-medium text-white text-sm mb-0.5">Generating AI News</h4>' +
+              '<p class="text-xs text-gray-400 line-clamp-2">' + escapeHtml(unavailableReason || "Preparing today's AI news briefing.") + "</p>" +
+              '<p class="text-[10px] text-sky-300 mt-1">Loading</p>' +
+              "</div></a>";
+            return;
+          }
           while (rows.length < 3) {
             rows.push({
               title: isLoading ? "Generating AI News" : "AI News unavailable",
@@ -2383,11 +2428,16 @@
       '<div class="runtime-social-editor-frame">' +
       '<textarea data-social-input="linkedin" class="runtime-social-draft-input runtime-social-draft-input--loading w-full min-h-[180px] rounded-lg border border-slate-300 bg-white p-3 text-[13px] text-slate-900 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-[#0a66c2]/40" readonly></textarea>' +
       '<div data-social-loading="linkedin" class="runtime-social-loading-overlay">' +
-      '<div class="runtime-social-loading-lines">' +
-      '<div class="runtime-social-loading-line runtime-skeleton"></div>' +
-      '<div class="runtime-social-loading-line runtime-skeleton"></div>' +
-      '<div class="runtime-social-loading-line runtime-skeleton"></div>' +
-      '<div class="runtime-social-loading-line runtime-social-loading-line-short runtime-skeleton"></div>' +
+      '<div class="runtime-social-loading-stack">' +
+      '<div class="runtime-social-loading-meta">' +
+      '<div class="runtime-social-loading-badge runtime-loading-sheen"></div>' +
+      '<div class="runtime-social-loading-label runtime-loading-sheen"></div>' +
+      '</div>' +
+      '<div class="runtime-social-loading-editor runtime-loading-sheen"></div>' +
+      '<div class="runtime-social-loading-actions">' +
+      '<div class="runtime-social-loading-button runtime-loading-sheen"></div>' +
+      '<div class="runtime-social-loading-button runtime-social-loading-button-primary runtime-loading-sheen"></div>' +
+      '</div>' +
       '</div></div></div>' +
       '<div class="flex items-center gap-2 mt-3">' +
       '<button type="button" data-social-edit="linkedin" class="btn btn-secondary text-xs"><i class="fa-solid fa-pen mr-2"></i>Edit</button>' +
@@ -2398,11 +2448,16 @@
       '<div class="runtime-social-editor-frame">' +
       '<textarea data-social-input="x" class="runtime-social-draft-input runtime-social-draft-input--loading w-full min-h-[180px] rounded-lg border border-slate-300 bg-white p-3 text-[13px] text-slate-900 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-slate-400" readonly></textarea>' +
       '<div data-social-loading="x" class="runtime-social-loading-overlay">' +
-      '<div class="runtime-social-loading-lines">' +
-      '<div class="runtime-social-loading-line runtime-skeleton"></div>' +
-      '<div class="runtime-social-loading-line runtime-skeleton"></div>' +
-      '<div class="runtime-social-loading-line runtime-skeleton"></div>' +
-      '<div class="runtime-social-loading-line runtime-social-loading-line-short runtime-skeleton"></div>' +
+      '<div class="runtime-social-loading-stack">' +
+      '<div class="runtime-social-loading-meta">' +
+      '<div class="runtime-social-loading-badge runtime-loading-sheen"></div>' +
+      '<div class="runtime-social-loading-label runtime-loading-sheen"></div>' +
+      '</div>' +
+      '<div class="runtime-social-loading-editor runtime-loading-sheen"></div>' +
+      '<div class="runtime-social-loading-actions">' +
+      '<div class="runtime-social-loading-button runtime-loading-sheen"></div>' +
+      '<div class="runtime-social-loading-button runtime-social-loading-button-primary runtime-loading-sheen"></div>' +
+      '</div>' +
       '</div></div></div>' +
       '<div class="flex items-center gap-2 mt-3">' +
       '<button type="button" data-social-edit="x" class="btn btn-secondary text-xs"><i class="fa-solid fa-pen mr-2"></i>Edit</button>' +
@@ -2663,7 +2718,29 @@
     var contentWrap = document.querySelector("main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-4");
     if (!contentWrap) return;
 
-    var updates = Array.isArray(summary.latestEvents) ? summary.latestEvents.slice(0, 10) : [];
+    var updates = Array.isArray(summary.latestEvents) ? summary.latestEvents.slice(0, 12) : [];
+    var condensedUpdates = [];
+    updates.forEach(function (event) {
+      var last = condensedUpdates[condensedUpdates.length - 1];
+      if (
+        last &&
+        String(last.type || "") === String(event.type || "") &&
+        String(last.message || "") === String(event.message || "")
+      ) {
+        last.count = (last.count || 1) + 1;
+        if (event.createdAt && (!last.createdAt || Date.parse(String(event.createdAt)) > Date.parse(String(last.createdAt)))) {
+          last.createdAt = event.createdAt;
+        }
+        return;
+      }
+      condensedUpdates.push({
+        id: event.id,
+        type: event.type,
+        message: event.message,
+        createdAt: event.createdAt,
+        count: 1,
+      });
+    });
     var dailyUpdate = summary.dailyUpdate || null;
 
     function relativeTimeLabel(input) {
@@ -2700,18 +2777,24 @@
       };
     }
 
-    var eventsHtml = updates
+    var eventsHtml = condensedUpdates
       .map(function (event) {
         var tone = eventClasses(event.type);
         var message = escapeHtml(event.message || "Tutor update");
         var kind = escapeHtml(String(event.type || "job.update").replace(/\./g, " "));
+        var repetition = Number(event.count || 1);
         return (
           '<article class="glass p-5 rounded-xl border ' + tone.card + ' flex gap-4">' +
           '<div class="w-10 h-10 rounded shrink-0 ' + tone.icon + ' flex items-center justify-center mt-1">' +
           '<i class="fa-solid ' + tone.iconName + '"></i></div>' +
           '<div class="min-w-0 flex-1">' +
           '<div class="flex items-center justify-between gap-3 mb-1">' +
+          '<div class="min-w-0 flex items-center gap-2">' +
           '<h4 class="font-medium text-slate-900 text-base truncate">' + message + "</h4>" +
+          (repetition > 1
+            ? '<span class="inline-flex items-center rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">x' + repetition + "</span>"
+            : "") +
+          "</div>" +
           '<span class="text-[10px] text-slate-500 whitespace-nowrap">' + relativeTimeLabel(event.createdAt) + "</span>" +
           "</div>" +
           '<p class="text-xs text-slate-600 uppercase tracking-wide">Event: ' + kind + "</p>" +
@@ -2920,14 +3003,15 @@
     try {
       var initial = await warmHomeNews(summaryUserId, false);
       if (!initial || !Array.isArray(initial.insights) || !initial.insights.length) {
-        throw new Error("Unable to load AI news");
+        throw new Error("AI news is taking longer than expected. Refresh to retry.");
       }
       renderNews(initial);
     } catch (err) {
-      contentWrap.innerHTML =
-        '<div class="glass p-5 rounded-xl border border-red-300 bg-red-50 text-red-700">' +
-        escapeHtml(err instanceof Error ? err.message : "Unable to load AI news") +
-        "</div>";
+      renderNews({
+        insights: [],
+        source: "unavailable",
+        focusSummary: err instanceof Error ? err.message : "Unable to load AI news",
+      });
     }
   }
 

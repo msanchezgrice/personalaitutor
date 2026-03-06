@@ -107,27 +107,75 @@ body[data-path="/dashboard/social"] .runtime-social-draft-input {
   align-items: stretch;
   justify-content: center;
   border-radius: 0.75rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(248, 250, 252, 0.96));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(248, 250, 252, 0.94));
   padding: 1rem;
   pointer-events: none;
   transition: opacity 180ms ease;
 }
 
-.runtime-social-loading-lines {
+.runtime-social-loading-stack {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  justify-content: center;
+  gap: 0.875rem;
 }
 
-.runtime-social-loading-line {
-  height: 0.875rem;
+.runtime-social-loading-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.runtime-social-loading-badge {
+  height: 0.9rem;
+  width: 5.75rem;
   border-radius: 9999px;
 }
 
-.runtime-social-loading-line-short {
-  width: 72%;
+.runtime-social-loading-label {
+  height: 0.9rem;
+  width: 7rem;
+  border-radius: 9999px;
+}
+
+.runtime-social-loading-editor {
+  flex: 1;
+  min-height: 9.75rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(191, 219, 254, 0.65);
+}
+
+.runtime-social-loading-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.runtime-social-loading-button {
+  height: 3.25rem;
+  width: 10.5rem;
+  max-width: 44%;
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.runtime-social-loading-button-primary {
+  width: 11rem;
+}
+
+.runtime-loading-sheen {
+  position: relative;
+  overflow: hidden;
+  background: rgba(226, 232, 240, 0.88);
+}
+
+.runtime-loading-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, rgba(226, 232, 240, 0) 15%, rgba(255, 255, 255, 0.92) 48%, rgba(226, 232, 240, 0) 82%);
+  background-size: 220% 100%;
+  animation: runtime-shimmer 1.15s linear infinite;
 }
 
 .runtime-social-draft-input--loading {
@@ -176,6 +224,14 @@ body[data-path="/dashboard/social"] .runtime-social-draft-input {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+body[data-path="/dashboard/social"] .runtime-social-loading-overlay {
+  background: linear-gradient(180deg, rgba(239, 245, 255, 0.88), rgba(245, 249, 255, 0.96));
+}
+
+body[data-path="/dashboard/social"] .runtime-social-card-x .runtime-social-loading-overlay {
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.88), rgba(255, 255, 255, 0.96));
 }
 
 html[data-path="/onboarding"] button,
@@ -936,6 +992,29 @@ body[data-path^="/dashboard"] [data-gemini-shell="1"] > main {
   overflow-x: hidden !important;
 }
 
+html[data-path^="/dashboard"] [data-dashboard-header="1"] > [data-dashboard-header-title="1"],
+body[data-path^="/dashboard"] [data-dashboard-header="1"] > [data-dashboard-header-title="1"] {
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+html[data-path^="/dashboard"] [data-dashboard-header="1"] > [data-dashboard-header-actions="1"],
+body[data-path^="/dashboard"] [data-dashboard-header="1"] > [data-dashboard-header-actions="1"] {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+html[data-path^="/dashboard"] [data-dashboard-header="1"] > [data-dashboard-header-settings="1"],
+body[data-path^="/dashboard"] [data-dashboard-header="1"] > [data-dashboard-header-settings="1"] {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  margin-left: 0.75rem;
+}
+
 html[data-path^="/dashboard"] [data-gemini-shell="1"] > main .glass,
 html[data-path^="/dashboard"] [data-gemini-shell="1"] > main .glass-panel,
 html[data-path^="/dashboard"] [data-gemini-shell="1"] > main section,
@@ -1015,11 +1094,15 @@ body[data-path^="/dashboard"] [data-gemini-shell="1"] > main article {
     height: auto !important;
     min-height: 72px !important;
     padding: calc(env(safe-area-inset-top, 0px) + 0.8rem) 0.9rem 0.8rem 0.9rem !important;
-    gap: 0.5rem !important;
+    column-gap: 0.6rem !important;
+    row-gap: 0.65rem !important;
     overflow-x: hidden !important;
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    align-items: start !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
+    grid-template-areas:
+      "toggle title settings"
+      "actions actions actions" !important;
+    align-items: center !important;
   }
 
   html[data-path^="/dashboard"] [data-gemini-shell="1"] > main > .absolute,
@@ -1027,34 +1110,42 @@ body[data-path^="/dashboard"] [data-gemini-shell="1"] > main article {
     display: none !important;
   }
 
-  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > :first-child,
-  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > :first-child {
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > [data-dashboard-header-title="1"],
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > [data-dashboard-header-title="1"] {
+    grid-area: title !important;
     min-width: 0 !important;
     max-width: 100% !important;
     overflow: hidden !important;
-    padding-left: 2.5rem !important;
     padding-right: 0.25rem !important;
   }
 
-  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-4,
-  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-2,
-  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-4,
-  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-2 {
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > [data-dashboard-header-actions="1"],
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > [data-dashboard-header-actions="1"] {
+    grid-area: actions !important;
     display: flex !important;
     align-items: center !important;
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
     min-width: 0 !important;
-    max-width: 48vw !important;
-    gap: 0.45rem !important;
-    flex-wrap: nowrap !important;
-    justify-content: flex-end !important;
-    overflow: hidden !important;
   }
 
-  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-4>*,
-  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-2>*,
-  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-4>*,
-  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-2>* {
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > [data-dashboard-header-actions="1"][data-mobile-hidden="1"],
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > [data-dashboard-header-actions="1"][data-mobile-hidden="1"] {
+    display: none !important;
+  }
+
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > [data-dashboard-header-actions="1"]>*,
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > [data-dashboard-header-actions="1"]>* {
     max-width: 100% !important;
+  }
+
+  html[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > [data-dashboard-header-settings="1"],
+  body[data-path^="/dashboard"] [data-gemini-shell="1"] > main > header > [data-dashboard-header-settings="1"] {
+    grid-area: settings !important;
+    margin-left: 0 !important;
+    justify-self: end !important;
+    align-self: start !important;
   }
 
   html[data-path^="/dashboard"] [data-gemini-shell="1"] > main .p-10,
@@ -1096,12 +1187,15 @@ body[data-path^="/dashboard"] [data-gemini-shell="1"] > main article {
   html[data-path^="/dashboard"] [data-mobile-nav-toggle="1"],
   body[data-path^="/dashboard"] [data-mobile-nav-toggle="1"] {
     display: inline-flex !important;
+    grid-area: toggle !important;
     position: static !important;
     top: auto !important;
     left: auto !important;
     right: auto !important;
     z-index: auto !important;
-    margin-right: 0.35rem !important;
+    margin-right: 0 !important;
+    width: 2.75rem !important;
+    height: 2.75rem !important;
   }
 
   html[data-path^="/dashboard"] #dashboard-settings-menu,
@@ -1111,7 +1205,7 @@ body[data-path^="/dashboard"] [data-gemini-shell="1"] > main article {
     left: auto !important;
     right: auto !important;
     z-index: auto !important;
-    margin-left: 0.25rem !important;
+    margin-left: 0 !important;
   }
 
   html[data-path^="/dashboard"] #dashboard-settings-menu [data-settings-toggle="1"] span,
@@ -1177,14 +1271,6 @@ body[data-path^="/dashboard"] [data-gemini-shell="1"] > main article {
   html[data-path="/dashboard/chat"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-2,
   body[data-path="/dashboard/chat"] [data-gemini-shell="1"] > main > header > .flex.items-center.gap-2 {
     display: none !important;
-  }
-
-  html[data-path="/dashboard/projects"] [data-gemini-shell="1"] > main > header a.btn,
-  body[data-path="/dashboard/projects"] [data-gemini-shell="1"] > main > header a.btn {
-    font-size: 0.78rem !important;
-    padding: 0.58rem 0.72rem !important;
-    line-height: 1.15 !important;
-    white-space: nowrap !important;
   }
 
   html[data-path^="/dashboard/chat"] [data-gemini-shell="1"] .chat-user-bubble,
@@ -1257,22 +1343,53 @@ body[data-path^="/dashboard"] [data-gemini-shell="1"] > main article {
 
   html[data-path="/"] .container.nav > div.flex.gap-4,
   body[data-path="/"] .container.nav > div.flex.gap-4 {
-    grid-column: 1 / -1 !important;
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 0.5rem !important;
-    width: 100% !important;
-    min-width: 0 !important;
+    grid-column: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 0.65rem !important;
+    width: auto !important;
+    min-width: auto !important;
   }
 
   html[data-path="/"] .container.nav .btn,
   body[data-path="/"] .container.nav .btn {
-    width: 100% !important;
-    min-width: 0 !important;
-    padding: 0.7rem 0.78rem !important;
-    font-size: 0.92rem !important;
+    min-width: auto !important;
     text-align: center !important;
-    justify-content: center !important;
+  }
+
+  html[data-path="/"] .container.nav > div.flex.gap-4 > a:first-child,
+  body[data-path="/"] .container.nav > div.flex.gap-4 > a:first-child {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    color: #64748b !important;
+    padding: 0 !important;
+    width: auto !important;
+    font-size: 0.92rem !important;
+  }
+
+  html[data-path="/"] .container.nav > div.flex.gap-4 > a:last-child,
+  body[data-path="/"] .container.nav > div.flex.gap-4 > a:last-child {
+    display: none !important;
+  }
+
+  html[data-path="/"] main > section.container.pt-20.pb-32.grid.lg\:grid-cols-2,
+  body[data-path="/"] main > section.container.pt-20.pb-32.grid.lg\:grid-cols-2 {
+    padding-top: 1.75rem !important;
+    padding-bottom: 2.75rem !important;
+    gap: 1.5rem !important;
+  }
+
+  html[data-path="/"] #how-it-works,
+  body[data-path="/"] #how-it-works {
+    padding-top: 3.5rem !important;
+    padding-bottom: 3.5rem !important;
+  }
+
+  html[data-path="/"] main > section .flex.items-center.gap-4.text-sm.text-gray-500,
+  body[data-path="/"] main > section .flex.items-center.gap-4.text-sm.text-gray-500 {
+    margin-top: 0.25rem !important;
   }
 
   html[data-path="/"] [data-gemini-shell="1"],
