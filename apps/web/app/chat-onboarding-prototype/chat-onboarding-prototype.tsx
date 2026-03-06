@@ -1,8 +1,8 @@
 "use client";
 import {
   startTransition,
+  useCallback,
   useEffect,
-  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -304,15 +304,15 @@ export function ChatOnboardingPrototype() {
     };
   }, []);
 
-  const appendTranscript = useEffectEvent((speaker: TranscriptSpeaker, text: string) => {
+  const appendTranscript = useCallback((speaker: TranscriptSpeaker, text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
     startTransition(() => {
       setTranscript((current) => [...current.slice(-39), makeTranscriptEntry(speaker, trimmed)]);
     });
-  });
+  }, []);
 
-  const closeConnection = useEffectEvent((nextState: ConnectionState = "ended") => {
+  const closeConnection = useCallback((nextState: ConnectionState = "ended") => {
     connectionTokenRef.current += 1;
     dataChannelRef.current?.close();
     dataChannelRef.current = null;
@@ -326,15 +326,15 @@ export function ChatOnboardingPrototype() {
     }
     setWaitingForAssistant(false);
     setConnectionState(nextState);
-  });
+  }, []);
 
-  const sendRealtimeEvent = useEffectEvent((payload: Record<string, unknown>) => {
+  const sendRealtimeEvent = useCallback((payload: Record<string, unknown>) => {
     const channel = dataChannelRef.current;
     if (!channel || channel.readyState !== "open") return;
     channel.send(JSON.stringify(payload));
-  });
+  }, []);
 
-  const handleRealtimeEvent = useEffectEvent((event: Record<string, unknown>) => {
+  const handleRealtimeEvent = useCallback((event: Record<string, unknown>) => {
     const type = typeof event.type === "string" ? event.type : "";
 
     if (type === "conversation.item.input_audio_transcription.completed") {
@@ -399,7 +399,7 @@ export function ChatOnboardingPrototype() {
     if (type === "response.done") {
       setWaitingForAssistant(false);
     }
-  });
+  }, [appendTranscript, sendRealtimeEvent]);
 
   useEffect(() => {
     return () => {
