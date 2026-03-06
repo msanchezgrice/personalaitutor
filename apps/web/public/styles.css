@@ -42,6 +42,10 @@ body {
   overflow-x: hidden;
 }
 
+#__aitutor_style_probe__ {
+  --aitutor-shared-styles-ready: 1;
+}
+
 /* Prevent stale template flashes before runtime hydration replaces placeholder data.
    NOTE: GeminiStaticPage wraps template body in a <div>, so aside/main are NOT
    direct children of <body>. Use descendant combinators, not child combinators. */
@@ -1299,6 +1303,40 @@ body[data-path^="/dashboard"] [data-gemini-shell="1"] > main article {
     background: #ffffff !important;
     border-color: rgba(148, 163, 184, 0.4) !important;
     color: #0f172a !important;
+  }
+
+  html[data-path="/dashboard/social"] .runtime-social-shell,
+  body[data-path="/dashboard/social"] .runtime-social-shell,
+  html[data-path="/dashboard/social"] [data-social-card],
+  body[data-path="/dashboard/social"] [data-social-card] {
+    padding: 1rem !important;
+  }
+
+  html[data-path="/dashboard/social"] .runtime-social-draft-input,
+  body[data-path="/dashboard/social"] .runtime-social-draft-input {
+    min-height: 8.75rem !important;
+  }
+
+  html[data-path="/dashboard/social"] .runtime-social-loading-editor,
+  body[data-path="/dashboard/social"] .runtime-social-loading-editor {
+    padding: 0.85rem !important;
+    gap: 0.6rem !important;
+  }
+
+  html[data-path="/dashboard/social"] [data-social-card] .flex.items-center.gap-2.mt-3,
+  body[data-path="/dashboard/social"] [data-social-card] .flex.items-center.gap-2.mt-3 {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html[data-path="/dashboard/social"] [data-social-card] .flex.items-center.gap-2.mt-3 > .btn,
+  body[data-path="/dashboard/social"] [data-social-card] .flex.items-center.gap-2.mt-3 > .btn {
+    justify-content: center !important;
+  }
+
+  html[data-path="/dashboard/ai-news"] .runtime-loading-panel,
+  body[data-path="/dashboard/ai-news"] .runtime-loading-panel {
+    padding: 1rem !important;
   }
 
   html[data-path="/"] .container.nav > a,

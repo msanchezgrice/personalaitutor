@@ -31,17 +31,17 @@ export default async function DashboardAiNewsPage() {
             <span className="font-semibold">Preparing today&apos;s AI news briefing</span>
           </div>
           <p className="text-sm text-slate-700 mb-4">Fetching and caching personalized stories for this session.</p>
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="rounded-xl border border-sky-200 bg-white/90 p-5">
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <div className="h-3 w-24 rounded bg-sky-100 runtime-skeleton"></div>
+          <div className="space-y-3">
+            {Array.from({ length: 2 }).map((_, index) => (
+              <div key={index} className="rounded-xl border border-sky-200 bg-white/90 p-4">
+                <div className="flex items-center justify-between gap-3 mb-2">
                   <div className="h-3 w-20 rounded bg-sky-100 runtime-skeleton"></div>
+                  <div className="h-3 w-16 rounded bg-sky-100 runtime-skeleton"></div>
                 </div>
                 <div className="space-y-2">
-                  <div className="h-4 rounded bg-sky-100 runtime-skeleton"></div>
+                  <div className="h-4 w-5/6 rounded bg-sky-100 runtime-skeleton"></div>
                   <div className="h-3 rounded bg-sky-100 runtime-skeleton"></div>
-                  <div className="h-3 w-11/12 rounded bg-sky-100 runtime-skeleton"></div>
+                  <div className="h-3 w-4/5 rounded bg-sky-100 runtime-skeleton"></div>
                 </div>
               </div>
             ))}

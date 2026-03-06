@@ -19,6 +19,7 @@ export default async function DashboardProfilePage() {
           <i className="fa-solid fa-user text-emerald-400"></i> Profile Settings
         </span>
       )}
+      hideHeaderActionsOnMobile
       initialUser={{
         name: displayName,
         headline: displayHeadline,
@@ -36,10 +37,15 @@ export default async function DashboardProfilePage() {
       )}
     >
       <div className="p-10 max-w-3xl mx-auto w-full pb-24 space-y-8">
+        <div className="lg:hidden">
+          <a href={publicProfileUrl} className="btn btn-primary w-full justify-center text-sm px-4 py-3">
+            <i className="fa-solid fa-globe mr-2"></i> View Public Profile
+          </a>
+        </div>
         <div className="glass p-8 w-full rounded-2xl">
           <h2 className="text-white font-[Outfit] text-lg mb-6 border-b border-white/10 pb-2">Basic Information</h2>
 
-          <div className="flex items-center gap-6 mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 mb-8">
             <button type="button" data-avatar-trigger="1" className="relative group cursor-pointer inline-block bg-transparent border-0 p-0">
               <img src={avatarUrl} className="w-24 h-24 rounded-full object-cover border-4 border-black box-content shadow-[0_0_20px_rgba(79,70,229,0.3)]" alt={displayName} />
               <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition border-4 border-emerald-500">
@@ -54,7 +60,7 @@ export default async function DashboardProfilePage() {
           </div>
 
           <form className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">Full Name</label>
                 <input
@@ -108,7 +114,7 @@ export default async function DashboardProfilePage() {
               />
             </div>
             <div className="pt-4 mt-4 border-t border-white/10 flex justify-end">
-              <button type="button" className="btn btn-primary px-6 py-2">Save Changes</button>
+              <button type="button" className="btn btn-primary w-full sm:w-auto px-6 py-2">Save Changes</button>
             </div>
           </form>
         </div>

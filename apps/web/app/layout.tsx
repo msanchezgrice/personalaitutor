@@ -202,7 +202,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <script id="x-pixel" dangerouslySetInnerHTML={{ __html: xTrackingScript }} />
         ) : null}
         <link rel="icon" href="/assets/branding/brand_brain_icon.svg" />
-        <link rel="stylesheet" href="/styles.css" />
+        <link rel="preload" href="/styles.css" as="style" />
+        <link id="app-shared-stylesheet" rel="stylesheet" href="/styles.css" fetchPriority="high" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       </head>
       <body>

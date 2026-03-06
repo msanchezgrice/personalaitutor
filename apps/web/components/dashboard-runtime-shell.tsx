@@ -11,6 +11,7 @@ type DashboardShellProps = {
   headerTitle: ReactNode;
   headerSubtitle?: ReactNode;
   headerActions?: ReactNode;
+  hideHeaderActionsOnMobile?: boolean;
   children: ReactNode;
   decor?: ReactNode;
   initialUser?: {
@@ -112,6 +113,7 @@ export function DashboardShell({
   headerTitle,
   headerSubtitle,
   headerActions,
+  hideHeaderActionsOnMobile = false,
   children,
   decor,
   initialUser,
@@ -132,7 +134,10 @@ export function DashboardShell({
         className="bg-[#0f111a] text-white lg:flex lg:h-screen lg:overflow-hidden min-h-screen text-sm"
         suppressHydrationWarning
       >
-        <aside className="w-full lg:w-72 glass border-y-0 border-l-0 rounded-none flex flex-col lg:h-full bg-black/20 flex-shrink-0 z-20 relative">
+        <aside
+          id="dashboard-sidebar"
+          className="w-full lg:w-72 glass border-y-0 border-l-0 rounded-none flex flex-col lg:h-full bg-black/20 flex-shrink-0 z-20 relative"
+        >
           <div className="p-6">
             <Link href="/" className="flex items-center gap-2 mb-8">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl shadow-[0_0_15px_rgba(79,70,229,0.5)]">
@@ -217,12 +222,37 @@ export function DashboardShell({
 
         <main className="flex-1 flex flex-col lg:h-full relative overflow-y-auto w-full min-w-0">
           {decor ?? <div className="absolute top-0 left-1/4 w-[500px] h-[200px] bg-emerald-500/20 blur-[100px] pointer-events-none"></div>}
-          <header className="h-20 flex items-center justify-between px-4 md:px-8 lg:px-10 border-b border-white/5 sticky top-0 bg-[#0f111a]/80 backdrop-blur-xl z-10 flex-shrink-0">
-            <div>
-              <h1 className="text-xl font-[Outfit] font-semibold">{headerTitle}</h1>
+          <header
+            data-dashboard-header="1"
+            className="h-20 flex items-center px-4 md:px-8 lg:px-10 border-b border-white/5 sticky top-0 bg-[#0f111a]/80 backdrop-blur-xl z-10 flex-shrink-0"
+          >
+            <button
+              id="dashboard-mobile-nav-toggle"
+              type="button"
+              data-mobile-nav-toggle="1"
+              aria-controls="dashboard-sidebar"
+              aria-expanded="false"
+              aria-label="Open menu"
+              className="lg:hidden inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-gray-200"
+            >
+              <i className="fa-solid fa-bars text-sm"></i>
+            </button>
+            <div data-dashboard-header-title="1" className="min-w-0 flex-1">
+              <h1 className="text-xl font-[Outfit] font-semibold break-words">{headerTitle}</h1>
               {headerSubtitle ? <p className="text-xs text-gray-400">{headerSubtitle}</p> : null}
             </div>
-            <div className="flex items-center gap-4">{headerActions}<DashboardSettingsMenu /></div>
+            {headerActions ? (
+              <div
+                data-dashboard-header-actions="1"
+                data-mobile-hidden={hideHeaderActionsOnMobile ? "1" : undefined}
+                className={`${hideHeaderActionsOnMobile ? "hidden lg:flex" : "flex"} items-center gap-4`}
+              >
+                {headerActions}
+              </div>
+            ) : null}
+            <div data-dashboard-header-settings="1" className="flex flex-shrink-0 items-center justify-end">
+              <DashboardSettingsMenu />
+            </div>
           </header>
           <div data-dashboard-route="1" className="contents">
             {children}

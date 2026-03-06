@@ -13,6 +13,7 @@ export default async function DashboardChatPage() {
       activeTab="chat"
       headerTitle="My AI Skill Tutor Session"
       headerSubtitle={activeProject?.title ? `${activeProject.title} • Active Build` : "Active build"}
+      hideHeaderActionsOnMobile
       initialUser={{
         name: user?.name ?? state.seed?.name ?? "Learner",
         headline: user?.headline ?? "AI Builder",
@@ -52,6 +53,20 @@ export default async function DashboardChatPage() {
           </div>
           <div className="glass p-5 rounded-2xl rounded-tl-sm text-sm border-emerald-500/20 bg-emerald-500/5">
             <p>{introText}</p>
+          </div>
+        </div>
+        <div className="max-w-4xl pl-12">
+          <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">Try asking</p>
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300">
+              Summarize my blocker
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300">
+              Turn this into next steps
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300">
+              Draft a proof artifact update
+            </span>
           </div>
         </div>
       </div>

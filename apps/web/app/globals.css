@@ -66,6 +66,7 @@ html[data-style-ready="0"][data-path^="/dashboard"] [data-gemini-shell="1"],
 html[data-style-ready="0"][data-path^="/u/"] [data-gemini-shell="1"],
 html[data-style-ready="0"][data-path="/employers"] [data-gemini-shell="1"],
 html[data-style-ready="0"][data-path^="/employers/"] [data-gemini-shell="1"],
+html[data-runtime-ready="0"][data-path^="/dashboard"] [data-gemini-shell="1"],
 html[data-runtime-ready="0"][data-path="/employers/talent"] [data-gemini-shell="1"] {
   opacity: 0 !important;
   pointer-events: none !important;
@@ -84,6 +85,7 @@ html[data-style-ready="0"][data-path^="/dashboard"] [data-shell-loader="1"],
 html[data-style-ready="0"][data-path^="/u/"] [data-shell-loader="1"],
 html[data-style-ready="0"][data-path="/employers"] [data-shell-loader="1"],
 html[data-style-ready="0"][data-path^="/employers/"] [data-shell-loader="1"],
+html[data-runtime-ready="0"][data-path^="/dashboard"] [data-shell-loader="1"],
 html[data-runtime-ready="0"][data-path="/employers/talent"] [data-shell-loader="1"] {
   opacity: 1;
   pointer-events: auto;

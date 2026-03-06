@@ -36,10 +36,11 @@ export function DashboardSettingsMenu() {
     <div id="dashboard-settings-menu" ref={rootRef} className="relative">
       <button
         type="button"
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-gray-300"
+        className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 text-xs text-gray-300 hover:bg-white/10"
         data-settings-toggle="1"
         aria-expanded={open ? "true" : "false"}
         aria-haspopup="menu"
+        aria-label="Open settings menu"
         onClick={() => setOpen((value) => !value)}
       >
         <i className="fa-solid fa-gear"></i>

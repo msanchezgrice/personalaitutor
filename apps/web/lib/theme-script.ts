@@ -8,7 +8,7 @@ export const themeBootScript = `
     var shouldHoldForStyles = p === "/" || isDashboardPath || isPublicProfilePath || isEmployersPath;
     var revealed = false;
     var probeId = "__aitutor_style_probe__";
-    var shouldHoldForRuntime = p === "/employers/talent";
+    var shouldHoldForRuntime = isDashboardPath || p === "/employers/talent";
 
     document.documentElement.setAttribute("data-path", p);
     document.documentElement.setAttribute("data-runtime-ready", shouldHoldForRuntime ? "0" : "1");
@@ -29,6 +29,7 @@ export const themeBootScript = `
     function styleProbeReady() {
       if (!document.body) return false;
       var probe = document.getElementById(probeId);
+      var sharedStylesheet = document.getElementById("app-shared-stylesheet");
       if (!probe) {
         probe = document.createElement("div");
         probe.id = probeId;
@@ -41,8 +42,13 @@ export const themeBootScript = `
         probe.style.pointerEvents = "none";
         document.body.appendChild(probe);
       }
+      if (!sharedStylesheet) {
+        sharedStylesheet = document.querySelector('link[rel="stylesheet"][href="/styles.css"]');
+      }
       var styles = window.getComputedStyle(probe);
-      return styles.position === "sticky" && parseFloat(styles.paddingLeft || "0") >= 15;
+      var sharedStylesReady = styles.getPropertyValue("--aitutor-shared-styles-ready").trim() === "1";
+      var stylesheetReady = !!(sharedStylesheet && sharedStylesheet.sheet);
+      return styles.position === "sticky" && parseFloat(styles.paddingLeft || "0") >= 15 && sharedStylesReady && stylesheetReady;
     }
 
     function revealStyles() {

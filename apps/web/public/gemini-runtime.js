@@ -2864,18 +2864,14 @@
         '<span class="font-semibold">Preparing today&apos;s AI news briefing</span>' +
         "</div>" +
         '<p class="text-sm text-slate-700 mb-4">' + escapeHtml(message || "Fetching and caching personalized stories for this session.") + "</p>" +
-        '<div class="space-y-4">' +
-        '<div class="rounded-xl border border-sky-200 bg-white/90 p-5">' +
-        '<div class="flex items-center justify-between gap-3 mb-3"><div class="h-3 w-24 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-20 rounded bg-sky-100 runtime-skeleton"></div></div>' +
-        '<div class="space-y-2"><div class="h-4 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-11/12 rounded bg-sky-100 runtime-skeleton"></div></div>' +
+        '<div class="space-y-3">' +
+        '<div class="rounded-xl border border-sky-200 bg-white/90 p-4">' +
+        '<div class="flex items-center justify-between gap-3 mb-2"><div class="h-3 w-20 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-16 rounded bg-sky-100 runtime-skeleton"></div></div>' +
+        '<div class="space-y-2"><div class="h-4 w-5/6 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-4/5 rounded bg-sky-100 runtime-skeleton"></div></div>' +
         "</div>" +
-        '<div class="rounded-xl border border-sky-200 bg-white/90 p-5">' +
-        '<div class="flex items-center justify-between gap-3 mb-3"><div class="h-3 w-24 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-20 rounded bg-sky-100 runtime-skeleton"></div></div>' +
-        '<div class="space-y-2"><div class="h-4 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-11/12 rounded bg-sky-100 runtime-skeleton"></div></div>' +
-        "</div>" +
-        '<div class="rounded-xl border border-sky-200 bg-white/90 p-5">' +
-        '<div class="flex items-center justify-between gap-3 mb-3"><div class="h-3 w-24 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-20 rounded bg-sky-100 runtime-skeleton"></div></div>' +
-        '<div class="space-y-2"><div class="h-4 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-11/12 rounded bg-sky-100 runtime-skeleton"></div></div>' +
+        '<div class="rounded-xl border border-sky-200 bg-white/90 p-4">' +
+        '<div class="flex items-center justify-between gap-3 mb-2"><div class="h-3 w-20 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-16 rounded bg-sky-100 runtime-skeleton"></div></div>' +
+        '<div class="space-y-2"><div class="h-4 w-5/6 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-4/5 rounded bg-sky-100 runtime-skeleton"></div></div>' +
         "</div>" +
         "</div>" +
         "</section>";
@@ -4126,7 +4122,7 @@
   async function boot() {
     captureEvent("app_boot_started", { path: currentPath });
     markRouteHydrated(currentPath);
-    var holdRevealUntilHydrated = currentPath === "/employers/talent";
+    var holdRevealUntilHydrated = isDashboardPath || currentPath === "/employers/talent";
     try {
       applyAcquisitionLandingVariant();
       maybeTrackAuthEntryEvents();
@@ -4136,13 +4132,6 @@
       }
       await trySyncLandingAuth();
       await syncOptionalAuthUi();
-
-      if (!holdRevealUntilHydrated && isDashboardPath && !restoredDashboardSnapshot) {
-        // Reveal immediately with skeletons, then progressively hydrate.
-        document.documentElement.setAttribute("data-runtime-ready", "1");
-      } else if (!holdRevealUntilHydrated && restoredDashboardSnapshot) {
-        document.documentElement.setAttribute("data-runtime-ready", "1");
-      }
 
       try {
         await syncAuthContext();
