@@ -94,8 +94,9 @@ function buildHomeLearningSection() {
         ${guideCards}
       </div>
 
-      <div class="mt-10 flex justify-center">
+      <div class="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
         <a href="/learn" class="btn btn-secondary px-8 py-4">Browse All Guides</a>
+        <a href="/learning" class="btn btn-secondary px-8 py-4">Open Learning Journal</a>
       </div>
     </div>
   </section>

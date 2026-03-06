@@ -26,11 +26,11 @@ export function LearningFooter({ currentSlug }: LearningFooterProps) {
   const latestArticles = getLatestLearningArticles(articles, 5).filter((article) => article.slug !== currentSlug).slice(0, 4);
 
   return (
-    <footer className="learning-footer mt-16 border-t border-white/10">
+    <footer className="learning-footer mt-16 overflow-hidden border-t border-white/10">
       <div className="container max-w-6xl py-12">
         <section className="glass-panel mb-10 overflow-hidden p-8 md:p-10">
-          <div className="grid gap-8 lg:grid-cols-[1.1fr,0.9fr] lg:items-center">
-            <div>
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr),minmax(0,0.9fr)] lg:items-center">
+            <div className="min-w-0">
               <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400">The Learning Journal</div>
               <h2 className="max-w-3xl text-4xl font-[Outfit] text-white">
                 Keep reading, then turn one guide into one shipped workflow.
@@ -41,7 +41,7 @@ export function LearningFooter({ currentSlug }: LearningFooterProps) {
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <div className="min-w-0 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <a href="/sign-up?redirect_url=/onboarding/" className="btn btn-primary justify-center">
                 Start Assessment
               </a>
@@ -52,8 +52,8 @@ export function LearningFooter({ currentSlug }: LearningFooterProps) {
           </div>
         </section>
 
-        <div className="grid gap-8 lg:grid-cols-[1.1fr,0.85fr,1fr,1fr]">
-          <section className="space-y-5">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr),minmax(0,0.85fr),minmax(0,1fr),minmax(0,1fr)]">
+          <section className="min-w-0 space-y-5">
             <Link href="/learn" className="inline-flex items-center gap-3">
               <img src="/assets/branding/brand_brain_icon.svg" alt={BRAND_NAME} className="h-11 w-11 object-contain" />
               <div>
@@ -74,7 +74,7 @@ export function LearningFooter({ currentSlug }: LearningFooterProps) {
             </div>
           </section>
 
-          <section>
+          <section className="min-w-0">
             <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Navigate</div>
             <div className="space-y-3 text-sm text-gray-300">
               <a href="/learn#latest" className="block hover:text-white transition">Start Here</a>
@@ -85,14 +85,14 @@ export function LearningFooter({ currentSlug }: LearningFooterProps) {
             </div>
           </section>
 
-          <section>
+          <section className="min-w-0">
             <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Collections</div>
             <div className="space-y-4">
               {collections.map((collection) => (
                 <a
                   key={collection.id}
                   href={collection.href}
-                  className="block rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-white/20 hover:bg-white/10"
+                  className="block min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-white/20 hover:bg-white/10"
                 >
                   <div className={`mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${themeClass(collection.theme).split(" ")[0]}`}>
                     {collection.label}
@@ -104,14 +104,14 @@ export function LearningFooter({ currentSlug }: LearningFooterProps) {
             </div>
           </section>
 
-          <section>
+          <section className="min-w-0">
             <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Latest Reads</div>
             <div className="space-y-4">
               {latestArticles.map((article) => (
                 <a
                   key={article.slug}
                   href={`/learn/${article.slug}`}
-                  className="block rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-white/20 hover:bg-white/10"
+                  className="block min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-white/20 hover:bg-white/10"
                 >
                   <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
                     {article.category}

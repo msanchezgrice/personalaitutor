@@ -872,6 +872,120 @@ body[data-path^="/learning"] footer.learning-footer .glass-panel {
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.24) !important;
 }
 
+html[data-path^="/learn"],
+body[data-path^="/learn"],
+html[data-path^="/learning"],
+body[data-path^="/learning"] {
+  background: #0f111a !important;
+  color: #f3f4f6 !important;
+}
+
+html[data-path^="/learn"] header.learning-header,
+body[data-path^="/learn"] header.learning-header,
+html[data-path^="/learning"] header.learning-header,
+body[data-path^="/learning"] header.learning-header {
+  background: rgba(8, 12, 24, 0.82) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.24) !important;
+}
+
+html[data-path^="/learn"] header.learning-header .nav-link,
+body[data-path^="/learn"] header.learning-header .nav-link,
+html[data-path^="/learning"] header.learning-header .nav-link,
+body[data-path^="/learning"] header.learning-header .nav-link {
+  color: #cbd5e1 !important;
+}
+
+html[data-path^="/learn"] header.learning-header .nav-link.text-emerald-300,
+body[data-path^="/learn"] header.learning-header .nav-link.text-emerald-300,
+html[data-path^="/learning"] header.learning-header .nav-link.text-emerald-300,
+body[data-path^="/learning"] header.learning-header .nav-link.text-emerald-300 {
+  color: #86efac !important;
+}
+
+html[data-path^="/learn"] header.learning-header .nav-link:hover,
+body[data-path^="/learn"] header.learning-header .nav-link:hover,
+html[data-path^="/learning"] header.learning-header .nav-link:hover,
+body[data-path^="/learning"] header.learning-header .nav-link:hover {
+  color: #ffffff !important;
+}
+
+html[data-path^="/learn"] header.learning-header .text-cyan-200,
+body[data-path^="/learn"] header.learning-header .text-cyan-200,
+html[data-path^="/learning"] header.learning-header .text-cyan-200,
+body[data-path^="/learning"] header.learning-header .text-cyan-200 {
+  color: #a5f3fc !important;
+}
+
+html[data-path^="/learn"] header.learning-header .text-gray-500,
+body[data-path^="/learn"] header.learning-header .text-gray-500,
+html[data-path^="/learning"] header.learning-header .text-gray-500,
+body[data-path^="/learning"] header.learning-header .text-gray-500 {
+  color: rgba(148, 163, 184, 0.72) !important;
+}
+
+html[data-path^="/learn"] header.learning-header .text-gray-400,
+body[data-path^="/learn"] header.learning-header .text-gray-400,
+html[data-path^="/learning"] header.learning-header .text-gray-400,
+body[data-path^="/learning"] header.learning-header .text-gray-400 {
+  color: rgba(226, 232, 240, 0.78) !important;
+}
+
+html[data-path^="/learn"] footer.learning-footer .text-white,
+html[data-path^="/learn"] footer.learning-footer .text-gray-300,
+body[data-path^="/learn"] footer.learning-footer .text-white,
+body[data-path^="/learn"] footer.learning-footer .text-gray-300,
+html[data-path^="/learning"] footer.learning-footer .text-white,
+html[data-path^="/learning"] footer.learning-footer .text-gray-300,
+body[data-path^="/learning"] footer.learning-footer .text-white,
+body[data-path^="/learning"] footer.learning-footer .text-gray-300 {
+  color: #f8fafc !important;
+}
+
+html[data-path^="/learn"] footer.learning-footer .text-gray-400,
+body[data-path^="/learn"] footer.learning-footer .text-gray-400,
+html[data-path^="/learning"] footer.learning-footer .text-gray-400,
+body[data-path^="/learning"] footer.learning-footer .text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+html[data-path^="/learn"] footer.learning-footer .text-gray-500,
+body[data-path^="/learn"] footer.learning-footer .text-gray-500,
+html[data-path^="/learning"] footer.learning-footer .text-gray-500,
+body[data-path^="/learning"] footer.learning-footer .text-gray-500 {
+  color: #64748b !important;
+}
+
+html[data-path^="/learn"] footer.learning-footer .text-cyan-400,
+body[data-path^="/learn"] footer.learning-footer .text-cyan-400,
+html[data-path^="/learning"] footer.learning-footer .text-cyan-400,
+body[data-path^="/learning"] footer.learning-footer .text-cyan-400 {
+  color: #67e8f9 !important;
+}
+
+html[data-path^="/learn"] footer.learning-footer .text-emerald-400,
+body[data-path^="/learn"] footer.learning-footer .text-emerald-400,
+html[data-path^="/learning"] footer.learning-footer .text-emerald-400,
+body[data-path^="/learning"] footer.learning-footer .text-emerald-400 {
+  color: #6ee7b7 !important;
+}
+
+html[data-path^="/learn"] footer.learning-footer .text-amber-400,
+body[data-path^="/learn"] footer.learning-footer .text-amber-400,
+html[data-path^="/learning"] footer.learning-footer .text-amber-400,
+body[data-path^="/learning"] footer.learning-footer .text-amber-400 {
+  color: #fbbf24 !important;
+}
+
+html[data-path^="/learn"] footer.learning-footer a.rounded-full,
+body[data-path^="/learn"] footer.learning-footer a.rounded-full,
+html[data-path^="/learning"] footer.learning-footer a.rounded-full,
+body[data-path^="/learning"] footer.learning-footer a.rounded-full {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #e2e8f0 !important;
+}
+
 #theme-toggle {
   display: none !important;
 }

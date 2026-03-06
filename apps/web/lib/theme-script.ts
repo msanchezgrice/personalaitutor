@@ -9,7 +9,7 @@ export const themeBootScript = `
     var shouldHoldForStyles = p === "/" || isDashboardPath || isPublicProfilePath || isEmployersPath || isLearnPath;
     var revealed = false;
     var probeId = "__aitutor_style_probe__";
-    var shouldHoldForRuntime = isDashboardPath || p === "/employers/talent";
+    var shouldHoldForRuntime = isDashboardPath;
 
     document.documentElement.setAttribute("data-path", p);
     document.documentElement.setAttribute("data-runtime-ready", shouldHoldForRuntime ? "0" : "1");

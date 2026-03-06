@@ -16,12 +16,12 @@ type LearningHeaderProps = {
 };
 
 function navLinkClass(active: boolean) {
-  return active ? "nav-link text-emerald-400" : "nav-link text-gray-300";
+  return active ? "nav-link text-emerald-300" : "nav-link text-gray-300";
 }
 
 function tabClass(active: boolean) {
   return active
-    ? "rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-300"
+    ? "rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-200"
     : "rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-gray-300 transition hover:border-white/20 hover:text-white";
 }
 
@@ -30,7 +30,7 @@ export function LearningHeader({ active = "learning", activeTab = null, secondar
   const collections = getLearningCollections();
 
   return (
-    <header className="glass fixed top-0 z-50 w-full rounded-none border-x-0 border-t-0 bg-opacity-80 backdrop-blur-xl">
+    <header className="learning-header glass fixed top-0 z-50 w-full rounded-none border-x-0 border-t-0 bg-opacity-80 backdrop-blur-xl">
       <div className="container">
         <div className="nav py-4">
           <Link href="/" className="flex items-center gap-3">
@@ -39,7 +39,7 @@ export function LearningHeader({ active = "learning", activeTab = null, secondar
               <div className="font-[Outfit] text-[1.85rem] font-bold leading-none tracking-tight text-white">
                 {BRAND_NAME}
               </div>
-              <div className="text-xs uppercase tracking-[0.18em] text-cyan-300">Learning Journal</div>
+              <div className="text-xs uppercase tracking-[0.18em] text-cyan-200">Learning Journal</div>
             </div>
           </Link>
 
