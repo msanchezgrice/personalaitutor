@@ -75,20 +75,20 @@ const vendorCards: Array<{
 }> = [
   {
     id: "native",
-    label: "Notes Board",
-    description: "Keep the main stage focused on live intake notes instead of an avatar.",
+    label: "Voice Orb",
+    description: "Uses OpenAI Realtime voice immediately and keeps the visual layer inside the app.",
     url: "",
   },
   {
     id: "synthesia",
     label: "Synthesia",
-    description: "Optional side preview using a public Synthesia share page.",
+    description: "Drop in a hosted Synthesia scene or avatar room URL when you want a vendor-backed face.",
     url: synthesiaEmbedUrl,
   },
   {
     id: "heygen",
     label: "HeyGen",
-    description: "Optional side preview using a HeyGen-hosted session URL.",
+    description: "Swap in a HeyGen streaming room URL if you want a different avatar layer.",
     url: heygenEmbedUrl,
   },
 ];
@@ -835,10 +835,10 @@ export function ChatOnboardingPrototype() {
       <section className={styles.hero}>
         <div>
           <div className={styles.eyebrow}>Chat Onboarding Prototype</div>
-          <h1 className={styles.title}>A voice-first onboarding host with live notes as the main surface.</h1>
+          <h1 className={styles.title}>A voice-first onboarding host with a live avatar surface and structured notes.</h1>
           <p className={styles.subtitle}>
-            Start a realtime conversation, let the host ask the onboarding questions one at a time, and let the intake
-            board become the primary visual while the call runs in the background.
+            Start a realtime conversation, let the host ask the onboarding questions one at a time, and watch the intake
+            turn into plan-ready notes beside the call.
           </p>
         </div>
 
@@ -885,7 +885,71 @@ export function ChatOnboardingPrototype() {
 
       <div className={styles.layout}>
         <section className={styles.stageColumn}>
-          {notesBoard}
+          <div className={styles.vendorRow}>
+            {vendorCards.map((card) => (
+              <button
+                key={card.id}
+                type="button"
+                className={card.id === vendor ? styles.vendorChipActive : styles.vendorChip}
+                onClick={() => setVendor(card.id)}
+              >
+                <span>{card.label}</span>
+                <small>{card.url ? "Configured" : card.id === "native" ? "Built in" : "Needs URL"}</small>
+              </button>
+            ))}
+          </div>
+
+          <article className={styles.avatarStage}>
+            <div className={styles.avatarStageHeader}>
+              <div>
+                <div className={styles.panelEyebrow}>Avatar surface</div>
+                <h2>{selectedVendor.label}</h2>
+              </div>
+              <div className={waitingForAssistant ? styles.liveBadgeHot : styles.liveBadge}>
+                {waitingForAssistant ? "Responding" : connectionState === "live" ? "Listening" : "Waiting"}
+              </div>
+            </div>
+
+            {selectedVendor.id !== "native" && isHttpUrl(selectedVendor.url) ? (
+              <iframe
+                className={styles.vendorFrame}
+                src={selectedVendor.url}
+                title={`${selectedVendor.label} onboarding avatar`}
+                allow="camera; microphone; autoplay; encrypted-media"
+              />
+            ) : (
+              <div className={styles.avatarCanvas}>
+                <div className={waitingForAssistant ? styles.orbitRingHot : styles.orbitRing}></div>
+                <div className={styles.avatarBody}>
+                  <div className={styles.avatarFace}>
+                    <span className={styles.avatarEye}></span>
+                    <span className={styles.avatarEye}></span>
+                  </div>
+                  <div className={waitingForAssistant ? styles.avatarMouthHot : styles.avatarMouth}></div>
+                </div>
+                <div className={styles.avatarCopy}>
+                  <strong>{selectedVendor.label}</strong>
+                  <p>{selectedVendor.description}</p>
+                  {selectedVendor.id !== "native" && !selectedVendor.url ? (
+                    <span className={styles.integrationHint}>
+                      Add {selectedVendor.id === "synthesia" ? "`NEXT_PUBLIC_CHAT_ONBOARDING_SYNTHESIA_URL`" : "`NEXT_PUBLIC_CHAT_ONBOARDING_HEYGEN_URL`"} to swap the native visual with a hosted vendor avatar.
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            )}
+
+            <div className={styles.surfaceFooter}>
+              <div>
+                <span className={styles.footerLabel}>Audio path</span>
+                <strong>OpenAI Realtime WebRTC</strong>
+              </div>
+              <div>
+                <span className={styles.footerLabel}>Notes path</span>
+                <strong>Tool-call extraction + live field sync</strong>
+              </div>
+            </div>
+          </article>
 
           <article className={styles.transcriptPanel}>
             <div className={styles.panelHeader}>
@@ -934,52 +998,7 @@ export function ChatOnboardingPrototype() {
         </section>
 
         <aside className={styles.notesColumn}>
-          <article className={styles.previewPanel}>
-            <div className={styles.panelHeader}>
-              <div>
-                <div className={styles.panelEyebrow}>Visual layer</div>
-                <h2>Optional avatar preview</h2>
-              </div>
-              <span className={styles.transcriptMeta}>{selectedVendor.label}</span>
-            </div>
-
-            <div className={styles.vendorRow}>
-              {vendorCards.map((card) => (
-                <button
-                  key={card.id}
-                  type="button"
-                  className={card.id === vendor ? styles.vendorChipActive : styles.vendorChip}
-                  onClick={() => setVendor(card.id)}
-                >
-                  <span>{card.label}</span>
-                  <small>{card.url ? "Configured" : card.id === "native" ? "Default" : "Needs URL"}</small>
-                </button>
-              ))}
-            </div>
-
-            {selectedVendor.id !== "native" && isHttpUrl(selectedVendor.url) ? (
-              <iframe
-                className={styles.vendorFrame}
-                src={selectedVendor.url}
-                title={`${selectedVendor.label} onboarding preview`}
-                allow="camera; microphone; autoplay; encrypted-media"
-              />
-            ) : (
-              <div className={styles.previewPlaceholder}>
-                <strong>{selectedVendor.label}</strong>
-                <p>{selectedVendor.description}</p>
-                {selectedVendor.id !== "native" && !selectedVendor.url ? (
-                  <span className={styles.integrationHint}>
-                    Add {selectedVendor.id === "synthesia" ? "`NEXT_PUBLIC_CHAT_ONBOARDING_SYNTHESIA_URL`" : "`NEXT_PUBLIC_CHAT_ONBOARDING_HEYGEN_URL`"} to load the hosted preview here.
-                  </span>
-                ) : (
-                  <span className={styles.integrationHint}>
-                    The notes board is now the primary visual. External avatar vendors are optional side previews.
-                  </span>
-                )}
-              </div>
-            )}
-          </article>
+          {notesBoard}
         </aside>
       </div>
 
