@@ -2847,21 +2847,19 @@
           var latestStatus = String(entry.latestStatus || "running");
           var tone = eventClasses(latestStatus);
           var totalCount = Number(entry.totalCount || 0);
-          var groupedLabel = escapeHtml(entry.scope + " activity");
+          var groupedLabel = escapeHtml(entry.scope.replace(/\./g, " "));
           var groupedSummary = escapeHtml(statusSummaryText(entry.counts) || "Grouped background job updates");
           return (
             '<article class="glass p-5 rounded-xl border ' + tone.card + ' flex gap-4">' +
             '<div class="w-10 h-10 rounded shrink-0 ' + tone.icon + ' flex items-center justify-center mt-1">' +
             '<i class="fa-solid ' + tone.iconName + '"></i></div>' +
             '<div class="min-w-0 flex-1">' +
-            '<div class="flex items-center justify-between gap-3 mb-1">' +
-            '<div class="min-w-0 flex items-center gap-2">' +
-            '<h4 class="font-medium text-slate-900 text-base truncate">' + groupedLabel + "</h4>" +
+            '<div class="flex flex-wrap items-center gap-2 mb-1">' +
+            '<h4 class="font-medium text-slate-900 text-base">' + groupedLabel + "</h4>" +
             (totalCount > 1
               ? '<span class="inline-flex items-center rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">x' + totalCount + "</span>"
               : "") +
-            "</div>" +
-            '<span class="text-[10px] text-slate-500 whitespace-nowrap">' + relativeTimeLabel(entry.latestCreatedAt) + "</span>" +
+            '<span class="text-[10px] text-slate-500">' + relativeTimeLabel(entry.latestCreatedAt) + "</span>" +
             "</div>" +
             '<p class="text-xs text-slate-600 uppercase tracking-wide">Latest state: ' + escapeHtml(latestStatus) + "</p>" +
             '<p class="text-xs text-slate-500 mt-1">' + groupedSummary + "</p>" +
@@ -2920,7 +2918,8 @@
 
     contentWrap.innerHTML =
       '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">' +
-      '<h2 class="text-lg font-[Outfit] font-semibold text-slate-900">Activity</h2>' +
+      '<div><h2 class="text-lg font-[Outfit] font-semibold text-slate-900">Recent tutor events</h2>' +
+      '<p class="text-xs text-slate-500 mt-1">Background jobs and your latest daily update.</p></div>' +
       '<button type="button" data-updates-refresh="1" class="btn btn-secondary text-xs"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh Activity + Daily Update</button>' +
       "</div>" +
       (dailyHtml || "") +
@@ -3047,12 +3046,12 @@
       contentWrap.innerHTML =
         '<div class="runtime-content-fade-in space-y-4">' +
         '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">' +
-        '<div><h2 class="text-lg font-[Outfit] font-semibold text-slate-900">AI News</h2>' +
-        '<p class="text-xs text-slate-600 mt-1">' +
+        '<div class="min-w-0">' +
+        '<p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">Personalized briefing</p>' +
+        '<p class="text-sm text-slate-700 mt-1">' +
         focusSummary +
-        " · Source: " +
-        source +
-        "</p></div>" +
+        "</p>" +
+        '<p class="text-[11px] text-slate-500 mt-1">Source: ' + source + "</p></div>" +
         '<button type="button" data-ai-news-refresh="1" class="btn btn-secondary text-xs"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh AI News</button>' +
         "</div>" +
         (cards || '<div class="glass p-5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700">No stories available yet. Refresh to pull personalized recommendations.</div>') +
