@@ -46,7 +46,7 @@ export function LearningHeader({ active = "learning", activeTab = null, secondar
               <div className="font-[Outfit] text-[1.45rem] font-bold leading-none tracking-tight text-slate-900 sm:text-[1.85rem]">
                 {BRAND_NAME}
               </div>
-              <div className="text-[10px] uppercase tracking-[0.16em] text-cyan-600 sm:text-xs sm:tracking-[0.18em]">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500 sm:text-xs sm:tracking-[0.18em]">
                 Learning Journal
               </div>
             </div>

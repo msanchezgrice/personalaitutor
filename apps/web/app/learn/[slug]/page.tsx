@@ -43,7 +43,7 @@ function renderInlineLinks(text: string) {
 
       const [, label, href] = match;
       const className =
-        "text-emerald-300 underline decoration-emerald-500/40 underline-offset-4 transition hover:text-white";
+        "text-emerald-500 underline decoration-emerald-500/40 underline-offset-4 transition hover:text-emerald-600";
 
       if (href.startsWith("/")) {
         return (
@@ -116,6 +116,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     },
     keywords: article.keywords,
   };
+}
+
+function statToneClasses(tone: "emerald" | "cyan" | "amber") {
+  if (tone === "emerald") return "bg-emerald-500/15 text-emerald-500";
+  if (tone === "cyan") return "bg-cyan-500/15 text-cyan-500";
+  return "bg-amber-500/15 text-amber-500";
 }
 
 export default async function LearnArticlePage({ params }: { params: Promise<{ slug: string }> }) {
@@ -196,7 +202,7 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
 
   return (
     <>
-      <main data-gemini-shell="1" className="relative min-h-screen overflow-hidden bg-[#0f111a] pt-48 text-white md:pt-36">
+      <main data-gemini-shell="1" className="gemini-light-shell learning-shell relative min-h-screen overflow-hidden pt-48 text-white md:pt-36">
         <div className="bg-glow top-[-180px] left-[-120px] opacity-45"></div>
         <div
           className="bg-glow top-[16%] right-[-220px] opacity-30"
@@ -210,69 +216,82 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
         />
 
         <div className="container max-w-6xl py-12">
-          <section className="glass-panel relative mb-10 overflow-hidden p-8 md:p-10">
-            <div className="pointer-events-none absolute right-0 top-0 translate-x-10 -translate-y-10 opacity-10">
-              <i className="fa-solid fa-book-open-reader text-[240px] text-white"></i>
+          <section className="relative mb-12 grid items-start gap-10 pb-4 pt-4 xl:grid-cols-[1.08fr,0.92fr]">
+            <div>
+              <div className="mb-5 flex flex-wrap items-center gap-3 text-sm text-gray-400">
+                <Link href="/" className="hover:text-slate-900 transition">Home</Link>
+                <span>/</span>
+                <Link href="/learn" className="hover:text-slate-900 transition">Learning Journal</Link>
+                <span>/</span>
+                <span className="text-gray-300">{article.title}</span>
+              </div>
+
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-sm font-medium text-emerald-500">
+                <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
+                {article.category}
+              </div>
+              <h1 className="max-w-5xl text-5xl lg:text-7xl">{article.title}</h1>
+              <p className="mt-6 max-w-3xl text-xl leading-relaxed text-gray-400">{article.heroSummary}</p>
+
+              <div className="mt-6 flex flex-wrap gap-3 text-sm text-gray-400">
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">Published {formatDate(article.publishedAt)}</span>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">Updated {formatDate(article.updatedAt)}</span>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">{article.readingTime}</span>
+              </div>
+
+              <div className="mt-8 flex flex-wrap gap-3">
+                <a href="/sign-up?redirect_url=/onboarding/" className="btn btn-primary">
+                  Start Assessment
+                </a>
+                <Link href="/u/alex-chen-ai" className="btn btn-secondary">
+                  See Example Profile
+                </Link>
+              </div>
             </div>
 
-            <div className="relative z-10 grid gap-8 xl:grid-cols-[1.08fr,0.92fr] xl:items-start">
-              <div>
-                <div className="mb-5 flex flex-wrap items-center gap-3 text-sm text-gray-400">
-                  <Link href="/" className="hover:text-white transition">Home</Link>
-                  <span>/</span>
-                  <Link href="/learn" className="hover:text-white transition">Learning Journal</Link>
-                  <span>/</span>
-                  <span className="text-gray-300">{article.title}</span>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="glass rounded-[28px] p-6 sm:col-span-2">
+                <div className="mb-5 flex items-start gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-500/15 text-xl text-cyan-500">
+                    <i className="fa-solid fa-book-open-reader"></i>
+                  </div>
+                  <div>
+                    <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-500">What this guide gives you</div>
+                    <p className="text-sm leading-7 text-gray-400">
+                      A concrete breakdown of the workflow, what matters most, and what proof to publish once the work is done.
+                    </p>
+                  </div>
                 </div>
-
-                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-sm font-medium text-emerald-300">
-                  {article.category}
-                </div>
-                <h1 className="max-w-5xl text-5xl font-[Outfit] text-white md:text-6xl">{article.title}</h1>
-                <p className="mt-6 max-w-3xl text-lg leading-8 text-gray-300">{article.heroSummary}</p>
-
-                <div className="mt-6 flex flex-wrap gap-3 text-sm text-gray-400">
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">Published {formatDate(article.publishedAt)}</span>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">Updated {formatDate(article.updatedAt)}</span>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">{article.readingTime}</span>
-                </div>
-
-                <div className="mt-8 flex flex-wrap gap-3">
-                  <a href="/sign-up?redirect_url=/onboarding/" className="btn btn-primary">
-                    Start Assessment
-                  </a>
-                  <Link href="/u/alex-chen-ai" className="btn btn-secondary">
-                    See Example Profile
-                  </Link>
+                <div className="grid gap-3">
+                  {article.takeaways.map((takeaway) => (
+                    <div key={takeaway} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-7 text-gray-300">
+                      {takeaway}
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              <div className="grid gap-4">
-                <div className="glass rounded-3xl border border-white/10 bg-black/30 p-6">
-                  <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400">What this guide gives you</div>
-                  <div className="grid gap-3">
-                    {article.takeaways.map((takeaway) => (
-                      <div key={takeaway} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-7 text-gray-300">
-                        {takeaway}
-                      </div>
-                    ))}
-                  </div>
+              <div className="glass rounded-2xl p-5">
+                <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-xl ${statToneClasses("emerald")} text-lg`}>
+                  <i className="fa-solid fa-layer-group"></i>
                 </div>
-
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="glass rounded-2xl border border-white/10 bg-black/30 p-5">
-                    <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Sections</div>
-                    <div className="text-4xl font-[Outfit] text-white">{article.sections.length}</div>
-                  </div>
-                  <div className="glass rounded-2xl border border-white/10 bg-black/30 p-5">
-                    <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">FAQ items</div>
-                    <div className="text-4xl font-[Outfit] text-white">{article.faq.length}</div>
-                  </div>
-                  <div className="glass rounded-2xl border border-white/10 bg-black/30 p-5">
-                    <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Keywords</div>
-                    <div className="text-4xl font-[Outfit] text-white">{article.keywords.length}</div>
-                  </div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Sections</div>
+                <div className="text-4xl font-[Outfit] text-white">{article.sections.length}</div>
+              </div>
+              <div className="glass rounded-2xl p-5">
+                <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-xl ${statToneClasses("cyan")} text-lg`}>
+                  <i className="fa-solid fa-circle-question"></i>
                 </div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">FAQ items</div>
+                <div className="text-4xl font-[Outfit] text-white">{article.faq.length}</div>
+              </div>
+              <div className="glass rounded-2xl p-5 sm:col-span-2">
+                <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-xl ${statToneClasses("amber")} text-lg`}>
+                  <i className="fa-solid fa-tags"></i>
+                </div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Keywords</div>
+                <div className="text-4xl font-[Outfit] text-white">{article.keywords.length}</div>
+                <p className="mt-2 text-sm leading-6 text-gray-400">Structured to help readers learn the skill, build the workflow, and package the proof.</p>
               </div>
             </div>
           </section>
@@ -327,7 +346,7 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
                     <a
                       key={section.id}
                       href={`#${section.id}`}
-                      className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300 transition hover:border-emerald-500/30 hover:text-white"
+                      className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300 transition hover:border-emerald-500/30 hover:text-slate-900"
                     >
                       <span className="mr-2 text-[11px] uppercase tracking-[0.16em] text-gray-500">{String(index + 1).padStart(2, "0")}</span>
                       {section.title}
@@ -381,9 +400,9 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
               <section className="glass rounded-3xl border border-white/10 bg-black/25 p-6">
                 <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Share</div>
                 <div className="space-y-3 text-sm text-gray-300">
-                  <a href={BRAND_X_URL} target="_blank" rel="noreferrer" className="block hover:text-white transition">Follow on X</a>
-                  <a href={BRAND_LINKEDIN_URL} target="_blank" rel="noreferrer" className="block hover:text-white transition">Follow on LinkedIn</a>
-                  <a href={articleUrl} className="block hover:text-white transition">Copy article URL</a>
+                  <a href={BRAND_X_URL} target="_blank" rel="noreferrer" className="block hover:text-slate-900 transition">Follow on X</a>
+                  <a href={BRAND_LINKEDIN_URL} target="_blank" rel="noreferrer" className="block hover:text-slate-900 transition">Follow on LinkedIn</a>
+                  <a href={articleUrl} className="block hover:text-slate-900 transition">Copy article URL</a>
                 </div>
               </section>
             </aside>

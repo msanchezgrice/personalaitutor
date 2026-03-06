@@ -22,13 +22,19 @@ export function LearningFooter({ currentSlug }: LearningFooterProps) {
   return (
     <footer className="learning-footer mt-16 overflow-hidden border-t border-slate-200/80">
       <div className="container max-w-6xl py-10 md:py-12">
-        <section className="mb-8 rounded-[28px] border border-slate-200 bg-white/92 p-5 shadow-[0_18px_44px_rgba(15,23,42,0.06)] sm:p-6">
+        <section className="mb-10 rounded-[32px] bg-gradient-to-r from-emerald-50 via-white to-cyan-50 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] sm:p-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-600">Next Step</div>
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/15 text-xl text-emerald-500">
+                <i className="fa-solid fa-arrow-trend-up"></i>
+              </div>
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-600">Next Step</div>
               <h2 className="max-w-2xl text-xl font-[Outfit] text-slate-900 sm:text-2xl">
                 Read one guide, ship one workflow, publish one proof artifact.
               </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
+                The learning journal should hand off cleanly into the product: read, build, verify, then make the evidence public.
+              </p>
             </div>
 
             <div className="min-w-0 flex flex-col gap-3 sm:flex-row">

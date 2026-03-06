@@ -75,6 +75,24 @@ function buildLearnHubLd() {
   };
 }
 
+function collectionToneClasses(theme: "emerald" | "cyan" | "amber") {
+  if (theme === "emerald") return "bg-emerald-500/15 text-emerald-500";
+  if (theme === "cyan") return "bg-cyan-500/15 text-cyan-500";
+  return "bg-amber-500/15 text-amber-500";
+}
+
+function collectionAccentClasses(theme: "emerald" | "cyan" | "amber") {
+  if (theme === "emerald") return "text-emerald-500";
+  if (theme === "cyan") return "text-cyan-500";
+  return "text-amber-500";
+}
+
+function collectionIcon(id: string) {
+  if (id === "role-playbooks") return "fa-solid fa-user-gear";
+  if (id === "workflow-guides") return "fa-solid fa-diagram-project";
+  return "fa-solid fa-award";
+}
+
 export default function LearnHubPage() {
   const itemListLd = buildLearnHubLd();
   const collections = getLearningCollectionsWithArticles(learnArticles);
@@ -87,7 +105,7 @@ export default function LearnHubPage() {
 
   return (
     <>
-      <main data-gemini-shell="1" className="relative min-h-screen overflow-hidden bg-[#0f111a] pt-48 text-white md:pt-36">
+      <main data-gemini-shell="1" className="gemini-light-shell learning-shell relative min-h-screen overflow-hidden pt-48 text-white md:pt-36">
         <div className="bg-glow top-[-180px] left-[-80px] opacity-45"></div>
         <div
           className="bg-glow top-[14%] right-[-220px] opacity-30"
@@ -101,57 +119,80 @@ export default function LearnHubPage() {
         />
 
         <div className="container max-w-6xl py-12">
-          <section className="glass-panel relative mb-12 overflow-hidden p-8 md:p-12">
-            <div className="pointer-events-none absolute right-0 top-0 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl"></div>
-            <div className="pointer-events-none absolute bottom-0 left-1/3 h-56 w-56 rounded-full bg-cyan-500/10 blur-3xl"></div>
-
-            <div className="relative z-10 grid gap-8 xl:grid-cols-[1.12fr,0.88fr] xl:items-end">
-              <div>
-                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-1.5 text-sm font-medium text-cyan-300">
-                  <span className="h-2 w-2 rounded-full bg-cyan-400"></span>
-                  The Learning Journal
+          <section className="relative mb-14 grid items-center gap-10 pb-6 pt-4 xl:grid-cols-[1.08fr,0.92fr]">
+            <div className="z-10">
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-400">
+                <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
+                Practical AI learning for work
+              </div>
+              <h1 className="mb-6 max-w-5xl text-5xl lg:text-7xl">
+                The editorial home for AI skills, workflow systems, and <span className="text-gradient">proof-based career growth.</span>
+              </h1>
+              <p className="mb-8 max-w-2xl text-xl leading-relaxed text-gray-400">
+                Read practical guides on what to learn, what to build, and how to turn that work into public proof employers can inspect.
+              </p>
+              <div className="mb-10 flex flex-col gap-4 sm:flex-row">
+                <a href="/sign-up?redirect_url=/onboarding/" className="btn btn-primary px-8 py-4 text-lg">
+                  Start Assessment
+                </a>
+                <a href="#all-guides" className="btn btn-secondary px-8 py-4 text-lg">
+                  Browse Guides
+                </a>
+              </div>
+              <div className="flex items-center gap-4 text-sm text-gray-500">
+                <div className="flex -space-x-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-gray-900 bg-emerald-500 text-xs font-bold text-white">
+                    {liveGuideCount}
+                  </div>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-gray-900 bg-cyan-500 text-[10px] font-bold text-white">
+                    {topicTrackCount}
+                  </div>
                 </div>
-                <h1 className="max-w-4xl text-5xl font-[Outfit] text-white md:text-6xl">
-                  The editorial home for AI skills, workflow systems, and proof-based career growth.
-                </h1>
-                <p className="mt-6 max-w-3xl text-lg leading-8 text-gray-300">
-                  This is where My AI Skill Tutor publishes the practical side of AI upskilling: what to learn, what to
-                  build, how to evaluate the work, and how to turn it into public proof employers can trust.
-                </p>
+                <p>{totalReadingMinutes} minutes of role playbooks, workflow guides, and proof-building reads.</p>
+              </div>
+            </div>
 
-                <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-                  <a href="/sign-up?redirect_url=/onboarding/" className="btn btn-primary px-8 py-4 text-lg">
-                    Start Assessment
-                  </a>
-                  <a href="#all-guides" className="btn btn-secondary px-8 py-4 text-lg">
-                    Browse Guides
-                  </a>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="glass rounded-[28px] p-6 sm:col-span-2">
+                <div className="mb-5 flex items-start gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/15 text-xl text-emerald-500">
+                    <i className="fa-solid fa-compass-drafting"></i>
+                  </div>
+                  <div>
+                    <div className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500">How to use this journal</div>
+                    <p className="text-sm leading-7 text-gray-400">
+                      Start with the roadmap, choose the role or workflow guide that matches your real work, then turn one guide into one shipped proof artifact.
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-3 text-sm leading-7 text-gray-400">
+                  <p>1. Define the outcome you want and anchor on the roadmap.</p>
+                  <p>2. Build a workflow that maps to work you already own.</p>
+                  <p>3. Publish the result as visible career proof.</p>
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-2">
-                <div className="glass rounded-2xl border border-white/10 bg-black/30 p-6 md:col-span-3 xl:col-span-2">
-                  <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">How to use this hub</div>
-                  <div className="space-y-3 text-sm leading-7 text-gray-300">
-                    <p>1. Define the career outcome you want and start with the roadmap.</p>
-                    <p>2. Pick a role or workflow page that matches the work you already do.</p>
-                    <p>3. Turn one guide into one shipped project and one public proof page.</p>
-                  </div>
+              <div className="glass rounded-2xl p-5">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/15 text-lg text-emerald-500">
+                  <i className="fa-solid fa-book-open-reader"></i>
                 </div>
-
-                <div className="glass rounded-2xl border border-white/10 bg-black/30 p-5">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Live guides</div>
-                  <div className="text-4xl font-[Outfit] text-white">{liveGuideCount}</div>
+                <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Live guides</div>
+                <div className="text-4xl font-[Outfit] text-white">{liveGuideCount}</div>
+              </div>
+              <div className="glass rounded-2xl p-5">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/15 text-lg text-cyan-500">
+                  <i className="fa-solid fa-layer-group"></i>
                 </div>
-                <div className="glass rounded-2xl border border-white/10 bg-black/30 p-5">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Topic tracks</div>
-                  <div className="text-4xl font-[Outfit] text-white">{topicTrackCount}</div>
+                <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Topic tracks</div>
+                <div className="text-4xl font-[Outfit] text-white">{topicTrackCount}</div>
+              </div>
+              <div className="glass rounded-2xl p-5 sm:col-span-2">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/15 text-lg text-amber-500">
+                  <i className="fa-solid fa-hourglass-half"></i>
                 </div>
-                <div className="glass rounded-2xl border border-white/10 bg-black/30 p-5 md:col-span-3 xl:col-span-2">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Reading runway</div>
-                  <div className="text-4xl font-[Outfit] text-white">{totalReadingMinutes} min</div>
-                  <p className="mt-2 text-sm leading-6 text-gray-400">Enough depth to build a plan, ship a workflow, and package the proof.</p>
-                </div>
+                <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Reading runway</div>
+                <div className="text-4xl font-[Outfit] text-white">{totalReadingMinutes} min</div>
+                <p className="mt-2 text-sm leading-6 text-gray-400">Enough depth to build a plan, ship a workflow, and package the proof.</p>
               </div>
             </div>
           </section>
@@ -245,19 +286,16 @@ export default function LearnHubPage() {
                 id={`collection-${collection.id}`}
                 className="glass rounded-3xl border border-white/10 bg-black/25 p-8"
               >
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div className={`text-xs font-semibold uppercase tracking-[0.18em] ${
-                    collection.theme === "emerald"
-                      ? "text-emerald-400"
-                      : collection.theme === "cyan"
-                        ? "text-cyan-400"
-                        : "text-amber-400"
-                  }`}>
-                    {collection.label}
+                <div className="mb-5 flex items-start justify-between gap-4">
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${collectionToneClasses(collection.theme)} text-xl`}>
+                    <i className={collectionIcon(collection.id)}></i>
                   </div>
                   <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-gray-300">
                     {collection.articleCount} guides
                   </div>
+                </div>
+                <div className={`mb-2 text-xs font-semibold uppercase tracking-[0.18em] ${collectionAccentClasses(collection.theme)}`}>
+                  {collection.label}
                 </div>
                 <h3 className="mb-3 text-2xl font-[Outfit] text-white">{collection.title}</h3>
                 <p className="mb-6 text-sm leading-7 text-gray-300">
@@ -268,7 +306,7 @@ export default function LearnHubPage() {
                     <a
                       key={article.slug}
                       href={`/learn/${article.slug}`}
-                      className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300 transition hover:border-white/20 hover:text-white"
+                      className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300 transition hover:border-emerald-500/30 hover:text-slate-900"
                     >
                       {article.title}
                     </a>
