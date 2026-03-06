@@ -16,13 +16,13 @@ type LearningHeaderProps = {
 };
 
 function navLinkClass(active: boolean) {
-  return active ? "nav-link text-emerald-300" : "nav-link text-gray-300";
+  return active ? "nav-link text-emerald-700" : "nav-link text-slate-600";
 }
 
 function tabClass(active: boolean) {
   return active
-    ? "rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-200"
-    : "rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-gray-300 transition hover:border-white/20 hover:text-white";
+    ? "rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 shadow-sm"
+    : "rounded-full border border-slate-300 bg-white/90 px-3 py-1.5 text-sm text-slate-700 transition hover:border-slate-400 hover:text-slate-900";
 }
 
 export function LearningHeader({ active = "learning", activeTab = null, secondaryAction }: LearningHeaderProps) {
@@ -36,10 +36,10 @@ export function LearningHeader({ active = "learning", activeTab = null, secondar
           <Link href="/" className="flex items-center gap-3">
             <img src="/assets/branding/brand_brain_icon.svg" alt={BRAND_NAME} className="h-11 w-11 object-contain" />
             <div className="min-w-0">
-              <div className="font-[Outfit] text-[1.85rem] font-bold leading-none tracking-tight text-white">
+              <div className="font-[Outfit] text-[1.85rem] font-bold leading-none tracking-tight text-slate-900">
                 {BRAND_NAME}
               </div>
-              <div className="text-xs uppercase tracking-[0.18em] text-cyan-200">Learning Journal</div>
+              <div className="text-xs uppercase tracking-[0.18em] text-cyan-600">Learning Journal</div>
             </div>
           </Link>
 
@@ -61,13 +61,13 @@ export function LearningHeader({ active = "learning", activeTab = null, secondar
           </div>
         </div>
 
-        <div className="border-t border-white/10 py-3">
+        <div className="border-t border-slate-200 py-3">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-col gap-1">
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Practical AI skills, workflow systems, and public proof
               </div>
-              <div className="text-sm text-gray-400">
+              <div className="text-sm text-slate-600">
                 {articles.length} guides live across role playbooks, workflow systems, and career proof.
               </div>
             </div>
