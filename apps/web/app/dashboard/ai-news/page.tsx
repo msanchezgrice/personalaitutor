@@ -26,11 +26,26 @@ export default async function DashboardAiNewsPage() {
     >
       <div className="p-10 max-w-4xl mx-auto w-full pb-24 space-y-4">
         <section className="glass p-6 rounded-xl border border-sky-300 bg-sky-50 runtime-loading-panel">
-          <div className="flex items-center gap-3 text-sky-900 mb-2">
+          <div className="flex items-center gap-3 text-sky-900 mb-4">
             <span className="runtime-loader-spinner"></span>
             <span className="font-semibold">Preparing today&apos;s AI news briefing</span>
           </div>
-          <p className="text-sm text-slate-700">Fetching and caching personalized stories for this session.</p>
+          <p className="text-sm text-slate-700 mb-4">Fetching and caching personalized stories for this session.</p>
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="rounded-xl border border-sky-200 bg-white/90 p-5">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="h-3 w-24 rounded bg-sky-100 runtime-skeleton"></div>
+                  <div className="h-3 w-20 rounded bg-sky-100 runtime-skeleton"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-4 rounded bg-sky-100 runtime-skeleton"></div>
+                  <div className="h-3 rounded bg-sky-100 runtime-skeleton"></div>
+                  <div className="h-3 w-11/12 rounded bg-sky-100 runtime-skeleton"></div>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
       </div>
     </DashboardShell>

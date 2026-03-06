@@ -47,7 +47,6 @@ export default async function DashboardPage() {
         accent: index === 0,
         suffix: index === 0 ? " (20%)" : index === 1 ? " (10%)" : " (5%)",
       })) ?? []);
-  const homeTweetPreview = "Generating today's first-person social draft from your current project context.";
   return (
     <>
       <Suspense fallback={null}>
@@ -193,7 +192,7 @@ export default async function DashboardPage() {
                     <span className="text-xs font-medium text-[#0077b5] uppercase tracking-wider">Today&apos;s draft</span>
                   </div>
                   <p className="text-sm text-gray-300 mb-4 italic border-l-2 border-[#0077b5] pl-3 py-1 bg-black/20 rounded-r">
-                    &quot;{homeTweetPreview}&quot;
+                    &quot;Preparing a first-person draft from your active project context.&quot;
                   </p>
                   <a href="/dashboard/social/" className="btn bg-[#0077b5] hover:bg-[#005582] text-white w-full py-2 text-sm">
                     Open Social Drafts
@@ -220,7 +219,7 @@ export default async function DashboardPage() {
                     </div>
                     <div>
                       <h4 className="font-medium text-white text-sm mb-0.5">Preparing AI News</h4>
-                      <p className="text-xs text-gray-400 line-clamp-2">Fetching and caching today&apos;s personalized AI stories for this session.</p>
+                      <p className="text-xs text-gray-400 line-clamp-2">Fetching and caching today&apos;s personalized stories before you open the briefing.</p>
                     </div>
                   </a>
                   <a

@@ -2,12 +2,16 @@ export const themeBootScript = `
 (function () {
   try {
     var p = (window.location && window.location.pathname ? window.location.pathname : "/").replace(/\\/+$/, "") || "/";
-    var shouldHoldForStyles = p === "/" || p === "/dashboard" || p.indexOf("/dashboard/") === 0;
+    var isDashboardPath = p === "/dashboard" || p.indexOf("/dashboard/") === 0;
+    var isPublicProfilePath = p.indexOf("/u/") === 0;
+    var isEmployersPath = p === "/employers" || p.indexOf("/employers/") === 0;
+    var shouldHoldForStyles = p === "/" || isDashboardPath || isPublicProfilePath || isEmployersPath;
     var revealed = false;
     var probeId = "__aitutor_style_probe__";
+    var shouldHoldForRuntime = p === "/employers/talent";
 
     document.documentElement.setAttribute("data-path", p);
-    document.documentElement.setAttribute("data-runtime-ready", "1");
+    document.documentElement.setAttribute("data-runtime-ready", shouldHoldForRuntime ? "0" : "1");
     document.documentElement.setAttribute("data-style-ready", shouldHoldForStyles ? "0" : "1");
 
     document.documentElement.setAttribute("data-theme", "light");

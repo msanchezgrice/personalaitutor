@@ -20,6 +20,7 @@
   var ENABLE_DASHBOARD_SNAPSHOT_CACHE = false;
   var HOME_NEWS_CACHE_PREFIX = "ai_tutor_home_news_v1:";
   var HOME_NEWS_WARM_PROMISES = {};
+  var SOCIAL_DRAFT_WARM_PROMISES = {};
   var SUMMARY_CACHE_TTL_MS = 120000;
   var AUTH_SESSION_CACHE_TTL_MS = 45000;
   var SNAPSHOT_CACHE_TTL_MS = 1800000;
@@ -611,26 +612,129 @@
     writeLocalObject(key, normalized);
   }
 
-  function maybeWarmHomeNews(userId) {
+  function hasMeaningfulDraftText(value) {
+    return String(value || "").replace(/\s+/g, " ").trim().length > 20;
+  }
+
+  function warmHomeNews(userId, forceRefresh) {
     var scope = cacheScope(userId);
-    if (!scope) return;
-    if (readHomeNewsCache(userId)) return;
-    if (HOME_NEWS_WARM_PROMISES[scope]) return;
+    if (!scope) return Promise.resolve(null);
+    if (!forceRefresh) {
+      var cached = readHomeNewsCache(userId);
+      if (cached && Array.isArray(cached.insights) && cached.insights.length) {
+        return Promise.resolve(cached);
+      }
+    }
+    if (!forceRefresh && HOME_NEWS_WARM_PROMISES[scope]) return HOME_NEWS_WARM_PROMISES[scope];
     HOME_NEWS_WARM_PROMISES[scope] = postJson("/api/news/recommendations", { maxStories: 6 })
       .then(function (fresh) {
         var insights = Array.isArray(fresh && fresh.insights) ? fresh.insights : [];
-        if (!insights.length) return;
-        writeHomeNewsCache({
+        if (!insights.length) return null;
+        var payload = {
           insights: insights,
           source: fresh && fresh.source ? fresh.source : null,
           focusSummary: fresh && fresh.focusSummary ? fresh.focusSummary : null,
-        }, userId);
+        };
+        writeHomeNewsCache(payload, userId);
+        return readHomeNewsCache(userId) || payload;
       })
       .catch(function () {
         return null;
       })
       .finally(function () {
         delete HOME_NEWS_WARM_PROMISES[scope];
+      });
+    return HOME_NEWS_WARM_PROMISES[scope];
+  }
+
+  function maybeWarmHomeNews(userId) {
+    return warmHomeNews(userId, false);
+  }
+
+  function socialDraftWarmKey(projectId) {
+    var scope = cacheScope();
+    if (!scope) return null;
+    return scope + ":" + String(projectId || "none") + ":" + localDayKey();
+  }
+
+  function warmSocialDrafts(projectId, forceRefresh) {
+    var key = socialDraftWarmKey(projectId);
+    if (!key) return Promise.resolve(null);
+    if (!forceRefresh) {
+      var cachedDrafts = readSocialDraftCache(projectId);
+      if (cachedDrafts && (hasMeaningfulDraftText(cachedDrafts.linkedin) || hasMeaningfulDraftText(cachedDrafts.x))) {
+        return Promise.resolve(cachedDrafts);
+      }
+    }
+    if (!forceRefresh && SOCIAL_DRAFT_WARM_PROMISES[key]) return SOCIAL_DRAFT_WARM_PROMISES[key];
+    SOCIAL_DRAFT_WARM_PROMISES[key] = postJson("/api/social/drafts/ideas", { projectId: projectId || null })
+      .then(function (ideasResult) {
+        var ideas = ideasResult && ideasResult.ideas ? ideasResult.ideas : null;
+        if (!ideas) return null;
+        var payload = {
+          linkedin: typeof ideas.linkedin === "string" ? ideas.linkedin : "",
+          x: typeof ideas.x === "string" ? ideas.x : "",
+          contextLabel: typeof ideas.contextLabel === "string" ? ideas.contextLabel : "",
+          source: ideasResult && ideasResult.source ? ideasResult.source : "profile_context",
+        };
+        if (!hasMeaningfulDraftText(payload.linkedin) && !hasMeaningfulDraftText(payload.x)) {
+          return null;
+        }
+        writeSocialDraftCache(projectId, payload);
+        return readSocialDraftCache(projectId) || payload;
+      })
+      .catch(function () {
+        return null;
+      })
+      .finally(function () {
+        delete SOCIAL_DRAFT_WARM_PROMISES[key];
+      });
+    return SOCIAL_DRAFT_WARM_PROMISES[key];
+  }
+
+  function maybeWarmSocialDrafts(projectId) {
+    return warmSocialDrafts(projectId, false);
+  }
+
+  function topProjectForPrewarm(summary) {
+    if (!summary || !Array.isArray(summary.projects) || !summary.projects.length) return null;
+    return summary.projects.find(function (project) {
+      return project && (project.state === "building" || project.state === "planned" || project.state === "idea");
+    }) || summary.projects[0] || null;
+  }
+
+  function primeDashboardDailyData(summary) {
+    if (!isDashboardPath || !summary) return;
+    var prewarmProject = topProjectForPrewarm(summary);
+    var prewarmProjectId = prewarmProject && prewarmProject.id ? prewarmProject.id : null;
+    var summaryUserId = summary && summary.user && summary.user.id ? String(summary.user.id) : null;
+
+    if (summaryUserId && (!ctx.userId || ctx.userId !== summaryUserId)) {
+      ctx.userId = summaryUserId;
+      saveCtx(ctx);
+    }
+
+    void maybeWarmHomeNews(summaryUserId)
+      .then(function () {
+        captureEvent("dashboard_news_prewarmed", { source: "background" });
+      })
+      .catch(function (error) {
+        captureEvent("dashboard_news_prewarm_failed", {
+          reason: error && error.message ? error.message : "unknown_error",
+        });
+      });
+
+    void maybeWarmSocialDrafts(prewarmProjectId)
+      .then(function () {
+        captureEvent("dashboard_social_prewarmed", {
+          source: "background",
+          has_project: Boolean(prewarmProjectId),
+        });
+      })
+      .catch(function (error) {
+        captureEvent("dashboard_social_prewarm_failed", {
+          reason: error && error.message ? error.message : "unknown_error",
+        });
       });
   }
 
@@ -1071,6 +1175,7 @@
         ctx.handle = data.summary.user.handle;
         ctx.headline = headlineForUser(data.summary.user);
         if (data.summary.user.avatarUrl) ctx.avatarUrl = data.summary.user.avatarUrl;
+        primeDashboardDailyData(data.summary);
       }
       if (data.summary) {
         writeDashboardSummaryCache(data.summary);
@@ -1593,66 +1698,10 @@
   }
 
   async function getDashboardSummary() {
-    function topProjectForPrewarm(summary) {
-      if (!summary || !Array.isArray(summary.projects) || !summary.projects.length) return null;
-      return summary.projects.find(function (project) {
-        return project && (project.state === "building" || project.state === "planned" || project.state === "idea");
-      }) || summary.projects[0] || null;
-    }
-
-    function prewarmDashboardDailyData(summary) {
-      if (!isDashboardPath || !summary) return;
-      var prewarmProject = topProjectForPrewarm(summary);
-      var prewarmProjectId = prewarmProject && prewarmProject.id ? prewarmProject.id : null;
-      var summaryUserId = summary && summary.user && summary.user.id ? String(summary.user.id) : null;
-
-      if (summaryUserId && (!ctx.userId || ctx.userId !== summaryUserId)) {
-        ctx.userId = summaryUserId;
-        saveCtx(ctx);
-      }
-
-      if (!readHomeNewsCache(summaryUserId)) {
-        void postJson("/api/news/recommendations", { maxStories: 6 })
-          .then(function (newsResult) {
-            writeHomeNewsCache({
-              insights: Array.isArray(newsResult && newsResult.insights) ? newsResult.insights : [],
-              source: newsResult && newsResult.source ? newsResult.source : null,
-              focusSummary: newsResult && newsResult.focusSummary ? newsResult.focusSummary : null,
-            }, summaryUserId);
-            captureEvent("dashboard_news_prewarmed", { source: "background" });
-          })
-          .catch(function (error) {
-            captureEvent("dashboard_news_prewarm_failed", {
-              reason: error && error.message ? error.message : "unknown_error",
-            });
-          });
-      }
-
-      if (!readSocialDraftCache(prewarmProjectId)) {
-        void postJson("/api/social/drafts/ideas", { projectId: prewarmProjectId || null })
-          .then(function (ideasResult) {
-            var ideas = ideasResult && ideasResult.ideas ? ideasResult.ideas : null;
-            if (!ideas) return;
-            writeSocialDraftCache(prewarmProjectId, {
-              linkedin: typeof ideas.linkedin === "string" ? ideas.linkedin : "",
-              x: typeof ideas.x === "string" ? ideas.x : "",
-              contextLabel: typeof ideas.contextLabel === "string" ? ideas.contextLabel : "",
-              source: ideasResult && ideasResult.source ? ideasResult.source : "profile_context",
-            });
-            captureEvent("dashboard_social_prewarmed", { source: "background", has_project: Boolean(prewarmProjectId) });
-          })
-          .catch(function (error) {
-            captureEvent("dashboard_social_prewarm_failed", {
-              reason: error && error.message ? error.message : "unknown_error",
-            });
-          });
-      }
-    }
-
     var cached = readDashboardSummaryCache();
     if (cached) {
       captureEvent("dashboard_summary_cache_hit", { source: "session_storage" });
-      prewarmDashboardDailyData(cached);
+      primeDashboardDailyData(cached);
       return cached;
     }
 
@@ -1661,7 +1710,7 @@
       if (response && response.summary) {
         writeDashboardSummaryCache(response.summary);
         captureEvent("dashboard_summary_loaded", { source: "network" });
-        prewarmDashboardDailyData(response.summary);
+        primeDashboardDailyData(response.summary);
       }
       return response.summary;
     } catch (err) {
@@ -1673,7 +1722,7 @@
       if (retry && retry.summary) {
         writeDashboardSummaryCache(retry.summary);
         captureEvent("dashboard_summary_loaded", { source: "network_after_session" });
-        prewarmDashboardDailyData(retry.summary);
+        primeDashboardDailyData(retry.summary);
       }
       return retry.summary;
     }
@@ -1910,18 +1959,11 @@
     }
 
     async function loadHomeTweetDraft(projectId) {
-      var ideasResult = await postJson("/api/social/drafts/ideas", { projectId: projectId || null });
-      var ideas = ideasResult && ideasResult.ideas ? ideasResult.ideas : null;
-      var tweetIdea = ideas && typeof ideas.x === "string" ? ideas.x : "";
+      var drafts = await warmSocialDrafts(projectId, false);
+      var tweetIdea = drafts && typeof drafts.x === "string" ? drafts.x : "";
       if (!normalizeInlineText(tweetIdea)) {
         throw new Error("Tweet draft not returned");
       }
-      writeSocialDraftCache(projectId, {
-        linkedin: ideas && typeof ideas.linkedin === "string" ? ideas.linkedin : "",
-        x: tweetIdea,
-        contextLabel: ideas && typeof ideas.contextLabel === "string" ? ideas.contextLabel : "",
-        source: ideasResult && ideasResult.source ? ideasResult.source : "profile_context",
-      });
       applySocialQuote(tweetIdea);
     }
 
@@ -2000,16 +2042,11 @@
         }
 
         async function refreshHomeNews() {
-          var fresh = await postJson("/api/news/recommendations", { maxStories: 3 });
+          var fresh = await warmHomeNews(summaryUserId, false);
           var insights = Array.isArray(fresh && fresh.insights) ? fresh.insights : [];
           if (!insights.length) {
             throw new Error("No news insights returned");
           }
-          writeHomeNewsCache({
-            insights: insights,
-            source: fresh && fresh.source ? fresh.source : null,
-            focusSummary: fresh && fresh.focusSummary ? fresh.focusSummary : null,
-          }, summaryUserId);
           renderHomeNews(insights);
         }
 
@@ -2341,25 +2378,41 @@
       '<button type="button" data-social-refresh="1" class="btn btn-secondary text-sm whitespace-nowrap"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh Ideas</button>' +
       "</div>" +
       '<div class="grid gap-4 md:grid-cols-2">' +
-      '<article class="rounded-xl border border-[#0a66c2]/30 bg-[#eef5ff] p-4 runtime-social-card runtime-social-card-linkedin">' +
+      '<article data-social-card="linkedin" class="rounded-xl border border-[#0a66c2]/30 bg-[#eef5ff] p-4 runtime-social-card runtime-social-card-linkedin">' +
       '<div class="flex items-center justify-between mb-3"><span class="text-[11px] uppercase tracking-wider text-[#0a66c2] font-semibold">LinkedIn</span><span class="text-[10px] text-slate-600">Native share</span></div>' +
-      '<textarea data-social-input="linkedin" class="runtime-social-draft-input w-full min-h-[180px] rounded-lg border border-slate-300 bg-white p-3 text-[13px] text-slate-900 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-[#0a66c2]/40" readonly></textarea>' +
+      '<div class="runtime-social-editor-frame">' +
+      '<textarea data-social-input="linkedin" class="runtime-social-draft-input runtime-social-draft-input--loading w-full min-h-[180px] rounded-lg border border-slate-300 bg-white p-3 text-[13px] text-slate-900 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-[#0a66c2]/40" readonly></textarea>' +
+      '<div data-social-loading="linkedin" class="runtime-social-loading-overlay">' +
+      '<div class="runtime-social-loading-lines">' +
+      '<div class="runtime-social-loading-line runtime-skeleton"></div>' +
+      '<div class="runtime-social-loading-line runtime-skeleton"></div>' +
+      '<div class="runtime-social-loading-line runtime-skeleton"></div>' +
+      '<div class="runtime-social-loading-line runtime-social-loading-line-short runtime-skeleton"></div>' +
+      '</div></div></div>' +
       '<div class="flex items-center gap-2 mt-3">' +
       '<button type="button" data-social-edit="linkedin" class="btn btn-secondary text-xs"><i class="fa-solid fa-pen mr-2"></i>Edit</button>' +
       '<button type="button" data-social-share="linkedin" class="btn bg-[#0a66c2] text-white hover:bg-[#095592] text-xs"><i class="fa-brands fa-linkedin-in mr-2"></i>Share</button>' +
       "</div></article>" +
-      '<article class="rounded-xl border border-slate-300 bg-slate-50 p-4 runtime-social-card runtime-social-card-x">' +
+      '<article data-social-card="x" class="rounded-xl border border-slate-300 bg-slate-50 p-4 runtime-social-card runtime-social-card-x">' +
       '<div class="flex items-center justify-between mb-3"><span class="text-[11px] uppercase tracking-wider text-slate-900 font-semibold">Tweet</span><span class="text-[10px] text-slate-600">Native composer</span></div>' +
-      '<textarea data-social-input="x" class="runtime-social-draft-input w-full min-h-[180px] rounded-lg border border-slate-300 bg-white p-3 text-[13px] text-slate-900 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-slate-400" readonly></textarea>' +
+      '<div class="runtime-social-editor-frame">' +
+      '<textarea data-social-input="x" class="runtime-social-draft-input runtime-social-draft-input--loading w-full min-h-[180px] rounded-lg border border-slate-300 bg-white p-3 text-[13px] text-slate-900 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-slate-400" readonly></textarea>' +
+      '<div data-social-loading="x" class="runtime-social-loading-overlay">' +
+      '<div class="runtime-social-loading-lines">' +
+      '<div class="runtime-social-loading-line runtime-skeleton"></div>' +
+      '<div class="runtime-social-loading-line runtime-skeleton"></div>' +
+      '<div class="runtime-social-loading-line runtime-skeleton"></div>' +
+      '<div class="runtime-social-loading-line runtime-social-loading-line-short runtime-skeleton"></div>' +
+      '</div></div></div>' +
       '<div class="flex items-center gap-2 mt-3">' +
       '<button type="button" data-social-edit="x" class="btn btn-secondary text-xs"><i class="fa-solid fa-pen mr-2"></i>Edit</button>' +
       '<button type="button" data-social-share="x" class="btn bg-white text-[#111827] hover:bg-gray-200 text-xs"><i class="fa-brands fa-x-twitter mr-2"></i>Tweet</button>' +
       "</div></article>" +
       "</div>" +
       '<div class="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">' +
-      '<span data-social-context="1">Context: loading...</span>' +
+      '<span data-social-context="1">Context: preparing personalized draft...</span>' +
       '<span>•</span>' +
-      '<span data-social-source="1">Generating...</span>' +
+      '<span data-social-source="1">Warming from active project context...</span>' +
       "</div>" +
       "</section>";
 
@@ -2373,6 +2426,8 @@
     var contextNode = contentWrap.querySelector("[data-social-context='1']");
     var sourceNode = contentWrap.querySelector("[data-social-source='1']");
     var authorNode = contentWrap.querySelector("[data-social-author='1']");
+    var linkedInLoadingNode = contentWrap.querySelector("[data-social-loading='linkedin']");
+    var xLoadingNode = contentWrap.querySelector("[data-social-loading='x']");
 
     if (authorNode) {
       authorNode.textContent = summary.user.name + " · " + (summary.user.headline || "AI Builder");
@@ -2429,6 +2484,27 @@
       if (linkedInInput) linkedInInput.value = draftState.linkedin || "";
       if (xInput) xInput.value = draftState.x || "";
       if (contextNode) contextNode.textContent = "Context: " + (draftState.contextLabel || "Fresh ideas");
+      setDraftLoading("linkedin", !hasMeaningfulDraftText(draftState.linkedin));
+      setDraftLoading("x", !hasMeaningfulDraftText(draftState.x));
+    }
+
+    function setDraftLoading(platform, loading) {
+      var input = platform === "linkedin" ? linkedInInput : xInput;
+      var overlay = platform === "linkedin" ? linkedInLoadingNode : xLoadingNode;
+      var card = contentWrap.querySelector("[data-social-card='" + platform + "']");
+      if (overlay) overlay.hidden = !loading;
+      if (input) {
+        input.classList.toggle("runtime-social-draft-input--loading", loading);
+        input.classList.toggle("runtime-content-fade-in", !loading);
+      }
+      if (card) {
+        card.classList.toggle("runtime-social-card--loading", loading);
+      }
+    }
+
+    function setAllDraftsLoading(loading) {
+      setDraftLoading("linkedin", loading);
+      setDraftLoading("x", loading);
     }
 
     function setEditMode(platform, editing) {
@@ -2451,33 +2527,24 @@
       setEditMode("x", false);
     }
 
-    async function loadIdeas(showToastOnSuccess) {
+    async function loadIdeas(showToastOnSuccess, forceRefresh) {
       var ideaStart = performance.now();
-      var ideasResult = await postJson("/api/social/drafts/ideas", {
-        projectId: primaryProject ? primaryProject.id : null,
-      });
-      var ideas = ideasResult.ideas || {};
-      draftState.linkedin = normalizeDraftText(ideas.linkedin || "");
-      draftState.x = normalizeDraftText(ideas.x || "");
-      draftState.contextLabel = normalizeDraftText(ideas.contextLabel || draftState.contextLabel || "Fresh ideas");
+      var ideas = await warmSocialDrafts(primaryProject ? primaryProject.id : null, Boolean(forceRefresh));
+      draftState.linkedin = normalizeDraftText(ideas && ideas.linkedin || "");
+      draftState.x = normalizeDraftText(ideas && ideas.x || "");
+      draftState.contextLabel = normalizeDraftText(ideas && ideas.contextLabel || draftState.contextLabel || "Fresh ideas");
       if (!draftState.linkedin || !draftState.x) {
         throw new Error("Social idea generator returned an empty response.");
       }
       updateDraftInputs();
       if (sourceNode) {
-        sourceNode.textContent = ideasResult.source === "llm" ? "Personalized with user memory" : "Generated from profile context";
+        sourceNode.textContent = ideas && ideas.source === "llm" ? "Personalized with user memory" : "Generated from profile context";
       }
       if (showToastOnSuccess) {
         toast("Fresh social ideas ready.", false);
       }
-      writeSocialDraftCache(primaryProject ? primaryProject.id : null, {
-        linkedin: draftState.linkedin,
-        x: draftState.x,
-        contextLabel: draftState.contextLabel,
-        source: ideasResult.source === "llm" ? "llm" : "profile_context",
-      });
       captureEvent("social_ideas_loaded", {
-        source: ideasResult.source === "llm" ? "llm" : "profile_context",
+        source: ideas && ideas.source === "llm" ? "llm" : "profile_context",
         duration_ms: Math.round(performance.now() - ideaStart),
       });
     }
@@ -2543,8 +2610,9 @@
         refreshButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Refreshing';
         try {
           lockAllEdits();
+          setAllDraftsLoading(true);
           captureEvent("social_refresh_clicked", { project_id: primaryProject ? primaryProject.id : null });
-          await loadIdeas(true);
+          await loadIdeas(true, true);
         } catch (err) {
           toast(err instanceof Error ? err.message : "Unable to refresh social ideas", true);
         } finally {
@@ -2556,7 +2624,7 @@
 
     lockAllEdits();
     var cachedDrafts = readSocialDraftCache(primaryProject ? primaryProject.id : null);
-    if (cachedDrafts) {
+    if (cachedDrafts && (hasMeaningfulDraftText(cachedDrafts.linkedin) || hasMeaningfulDraftText(cachedDrafts.x))) {
       draftState.linkedin = normalizeDraftText(cachedDrafts.linkedin || "");
       draftState.x = normalizeDraftText(cachedDrafts.x || "");
       draftState.contextLabel = normalizeDraftText(cachedDrafts.contextLabel || draftState.contextLabel || "Fresh ideas");
@@ -2565,12 +2633,14 @@
       captureEvent("social_ideas_cache_hit", { source: cachedDrafts.source || "cached" });
     } else {
       try {
-        await loadIdeas(false);
+        setAllDraftsLoading(true);
+        await loadIdeas(false, false);
       } catch (err) {
         draftState.linkedin = "";
         draftState.x = "";
         draftState.contextLabel = "Unavailable";
         updateDraftInputs();
+        setAllDraftsLoading(false);
         if (contextNode) contextNode.textContent = "Context: unavailable";
         if (sourceNode) sourceNode.textContent = "Generator unavailable (no fallback)";
         captureEvent("social_ideas_failed", { reason: err && err.message ? err.message : "unknown_error" });
@@ -2710,11 +2780,25 @@
     function renderLoading(message) {
       contentWrap.innerHTML =
         '<section class="glass p-6 rounded-xl border border-sky-300 bg-sky-50 runtime-loading-panel">' +
-        '<div class="flex items-center gap-3 text-sky-900 mb-2">' +
+        '<div class="flex items-center gap-3 text-sky-900 mb-4">' +
         '<span class="runtime-loader-spinner"></span>' +
         '<span class="font-semibold">Preparing today&apos;s AI news briefing</span>' +
         "</div>" +
-        '<p class="text-sm text-slate-700">' + escapeHtml(message || "Fetching and caching personalized stories for this session.") + "</p>" +
+        '<p class="text-sm text-slate-700 mb-4">' + escapeHtml(message || "Fetching and caching personalized stories for this session.") + "</p>" +
+        '<div class="space-y-4">' +
+        '<div class="rounded-xl border border-sky-200 bg-white/90 p-5">' +
+        '<div class="flex items-center justify-between gap-3 mb-3"><div class="h-3 w-24 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-20 rounded bg-sky-100 runtime-skeleton"></div></div>' +
+        '<div class="space-y-2"><div class="h-4 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-11/12 rounded bg-sky-100 runtime-skeleton"></div></div>' +
+        "</div>" +
+        '<div class="rounded-xl border border-sky-200 bg-white/90 p-5">' +
+        '<div class="flex items-center justify-between gap-3 mb-3"><div class="h-3 w-24 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-20 rounded bg-sky-100 runtime-skeleton"></div></div>' +
+        '<div class="space-y-2"><div class="h-4 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-11/12 rounded bg-sky-100 runtime-skeleton"></div></div>' +
+        "</div>" +
+        '<div class="rounded-xl border border-sky-200 bg-white/90 p-5">' +
+        '<div class="flex items-center justify-between gap-3 mb-3"><div class="h-3 w-24 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-20 rounded bg-sky-100 runtime-skeleton"></div></div>' +
+        '<div class="space-y-2"><div class="h-4 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-11/12 rounded bg-sky-100 runtime-skeleton"></div></div>' +
+        "</div>" +
+        "</div>" +
         "</section>";
     }
 
@@ -2791,6 +2875,7 @@
         .join("");
 
       contentWrap.innerHTML =
+        '<div class="runtime-content-fade-in space-y-4">' +
         '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">' +
         '<div><h2 class="text-lg font-[Outfit] font-semibold text-slate-900">AI News</h2>' +
         '<p class="text-xs text-slate-600 mt-1">' +
@@ -2800,7 +2885,8 @@
         "</p></div>" +
         '<button type="button" data-ai-news-refresh="1" class="btn btn-secondary text-xs"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh AI News</button>' +
         "</div>" +
-        (cards || '<div class="glass p-5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700">No stories available yet. Refresh to pull personalized recommendations.</div>');
+        (cards || '<div class="glass p-5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700">No stories available yet. Refresh to pull personalized recommendations.</div>') +
+        "</div>";
 
       var refreshButton = contentWrap.querySelector("button[data-ai-news-refresh='1']");
       if (refreshButton) {
@@ -2809,12 +2895,10 @@
           refreshButton.setAttribute("disabled", "true");
           refreshButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Refreshing';
           try {
-            var refreshed = await postJson("/api/news/recommendations", { maxStories: 6 });
-            writeHomeNewsCache({
-              insights: Array.isArray(refreshed && refreshed.insights) ? refreshed.insights : [],
-              source: refreshed && refreshed.source ? refreshed.source : null,
-              focusSummary: refreshed && refreshed.focusSummary ? refreshed.focusSummary : null,
-            }, summaryUserId);
+            var refreshed = await warmHomeNews(summaryUserId, true);
+            if (!refreshed || !Array.isArray(refreshed.insights) || !refreshed.insights.length) {
+              throw new Error("Unable to refresh AI news");
+            }
             renderNews(refreshed);
             toast("AI news refreshed.", false);
           } catch (err) {
@@ -2834,12 +2918,10 @@
     }
 
     try {
-      var initial = await postJson("/api/news/recommendations", { maxStories: 6 });
-      writeHomeNewsCache({
-        insights: Array.isArray(initial && initial.insights) ? initial.insights : [],
-        source: initial && initial.source ? initial.source : null,
-        focusSummary: initial && initial.focusSummary ? initial.focusSummary : null,
-      }, summaryUserId);
+      var initial = await warmHomeNews(summaryUserId, false);
+      if (!initial || !Array.isArray(initial.insights) || !initial.insights.length) {
+        throw new Error("Unable to load AI news");
+      }
       renderNews(initial);
     } catch (err) {
       contentWrap.innerHTML =
@@ -3044,31 +3126,27 @@
       });
     }
 
-    var avatarButton = Array.prototype.find.call(document.querySelectorAll("button"), function (node) {
-      return (node.textContent || "").trim() === "Change Avatar";
-    });
-    if (avatarButton) {
-      avatarButton.addEventListener("click", async function () {
-        if (document.getElementById("avatar-crop-modal")) return;
+    function openAvatarPicker() {
+      if (document.getElementById("avatar-crop-modal")) return;
 
-        var fileInput = document.createElement("input");
-        fileInput.type = "file";
-        fileInput.accept = "image/*";
-        fileInput.style.display = "none";
-        document.body.appendChild(fileInput);
+      var fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = "image/*";
+      fileInput.style.display = "none";
+      document.body.appendChild(fileInput);
 
-        fileInput.addEventListener("change", function () {
-          var file = fileInput.files && fileInput.files[0];
-          if (!file) {
-            fileInput.remove();
-            return;
-          }
+      fileInput.addEventListener("change", function () {
+        var file = fileInput.files && fileInput.files[0];
+        if (!file) {
+          fileInput.remove();
+          return;
+        }
 
-          if (!file.type || file.type.indexOf("image/") !== 0) {
-            toast("Please choose an image file.", true);
-            fileInput.remove();
-            return;
-          }
+        if (!file.type || file.type.indexOf("image/") !== 0) {
+          toast("Please choose an image file.", true);
+          fileInput.remove();
+          return;
+        }
 
           var objectUrl = URL.createObjectURL(file);
           var backdrop = document.createElement("div");
@@ -3241,9 +3319,15 @@
           });
         });
 
-        fileInput.click();
-      });
+      fileInput.click();
     }
+
+    Array.prototype.forEach.call(document.querySelectorAll("[data-avatar-trigger='1']"), function (avatarTrigger) {
+      avatarTrigger.addEventListener("click", function (event) {
+        event.preventDefault();
+        openAvatarPicker();
+      });
+    });
   }
 
   function buildTalentCardElement(candidate) {
@@ -3255,7 +3339,7 @@
     var candidateRole = String(candidate.role || "AI Builder");
     var candidateAvatar = sanitizeImageUrl(candidate.avatarUrl) || "/assets/avatar.png";
     var card = document.createElement("a");
-    card.setAttribute("href", "/employers/talent/" + candidateHandle + "/");
+    card.setAttribute("href", "/u/" + candidateHandle + "/");
     card.className = "glass p-6 rounded-2xl hover:bg-white/5 transition border border-white/10 hover:border-emerald-500/40 group relative cursor-pointer";
 
     var top = document.createElement("div");
@@ -3962,7 +4046,7 @@
   async function boot() {
     captureEvent("app_boot_started", { path: currentPath });
     markRouteHydrated(currentPath);
-    var holdRevealUntilHydrated = false;
+    var holdRevealUntilHydrated = currentPath === "/employers/talent";
     try {
       applyAcquisitionLandingVariant();
       maybeTrackAuthEntryEvents();

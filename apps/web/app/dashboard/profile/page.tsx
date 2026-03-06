@@ -40,16 +40,16 @@ export default async function DashboardProfilePage() {
           <h2 className="text-white font-[Outfit] text-lg mb-6 border-b border-white/10 pb-2">Basic Information</h2>
 
           <div className="flex items-center gap-6 mb-8">
-            <div className="relative group cursor-pointer inline-block">
+            <button type="button" data-avatar-trigger="1" className="relative group cursor-pointer inline-block bg-transparent border-0 p-0">
               <img src={avatarUrl} className="w-24 h-24 rounded-full object-cover border-4 border-black box-content shadow-[0_0_20px_rgba(79,70,229,0.3)]" alt={displayName} />
               <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition border-4 border-emerald-500">
                 <i className="fa-solid fa-camera text-xl text-white"></i>
               </div>
-            </div>
+            </button>
             <div>
               <h3 className="text-white text-lg font-medium">{displayName}</h3>
               <p className="text-sm text-gray-400 text-emerald-400 mb-2">{displayEmail}</p>
-              <button className="btn btn-secondary text-xs px-3 py-1.5 rounded">Change Avatar</button>
+              <button type="button" data-avatar-trigger="1" className="btn btn-secondary text-xs px-3 py-1.5 rounded">Change Avatar</button>
             </div>
           </div>
 

@@ -39,19 +39,37 @@ export default async function DashboardSocialPage() {
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-xl border border-[#0a66c2]/30 bg-[#eef5ff] p-4 runtime-social-card runtime-social-card-linkedin">
-              <div className="h-4 w-24 rounded bg-slate-200 runtime-skeleton mb-3"></div>
-              <div className="space-y-2">
-                <div className="h-3 rounded bg-slate-200 runtime-skeleton"></div>
-                <div className="h-3 rounded bg-slate-200 runtime-skeleton"></div>
-                <div className="h-3 w-5/6 rounded bg-slate-200 runtime-skeleton"></div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="h-4 w-24 rounded bg-slate-200 runtime-skeleton"></div>
+                <span className="text-[10px] text-slate-500 flex items-center gap-2">
+                  <span className="runtime-loader-spinner runtime-loader-spinner-sm"></span>
+                  Preparing
+                </span>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white/90 p-4 min-h-[180px]">
+                <div className="space-y-2">
+                  <div className="h-3 rounded bg-slate-200 runtime-skeleton"></div>
+                  <div className="h-3 rounded bg-slate-200 runtime-skeleton"></div>
+                  <div className="h-3 rounded bg-slate-200 runtime-skeleton"></div>
+                  <div className="h-3 w-5/6 rounded bg-slate-200 runtime-skeleton"></div>
+                </div>
               </div>
             </div>
             <div className="rounded-xl border border-slate-300 bg-slate-50 p-4 runtime-social-card runtime-social-card-x">
-              <div className="h-4 w-20 rounded bg-slate-200 runtime-skeleton mb-3"></div>
-              <div className="space-y-2">
-                <div className="h-3 rounded bg-slate-200 runtime-skeleton"></div>
-                <div className="h-3 rounded bg-slate-200 runtime-skeleton"></div>
-                <div className="h-3 w-4/5 rounded bg-slate-200 runtime-skeleton"></div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="h-4 w-20 rounded bg-slate-200 runtime-skeleton"></div>
+                <span className="text-[10px] text-slate-500 flex items-center gap-2">
+                  <span className="runtime-loader-spinner runtime-loader-spinner-sm"></span>
+                  Preparing
+                </span>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white p-4 min-h-[180px]">
+                <div className="space-y-2">
+                  <div className="h-3 rounded bg-slate-200 runtime-skeleton"></div>
+                  <div className="h-3 rounded bg-slate-200 runtime-skeleton"></div>
+                  <div className="h-3 rounded bg-slate-200 runtime-skeleton"></div>
+                  <div className="h-3 w-4/5 rounded bg-slate-200 runtime-skeleton"></div>
+                </div>
               </div>
             </div>
           </div>
