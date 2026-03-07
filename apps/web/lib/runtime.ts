@@ -480,7 +480,7 @@ async function getProfileRowById(userId: string) {
   const normalizedUserId = normalizeUserId(userId);
   const { data, error } = await supabase
     .from("learner_profiles")
-    .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at")
+    .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,contact_email,created_at,updated_at")
     .eq("id", normalizedUserId)
     .single();
 
@@ -491,7 +491,7 @@ async function getProfileRowById(userId: string) {
   if (!isUuid(userId)) {
     const { data: byExternal } = await supabase
       .from("learner_profiles")
-      .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at")
+      .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,contact_email,created_at,updated_at")
       .eq("external_user_id", userId)
       .maybeSingle();
     if (byExternal) return byExternal;
@@ -514,6 +514,7 @@ async function getSkillsForProfile(profileId: string) {
 async function getOrCreateProfile(input: {
   userId?: string;
   name?: string;
+  email?: string | null;
   avatarUrl?: string | null;
   handleBase?: string;
   careerPathId?: string;
@@ -521,6 +522,7 @@ async function getOrCreateProfile(input: {
 }) {
   const supabase = getSupabaseAdmin();
   const normalizedUserId = normalizeUserId(input.userId);
+  const normalizedEmail = input.email?.trim().toLowerCase() || null;
   const inferredName =
     input.name?.trim() ||
     input.handleBase?.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) ||
@@ -560,6 +562,11 @@ async function getOrCreateProfile(input: {
     if (!existing.career_path_id) {
       updates.career_path_id = input.careerPathId ?? CAREER_PATHS[0].id;
       existing.career_path_id = String(updates.career_path_id);
+    }
+
+    if (normalizedEmail && existing.contact_email !== normalizedEmail) {
+      updates.contact_email = normalizedEmail;
+      existing.contact_email = normalizedEmail;
     }
 
     const publicWebsite = `${appBaseUrl()}/u/${existing.handle}`;
@@ -608,13 +615,14 @@ async function getOrCreateProfile(input: {
   }
 
   const selectFields =
-    "id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at";
+    "id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,contact_email,created_at,updated_at";
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const insert = {
       id: normalizedUserId,
       auth_user_id: normalizedUserId,
       external_user_id: input.userId ?? null,
+      contact_email: normalizedEmail,
       handle,
       full_name: inferredName,
       headline: defaultHeadline,
@@ -1146,6 +1154,7 @@ export async function runtimeClaimOnboardingSession(input: {
   authUserId: string;
   seed?: {
     name?: string;
+    email?: string | null;
     handleBase?: string;
     avatarUrl?: string | null;
   };
@@ -1169,6 +1178,7 @@ export async function runtimeClaimOnboardingSession(input: {
   const targetProfile = await getOrCreateProfile({
     userId: input.authUserId,
     name: input.seed?.name,
+    email: input.seed?.email ?? null,
     avatarUrl: input.seed?.avatarUrl ?? null,
     handleBase: input.seed?.handleBase,
     careerPathId: session.careerPathId ?? undefined,
@@ -2086,10 +2096,11 @@ export async function runtimeGetDashboardSummary(
   if (mode() === "memory") return memGetDashboardSummary(userId);
 
   let profile = await runtimeFindUserById(userId);
-  if (!profile) {
+  if (!profile || seed?.email?.trim()) {
     profile = await getOrCreateProfile({
       userId,
       name: seed?.name ?? "New Learner",
+      email: seed?.email ?? null,
       avatarUrl: seed?.avatarUrl ?? null,
       handleBase: seed?.handleBase ?? "learner",
     });

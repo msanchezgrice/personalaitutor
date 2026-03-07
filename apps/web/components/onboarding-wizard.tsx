@@ -3,14 +3,12 @@
 import { useMemo, useState } from "react";
 import type { GoalType, SituationStatus } from "@aitutor/shared";
 import { CAREER_PATHS } from "@aitutor/shared";
-import { createAnalyticsEventId } from "@/lib/analytics";
 import {
-  fbOnboardingStart,
-  fbQuizStart,
-  fbQuizComplete,
-  fbOnboardingComplete,
-} from "@/lib/fb-pixel";
-import { trackAdLead } from "@/lib/ad-conversions";
+  trackAdLead,
+  trackAdOnboardingComplete,
+  trackAdOnboardingStart,
+  trackAdQuizStart,
+} from "@/lib/ad-conversions";
 
 type OnboardingStartResponse = {
   ok: true;
@@ -97,7 +95,11 @@ export function OnboardingWizard() {
       }
       setSessionId(data.session.id);
       setUser(data.user);
-      fbOnboardingStart();
+      trackAdOnboardingStart({
+        sessionId: data.session.id,
+        careerCategory: careerPathId,
+        source: "legacy_onboarding_wizard_start",
+      });
       setStep(2);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to start onboarding session");
@@ -161,7 +163,11 @@ export function OnboardingWizard() {
       }
 
       setAssessmentId(assessment.assessment.id);
-      fbQuizStart();
+      trackAdQuizStart({
+        sessionId,
+        careerCategory: careerPathId,
+        source: "legacy_onboarding_wizard_quiz_start",
+      });
       setStep(4);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to complete career import step");
@@ -187,15 +193,19 @@ export function OnboardingWizard() {
         throw new Error(data && "error" in data ? data.error.message : "Unable to submit assessment");
       }
       setAssessmentResult(data.assessment);
-      const leadEventId = createAnalyticsEventId("lead");
-      fbQuizComplete(data.assessment.score, data.assessment.recommendedCareerPathIds, leadEventId);
       trackAdLead({
         score: data.assessment.score,
         sessionId,
+        careerCategory: careerPathId,
         source: "legacy_onboarding_wizard",
-        eventId: leadEventId,
+        recommendedPaths: data.assessment.recommendedCareerPathIds,
       });
-      fbOnboardingComplete();
+      trackAdOnboardingComplete({
+        sessionId,
+        careerCategory: careerPathId,
+        score: data.assessment.score,
+        source: "legacy_onboarding_wizard_complete",
+      });
       setStep(5);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to submit assessment");

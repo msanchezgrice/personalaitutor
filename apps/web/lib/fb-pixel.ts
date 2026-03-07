@@ -114,18 +114,18 @@ export function fbQuizComplete(score: number, recommendedPaths?: string[], event
 }
 
 /** User starts onboarding wizard. */
-export function fbOnboardingStart() {
-  fbCustomEvent("OnboardingStart");
+export function fbOnboardingStart(eventId?: string) {
+  fbCustomEvent("OnboardingStart", undefined, eventId);
 }
 
 /** User starts an assessment attempt. */
-export function fbQuizStart() {
-  fbCustomEvent("QuizStart");
+export function fbQuizStart(eventId?: string) {
+  fbCustomEvent("QuizStart", undefined, eventId);
 }
 
 /** Full onboarding flow completed (all steps done). */
-export function fbOnboardingComplete() {
-  fbCustomEvent("OnboardingComplete");
+export function fbOnboardingComplete(eventId?: string) {
+  fbCustomEvent("OnboardingComplete", undefined, eventId);
 }
 
 /** Future: Subscription purchased. */

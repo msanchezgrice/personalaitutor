@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createAnalyticsEventId } from "@/lib/analytics";
-import { fbQuizStart, fbQuizComplete } from "@/lib/fb-pixel";
-import { trackAdLead } from "@/lib/ad-conversions";
+import { trackAdLead, trackAdQuizStart } from "@/lib/ad-conversions";
 
 const questions = [
   "I can choose the right model for a business task.",
@@ -34,7 +32,9 @@ export function AssessmentQuiz() {
         throw new Error(data.error?.message ?? "Unable to start assessment");
       }
       setAssessmentId(data.assessment.id);
-      fbQuizStart();
+      trackAdQuizStart({
+        source: "assessment_quiz_component",
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to start assessment");
     } finally {
@@ -67,12 +67,10 @@ export function AssessmentQuiz() {
         score: data.assessment.score,
         recommendedCareerPathIds: data.assessment.recommendedCareerPathIds,
       });
-      const leadEventId = createAnalyticsEventId("lead");
-      fbQuizComplete(data.assessment.score, data.assessment.recommendedCareerPathIds, leadEventId);
       trackAdLead({
         score: data.assessment.score,
         source: "assessment_quiz_component",
-        eventId: leadEventId,
+        recommendedPaths: data.assessment.recommendedCareerPathIds,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to submit assessment");

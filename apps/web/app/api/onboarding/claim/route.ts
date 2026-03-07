@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
       authUserId: seed.userId,
       seed: {
         name: seed.name,
+        email: seed.email ?? null,
         handleBase: seed.handleBase,
         avatarUrl: seed.avatarUrl ?? null,
       },

@@ -60,6 +60,79 @@ function appBaseUrl() {
   return defaultBaseUrl;
 }
 
+function splitEnvList(raw: string | undefined) {
+  if (!raw?.trim()) return [];
+  return Array.from(
+    new Set(
+      raw
+        .split(/[,\n]/)
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+function dailySignupReportRecipients() {
+  return splitEnvList(
+    process.env.DAILY_SIGNUP_REPORT_RECIPIENTS ?? process.env.RESEND_SIGNUP_REPORT_TO,
+  );
+}
+
+function dailySignupReportTimeZone() {
+  return process.env.DAILY_SIGNUP_REPORT_TIMEZONE?.trim() || "America/New_York";
+}
+
+function dailySignupReportHour() {
+  const parsed = Number(process.env.DAILY_SIGNUP_REPORT_HOUR ?? "8");
+  if (!Number.isFinite(parsed)) return 8;
+  return Math.max(0, Math.min(23, Math.floor(parsed)));
+}
+
+function timeZoneParts(date: Date, timeZone: string) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+  });
+  const parts = formatter.formatToParts(date);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return {
+    year: get("year"),
+    month: get("month"),
+    day: get("day"),
+    hour: Number(get("hour") || "0"),
+  };
+}
+
+function dateKeyInTimeZone(date: Date, timeZone: string) {
+  const parts = timeZoneParts(date, timeZone);
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function hourInTimeZone(date: Date, timeZone: string) {
+  return timeZoneParts(date, timeZone).hour;
+}
+
+function formatDateTimeInTimeZone(input: string, timeZone: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(input));
+}
+
+function escapeHtml(input: string) {
+  return input
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function lifecycleFromAddress() {
   const configured = process.env.RESEND_FROM_EMAIL?.trim();
   if (configured) return configured;
@@ -307,6 +380,208 @@ type LifecycleDeliveryRow = {
   payload: Record<string, unknown> | null;
   sent_at: string | null;
 };
+
+type DailySignupDigestRow = {
+  id: string;
+  full_name: string;
+  contact_email: string | null;
+  created_at: string;
+  external_user_id: string | null;
+  career_path_id: string | null;
+  acquisition: Record<string, unknown> | null;
+};
+
+type DailySignupDigestState = {
+  last_report_date_key?: string | null;
+  last_sent_at?: string | null;
+  signup_count?: number;
+  recipient_count?: number;
+  window_hours?: number;
+};
+
+function signupSource(row: DailySignupDigestRow) {
+  const acquisition = row.acquisition;
+  if (!acquisition || typeof acquisition !== "object" || Array.isArray(acquisition)) return "unknown";
+
+  const lastTouch = "last" in acquisition ? acquisition.last : null;
+  const firstTouch = "first" in acquisition ? acquisition.first : null;
+  const lastSource =
+    lastTouch && typeof lastTouch === "object" && !Array.isArray(lastTouch) && "utmSource" in lastTouch
+      ? String(lastTouch.utmSource ?? "").trim()
+      : "";
+  if (lastSource) return lastSource;
+
+  const firstSource =
+    firstTouch && typeof firstTouch === "object" && !Array.isArray(firstTouch) && "utmSource" in firstTouch
+      ? String(firstTouch.utmSource ?? "").trim()
+      : "";
+  return firstSource || "unknown";
+}
+
+function careerPathName(pathId: string | null) {
+  if (!pathId) return "Unknown";
+  return CAREER_PATHS.find((path) => path.id === pathId)?.name ?? pathId;
+}
+
+async function sendDailySignupDigest() {
+  const recipients = dailySignupReportRecipients();
+  if (!recipients.length) {
+    console.log("[worker] daily signup digest skipped: recipients missing");
+    return;
+  }
+
+  const supabase = supabaseAdmin();
+  const stateProfileId = await resolveDefaultProfileId();
+  if (!stateProfileId) {
+    console.log("[worker] daily signup digest skipped: default profile not found");
+    return;
+  }
+
+  const timeZone = dailySignupReportTimeZone();
+  if (hourInTimeZone(new Date(), timeZone) < dailySignupReportHour()) {
+    return;
+  }
+
+  const reportDateKey = dateKeyInTimeZone(new Date(), timeZone);
+  const { data: stateRow } = await supabase
+    .from("agent_memory")
+    .select("memory_value")
+    .eq("learner_profile_id", stateProfileId)
+    .eq("memory_key", "daily_signup_digest")
+    .maybeSingle();
+
+  const state =
+    stateRow?.memory_value && typeof stateRow.memory_value === "object" && !Array.isArray(stateRow.memory_value)
+      ? (stateRow.memory_value as DailySignupDigestState)
+      : {};
+  if (state.last_report_date_key === reportDateKey) {
+    return;
+  }
+
+  const windowHours = 24;
+  const since = new Date(Date.now() - windowHours * 60 * 60 * 1000).toISOString();
+  const { data: signups } = await supabase
+    .from("learner_profiles")
+    .select("id,full_name,contact_email,created_at,external_user_id,career_path_id,acquisition")
+    .not("external_user_id", "is", null)
+    .not("contact_email", "is", null)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  const rows = ((signups ?? []) as DailySignupDigestRow[]).filter((row) => row.contact_email);
+  const sourceCounts = new Map<string, number>();
+  for (const row of rows) {
+    const source = signupSource(row).toLowerCase() || "unknown";
+    sourceCounts.set(source, (sourceCounts.get(source) ?? 0) + 1);
+  }
+
+  const sourceSummary = Array.from(sourceCounts.entries())
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([source, count]) => `${source}: ${count}`);
+
+  const rangeEndLabel = formatDateTimeInTimeZone(new Date().toISOString(), timeZone);
+  const rangeStartLabel = formatDateTimeInTimeZone(since, timeZone);
+  const subject = `Daily signup digest: ${rows.length} in the last ${windowHours} hours`;
+  const summaryText =
+    rows.length > 0
+      ? `${rows.length} signups in the last ${windowHours} hours. Sources: ${sourceSummary.join(", ")}`
+      : `No new signups in the last ${windowHours} hours.`;
+  const tableRows = rows.length
+    ? rows
+        .map((row) => {
+          const displayName = row.full_name?.trim() || "Unknown";
+          const email = row.contact_email?.trim() || "Unknown";
+          const source = signupSource(row);
+          const createdAt = formatDateTimeInTimeZone(row.created_at, timeZone);
+          const path = careerPathName(row.career_path_id);
+          return `
+            <tr>
+              <td style="padding:8px;border-bottom:1px solid #e2e8f0">${escapeHtml(displayName)}</td>
+              <td style="padding:8px;border-bottom:1px solid #e2e8f0">${escapeHtml(email)}</td>
+              <td style="padding:8px;border-bottom:1px solid #e2e8f0">${escapeHtml(source)}</td>
+              <td style="padding:8px;border-bottom:1px solid #e2e8f0">${escapeHtml(path)}</td>
+              <td style="padding:8px;border-bottom:1px solid #e2e8f0">${escapeHtml(createdAt)}</td>
+            </tr>
+          `.trim();
+        })
+        .join("")
+    : `
+      <tr>
+        <td colspan="5" style="padding:12px;text-align:center;color:#64748b">No new contactable signups in this window.</td>
+      </tr>
+    `.trim();
+
+  const html = `
+    <div style="font-family:Inter,Arial,sans-serif;color:#0f172a;background:#f8fafc;padding:24px">
+      <div style="max-width:760px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:24px">
+        <h1 style="margin:0 0 8px;font-size:24px;">Daily signup digest</h1>
+        <p style="margin:0 0 16px;color:#475569;">Window: ${escapeHtml(rangeStartLabel)} to ${escapeHtml(rangeEndLabel)} (${escapeHtml(timeZone)})</p>
+        <p style="margin:0 0 16px;font-size:18px;font-weight:600;">${escapeHtml(summaryText)}</p>
+        <p style="margin:0 0 20px;color:#475569;">Source breakdown: ${escapeHtml(sourceSummary.join(", ") || "none")}</p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px">
+          <thead>
+            <tr style="text-align:left;background:#f8fafc">
+              <th style="padding:8px;border-bottom:1px solid #cbd5e1">Name</th>
+              <th style="padding:8px;border-bottom:1px solid #cbd5e1">Email</th>
+              <th style="padding:8px;border-bottom:1px solid #cbd5e1">Source</th>
+              <th style="padding:8px;border-bottom:1px solid #cbd5e1">Path</th>
+              <th style="padding:8px;border-bottom:1px solid #cbd5e1">Created</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+    </div>
+  `.trim();
+
+  const textLines = [
+    "Daily signup digest",
+    `Window: ${rangeStartLabel} to ${rangeEndLabel} (${timeZone})`,
+    summaryText,
+    `Source breakdown: ${sourceSummary.join(", ") || "none"}`,
+    "",
+    ...rows.map((row) => {
+      const displayName = row.full_name?.trim() || "Unknown";
+      const email = row.contact_email?.trim() || "Unknown";
+      const source = signupSource(row);
+      const path = careerPathName(row.career_path_id);
+      const createdAt = formatDateTimeInTimeZone(row.created_at, timeZone);
+      return `${displayName} | ${email} | ${source} | ${path} | ${createdAt}`;
+    }),
+  ];
+
+  for (const recipient of recipients) {
+    const delivered = await sendResendEmail({
+      to: recipient,
+      subject,
+      html,
+      text: textLines.join("\n"),
+    });
+    if (!delivered.ok) {
+      console.error(`[worker] daily signup digest failed recipient=${recipient} code=${delivered.errorCode}`);
+      return;
+    }
+  }
+
+  await supabase.from("agent_memory").upsert(
+    {
+      learner_profile_id: stateProfileId,
+      memory_key: "daily_signup_digest",
+      memory_value: {
+        last_report_date_key: reportDateKey,
+        last_sent_at: nowIso(),
+        signup_count: rows.length,
+        recipient_count: recipients.length,
+        window_hours: windowHours,
+      },
+      refreshed_at: nowIso(),
+    },
+    { onConflict: "learner_profile_id,memory_key" },
+  );
+
+  console.log(`[worker] daily signup digest sent count=${rows.length} recipients=${recipients.length}`);
+}
 
 async function latestOnboardingForUser(userId: string) {
   const supabase = supabaseAdmin();
@@ -1135,6 +1410,7 @@ async function runSchedulers() {
   await queueMemoryRefreshJobs();
   await createDailyUpdateForDefaultUser();
   await sendDueLifecycleEmails();
+  await sendDailySignupDigest();
 }
 
 function logError(scope: string, error: unknown) {

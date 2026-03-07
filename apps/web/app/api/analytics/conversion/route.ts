@@ -2,8 +2,17 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { jsonError, jsonOk } from "@/lib/runtime";
 
+const conversionEventSchema = z.enum([
+  "complete_registration",
+  "lead",
+  "onboarding_start",
+  "quiz_start",
+  "quiz_complete",
+  "onboarding_complete",
+]);
+
 const schema = z.object({
-  event: z.enum(["complete_registration", "lead"]),
+  event: conversionEventSchema,
   eventId: z.string().max(160).optional(),
   source: z.string().max(120).optional(),
   sourceUrl: z.string().url().optional(),
@@ -12,7 +21,10 @@ const schema = z.object({
   sessionId: z.string().max(80).nullable().optional(),
   careerCategory: z.string().max(80).optional(),
   score: z.number().finite().optional(),
+  recommendedPaths: z.array(z.string().max(80)).max(10).optional(),
 });
+
+type ConversionEvent = z.infer<typeof conversionEventSchema>;
 
 type RelayResult = {
   provider: "meta" | "linkedin" | "x";
@@ -21,8 +33,26 @@ type RelayResult = {
   reason?: string;
 };
 
-function eventName(event: "complete_registration" | "lead") {
-  return event === "complete_registration" ? "CompleteRegistration" : "Lead";
+function eventName(event: ConversionEvent) {
+  switch (event) {
+    case "complete_registration":
+      return "CompleteRegistration";
+    case "lead":
+      return "Lead";
+    case "onboarding_start":
+      return "OnboardingStart";
+    case "quiz_start":
+      return "QuizStart";
+    case "quiz_complete":
+      return "QuizComplete";
+    case "onboarding_complete":
+      return "OnboardingComplete";
+  }
+}
+
+function providerSupportsEvent(provider: "meta" | "linkedin" | "x", event: ConversionEvent) {
+  if (provider === "meta") return true;
+  return event === "complete_registration" || event === "lead";
 }
 
 function firstClientIp(req: NextRequest) {
@@ -53,6 +83,8 @@ async function relayMeta(payload: z.infer<typeof schema>, req: NextRequest): Pro
           session_id: payload.sessionId ?? undefined,
           score: payload.score,
           career_category: payload.careerCategory,
+          recommended_paths: payload.recommendedPaths?.join(",") ?? undefined,
+          source: payload.source,
         },
         user_data: {
           client_ip_address: firstClientIp(req),
@@ -84,6 +116,10 @@ async function relayGenericProvider(
   provider: "linkedin" | "x",
   payload: z.infer<typeof schema>,
 ): Promise<RelayResult> {
+  if (!providerSupportsEvent(provider, payload.event)) {
+    return { provider, delivered: false, reason: "UNSUPPORTED_EVENT" };
+  }
+
   const endpointEnv = provider === "linkedin" ? "LINKEDIN_CONVERSIONS_API_URL" : "X_CONVERSIONS_API_URL";
   const tokenEnv = provider === "linkedin" ? "LINKEDIN_CONVERSIONS_API_TOKEN" : "X_CONVERSIONS_API_TOKEN";
 

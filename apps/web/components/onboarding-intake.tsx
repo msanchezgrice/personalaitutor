@@ -4,14 +4,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { SignUpButton, useAuth, useUser } from "@clerk/nextjs";
 import type { GoalType, SituationStatus } from "@aitutor/shared";
 import {
-  fbOnboardingComplete,
-  fbOnboardingStart,
-  fbQuizComplete,
-  fbQuizStart,
   fbViewContent,
 } from "@/lib/fb-pixel";
-import { trackAdCompleteRegistration, trackAdLead } from "@/lib/ad-conversions";
-import { captureAnalyticsEvent, createAnalyticsEventId } from "@/lib/analytics";
+import {
+  trackAdCompleteRegistration,
+  trackAdLead,
+  trackAdOnboardingComplete,
+  trackAdOnboardingStart,
+  trackAdQuizStart,
+} from "@/lib/ad-conversions";
+import { captureAnalyticsEvent } from "@/lib/analytics";
 import { readClientAttributionEnvelope } from "@/lib/attribution";
 import { COMPLETE_REGISTRATION_FIRED_KEY, PENDING_SESSION_KEY, SIGN_UP_INTENT_KEY } from "@/components/auth-tracking-keys";
 
@@ -916,7 +918,12 @@ export function OnboardingIntake() {
   useEffect(() => {
     if (step !== 5 || onboardingCompleteFired.current) return;
     onboardingCompleteFired.current = true;
-    fbOnboardingComplete();
+    trackAdOnboardingComplete({
+      sessionId,
+      careerCategory: selectedCareer.path,
+      score: normalizedScore,
+      source: "onboarding_summary",
+    });
     trackPosthog("onboarding_step_completed", {
       step: 4,
       step_name: "ai_analysis",
@@ -942,7 +949,7 @@ export function OnboardingIntake() {
       score: normalizedScore,
       risk_band: riskBand,
     });
-  }, [step, sessionId, careerCategory, normalizedScore, riskBand]);
+  }, [step, sessionId, careerCategory, selectedCareer.path, normalizedScore, riskBand]);
 
   const toggleGoal = (goal: GoalType) => {
     setSelectedGoals((prev) =>
@@ -1130,17 +1137,20 @@ export function OnboardingIntake() {
     });
     setStep(4);
     setBusy(true);
-    trackPosthog("onboarding_analysis_started", {
-      session_id: sessionId,
-      career_category: careerCategory,
-    });
-    if (!quizStartFired.current) {
-      quizStartFired.current = true;
-      fbQuizStart();
-    }
     try {
       const session = await ensureSession();
-      const leadEventId = createAnalyticsEventId("lead");
+      trackPosthog("onboarding_analysis_started", {
+        session_id: session.id,
+        career_category: careerCategory,
+      });
+      if (!quizStartFired.current) {
+        quizStartFired.current = true;
+        trackAdQuizStart({
+          sessionId: session.id,
+          careerCategory: selectedCareer.path,
+          source: "onboarding_analysis_started",
+        });
+      }
 
       const answers = [
         { questionId: "career_experience", value: selectedExperience.score },
@@ -1174,13 +1184,12 @@ export function OnboardingIntake() {
       setRecommendedPaths(recommended);
       if (!quizCompleteFired.current) {
         quizCompleteFired.current = true;
-        fbQuizComplete(score, recommended, leadEventId);
         trackAdLead({
           score,
           sessionId: session.id,
-          careerCategory,
+          careerCategory: selectedCareer.path,
           source: "onboarding_assessment_complete",
-          eventId: leadEventId,
+          recommendedPaths: recommended,
         });
       }
       setStep(5);
@@ -1849,7 +1858,11 @@ export function OnboardingIntake() {
                       }
                       if (!onboardingStartFired.current) {
                         onboardingStartFired.current = true;
-                        fbOnboardingStart();
+                        trackAdOnboardingStart({
+                          sessionId,
+                          careerCategory: selectedCareer.path,
+                          source: "onboarding_step_one_completed",
+                        });
                       }
                       trackPosthog("onboarding_step_completed", {
                         step: 1,
