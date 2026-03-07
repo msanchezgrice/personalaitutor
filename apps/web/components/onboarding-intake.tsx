@@ -507,6 +507,7 @@ export function OnboardingIntake() {
   const onboardingCompleteFired = useRef(false);
   const sessionWarmupStarted = useRef(false);
   const signUpCompletedFired = useRef(false);
+  const lastRemoteDraftSignature = useRef<string | null>(null);
 
   const [careerCategory, setCareerCategory] = useState<(typeof careerCategoryOptions)[number]["value"]>("product-manager");
   const [fullName, setFullName] = useState("");
@@ -557,6 +558,82 @@ export function OnboardingIntake() {
     return "#16a34a";
   }, [riskBand]);
   const recommendedAuthSource = useMemo(() => preferredSourceLabel(), []);
+  const hasMeaningfulInput = useMemo(() => {
+    const hasDefaultGoals =
+      selectedGoals.length === 1 && selectedGoals[0] === "upskill_current_job";
+    return Boolean(
+      fullName.trim() ||
+        customCareerCategory.trim() ||
+        jobTitle.trim() ||
+        dailyWorkSummary.trim() ||
+        keySkills.trim() ||
+        linkedinUrl.trim() ||
+        uploadedResumeName ||
+        resumeFile ||
+        careerCategory !== "product-manager" ||
+        yearsExperience !== "1-3" ||
+        companySize ||
+        situation !== "employed" ||
+        aiComfort !== 3 ||
+        !hasDefaultGoals,
+    );
+  }, [
+    aiComfort,
+    careerCategory,
+    companySize,
+    customCareerCategory,
+    dailyWorkSummary,
+    fullName,
+    jobTitle,
+    keySkills,
+    linkedinUrl,
+    resumeFile,
+    selectedGoals,
+    situation,
+    uploadedResumeName,
+    yearsExperience,
+  ]);
+  const remoteDraftPayload = useMemo(
+    () => ({
+      fullName,
+      careerCategory,
+      careerCategoryLabel: selectedCareerLabel,
+      customCareerCategory,
+      careerPathId: selectedCareer.path,
+      jobTitle,
+      yearsExperience,
+      companySize: companySize || null,
+      situation,
+      dailyWorkSummary,
+      keySkills,
+      linkedinUrl: linkedinUrl.trim() ? linkedinUrl.trim() : null,
+      selectedGoals,
+      aiComfort,
+      resumeFilename: uploadedResumeName ?? resumeFile?.name ?? null,
+      uploadedResumeName,
+      currentStep: step,
+    }),
+    [
+      aiComfort,
+      careerCategory,
+      companySize,
+      customCareerCategory,
+      dailyWorkSummary,
+      fullName,
+      jobTitle,
+      keySkills,
+      linkedinUrl,
+      resumeFile,
+      selectedCareer.path,
+      selectedCareerLabel,
+      selectedGoals,
+      situation,
+      step,
+      uploadedResumeName,
+      yearsExperience,
+    ],
+  );
+  const remoteDraftSignature = useMemo(() => JSON.stringify(remoteDraftPayload), [remoteDraftPayload]);
 
   const continueAfterSummary = () => {
     if (!nextRedirectHref || !isSignedIn) return;
@@ -686,6 +763,70 @@ export function OnboardingIntake() {
     aiComfort,
     uploadedResumeName,
   ]);
+
+  useEffect(() => {
+    if (!sessionId || !sessionToken) return;
+    const draftKey = `${sessionId}:${remoteDraftSignature}`;
+    if (draftKey === lastRemoteDraftSignature.current) return;
+
+    const timer = window.setTimeout(() => {
+      void postJson("/api/onboarding/draft", {
+        sessionId,
+        sessionToken,
+        draft: remoteDraftPayload,
+      })
+        .then(() => {
+          lastRemoteDraftSignature.current = draftKey;
+        })
+        .catch(() => {
+          // Keep local draft state even if the network save fails.
+        });
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [remoteDraftPayload, remoteDraftSignature, sessionId, sessionToken]);
+
+  useEffect(() => {
+    if (!sessionId || !sessionToken || typeof window === "undefined") return;
+
+    const flushDraft = () => {
+      const body = JSON.stringify({
+        sessionId,
+        sessionToken,
+        draft: remoteDraftPayload,
+      });
+
+      if (navigator.sendBeacon) {
+        const blob = new Blob([body], { type: "application/json" });
+        if (navigator.sendBeacon("/api/onboarding/draft", blob)) {
+          return;
+        }
+      }
+
+      void window.fetch("/api/onboarding/draft", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body,
+        keepalive: true,
+      });
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        flushDraft();
+      }
+    };
+
+    window.addEventListener("pagehide", flushDraft);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.removeEventListener("pagehide", flushDraft);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [remoteDraftPayload, sessionId, sessionToken]);
 
   useEffect(() => {
     if (!authLoaded || !isSignedIn || signUpCompletedFired.current) return;
@@ -848,13 +989,13 @@ export function OnboardingIntake() {
   };
 
   useEffect(() => {
-    if (step < 2) return;
+    if (!hasMeaningfulInput && step < 2) return;
     if (sessionId || sessionWarmupStarted.current) return;
     sessionWarmupStarted.current = true;
     void ensureSession().catch(() => {
       sessionWarmupStarted.current = false;
     });
-  }, [step, sessionId]);
+  }, [hasMeaningfulInput, step, sessionId]);
 
   const validateStepOne = () => {
     if (!fullName.trim()) return "Enter your full name.";

@@ -25,6 +25,13 @@ function eventName(event: "complete_registration" | "lead") {
   return event === "complete_registration" ? "CompleteRegistration" : "Lead";
 }
 
+function firstClientIp(req: NextRequest) {
+  const forwardedFor = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  const realIp = req.headers.get("x-real-ip")?.trim();
+  const cfIp = req.headers.get("cf-connecting-ip")?.trim();
+  return cfIp || forwardedFor || realIp || undefined;
+}
+
 async function relayMeta(payload: z.infer<typeof schema>, req: NextRequest): Promise<RelayResult> {
   const pixelId = process.env.META_PIXEL_ID?.trim() || process.env.NEXT_PUBLIC_FB_PIXEL_ID?.trim();
   const token = process.env.META_CONVERSIONS_ACCESS_TOKEN?.trim();
@@ -48,7 +55,10 @@ async function relayMeta(payload: z.infer<typeof schema>, req: NextRequest): Pro
           career_category: payload.careerCategory,
         },
         user_data: {
+          client_ip_address: firstClientIp(req),
           client_user_agent: req.headers.get("user-agent") ?? undefined,
+          fbc: req.cookies.get("_fbc")?.value ?? undefined,
+          fbp: req.cookies.get("_fbp")?.value ?? undefined,
         },
       },
     ],

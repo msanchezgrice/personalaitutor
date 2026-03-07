@@ -160,6 +160,7 @@ export type OnboardingSession = {
   resumeFilename: string | null;
   aiKnowledgeScore: number | null;
   goals: GoalType[];
+  intakeProfile?: Record<string, unknown>;
   acquisition?: AcquisitionAttribution;
   status: "started" | "collecting" | "assessment_pending" | "ready_for_dashboard";
   createdAt: string;

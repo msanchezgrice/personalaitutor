@@ -161,6 +161,168 @@ function parseAcquisition(input: unknown): AcquisitionAttribution | undefined {
   return parsed ?? undefined;
 }
 
+const ONBOARDING_GOALS = new Set([
+  "build_business",
+  "upskill_current_job",
+  "showcase_for_job",
+  "learn_foundations",
+  "ship_ai_projects",
+]);
+
+const ONBOARDING_SITUATIONS = new Set([
+  "employed",
+  "unemployed",
+  "student",
+  "founder",
+  "freelancer",
+  "career_switcher",
+]);
+
+const ONBOARDING_CAREER_CATEGORIES = new Set([
+  "product-manager",
+  "designer",
+  "marketing",
+  "accounting",
+  "legal",
+  "software-engineering",
+  "other",
+]);
+
+const ONBOARDING_YEARS_EXPERIENCE = new Set(["0-1", "1-3", "3-5", "5-10", "10+"]);
+const ONBOARDING_COMPANY_SIZES = new Set(["startup", "small", "medium", "large"]);
+const ONBOARDING_PATH_IDS = new Set(CAREER_PATHS.map((path) => path.id));
+
+function hasOwnField(input: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(input, key);
+}
+
+function cleanOnboardingText(value: unknown, max = 300) {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim();
+  if (!normalized) return undefined;
+  return normalized.slice(0, max);
+}
+
+function parseOnboardingIntakeProfile(input: unknown) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return undefined;
+
+  const source = input as Record<string, unknown>;
+  const next: Record<string, unknown> = {};
+
+  if (hasOwnField(source, "fullName")) {
+    next.fullName = cleanOnboardingText(source.fullName, 120) ?? null;
+  }
+  if (hasOwnField(source, "careerCategory")) {
+    const value = cleanOnboardingText(source.careerCategory, 80);
+    next.careerCategory = value && ONBOARDING_CAREER_CATEGORIES.has(value) ? value : null;
+  }
+  if (hasOwnField(source, "careerCategoryLabel")) {
+    next.careerCategoryLabel = cleanOnboardingText(source.careerCategoryLabel, 120) ?? null;
+  }
+  if (hasOwnField(source, "customCareerCategory")) {
+    next.customCareerCategory = cleanOnboardingText(source.customCareerCategory, 120) ?? null;
+  }
+  if (hasOwnField(source, "careerPathId")) {
+    const value = cleanOnboardingText(source.careerPathId, 80);
+    next.careerPathId = value && ONBOARDING_PATH_IDS.has(value) ? value : null;
+  }
+  if (hasOwnField(source, "jobTitle")) {
+    next.jobTitle = cleanOnboardingText(source.jobTitle, 160) ?? null;
+  }
+  if (hasOwnField(source, "yearsExperience")) {
+    const value = cleanOnboardingText(source.yearsExperience, 20);
+    next.yearsExperience = value && ONBOARDING_YEARS_EXPERIENCE.has(value) ? value : null;
+  }
+  if (hasOwnField(source, "companySize")) {
+    const raw = source.companySize;
+    if (raw === null) {
+      next.companySize = null;
+    } else {
+      const value = cleanOnboardingText(raw, 20);
+      next.companySize = value && ONBOARDING_COMPANY_SIZES.has(value) ? value : null;
+    }
+  }
+  if (hasOwnField(source, "situation")) {
+    const value = cleanOnboardingText(source.situation, 40);
+    next.situation = value && ONBOARDING_SITUATIONS.has(value) ? value : null;
+  }
+  if (hasOwnField(source, "dailyWorkSummary")) {
+    next.dailyWorkSummary = cleanOnboardingText(source.dailyWorkSummary, 4000) ?? null;
+  }
+  if (hasOwnField(source, "keySkills")) {
+    next.keySkills = cleanOnboardingText(source.keySkills, 2000) ?? null;
+  }
+  if (hasOwnField(source, "linkedinUrl")) {
+    next.linkedinUrl = cleanOnboardingText(source.linkedinUrl, 1000) ?? null;
+  }
+  if (hasOwnField(source, "selectedGoals") && Array.isArray(source.selectedGoals)) {
+    next.selectedGoals = Array.from(
+      new Set(
+        source.selectedGoals.filter(
+          (entry): entry is string => typeof entry === "string" && ONBOARDING_GOALS.has(entry),
+        ),
+      ),
+    );
+  }
+  if (hasOwnField(source, "aiComfort")) {
+    const value = Number(source.aiComfort);
+    next.aiComfort = Number.isFinite(value) ? Math.max(1, Math.min(5, Math.round(value))) : null;
+  }
+  if (hasOwnField(source, "resumeFilename")) {
+    next.resumeFilename = cleanOnboardingText(source.resumeFilename, 255) ?? null;
+  }
+  if (hasOwnField(source, "uploadedResumeName")) {
+    next.uploadedResumeName = cleanOnboardingText(source.uploadedResumeName, 255) ?? null;
+  }
+  if (hasOwnField(source, "currentStep")) {
+    const value = Number(source.currentStep);
+    next.currentStep = Number.isFinite(value) ? Math.max(1, Math.min(5, Math.round(value))) : null;
+  }
+
+  return Object.keys(next).length ? next : undefined;
+}
+
+function mergeOnboardingIntakeProfile(existing: unknown, incoming: unknown): Record<string, unknown> {
+  const base =
+    existing && typeof existing === "object" && !Array.isArray(existing)
+      ? { ...(existing as Record<string, unknown>) }
+      : {};
+  const next = parseOnboardingIntakeProfile(incoming);
+  if (!next && !Object.keys(base).length) {
+    return {};
+  }
+
+  return {
+    ...base,
+    ...(next ?? {}),
+    savedAt: new Date().toISOString(),
+  };
+}
+
+function parseStoredOnboardingIntakeProfile(input: unknown) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return undefined;
+  const raw = (input as Record<string, unknown>).intakeProfile;
+  return parseOnboardingIntakeProfile(raw);
+}
+
+function buildOnboardingSessionAcquisition(
+  attribution: AcquisitionAttribution | null | undefined,
+  intakeProfile: Record<string, unknown> | undefined,
+) {
+  const next: Record<string, unknown> = {};
+  const sanitizedAttribution = mergeAttribution(undefined, attribution) ?? undefined;
+  if (sanitizedAttribution?.first) {
+    next.first = sanitizedAttribution.first;
+  }
+  if (sanitizedAttribution?.last) {
+    next.last = sanitizedAttribution.last;
+  }
+  if (intakeProfile && Object.keys(intakeProfile).length) {
+    next.intakeProfile = intakeProfile;
+  }
+  return next;
+}
+
 function uuidFromExternalId(input: string) {
   const hex = createHash("sha256").update(`personalaitutor:${input}`).digest("hex").slice(0, 32).split("");
   hex[12] = "4";
@@ -689,7 +851,13 @@ export async function runtimeCreateOnboardingSession(input: {
     resume_filename: null,
     ai_knowledge_score: null,
     goals: profile.goals,
-    acquisition: input.acquisition ?? profile.acquisition ?? {},
+    acquisition: buildOnboardingSessionAcquisition(
+      input.acquisition ?? profile.acquisition ?? {},
+      mergeOnboardingIntakeProfile(undefined, {
+        fullName: input.name ?? profile.name,
+        careerPathId: input.careerPathId ?? profile.careerPathId,
+      }),
+    ),
     status: "started",
   };
 
@@ -722,6 +890,7 @@ export async function runtimeCreateOnboardingSession(input: {
       resumeFilename: data.resume_filename,
       aiKnowledgeScore: data.ai_knowledge_score,
       goals: data.goals ?? [],
+      intakeProfile: parseStoredOnboardingIntakeProfile(data.acquisition),
       acquisition: parseAcquisition(data.acquisition) ?? undefined,
       status: data.status,
       createdAt: data.created_at,
@@ -746,6 +915,7 @@ export async function runtimeFindOnboardingSession(sessionId: string) {
     resumeFilename: data.resume_filename,
     aiKnowledgeScore: data.ai_knowledge_score,
     goals: data.goals ?? [],
+    intakeProfile: parseStoredOnboardingIntakeProfile(data.acquisition),
     acquisition: parseAcquisition(data.acquisition) ?? undefined,
     status: data.status,
     createdAt: data.created_at,
@@ -769,6 +939,13 @@ export async function runtimeUpdateOnboardingSituation(input: {
     .update({
       situation: input.situation,
       goals: input.goals,
+      acquisition: buildOnboardingSessionAcquisition(
+        session.acquisition,
+        mergeOnboardingIntakeProfile(session.intakeProfile, {
+          situation: input.situation,
+          selectedGoals: input.goals,
+        }),
+      ),
       status: "collecting",
       updated_at: new Date().toISOString(),
     })
@@ -807,6 +984,22 @@ export async function runtimeUpdateOnboardingCareerImport(input: {
       career_path_id: input.careerPathId,
       linkedin_url: input.linkedinUrl ?? null,
       resume_filename: input.resumeFilename ?? null,
+      acquisition: buildOnboardingSessionAcquisition(
+        session.acquisition,
+        mergeOnboardingIntakeProfile(session.intakeProfile, {
+          careerPathId: input.careerPathId,
+          careerCategoryLabel: input.careerCategoryLabel,
+          jobTitle: input.jobTitle,
+          yearsExperience: input.yearsExperience,
+          companySize: input.companySize ?? null,
+          dailyWorkSummary: input.dailyWorkSummary,
+          keySkills: input.keySkills,
+          aiComfort: input.aiComfort,
+          linkedinUrl: input.linkedinUrl ?? null,
+          resumeFilename: input.resumeFilename ?? null,
+          uploadedResumeName: input.resumeFilename ?? null,
+        }),
+      ),
       status: "assessment_pending",
       updated_at: new Date().toISOString(),
     })
@@ -851,6 +1044,40 @@ export async function runtimeUpdateOnboardingCareerImport(input: {
     }
 
     await supabase.from("learner_profiles").update(profilePatch).eq("id", existingProfile.id);
+  }
+
+  return runtimeFindOnboardingSession(input.sessionId);
+}
+
+export async function runtimeUpdateOnboardingDraft(input: {
+  sessionId: string;
+  draft: Record<string, unknown>;
+}) {
+  if (mode() === "memory") return memFindOnboardingSession(input.sessionId);
+
+  const session = await runtimeFindOnboardingSession(input.sessionId);
+  if (!session) return null;
+
+  const supabase = getSupabaseAdmin();
+  const nextIntakeProfile = mergeOnboardingIntakeProfile(session.intakeProfile, input.draft);
+
+  await supabase
+    .from("onboarding_sessions")
+    .update({
+      acquisition: buildOnboardingSessionAcquisition(session.acquisition, nextIntakeProfile),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.sessionId);
+
+  const fullName = typeof nextIntakeProfile.fullName === "string" ? nextIntakeProfile.fullName.trim() : "";
+  if (fullName) {
+    await supabase
+      .from("learner_profiles")
+      .update({
+        full_name: fullName.slice(0, 120),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", session.userId);
   }
 
   return runtimeFindOnboardingSession(input.sessionId);
@@ -2373,6 +2600,7 @@ async function getLatestOnboardingSessionForUser(userId: string) {
     resumeFilename: data.resume_filename,
     aiKnowledgeScore: data.ai_knowledge_score,
     goals: data.goals ?? [],
+    intakeProfile: parseStoredOnboardingIntakeProfile(data.acquisition),
     status: data.status,
     createdAt: data.created_at,
     updatedAt: data.updated_at,

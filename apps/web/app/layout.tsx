@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
+import { AuthCompletionTracker } from "@/components/auth-completion-tracker";
 import {
   BRAND_NAME,
   BRAND_DOMAIN,
@@ -260,6 +261,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         ) : (
           <ClerkProvider localization={clerkLocalization}>
             <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
+            <AuthCompletionTracker />
             {children}
             <SpeedInsights />
             <Analytics />

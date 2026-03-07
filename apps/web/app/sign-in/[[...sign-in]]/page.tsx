@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { SignIn } from "@clerk/nextjs";
 import { experimental__simple as clerkSimple } from "@clerk/themes";
 import { BRAND_NAME, getSiteUrl } from "@/lib/site";
+import { AuthPageTracking } from "@/components/auth-page-tracking";
 import { AuthWidgetFallback } from "@/components/auth-widget-fallback";
 
 export const metadata: Metadata = {
@@ -52,6 +53,7 @@ export default async function SignInPage({
             },
           }}
         />
+        <AuthPageTracking mode="sign-in" />
         <AuthWidgetFallback mode="sign-in" />
       </div>
     </main>

@@ -23,6 +23,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/auth/x/start(.*)",
   "/api/auth/x/callback(.*)",
   "/api/onboarding/start(.*)",
+  "/api/onboarding/draft(.*)",
   "/api/onboarding/complete(.*)",
   "/api/onboarding/resume-upload(.*)",
   "/api/onboarding/career-import(.*)",
