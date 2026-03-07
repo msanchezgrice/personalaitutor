@@ -1,5 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  CAREER_PATHS,
+  EMAIL_PRODUCT_NAME,
+  buildLifecycleEmail,
+  resolveLifecycleEmailKey,
+  type LifecycleEmailAssessment,
+  type LifecycleEmailKey,
+  type LifecycleEmailNewsItem,
+  type LifecycleEmailSocialDraft,
+} from "@aitutor/shared";
 
 type ArtifactKind = "website" | "pptx" | "pdf" | "resume_docx" | "resume_pdf";
 
@@ -19,12 +29,85 @@ const claimLimit = Number(process.env.CLAIM_LIMIT ?? "5");
 const pollMs = Number(process.env.WORKER_POLL_MS ?? "2500");
 const schedulerMs = Number(process.env.SCHEDULER_POLL_MS ?? "60000");
 const defaultUserRef = process.env.DEFAULT_USER_ID ?? "user_test_0001";
+const defaultBaseUrl = "https://www.myaiskilltutor.com";
 
 let client: SupabaseClient | null = null;
 let started = false;
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function normalizeSiteUrl(input: string) {
+  const trimmed = input.trim();
+  if (!trimmed) return defaultBaseUrl;
+  const withScheme = /^[a-z]+:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+
+  try {
+    const url = new URL(withScheme);
+    url.protocol = "https:";
+    url.port = "";
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return trimmed.replace(/\/+$/, "");
+  }
+}
+
+function appBaseUrl() {
+  const explicit = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL;
+  if (explicit?.trim()) return normalizeSiteUrl(explicit);
+  if (process.env.VERCEL_URL?.trim()) return normalizeSiteUrl(process.env.VERCEL_URL);
+  return defaultBaseUrl;
+}
+
+function lifecycleFromAddress() {
+  const configured = process.env.RESEND_FROM_EMAIL?.trim();
+  if (configured) return configured;
+  return `${EMAIL_PRODUCT_NAME} <onboarding@resend.dev>`;
+}
+
+async function sendResendEmail(input: { to: string; subject: string; html: string; text: string }) {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) {
+    return {
+      ok: false as const,
+      errorCode: "RESEND_API_KEY_MISSING",
+    };
+  }
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        from: lifecycleFromAddress(),
+        to: [input.to],
+        subject: input.subject,
+        html: input.html,
+        text: input.text,
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = await response.text();
+      return {
+        ok: false as const,
+        errorCode: `RESEND_RESPONSE_${response.status}`,
+        detail: detail.slice(0, 200),
+      };
+    }
+
+    return { ok: true as const };
+  } catch (error) {
+    return {
+      ok: false as const,
+      errorCode: "RESEND_REQUEST_FAILED",
+      detail: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 function supabaseAdmin() {
@@ -201,6 +284,376 @@ async function incrementTokens(userId: string, delta: number) {
       updated_at: nowIso(),
     })
     .eq("id", profile.id);
+}
+
+type LifecycleProfileRow = {
+  id: string;
+  handle: string;
+  full_name: string;
+  contact_email: string | null;
+  career_path_id: string | null;
+  goals: string[] | null;
+  created_at: string;
+  updated_at: string;
+  welcome_email_sent_at: string | null;
+};
+
+type LifecycleDeliveryRow = {
+  id: string;
+  campaign_key: string;
+  status: string;
+  recipient_email: string;
+  subject: string;
+  payload: Record<string, unknown> | null;
+  sent_at: string | null;
+};
+
+async function latestOnboardingForUser(userId: string) {
+  const supabase = supabaseAdmin();
+  const { data } = await supabase
+    .from("onboarding_sessions")
+    .select("id,created_at,updated_at")
+    .eq("learner_profile_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data ?? null;
+}
+
+async function latestAssessmentForUser(userId: string): Promise<LifecycleEmailAssessment | null> {
+  const supabase = supabaseAdmin();
+  const { data } = await supabase
+    .from("assessment_attempts")
+    .select("score,answers,recommended_career_path_ids,started_at,submitted_at")
+    .eq("learner_profile_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return null;
+  const rawAnswers = Array.isArray(data.answers) ? data.answers : [];
+  const answers = rawAnswers
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const questionId = typeof entry.questionId === "string" ? entry.questionId : null;
+      const value = Number((entry as { value?: number }).value ?? 0);
+      if (!questionId) return null;
+      return { questionId, value };
+    })
+    .filter((entry): entry is { questionId: string; value: number } => Boolean(entry));
+
+  return {
+    score: Number(data.score ?? 0),
+    answers,
+    recommendedCareerPathIds: Array.isArray(data.recommended_career_path_ids)
+      ? data.recommended_career_path_ids.filter((entry): entry is string => typeof entry === "string")
+      : [],
+    startedAt: data.started_at ?? null,
+    submittedAt: data.submitted_at ?? null,
+  };
+}
+
+async function latestProjectForUser(userId: string, handle: string) {
+  const supabase = supabaseAdmin();
+  const { data } = await supabase
+    .from("projects")
+    .select("id,slug,title,state,updated_at")
+    .eq("learner_profile_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return null;
+  return {
+    title: data.title,
+    state: data.state,
+    url: `${appBaseUrl()}/u/${handle}/projects/${data.slug}`,
+  };
+}
+
+async function recentSocialDraftsForUser(userId: string): Promise<LifecycleEmailSocialDraft[]> {
+  const supabase = supabaseAdmin();
+  const { data } = await supabase
+    .from("social_drafts")
+    .select("platform,text")
+    .eq("learner_profile_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(10);
+
+  const drafts: LifecycleEmailSocialDraft[] = [];
+  const seen = new Set<string>();
+  for (const row of data ?? []) {
+    if ((row.platform !== "linkedin" && row.platform !== "x") || seen.has(row.platform)) continue;
+    drafts.push({
+      platform: row.platform,
+      text: String(row.text ?? ""),
+    });
+    seen.add(row.platform);
+    if (drafts.length >= 2) break;
+  }
+
+  return drafts;
+}
+
+async function relevantNewsForUser(userId: string, careerPathId: string | null): Promise<LifecycleEmailNewsItem[]> {
+  const supabase = supabaseAdmin();
+  const { data: personalized } = await supabase
+    .from("news_insights")
+    .select("title,url,summary,career_path_ids,metadata")
+    .eq("learner_profile_id", userId)
+    .order("published_at", { ascending: false })
+    .limit(3);
+
+  const personalizedItems = (personalized ?? []).map((row) => ({
+    title: String(row.title ?? ""),
+    url: String(row.url ?? ""),
+    summary: String(row.summary ?? ""),
+    source: typeof row.metadata?.source === "string" ? row.metadata.source : null,
+    whyRelevant: typeof row.metadata?.why_relevant === "string" ? row.metadata.why_relevant : null,
+    recommendedAction: typeof row.metadata?.recommended_action === "string" ? row.metadata.recommended_action : null,
+  }));
+
+  if (personalizedItems.length >= 3) {
+    return personalizedItems.slice(0, 3);
+  }
+
+  const { data: globalRows } = await supabase
+    .from("news_insights")
+    .select("title,url,summary,career_path_ids,metadata")
+    .is("learner_profile_id", null)
+    .order("published_at", { ascending: false })
+    .limit(8);
+
+  const remaining = 3 - personalizedItems.length;
+  const globalItems = (globalRows ?? [])
+    .filter((row) => {
+      const ids = Array.isArray(row.career_path_ids) ? row.career_path_ids.filter((entry): entry is string => typeof entry === "string") : [];
+      return !careerPathId || !ids.length || ids.includes(careerPathId);
+    })
+    .map((row) => ({
+      title: String(row.title ?? ""),
+      url: String(row.url ?? ""),
+      summary: String(row.summary ?? ""),
+      source: typeof row.metadata?.source === "string" ? row.metadata.source : null,
+      whyRelevant: typeof row.metadata?.why_relevant === "string" ? row.metadata.why_relevant : null,
+      recommendedAction: typeof row.metadata?.recommended_action === "string" ? row.metadata.recommended_action : null,
+    }))
+    .slice(0, remaining);
+
+  return [...personalizedItems, ...globalItems];
+}
+
+async function lifecycleDeliveriesForUser(userId: string) {
+  const supabase = supabaseAdmin();
+  const { data } = await supabase
+    .from("learner_email_deliveries")
+    .select("id,campaign_key,status,recipient_email,subject,payload,sent_at")
+    .eq("learner_profile_id", userId);
+
+  return (data ?? []) as LifecycleDeliveryRow[];
+}
+
+async function upsertLifecycleDelivery(input: {
+  userId: string;
+  campaignKey: LifecycleEmailKey;
+  status: "sent" | "failed";
+  recipientEmail: string;
+  subject: string;
+  payload?: Record<string, unknown>;
+  sentAt?: string | null;
+}) {
+  const supabase = supabaseAdmin();
+  const { data: existing } = await supabase
+    .from("learner_email_deliveries")
+    .select("id")
+    .eq("learner_profile_id", input.userId)
+    .eq("campaign_key", input.campaignKey)
+    .maybeSingle();
+
+  const row = {
+    learner_profile_id: input.userId,
+    campaign_key: input.campaignKey,
+    status: input.status,
+    recipient_email: input.recipientEmail,
+    subject: input.subject,
+    payload: input.payload ?? {},
+    sent_at: input.sentAt ?? null,
+    updated_at: nowIso(),
+  };
+
+  if (existing?.id) {
+    await supabase.from("learner_email_deliveries").update(row).eq("id", existing.id);
+    return;
+  }
+
+  await supabase.from("learner_email_deliveries").insert({
+    id: randomUUID(),
+    ...row,
+  });
+}
+
+async function moduleCtaForUser(userId: string, careerPathId: string | null) {
+  const fallbackTitle = await firstModuleForUser(userId);
+  const modules = CAREER_PATHS.find((entry) => entry.id === careerPathId)?.modules ?? [fallbackTitle];
+  const supabase = supabaseAdmin();
+  const { data } = await supabase
+    .from("user_skill_evidence")
+    .select("skill_name,status")
+    .eq("learner_profile_id", userId)
+    .in("skill_name", modules);
+
+  const skillStatusByName = new Map<string, string>();
+  for (const row of data ?? []) {
+    skillStatusByName.set(String(row.skill_name), String(row.status));
+  }
+
+  const inProgress = modules.find((module) => skillStatusByName.get(module) === "in_progress") ?? null;
+  const nextModule =
+    modules.find((module) => {
+      const status = skillStatusByName.get(module);
+      return status !== "built" && status !== "verified";
+    }) ?? null;
+  const title = inProgress ?? nextModule ?? modules[0] ?? fallbackTitle;
+  const status = skillStatusByName.get(title);
+
+  return {
+    title,
+    href: `${appBaseUrl()}/dashboard/?module=${encodeURIComponent(title)}`,
+    buttonLabel: status === "in_progress" ? `Continue ${title}` : `Start ${title}`,
+    helperText:
+      status === "in_progress"
+        ? "Keep building from the module you already started."
+        : "This is the clearest next module in your current path.",
+  };
+}
+
+async function maybeSendLifecycleEmailForProfile(profile: LifecycleProfileRow) {
+  const recipientEmail = profile.contact_email?.trim();
+  if (!recipientEmail) return false;
+
+  const [deliveries, onboarding, assessment, project, socialDrafts, newsItems, moduleCta] = await Promise.all([
+    lifecycleDeliveriesForUser(profile.id),
+    latestOnboardingForUser(profile.id),
+    latestAssessmentForUser(profile.id),
+    latestProjectForUser(profile.id, profile.handle),
+    recentSocialDraftsForUser(profile.id),
+    relevantNewsForUser(profile.id, profile.career_path_id),
+    moduleCtaForUser(profile.id, profile.career_path_id),
+  ]);
+
+  const sentKeys = deliveries
+    .filter((delivery) => delivery.status === "sent")
+    .map((delivery) => delivery.campaign_key)
+    .filter((key): key is LifecycleEmailKey =>
+      ([
+        "welcome",
+        "day_1_next_steps",
+        "day_2_follow_up",
+        "day_3_follow_up",
+        "week_1_digest",
+      ] as const).includes(key as LifecycleEmailKey),
+    );
+
+  const nextKey = resolveLifecycleEmailKey({
+    anchorIso: onboarding?.created_at ?? profile.created_at,
+    sentKeys,
+  });
+  if (!nextKey) return false;
+  if (nextKey !== "welcome" && !onboarding) return false;
+
+  const dashboardUrl = `${appBaseUrl()}/dashboard/?welcome=1`;
+  const publicProfileUrl = `${appBaseUrl()}/u/${profile.handle}`;
+  const careerPathName = CAREER_PATHS.find((entry) => entry.id === profile.career_path_id)?.name ?? null;
+  const template = buildLifecycleEmail({
+    key: nextKey,
+    baseUrl: appBaseUrl(),
+    learnerName: profile.full_name,
+    learnerHandle: profile.handle,
+    careerPathName,
+    goals: Array.isArray(profile.goals) ? profile.goals.filter((entry): entry is string => typeof entry === "string") : [],
+    dashboardUrl,
+    publicProfileUrl,
+    assessment,
+    moduleCta,
+    project,
+    socialDrafts,
+    newsItems,
+  });
+
+  const delivered = await sendResendEmail({
+    to: recipientEmail,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+  });
+
+  if (!delivered.ok) {
+    await upsertLifecycleDelivery({
+      userId: profile.id,
+      campaignKey: nextKey,
+      status: "failed",
+      recipientEmail,
+      subject: template.subject,
+      payload: {
+        errorCode: delivered.errorCode,
+        detail: "detail" in delivered ? delivered.detail ?? null : null,
+      },
+      sentAt: null,
+    });
+    console.error(`[worker] lifecycle email failed key=${nextKey} user=${profile.id} code=${delivered.errorCode}`);
+    return false;
+  }
+
+  await upsertLifecycleDelivery({
+    userId: profile.id,
+    campaignKey: nextKey,
+    status: "sent",
+    recipientEmail,
+    subject: template.subject,
+    payload: {
+      previewText: template.previewText,
+    },
+    sentAt: nowIso(),
+  });
+
+  if (nextKey === "welcome" && !profile.welcome_email_sent_at) {
+    await supabaseAdmin()
+      .from("learner_profiles")
+      .update({
+        welcome_email_sent_at: nowIso(),
+        updated_at: nowIso(),
+      })
+      .eq("id", profile.id)
+      .is("welcome_email_sent_at", null);
+  }
+
+  console.log(`[worker] lifecycle email sent key=${nextKey} user=${profile.id}`);
+  return true;
+}
+
+async function sendDueLifecycleEmails() {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) {
+    console.log("[worker] lifecycle email skipped: RESEND_API_KEY missing");
+    return;
+  }
+
+  const supabase = supabaseAdmin();
+  const { data: profiles } = await supabase
+    .from("learner_profiles")
+    .select("id,handle,full_name,contact_email,career_path_id,goals,created_at,updated_at,welcome_email_sent_at")
+    .not("contact_email", "is", null)
+    .order("updated_at", { ascending: false })
+    .limit(120);
+
+  let sentCount = 0;
+  for (const profile of (profiles ?? []) as LifecycleProfileRow[]) {
+    const sent = await maybeSendLifecycleEmailForProfile(profile);
+    if (sent) sentCount += 1;
+  }
+
+  console.log(`[worker] lifecycle emails sent: ${sentCount}`);
 }
 
 async function processArtifactJob(job: ClaimedJob) {
@@ -681,6 +1134,7 @@ async function runSchedulers() {
   await refreshRelevantNews();
   await queueMemoryRefreshJobs();
   await createDailyUpdateForDefaultUser();
+  await sendDueLifecycleEmails();
 }
 
 function logError(scope: string, error: unknown) {

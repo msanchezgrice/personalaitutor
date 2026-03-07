@@ -9,6 +9,7 @@ Current responsibilities:
 3. Write `agent_job_events` for UI/SSE visibility.
 4. Process artifact/chat side effects (build logs, project state, skill evidence, token usage).
 5. Run recurring schedulers for news refresh + daily update generation.
+6. Send lifecycle emails (welcome, day 1, day 2, day 3, week 1) through Resend.
 
 ## Why this should run on Render
 1. It is a long-running process (interval loop), not an HTTP API.
@@ -41,10 +42,14 @@ Optional but recommended:
 3. `WORKER_POLL_MS` (default `2500`)
 4. `SCHEDULER_POLL_MS` (default `60000`)
 5. `DEFAULT_USER_ID` (default `user_test_0001`)
+6. `APP_BASE_URL` or `NEXT_PUBLIC_APP_URL` (used for email links)
+7. `RESEND_API_KEY` (required for lifecycle emails)
+8. `RESEND_FROM_EMAIL` (recommended custom sender)
 
 Notes:
 1. Worker reads `SUPABASE_SERVICE_KEY` as a fallback alias for `SUPABASE_SERVICE_ROLE_KEY`.
-2. Current worker implementation does **not** directly call OpenAI/Resend; those keys are not required for the worker process today.
+2. Worker now sends lifecycle emails directly through Resend.
+3. Worker does **not** require `OPENAI_API_KEY` for lifecycle emails because weekly social snippets fall back to deterministic drafts when needed.
 
 ## Vercel `RENDER_API_KEY` vs Worker Runtime
 `RENDER_API_KEY` in Vercel is only for deployment automation/management calls to Render API.
@@ -58,6 +63,7 @@ If Render API calls return `401 Unauthorized`, the key is invalid or revoked. Re
    - `[worker] job completed: ...`
    - `[worker] news refreshed: ...`
    - `[worker] daily update sent`
+   - `[worker] lifecycle email sent key=... user=...`
 3. If provider outage occurs, retries are scheduled with backoff and fail-state events.
 
 ## Quick Validation After Deploy
