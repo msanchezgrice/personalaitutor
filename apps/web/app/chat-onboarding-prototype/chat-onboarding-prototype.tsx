@@ -1229,10 +1229,10 @@ export function ChatOnboardingPrototype() {
       <section className={styles.hero}>
         <div>
           <div className={styles.eyebrow}>Chat Onboarding Prototype</div>
-          <h1 className={styles.title}>A voice-first onboarding host with transcript, prompt canvas, and live form sync.</h1>
+          <h1 className={styles.title}>Voice-first onboarding with live form sync.</h1>
           <p className={styles.subtitle}>
-            Keep the exact transcript on the left, the active question and progress canvas in the center, and the bound
-            onboarding form on the right while the host fills the plan variables in realtime.
+            Transcript on the left, active question canvas in the center, and a bound intake form on
+            the right -- all synced in realtime as the host captures plan variables from the conversation.
           </p>
         </div>
 
