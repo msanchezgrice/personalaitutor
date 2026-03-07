@@ -122,7 +122,6 @@ export async function POST(req: NextRequest) {
           name: seed.name,
           handleBase: seed.handleBase,
           avatarUrl: seed.avatarUrl ?? null,
-          email: seed.email ?? null,
         },
       });
       if (!claimResult) {

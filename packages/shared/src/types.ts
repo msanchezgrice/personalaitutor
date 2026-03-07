@@ -71,7 +71,6 @@ export type UserProfile = {
   handle: string;
   name: string;
   avatarUrl?: string | null;
-  contactEmail?: string | null;
   headline: string;
   bio: string;
   careerPathId: string;

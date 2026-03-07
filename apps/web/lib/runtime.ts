@@ -103,31 +103,97 @@ function appBaseUrl() {
   return getSiteUrl();
 }
 
-async function syncProfileContactEmail(input: { profileId: string; email?: string | null }) {
+function welcomeFromAddress() {
+  const configured = process.env.RESEND_FROM_EMAIL?.trim();
+  if (configured) return configured;
+  return `${BRAND_NAME} <onboarding@resend.dev>`;
+}
+
+async function sendWelcomeEmail(input: { to: string; name: string; handle: string }) {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) return false;
+
+  const dashboardUrl = `${appBaseUrl()}/dashboard/?welcome=1`;
+  const profileUrl = `${appBaseUrl()}/u/${input.handle}/`;
+  const subject = `Welcome to ${BRAND_NAME}`;
+  const html = `
+    <div style="font-family:Inter,Arial,sans-serif;color:#0f172a;background:#f8fafc;padding:24px">
+      <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:24px">
+        <div style="display:flex;align-items:center;gap:10px;margin:0 0 16px;padding-bottom:12px;border-bottom:1px solid #e2e8f0;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:#10b981;color:#ffffff;font-size:14px;font-weight:700;">AI</span>
+          <span style="font-size:15px;font-weight:700;letter-spacing:.2px;">${BRAND_NAME}</span>
+        </div>
+        <h1 style="margin:0 0 10px;font-size:24px;">Welcome, ${input.name}.</h1>
+        <p style="margin:0 0 14px;line-height:1.6;color:#475569;">
+          Your AI Tutor workspace is ready. Start your onboarding, finish your assessment, and publish your first verified project.
+        </p>
+        <p style="margin:0 0 20px;line-height:1.6;color:#475569;">
+          Dashboard: <a href="${dashboardUrl}">${dashboardUrl}</a><br />
+          Public profile: <a href="${profileUrl}">${profileUrl}</a>
+        </p>
+        <a href="${dashboardUrl}" style="display:inline-block;background:#10b981;color:#ffffff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600;">Open Dashboard</a>
+      </div>
+    </div>
+  `.trim();
+  const text = [
+    `Welcome to ${BRAND_NAME}, ${input.name}.`,
+    "Your workspace is ready.",
+    `Dashboard: ${dashboardUrl}`,
+    `Public profile: ${profileUrl}`,
+  ].join("\n");
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      from: welcomeFromAddress(),
+      to: [input.to],
+      subject,
+      html,
+      text,
+    }),
+  });
+
+  return res.ok;
+}
+
+async function maybeSendWelcomeEmail(input: { profileId: string; email?: string | null; name: string; handle: string }) {
   const email = input.email?.trim();
-  if (!email) return null;
+  if (!email) return;
+  if (!process.env.RESEND_API_KEY?.trim()) return;
 
   const supabase = getSupabaseAdmin();
-  const { data: profile } = await supabase
+  const { data: statusRow } = await supabase
     .from("learner_profiles")
-    .select("contact_email")
+    .select("welcome_email_sent_at")
     .eq("id", input.profileId)
     .maybeSingle();
 
-  if (!profile) return null;
-  if ((profile.contact_email ?? "").trim().toLowerCase() === email.toLowerCase()) {
-    return profile.contact_email;
+  if (!statusRow || statusRow.welcome_email_sent_at) return;
+
+  try {
+    const delivered = await sendWelcomeEmail({
+      to: email,
+      name: input.name,
+      handle: input.handle,
+    });
+
+    if (!delivered) return;
+
+    await supabase
+      .from("learner_profiles")
+      .update({
+        welcome_email_sent_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", input.profileId)
+      .is("welcome_email_sent_at", null);
+  } catch (error) {
+    console.warn("[welcome-email] send failed", error instanceof Error ? error.message : "unknown");
   }
-
-  await supabase
-    .from("learner_profiles")
-    .update({
-      contact_email: email,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", input.profileId);
-
-  return email;
 }
 
 function isUuid(input: string) {
@@ -360,7 +426,6 @@ function profileFromRow(
     id: string;
     handle: string;
     full_name: string;
-    contact_email: string | null;
     headline: string;
     bio: string;
     career_path_id: string | null;
@@ -381,7 +446,6 @@ function profileFromRow(
     handle: row.handle,
     name: row.full_name,
     avatarUrl: typeof links.avatar === "string" ? links.avatar : null,
-    contactEmail: row.contact_email ?? null,
     headline: row.headline,
     bio: row.bio,
     careerPathId: row.career_path_id ?? CAREER_PATHS[0].id,
@@ -416,7 +480,7 @@ async function getProfileRowById(userId: string) {
   const normalizedUserId = normalizeUserId(userId);
   const { data, error } = await supabase
     .from("learner_profiles")
-    .select("id,handle,full_name,contact_email,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at")
+    .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at")
     .eq("id", normalizedUserId)
     .single();
 
@@ -427,7 +491,7 @@ async function getProfileRowById(userId: string) {
   if (!isUuid(userId)) {
     const { data: byExternal } = await supabase
       .from("learner_profiles")
-      .select("id,handle,full_name,contact_email,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at")
+      .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at")
       .eq("external_user_id", userId)
       .maybeSingle();
     if (byExternal) return byExternal;
@@ -451,7 +515,6 @@ async function getOrCreateProfile(input: {
   userId?: string;
   name?: string;
   avatarUrl?: string | null;
-  email?: string | null;
   handleBase?: string;
   careerPathId?: string;
   acquisition?: AcquisitionAttribution;
@@ -492,12 +555,6 @@ async function getOrCreateProfile(input: {
     if (!existingBio) {
       updates.bio = defaultBio;
       existing.bio = defaultBio;
-    }
-
-    const normalizedEmail = input.email?.trim() ?? null;
-    if (normalizedEmail && (existing.contact_email ?? "").trim().toLowerCase() !== normalizedEmail.toLowerCase()) {
-      updates.contact_email = normalizedEmail;
-      existing.contact_email = normalizedEmail;
     }
 
     if (!existing.career_path_id) {
@@ -551,7 +608,7 @@ async function getOrCreateProfile(input: {
   }
 
   const selectFields =
-    "id,handle,full_name,contact_email,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at";
+    "id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at";
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const insert = {
@@ -560,7 +617,6 @@ async function getOrCreateProfile(input: {
       external_user_id: input.userId ?? null,
       handle,
       full_name: inferredName,
-      contact_email: input.email?.trim() || null,
       headline: defaultHeadline,
       bio: defaultBio,
       career_path_id: input.careerPathId ?? CAREER_PATHS[0].id,
@@ -874,9 +930,11 @@ export async function runtimeCreateOnboardingSession(input: {
     message: `Onboarding session ${sessionId} started`,
   });
 
-  await syncProfileContactEmail({
+  await maybeSendWelcomeEmail({
     profileId: profile.id,
     email: input.email ?? null,
+    name: profile.name,
+    handle: profile.handle,
   });
 
   return {
@@ -1090,7 +1148,6 @@ export async function runtimeClaimOnboardingSession(input: {
     name?: string;
     handleBase?: string;
     avatarUrl?: string | null;
-    email?: string | null;
   };
 }) {
   const session = await runtimeFindOnboardingSession(input.sessionId);
@@ -1113,7 +1170,6 @@ export async function runtimeClaimOnboardingSession(input: {
     userId: input.authUserId,
     name: input.seed?.name,
     avatarUrl: input.seed?.avatarUrl ?? null,
-    email: input.seed?.email ?? null,
     handleBase: input.seed?.handleBase,
     careerPathId: session.careerPathId ?? undefined,
   });
@@ -1229,96 +1285,6 @@ export async function runtimeClaimOnboardingSession(input: {
       })
       .eq("learner_profile_id", sourceProfileId);
 
-    const { data: sourceEmailDeliveries } = await supabase
-      .from("learner_email_deliveries")
-      .select("id,campaign_key,status,recipient_email,subject,payload,sent_at")
-      .eq("learner_profile_id", sourceProfileId);
-    const { data: targetEmailDeliveries } = await supabase
-      .from("learner_email_deliveries")
-      .select("id,campaign_key,status,recipient_email,subject,payload,sent_at")
-      .eq("learner_profile_id", targetProfile.id);
-
-    const targetDeliveryByKey = new Map<
-      string,
-      {
-        id: string;
-        status: string;
-        recipient_email: string;
-        subject: string;
-        payload: Record<string, unknown> | null;
-        sent_at: string | null;
-      }
-    >();
-    for (const row of targetEmailDeliveries ?? []) {
-      targetDeliveryByKey.set(row.campaign_key, {
-        id: row.id,
-        status: row.status,
-        recipient_email: row.recipient_email,
-        subject: row.subject,
-        payload: (row.payload as Record<string, unknown> | null) ?? null,
-        sent_at: row.sent_at ?? null,
-      });
-    }
-
-    for (const row of sourceEmailDeliveries ?? []) {
-      const existing = targetDeliveryByKey.get(row.campaign_key);
-      if (!existing) {
-        await supabase
-          .from("learner_email_deliveries")
-          .update({
-            learner_profile_id: targetProfile.id,
-            updated_at: now,
-          })
-          .eq("id", row.id);
-        continue;
-      }
-
-      await supabase
-        .from("learner_email_deliveries")
-        .update({
-          status: existing.status === "sent" || row.status === "sent" ? "sent" : "failed",
-          recipient_email: existing.recipient_email || row.recipient_email,
-          subject: existing.subject || row.subject,
-          payload:
-            existing.payload && Object.keys(existing.payload).length
-              ? existing.payload
-              : ((row.payload as Record<string, unknown> | null) ?? {}),
-          sent_at: existing.sent_at ?? row.sent_at ?? null,
-          updated_at: now,
-        })
-        .eq("id", existing.id);
-
-      await supabase.from("learner_email_deliveries").delete().eq("id", row.id);
-    }
-
-    const { data: sourceEmailMeta } = await supabase
-      .from("learner_profiles")
-      .select("contact_email,welcome_email_sent_at")
-      .eq("id", sourceProfileId)
-      .maybeSingle();
-    const { data: targetEmailMeta } = await supabase
-      .from("learner_profiles")
-      .select("contact_email,welcome_email_sent_at")
-      .eq("id", targetProfile.id)
-      .maybeSingle();
-
-    const profileEmailPatch: Record<string, string> = {};
-    if (!targetEmailMeta?.contact_email && sourceEmailMeta?.contact_email) {
-      profileEmailPatch.contact_email = sourceEmailMeta.contact_email;
-    }
-    if (!targetEmailMeta?.welcome_email_sent_at && sourceEmailMeta?.welcome_email_sent_at) {
-      profileEmailPatch.welcome_email_sent_at = sourceEmailMeta.welcome_email_sent_at;
-    }
-    if (Object.keys(profileEmailPatch).length) {
-      await supabase
-        .from("learner_profiles")
-        .update({
-          ...profileEmailPatch,
-          updated_at: now,
-        })
-        .eq("id", targetProfile.id);
-    }
-
     const { data: sourceOauth } = await supabase
       .from("oauth_connections")
       .select("id,platform,connected,account_label")
@@ -1426,9 +1392,6 @@ export async function runtimeClaimOnboardingSession(input: {
 
   if (!currentTarget.avatarUrl && (sourceProfile?.avatarUrl || input.seed?.avatarUrl)) {
     patch.avatarUrl = sourceProfile?.avatarUrl ?? input.seed?.avatarUrl ?? null;
-  }
-  if (!currentTarget.contactEmail && (sourceProfile?.contactEmail || input.seed?.email?.trim())) {
-    patch.contactEmail = sourceProfile?.contactEmail ?? input.seed?.email?.trim() ?? null;
   }
   if (input.seed?.name?.trim()) {
     patch.name = input.seed.name.trim();
@@ -1622,7 +1585,7 @@ export async function runtimeFindUserByHandle(handle: string) {
 
   const { data } = await supabase
     .from("learner_profiles")
-    .select("id,handle,full_name,contact_email,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at")
+    .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at")
     .eq("handle", handle)
     .maybeSingle();
   if (!data) return null;
@@ -1684,7 +1647,6 @@ export async function runtimeUpdateProfile(userId: string, patch: Partial<UserPr
     .update({
       handle,
       full_name: patch.name ?? profile.name,
-      contact_email: patch.contactEmail === undefined ? profile.contactEmail ?? null : patch.contactEmail,
       headline: patch.headline ?? profile.headline,
       bio: patch.bio ?? profile.bio,
       career_path_id: patch.careerPathId ?? profile.careerPathId,
@@ -2129,15 +2091,16 @@ export async function runtimeGetDashboardSummary(
       userId,
       name: seed?.name ?? "New Learner",
       avatarUrl: seed?.avatarUrl ?? null,
-      email: seed?.email ?? null,
       handleBase: seed?.handleBase ?? "learner",
     });
   }
   if (!profile) return null;
 
-  await syncProfileContactEmail({
+  await maybeSendWelcomeEmail({
     profileId: profile.id,
     email: seed?.email ?? null,
+    name: profile.name,
+    handle: profile.handle,
   });
 
   // Avoid swapping frequently-changing provider avatar URLs on every request,
