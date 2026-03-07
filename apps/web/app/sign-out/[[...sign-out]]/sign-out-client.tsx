@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useClerk } from "@clerk/nextjs";
+import { resetAnalytics } from "@/lib/analytics";
 
 function clearAiTutorBrowserState() {
   const prefixes = [
@@ -42,10 +43,12 @@ export function SignOutClient() {
     let active = true;
     void (async () => {
       try {
+        resetAnalytics();
         clearAiTutorBrowserState();
         await clerk.signOut({ redirectUrl: "/" });
       } catch {
         if (active) {
+          resetAnalytics();
           clearAiTutorBrowserState();
           window.location.href = "/";
         }

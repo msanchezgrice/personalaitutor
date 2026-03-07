@@ -31,14 +31,26 @@ export default async function DashboardProfilePage() {
         levelProgressText: "Start building to level up",
       }}
       headerActions={(
-        <a href={publicProfileUrl} className="btn btn-primary text-xs px-4 py-2">
+        <a
+          href={publicProfileUrl}
+          className="btn btn-primary text-xs px-4 py-2"
+          data-analytics-event="public_profile_clicked"
+          data-analytics-location="profile_header"
+          data-analytics-destination={publicProfileUrl}
+        >
           <i className="fa-solid fa-globe mr-1"></i> View Public Profile
         </a>
       )}
     >
       <div className="p-10 max-w-3xl mx-auto w-full pb-24 space-y-8">
         <div className="lg:hidden">
-          <a href={publicProfileUrl} className="btn btn-primary w-full justify-center text-sm px-4 py-3">
+          <a
+            href={publicProfileUrl}
+            className="btn btn-primary w-full justify-center text-sm px-4 py-3"
+            data-analytics-event="public_profile_clicked"
+            data-analytics-location="profile_mobile_header"
+            data-analytics-destination={publicProfileUrl}
+          >
             <i className="fa-solid fa-globe mr-2"></i> View Public Profile
           </a>
         </div>

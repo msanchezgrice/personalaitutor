@@ -2,33 +2,8 @@
 
 import { useEffect, useMemo } from "react";
 import { readClientAttributionEnvelope } from "@/lib/attribution";
-
-const SIGN_UP_INTENT_KEY = "ai_tutor_clerk_signup_intent_v1";
-
-function capture(event: string, props?: Record<string, unknown>) {
-  try {
-    const ph = (window as unknown as { posthog?: { capture: (name: string, properties?: Record<string, unknown>) => void } }).posthog;
-    if (!ph?.capture) return;
-    const last = readClientAttributionEnvelope()?.last;
-    ph.capture(event, {
-      funnel: "onboarding_assessment",
-      utm_source: last?.utmSource ?? null,
-      utm_medium: last?.utmMedium ?? null,
-      utm_campaign: last?.utmCampaign ?? null,
-      paid_source:
-        last?.utmSource?.toLowerCase().includes("linkedin")
-          ? "linkedin"
-          : last?.utmSource === "x" || last?.utmSource?.toLowerCase().includes("twitter")
-            ? "x"
-            : last?.utmSource?.toLowerCase().includes("facebook") || last?.utmSource?.toLowerCase().includes("meta")
-              ? "facebook"
-              : "unknown",
-      ...(props ?? {}),
-    });
-  } catch {
-    // Ignore analytics runtime errors.
-  }
-}
+import { captureAnalyticsEvent } from "@/lib/analytics";
+import { SIGN_UP_INTENT_KEY } from "@/components/auth-tracking-keys";
 
 function detectPreferredProvider() {
   const source = readClientAttributionEnvelope()?.last?.utmSource?.toLowerCase() ?? "";
@@ -38,7 +13,13 @@ function detectPreferredProvider() {
   return "google";
 }
 
-export function AuthPageTracking({ mode }: { mode: "sign-up" | "sign-in" }) {
+export function AuthPageTracking({
+  mode,
+  showHint = false,
+}: {
+  mode: "sign-up" | "sign-in";
+  showHint?: boolean;
+}) {
   const preferredProvider = useMemo(() => detectPreferredProvider(), []);
 
   useEffect(() => {
@@ -54,16 +35,38 @@ export function AuthPageTracking({ mode }: { mode: "sign-up" | "sign-in" }) {
       } catch {
         // Ignore strict privacy mode storage failures.
       }
-      capture("clerk_sign_up_started", { auth_provider: "clerk", source: "clerk_sign_up_page", preferred_provider: preferredProvider });
-      capture("clerk_sign_up_viewed", { auth_provider: "clerk", preferred_provider: preferredProvider });
-      capture("auth_clerk_sign_up_viewed", { auth_provider: "clerk", preferred_provider: preferredProvider });
+      captureAnalyticsEvent("auth_sign_up_page_viewed", {
+        auth_provider: "clerk",
+        funnel: "onboarding_assessment",
+        source: "clerk_sign_up_page",
+        preferred_provider: preferredProvider,
+      });
+      captureAnalyticsEvent("clerk_sign_up_viewed", {
+        auth_provider: "clerk",
+        funnel: "onboarding_assessment",
+        source: "clerk_sign_up_page",
+        preferred_provider: preferredProvider,
+      });
+      captureAnalyticsEvent("auth_clerk_sign_up_viewed", {
+        auth_provider: "clerk",
+        funnel: "onboarding_assessment",
+        source: "clerk_sign_up_page",
+        preferred_provider: preferredProvider,
+      });
       return;
     }
 
-    capture("auth_clerk_sign_in_viewed", { auth_provider: "clerk", preferred_provider: preferredProvider });
+    captureAnalyticsEvent("auth_sign_in_page_viewed", {
+      auth_provider: "clerk",
+      preferred_provider: preferredProvider,
+    });
+    captureAnalyticsEvent("auth_clerk_sign_in_viewed", {
+      auth_provider: "clerk",
+      preferred_provider: preferredProvider,
+    });
   }, [mode, preferredProvider]);
 
-  if (mode !== "sign-up") return null;
+  if (mode !== "sign-up" || !showHint) return null;
 
   return (
     <p className="mb-4 text-center text-sm text-slate-600">

@@ -83,7 +83,14 @@ export default async function DashboardPage() {
                 <p className="text-sm text-gray-400">Continue where we left off: {continuationText}</p>
               </div>
             </div>
-            <a href="/dashboard/chat/" className="btn btn-primary whitespace-nowrap relative z-10">
+            <a
+              href="/dashboard/chat/"
+              className="btn btn-primary whitespace-nowrap relative z-10"
+              data-analytics-event="dashboard_home_cta_clicked"
+              data-analytics-cta="continue_chat"
+              data-analytics-location="hero"
+              data-analytics-destination="/dashboard/chat/"
+            >
               Continue where we left off
             </a>
           </div>
@@ -95,7 +102,14 @@ export default async function DashboardPage() {
                   <h2 className="text-lg font-[Outfit] font-medium text-white flex items-center gap-2">
                     <i className="fa-solid fa-folder-open text-amber-400"></i> Active Projects
                   </h2>
-                  <a href="/dashboard/projects/" className="text-xs text-emerald-400 hover:text-emerald-300">
+                  <a
+                    href="/dashboard/projects/"
+                    className="text-xs text-emerald-400 hover:text-emerald-300"
+                    data-analytics-event="dashboard_home_cta_clicked"
+                    data-analytics-cta="view_all_projects"
+                    data-analytics-location="projects_header"
+                    data-analytics-destination="/dashboard/projects/"
+                  >
                     View All
                   </a>
                 </div>
@@ -103,6 +117,10 @@ export default async function DashboardPage() {
                   <a
                     href="/dashboard/projects/"
                     className="glass p-5 rounded-xl hover:bg-white/5 border border-white/10 hover:border-emerald-500/40 transition group cursor-pointer block"
+                    data-analytics-event="dashboard_home_cta_clicked"
+                    data-analytics-cta="open_active_projects"
+                    data-analytics-location="projects_card"
+                    data-analytics-destination="/dashboard/projects/"
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div className="w-10 h-10 rounded bg-blue-500/20 text-blue-400 flex items-center justify-center text-lg">
@@ -125,6 +143,10 @@ export default async function DashboardPage() {
                   <a
                     href="/dashboard/projects/"
                     className="glass p-5 rounded-xl hover:bg-white/5 border border-emerald-500/30 bg-emerald-500/5 transition group cursor-pointer block relative overflow-hidden"
+                    data-analytics-event="dashboard_home_cta_clicked"
+                    data-analytics-cta="open_latest_proof"
+                    data-analytics-location="proof_card"
+                    data-analytics-destination="/dashboard/projects/"
                   >
                     <div className="flex justify-between items-start mb-4 relative z-10">
                       <div className="w-10 h-10 rounded bg-teal-500/20 text-teal-400 flex items-center justify-center text-lg">
@@ -194,7 +216,14 @@ export default async function DashboardPage() {
                   <p className="text-sm text-gray-300 mb-4 italic border-l-2 border-[#0077b5] pl-3 py-1 bg-black/20 rounded-r">
                     &quot;Preparing a first-person draft from your active project context.&quot;
                   </p>
-                  <a href="/dashboard/social/" className="btn bg-[#0077b5] hover:bg-[#005582] text-white w-full py-2 text-sm">
+                  <a
+                    href="/dashboard/social/"
+                    className="btn bg-[#0077b5] hover:bg-[#005582] text-white w-full py-2 text-sm"
+                    data-analytics-event="dashboard_home_cta_clicked"
+                    data-analytics-cta="open_social_drafts"
+                    data-analytics-location="social_card"
+                    data-analytics-destination="/dashboard/social/"
+                  >
                     Open Social Drafts
                   </a>
                 </div>
@@ -205,7 +234,14 @@ export default async function DashboardPage() {
                   <h2 className="text-lg font-[Outfit] font-medium text-white flex items-center gap-2">
                     <i className="fa-solid fa-newspaper text-sky-400"></i> AI News
                   </h2>
-                  <a href="/dashboard/ai-news/" className="text-xs text-sky-300 hover:text-sky-200">
+                  <a
+                    href="/dashboard/ai-news/"
+                    className="text-xs text-sky-300 hover:text-sky-200"
+                    data-analytics-event="dashboard_home_cta_clicked"
+                    data-analytics-cta="view_all_ai_news"
+                    data-analytics-location="ai_news_header"
+                    data-analytics-destination="/dashboard/ai-news/"
+                  >
                     View all
                   </a>
                 </div>
@@ -213,6 +249,10 @@ export default async function DashboardPage() {
                   <a
                     href="/dashboard/ai-news/"
                     className="block glass p-4 rounded-xl border border-sky-500/20 bg-sky-500/5 hover:bg-white/5 transition flex gap-3"
+                    data-analytics-event="dashboard_home_cta_clicked"
+                    data-analytics-cta="open_ai_news"
+                    data-analytics-location="ai_news_card"
+                    data-analytics-destination="/dashboard/ai-news/"
                   >
                     <div className="w-8 h-8 rounded shrink-0 bg-sky-500/20 flex items-center justify-center text-sky-400">
                       <span className="runtime-loader-spinner runtime-loader-spinner-sm"></span>
@@ -225,6 +265,10 @@ export default async function DashboardPage() {
                   <a
                     href="/dashboard/ai-news/"
                     className="block glass p-4 rounded-xl border border-sky-500/20 bg-sky-500/5 hover:bg-white/5 transition flex gap-3"
+                    data-analytics-event="dashboard_home_cta_clicked"
+                    data-analytics-cta="open_ai_news_cache_warm"
+                    data-analytics-location="ai_news_card"
+                    data-analytics-destination="/dashboard/ai-news/"
                   >
                     <div className="w-8 h-8 rounded shrink-0 bg-sky-500/20 flex items-center justify-center text-sky-400">
                       <i className="fa-solid fa-wave-square text-xs"></i>

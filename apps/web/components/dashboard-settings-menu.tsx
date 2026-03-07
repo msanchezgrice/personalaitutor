@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { captureAnalyticsEvent } from "@/lib/analytics";
 
 export function DashboardSettingsMenu() {
   const [open, setOpen] = useState(false);
@@ -32,6 +33,35 @@ export function DashboardSettingsMenu() {
     };
   }, [open]);
 
+  function toggleMenu() {
+    const nextOpen = !open;
+    setOpen(nextOpen);
+    captureAnalyticsEvent("dashboard_settings_toggled", {
+      is_open: nextOpen,
+      location: "header",
+    });
+  }
+
+  function handleProfileClick() {
+    setOpen(false);
+    captureAnalyticsEvent("dashboard_settings_item_clicked", {
+      item: "profile_settings",
+      destination: "/dashboard/profile",
+      location: "header",
+    });
+  }
+
+  function handleSignOutClick() {
+    setOpen(false);
+    captureAnalyticsEvent("auth_sign_out_clicked", {
+      auth_provider: "clerk",
+      source: "dashboard_settings_menu",
+    });
+    window.setTimeout(() => {
+      window.location.assign("/sign-out");
+    }, 75);
+  }
+
   return (
     <div id="dashboard-settings-menu" ref={rootRef} className="relative">
       <button
@@ -41,7 +71,7 @@ export function DashboardSettingsMenu() {
         aria-expanded={open ? "true" : "false"}
         aria-haspopup="menu"
         aria-label="Open settings menu"
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggleMenu}
       >
         <i className="fa-solid fa-gear"></i>
         <span className="hidden md:inline">Settings</span>
@@ -58,7 +88,7 @@ export function DashboardSettingsMenu() {
           href="/dashboard/profile"
           className="block px-3 py-2 text-sm text-gray-200 rounded-lg hover:bg-white/10"
           role="menuitem"
-          onClick={() => setOpen(false)}
+          onClick={handleProfileClick}
         >
           <i className="fa-regular fa-user mr-2"></i>Profile Settings
         </Link>
@@ -67,10 +97,7 @@ export function DashboardSettingsMenu() {
           className="w-full text-left px-3 py-2 text-sm text-red-300 rounded-lg hover:bg-red-500/20"
           data-sign-out="1"
           role="menuitem"
-          onClick={() => {
-            setOpen(false);
-            window.location.assign("/sign-out");
-          }}
+          onClick={handleSignOutClick}
         >
           <i className="fa-solid fa-right-from-bracket mr-2"></i>Sign Out
         </button>

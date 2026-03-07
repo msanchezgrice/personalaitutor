@@ -36,7 +36,14 @@ export default async function DashboardProjectsPage() {
       decor={<div className="absolute top-0 right-1/4 w-[500px] h-[300px] bg-amber-500/10 blur-[120px] pointer-events-none"></div>}
       hideHeaderActionsOnMobile
       headerActions={(
-        <a href="/dashboard/chat/" className="btn btn-primary text-xs px-4 py-2 shadow-[0_4px_10px_0_var(--primary-glow)]">
+        <a
+          href="/dashboard/chat/"
+          className="btn btn-primary text-xs px-4 py-2 shadow-[0_4px_10px_0_var(--primary-glow)]"
+          data-analytics-event="projects_cta_clicked"
+          data-analytics-cta="start_new_project"
+          data-analytics-location="header"
+          data-analytics-destination="/dashboard/chat/"
+        >
           <i className="fa-solid fa-plus mr-1"></i> Start New Project
         </a>
       )}
@@ -46,6 +53,10 @@ export default async function DashboardProjectsPage() {
           <a
             href="/dashboard/chat/"
             className="btn btn-primary w-full justify-center text-sm px-4 py-3 shadow-[0_4px_10px_0_var(--primary-glow)]"
+            data-analytics-event="projects_cta_clicked"
+            data-analytics-cta="start_new_project"
+            data-analytics-location="mobile_header"
+            data-analytics-destination="/dashboard/chat/"
           >
             <i className="fa-solid fa-plus mr-2"></i> Start New Project
           </a>
@@ -57,6 +68,10 @@ export default async function DashboardProjectsPage() {
           <a
             href="/dashboard/chat/"
             className="glass-panel p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border border-amber-500/30 overflow-hidden relative cursor-pointer hover:bg-white/5 transition"
+            data-analytics-event="projects_cta_clicked"
+            data-analytics-cta="open_active_build"
+            data-analytics-location="active_build"
+            data-analytics-destination="/dashboard/chat/"
           >
             <div className="absolute right-0 top-0 w-64 h-full bg-gradient-to-l from-amber-500/5 to-transparent pointer-events-none"></div>
             <div className="flex items-start gap-4 md:gap-6 relative z-10 w-full">
@@ -131,12 +146,20 @@ export default async function DashboardProjectsPage() {
                 )}
               </p>
               <div className="flex items-center gap-3 mt-auto relative z-10 pt-4 border-t border-white/5">
-                <a href={state.publicProfileUrl || "/dashboard/profile"} className="btn btn-secondary text-xs px-3 py-1.5 flex-1 text-center">
+                <a
+                  href={state.publicProfileUrl || "/dashboard/profile"}
+                  className="btn btn-secondary text-xs px-3 py-1.5 flex-1 text-center"
+                  data-analytics-event="public_profile_clicked"
+                  data-analytics-location="projects_page"
+                  data-analytics-destination={state.publicProfileUrl || "/dashboard/profile"}
+                >
                   <i className="fa-solid fa-globe mr-1"></i> View Public Page
                 </a>
                 <button
                   className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 transition"
                   title="Copy Link"
+                  data-analytics-event="project_public_link_copy_clicked"
+                  data-analytics-location="projects_page"
                 >
                   <i className="fa-solid fa-link"></i>
                 </button>

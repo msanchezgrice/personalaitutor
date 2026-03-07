@@ -1,3 +1,4 @@
+import { createAnalyticsEventId } from "@/lib/analytics";
 import { fbCompleteRegistration } from "@/lib/fb-pixel";
 
 const linkedInSignupConversionId = Number(process.env.NEXT_PUBLIC_LINKEDIN_SIGNUP_CONVERSION_ID || "0") || 0;
@@ -63,7 +64,9 @@ export function trackAdCompleteRegistration(input: {
   sessionId?: string | null;
   source?: string;
 }) {
-  fbCompleteRegistration("clerk");
+  const eventId = createAnalyticsEventId("complete_registration");
+
+  fbCompleteRegistration("clerk", eventId);
   trackXEvent("SignUp", {
     content_name: "signup",
   });
@@ -72,6 +75,7 @@ export function trackAdCompleteRegistration(input: {
   });
   sendServerConversion({
     event: "complete_registration",
+    eventId,
     sessionId: input.sessionId ?? null,
     source: input.source,
   });
@@ -82,7 +86,9 @@ export function trackAdLead(input: {
   sessionId?: string | null;
   careerCategory?: string;
   source?: string;
+  eventId?: string;
 }) {
+  const eventId = input.eventId ?? createAnalyticsEventId("lead");
   trackXEvent("Lead", {
     value: input.score,
     currency: "USD",
@@ -94,6 +100,7 @@ export function trackAdLead(input: {
   });
   sendServerConversion({
     event: "lead",
+    eventId,
     value: input.score,
     currency: "USD",
     score: input.score,

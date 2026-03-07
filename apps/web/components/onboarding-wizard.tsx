@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { GoalType, SituationStatus } from "@aitutor/shared";
 import { CAREER_PATHS } from "@aitutor/shared";
+import { createAnalyticsEventId } from "@/lib/analytics";
 import {
   fbOnboardingStart,
   fbQuizStart,
@@ -186,11 +187,13 @@ export function OnboardingWizard() {
         throw new Error(data && "error" in data ? data.error.message : "Unable to submit assessment");
       }
       setAssessmentResult(data.assessment);
-      fbQuizComplete(data.assessment.score, data.assessment.recommendedCareerPathIds);
+      const leadEventId = createAnalyticsEventId("lead");
+      fbQuizComplete(data.assessment.score, data.assessment.recommendedCareerPathIds, leadEventId);
       trackAdLead({
         score: data.assessment.score,
         sessionId,
         source: "legacy_onboarding_wizard",
+        eventId: leadEventId,
       });
       fbOnboardingComplete();
       setStep(5);

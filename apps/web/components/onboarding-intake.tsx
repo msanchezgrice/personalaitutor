@@ -11,7 +11,9 @@ import {
   fbViewContent,
 } from "@/lib/fb-pixel";
 import { trackAdCompleteRegistration, trackAdLead } from "@/lib/ad-conversions";
+import { captureAnalyticsEvent, createAnalyticsEventId } from "@/lib/analytics";
 import { readClientAttributionEnvelope } from "@/lib/attribution";
+import { COMPLETE_REGISTRATION_FIRED_KEY, PENDING_SESSION_KEY, SIGN_UP_INTENT_KEY } from "@/components/auth-tracking-keys";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -26,37 +28,25 @@ const STEP_NAMES: Record<Step, string> = {
 };
 
 function trackPosthog(event: string, properties?: Record<string, unknown>) {
-  try {
-    const ph = (window as unknown as { posthog?: { capture: (e: string, p?: Record<string, unknown>) => void } }).posthog;
-    if (ph?.capture) {
-      const attribution = readClientAttributionEnvelope();
-      const last = attribution?.last;
-      ph.capture(event, {
-        funnel: ONBOARDING_FUNNEL,
-        utm_source: last?.utmSource ?? null,
-        utm_medium: last?.utmMedium ?? null,
-        utm_campaign: last?.utmCampaign ?? null,
-        utm_content: last?.utmContent ?? null,
-        paid_source:
-          last?.utmSource?.toLowerCase().includes("linkedin")
-            ? "linkedin"
-            : last?.utmSource === "x" || last?.utmSource?.toLowerCase().includes("twitter")
-              ? "x"
-              : last?.utmSource?.toLowerCase().includes("facebook") || last?.utmSource?.toLowerCase().includes("meta")
-                ? "facebook"
-                : "unknown",
-        ...properties,
-      });
-    }
-  } catch {
-    // Ignore tracking failures.
-  }
+  captureAnalyticsEvent(event, {
+    funnel: ONBOARDING_FUNNEL,
+    ...(properties ?? {}),
+  });
 }
 
 function trackFunnelStep(step: string, properties?: Record<string, unknown>) {
   trackPosthog("onboarding_assessment_funnel_step", {
     step,
     ...properties,
+  });
+}
+
+function trackValidationFailure(step: Step, reason: string, properties?: Record<string, unknown>) {
+  trackPosthog("onboarding_step_validation_failed", {
+    step,
+    step_name: STEP_NAMES[step],
+    reason,
+    ...(properties ?? {}),
   });
 }
 
@@ -416,11 +406,8 @@ const aiComfortOptions = [
   { value: 5, label: "Advanced" },
 ] as const;
 
-const PENDING_SESSION_KEY = "ai_tutor_pending_onboarding_session_v1";
 const ONBOARDING_BOOTSTRAP_KEY = "ai_tutor_onboarding_bootstrap_v1";
 const ONBOARDING_DRAFT_KEY = "ai_tutor_onboarding_draft_v1";
-const SIGN_UP_INTENT_KEY = "ai_tutor_clerk_signup_intent_v1";
-const COMPLETE_REGISTRATION_FIRED_KEY = "ai_tutor_complete_registration_fired_v1";
 
 function getRiskBand(score: number): RiskBand {
   if (score >= 70) return "High";
@@ -637,6 +624,14 @@ export function OnboardingIntake() {
 
   const continueAfterSummary = () => {
     if (!nextRedirectHref || !isSignedIn) return;
+    trackPosthog("assessment_summary_cta_clicked", {
+      session_id: sessionId,
+      destination: nextRedirectHref,
+      action: "open_dashboard",
+      career_category: careerCategory,
+      score: normalizedScore,
+      risk_band: riskBand,
+    });
     trackPosthog("onboarding_continue_to_dashboard", {
       session_id: sessionId,
       destination: nextRedirectHref,
@@ -681,8 +676,15 @@ export function OnboardingIntake() {
     const oauth = params.get("oauth");
     if (oauth === "linkedin_connected") {
       setLinkedinConnected(true);
+      trackPosthog("onboarding_linkedin_oauth_completed", {
+        session_id: maybeSessionId ?? boot?.sessionId ?? null,
+      });
     } else if (oauth === "linkedin_denied") {
       setError("LinkedIn connection was denied. You can continue onboarding without it or try again.");
+      trackPosthog("onboarding_linkedin_oauth_failed", {
+        session_id: maybeSessionId ?? boot?.sessionId ?? null,
+        reason: "oauth_denied",
+      });
     }
     return () => {
       document.documentElement.removeAttribute("data-onboarding-react");
@@ -1027,6 +1029,10 @@ export function OnboardingIntake() {
     setBusy(true);
     try {
       const session = await ensureSession();
+      trackPosthog("onboarding_linkedin_oauth_started", {
+        session_id: session.id,
+        source: "onboarding_step_work_details",
+      });
       const redirectPath = sanitizeRedirectPath(
         `/onboarding?sessionId=${encodeURIComponent(session.id)}&oauth=linkedin_connected`,
       );
@@ -1036,6 +1042,10 @@ export function OnboardingIntake() {
         `&redirectPath=${encodeURIComponent(redirectPath)}`;
       window.location.href = href;
     } catch (err) {
+      trackPosthog("onboarding_linkedin_oauth_failed", {
+        session_id: sessionId,
+        reason: err instanceof Error ? err.message : "oauth_start_failed",
+      });
       setError(err instanceof Error ? err.message : "Unable to start LinkedIn OAuth");
     } finally {
       setBusy(false);
@@ -1047,6 +1057,11 @@ export function OnboardingIntake() {
     setResumeUploadBusy(true);
     try {
       const session = await ensureSession();
+      trackPosthog("onboarding_resume_upload_started", {
+        session_id: session.id,
+        file_type: file.type,
+        file_size: file.size,
+      });
       const form = new FormData();
       form.append("sessionId", session.id);
       form.append("sessionToken", session.token);
@@ -1071,6 +1086,12 @@ export function OnboardingIntake() {
         file_size: file.size,
       });
     } catch (err) {
+      trackPosthog("onboarding_resume_upload_failed", {
+        session_id: sessionId,
+        file_type: file.type,
+        file_size: file.size,
+        reason: err instanceof Error ? err.message : "resume_upload_failed",
+      });
       setResumeFile(null);
       setUploadedResumeName(null);
       setError(err instanceof Error ? err.message : "Unable to upload resume");
@@ -1083,12 +1104,19 @@ export function OnboardingIntake() {
     setError(null);
     const stepOneError = validateStepOne();
     if (stepOneError) {
+      trackValidationFailure(1, stepOneError, {
+        career_category: careerCategory,
+      });
       setStep(1);
       setError(stepOneError);
       return;
     }
     const stepTwoError = validateStepTwo();
     if (stepTwoError) {
+      trackValidationFailure(2, stepTwoError, {
+        has_linkedin: !!linkedinUrl.trim() || linkedinConnected,
+        goals_count: selectedGoals.length,
+      });
       setStep(2);
       setError(stepTwoError);
       return;
@@ -1112,6 +1140,7 @@ export function OnboardingIntake() {
     }
     try {
       const session = await ensureSession();
+      const leadEventId = createAnalyticsEventId("lead");
 
       const answers = [
         { questionId: "career_experience", value: selectedExperience.score },
@@ -1145,12 +1174,13 @@ export function OnboardingIntake() {
       setRecommendedPaths(recommended);
       if (!quizCompleteFired.current) {
         quizCompleteFired.current = true;
-        fbQuizComplete(score, recommended);
+        fbQuizComplete(score, recommended, leadEventId);
         trackAdLead({
           score,
           sessionId: session.id,
           careerCategory,
           source: "onboarding_assessment_complete",
+          eventId: leadEventId,
         });
       }
       setStep(5);
@@ -1179,6 +1209,11 @@ export function OnboardingIntake() {
       setNextRedirectHref(redirectPath);
       setNextRedirectLabel("Create Account to Continue");
     } catch (err) {
+      trackPosthog("onboarding_analysis_failed", {
+        session_id: sessionId,
+        career_category: careerCategory,
+        reason: err instanceof Error ? err.message : "analysis_failed",
+      });
       setError(err instanceof Error ? err.message : "Unable to complete onboarding");
       setStep(3);
     } finally {
@@ -1227,6 +1262,10 @@ export function OnboardingIntake() {
                     } catch {
                       // Ignore storage failures.
                     }
+                    trackPosthog("auth_sign_up_cta_clicked", {
+                      auth_provider: "clerk",
+                      source: "onboarding_auth_gate",
+                    });
                     trackPosthog("clerk_sign_up_started", {
                       auth_provider: "clerk",
                       source: "onboarding_auth_gate",
@@ -1722,9 +1761,17 @@ export function OnboardingIntake() {
                   <SignUpButton mode="modal" forceRedirectUrl={nextRedirectHref ?? "/dashboard/?welcome=1"} fallbackRedirectUrl={nextRedirectHref ?? "/dashboard/?welcome=1"}>
                     <button
                       type="button"
-                      className="btn btn-primary px-8"
-                      disabled={!nextRedirectHref || navigatingAfterSummary}
-                      onClick={() => {
+                    className="btn btn-primary px-8"
+                    disabled={!nextRedirectHref || navigatingAfterSummary}
+                    onClick={() => {
+                        trackPosthog("assessment_summary_cta_clicked", {
+                          session_id: sessionId,
+                          destination: nextRedirectHref,
+                          action: "create_account_to_continue",
+                          career_category: careerCategory,
+                          score: normalizedScore,
+                          risk_band: riskBand,
+                        });
                         try {
                           window.sessionStorage.setItem(
                             SIGN_UP_INTENT_KEY,
@@ -1733,6 +1780,10 @@ export function OnboardingIntake() {
                         } catch {
                           // Ignore storage failures.
                         }
+                        trackPosthog("auth_sign_up_cta_clicked", {
+                          auth_provider: "clerk",
+                          source: "assessment_complete_cta",
+                        });
                         trackPosthog("clerk_sign_up_started", {
                           auth_provider: "clerk",
                           source: "assessment_complete_cta",
@@ -1769,6 +1820,11 @@ export function OnboardingIntake() {
                 className="btn btn-secondary"
                 onClick={() => {
                   setError(null);
+                  trackPosthog("onboarding_step_back_clicked", {
+                    step,
+                    step_name: STEP_NAMES[step],
+                    session_id: sessionId,
+                  });
                   setStep((prev) => (prev > 1 ? ((prev - 1) as Step) : prev));
                 }}
                 disabled={busy || resumeUploadBusy || step === 1}
@@ -1785,6 +1841,9 @@ export function OnboardingIntake() {
                     if (step === 1) {
                       const validation = validateStepOne();
                       if (validation) {
+                        trackValidationFailure(1, validation, {
+                          career_category: careerCategory,
+                        });
                         setError(validation);
                         return;
                       }
@@ -1804,6 +1863,10 @@ export function OnboardingIntake() {
                     if (step === 2) {
                       const validation = validateStepTwo();
                       if (validation) {
+                        trackValidationFailure(2, validation, {
+                          has_linkedin: !!linkedinUrl.trim() || linkedinConnected,
+                          goals_count: selectedGoals.length,
+                        });
                         setError(validation);
                         return;
                       }

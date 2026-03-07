@@ -3,9 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { trackAdCompleteRegistration } from "@/lib/ad-conversions";
-
-const PENDING_SESSION_KEY = "ai_tutor_pending_onboarding_session_v1";
-const COMPLETE_REGISTRATION_FIRED_KEY = "ai_tutor_complete_registration_fired_v1";
+import { COMPLETE_REGISTRATION_FIRED_KEY, PENDING_SESSION_KEY } from "@/components/auth-tracking-keys";
 
 export function FbCompleteRegistrationOnDashboard() {
   const searchParams = useSearchParams();

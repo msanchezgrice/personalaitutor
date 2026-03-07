@@ -171,6 +171,8 @@
     var existing = readCtx();
     if (existing && typeof existing === "object") {
       if (!existing.userId) {
+        existing.authUserId = null;
+        existing.profileUserId = null;
         existing.sessionId = null;
         existing.projectId = null;
         existing.handle = null;
@@ -181,6 +183,8 @@
 
     var created = {
       userId: null,
+      authUserId: null,
+      profileUserId: null,
       name: "New Learner",
       handle: null,
       sessionId: null,
@@ -212,25 +216,52 @@
 
   function baseAnalyticsProps(properties) {
     var attribution = readAttributionEnvelope();
+    var first = attribution && attribution.first ? attribution.first : {};
     var last = attribution && attribution.last ? attribution.last : {};
     var source = typeof last.utmSource === "string" ? last.utmSource.toLowerCase() : "";
+    var analyticsUserId = ctx && ctx.authUserId ? ctx.authUserId : (ctx && ctx.userId ? ctx.userId : null);
+    var posthog = posthogClient();
     var base = {
       app: "web",
       path: currentPath,
+      page_url: window.location && window.location.href ? window.location.href : null,
+      posthog_distinct_id: posthog && typeof posthog.get_distinct_id === "function" ? posthog.get_distinct_id() : null,
       utm_source: last.utmSource || null,
       utm_medium: last.utmMedium || null,
       utm_campaign: last.utmCampaign || null,
       utm_content: last.utmContent || null,
+      utm_term: last.utmTerm || null,
+      fbclid: last.fbclid || null,
+      twclid: last.twclid || null,
+      li_fat_id: last.liFatId || null,
+      gclid: last.gclid || null,
+      msclkid: last.msclkid || null,
+      landing_path: last.landingPath || null,
+      referrer: last.referrer || null,
+      attribution_captured_at: last.capturedAt || null,
+      first_utm_source: first.utmSource || null,
+      first_utm_medium: first.utmMedium || null,
+      first_utm_campaign: first.utmCampaign || null,
+      first_utm_content: first.utmContent || null,
+      first_utm_term: first.utmTerm || null,
+      first_landing_path: first.landingPath || null,
+      first_referrer: first.referrer || null,
       paid_source:
         source.indexOf("linkedin") !== -1
           ? "linkedin"
           : source === "x" || source.indexOf("twitter") !== -1
             ? "x"
             : source.indexOf("facebook") !== -1 || source.indexOf("meta") !== -1 || source.indexOf("instagram") !== -1
-              ? "facebook"
+            ? "facebook"
+            : source.indexOf("google") !== -1 || last.gclid
+              ? "google"
+              : source.indexOf("bing") !== -1 || last.msclkid
+                ? "bing"
               : "unknown",
     };
-    if (ctx && ctx.userId) base.user_id = ctx.userId;
+    if (analyticsUserId) base.user_id = analyticsUserId;
+    if (ctx && ctx.authUserId) base.auth_user_id = ctx.authUserId;
+    if (ctx && ctx.profileUserId) base.profile_user_id = ctx.profileUserId;
     if (ctx && ctx.sessionId) base.session_id = ctx.sessionId;
     if (ctx && ctx.handle) base.handle = ctx.handle;
     return Object.assign(base, properties || {});
@@ -246,6 +277,46 @@
     }
   }
 
+  function parseAnalyticsDatasetValue(value) {
+    if (value === "true") return true;
+    if (value === "false") return false;
+    if (value === "null") return null;
+    if (value === "") return "";
+    if (!isNaN(Number(value)) && value.trim && value.trim() !== "") {
+      return Number(value);
+    }
+    return value;
+  }
+
+  function bindDatasetAnalytics(root) {
+    var scope = root || document;
+    if (!scope || typeof scope.querySelectorAll !== "function") return;
+
+    Array.prototype.forEach.call(scope.querySelectorAll("[data-analytics-event]"), function (node) {
+      if (!node || node.getAttribute("data-analytics-bound") === "1") return;
+      node.setAttribute("data-analytics-bound", "1");
+      node.addEventListener("click", function () {
+        var eventName = node.getAttribute("data-analytics-event");
+        if (!eventName) return;
+
+        var props = {};
+        Array.prototype.forEach.call(node.attributes || [], function (attribute) {
+          if (!attribute || typeof attribute.name !== "string") return;
+          if (attribute.name.indexOf("data-analytics-") !== 0) return;
+          if (attribute.name === "data-analytics-event" || attribute.name === "data-analytics-bound") return;
+          var key = attribute.name.slice("data-analytics-".length).replace(/-/g, "_");
+          props[key] = parseAnalyticsDatasetValue(attribute.value);
+        });
+
+        if (node.tagName === "A" && !Object.prototype.hasOwnProperty.call(props, "destination")) {
+          props.destination = node.getAttribute("href") || null;
+        }
+
+        captureEvent(eventName, props);
+      });
+    });
+  }
+
   function trackFunnelStep(step, properties) {
     if (!step) return;
     captureEvent("onboarding_assessment_funnel_step", Object.assign({
@@ -255,17 +326,54 @@
   }
 
   function identifyPosthogUser() {
-    if (!ctx || !ctx.userId) return;
+    if (!ctx || !(ctx.authUserId || ctx.userId)) return;
     var posthog = posthogClient();
     if (!posthog || typeof posthog.identify !== "function") return;
 
-    var distinctId = String(ctx.userId);
+    var distinctId = String(ctx.authUserId || ctx.userId);
+    var anonymousDistinctId = typeof posthog.get_distinct_id === "function" ? posthog.get_distinct_id() : null;
+    var attribution = readAttributionEnvelope();
+    var first = attribution && attribution.first ? attribution.first : {};
+    var last = attribution && attribution.last ? attribution.last : {};
+    var source = typeof last.utmSource === "string" ? last.utmSource.toLowerCase() : "";
 
     var personProps = {};
     if (ctx.email) personProps.email = ctx.email;
     if (ctx.name) personProps.name = ctx.name;
     if (ctx.handle) personProps.handle = ctx.handle;
     if (ctx.careerPathId) personProps.career_path_id = ctx.careerPathId;
+    if (ctx.profileUserId) personProps.profile_user_id = ctx.profileUserId;
+    personProps.first_utm_source = first.utmSource || null;
+    personProps.first_utm_medium = first.utmMedium || null;
+    personProps.first_utm_campaign = first.utmCampaign || null;
+    personProps.first_utm_content = first.utmContent || null;
+    personProps.first_utm_term = first.utmTerm || null;
+    personProps.first_landing_path = first.landingPath || null;
+    personProps.first_referrer = first.referrer || null;
+    personProps.last_utm_source = last.utmSource || null;
+    personProps.last_utm_medium = last.utmMedium || null;
+    personProps.last_utm_campaign = last.utmCampaign || null;
+    personProps.last_utm_content = last.utmContent || null;
+    personProps.last_utm_term = last.utmTerm || null;
+    personProps.last_landing_path = last.landingPath || null;
+    personProps.last_referrer = last.referrer || null;
+    personProps.last_fbclid = last.fbclid || null;
+    personProps.last_twclid = last.twclid || null;
+    personProps.last_li_fat_id = last.liFatId || null;
+    personProps.last_gclid = last.gclid || null;
+    personProps.last_msclkid = last.msclkid || null;
+    personProps.paid_source =
+      source.indexOf("linkedin") !== -1
+        ? "linkedin"
+        : source === "x" || source.indexOf("twitter") !== -1
+          ? "x"
+          : source.indexOf("facebook") !== -1 || source.indexOf("meta") !== -1 || source.indexOf("instagram") !== -1
+            ? "facebook"
+            : source.indexOf("google") !== -1 || last.gclid
+              ? "google"
+              : source.indexOf("bing") !== -1 || last.msclkid
+                ? "bing"
+              : "unknown";
 
     try {
       if (lastPosthogIdentifiedUserId === distinctId) {
@@ -275,6 +383,13 @@
         return;
       }
 
+      if (
+        anonymousDistinctId &&
+        anonymousDistinctId !== distinctId &&
+        typeof posthog.alias === "function"
+      ) {
+        posthog.alias(distinctId, anonymousDistinctId);
+      }
       posthog.identify(distinctId, personProps);
       lastPosthogIdentifiedUserId = distinctId;
     } catch {
@@ -392,7 +507,7 @@
   function maybeTrackAuthEntryEvents() {
     if (currentPath === "/sign-up") {
       markSignUpIntent();
-      captureEvent("clerk_sign_up_started", { auth_provider: "clerk" });
+      captureEvent("auth_sign_up_page_viewed", { auth_provider: "clerk" });
       captureEvent("clerk_sign_up_viewed", { auth_provider: "clerk" });
       captureEvent("auth_clerk_sign_up_viewed", { auth_provider: "clerk" });
       trackFunnelStep("clerk_sign_up_viewed", { auth_provider: "clerk" });
@@ -400,6 +515,7 @@
     }
 
     if (currentPath === "/sign-in") {
+      captureEvent("auth_sign_in_page_viewed", { auth_provider: "clerk" });
       captureEvent("auth_clerk_sign_in_viewed", { auth_provider: "clerk" });
     }
   }
@@ -444,7 +560,7 @@
   }
 
   function cacheScope(explicitUserId) {
-    var userId = explicitUserId || (ctx && ctx.userId ? ctx.userId : null);
+    var userId = explicitUserId || (ctx && (ctx.authUserId || ctx.userId || ctx.profileUserId) ? (ctx.authUserId || ctx.userId || ctx.profileUserId) : null);
     if (!userId) return null;
     return String(userId);
   }
@@ -523,6 +639,8 @@
       clearScopedCaches(previousScope);
     }
     ctx.userId = null;
+    ctx.authUserId = null;
+    ctx.profileUserId = null;
     ctx.handle = null;
     ctx.sessionId = null;
     ctx.projectId = null;
@@ -716,8 +834,8 @@
     var prewarmProjectId = prewarmProject && prewarmProject.id ? prewarmProject.id : null;
     var summaryUserId = summary && summary.user && summary.user.id ? String(summary.user.id) : null;
 
-    if (summaryUserId && (!ctx.userId || ctx.userId !== summaryUserId)) {
-      ctx.userId = summaryUserId;
+    if (summaryUserId && (!ctx.profileUserId || ctx.profileUserId !== summaryUserId)) {
+      ctx.profileUserId = summaryUserId;
       saveCtx(ctx);
     }
 
@@ -1174,11 +1292,13 @@
         ctx.handle = null;
         ctx.headline = null;
       }
+      ctx.authUserId = incomingUserId || ctx.authUserId;
       ctx.userId = incomingUserId || ctx.userId;
       if (data.auth.name) ctx.name = data.auth.name;
       if (data.auth.avatarUrl) ctx.avatarUrl = data.auth.avatarUrl;
       if (data.auth.email) ctx.email = data.auth.email;
       if (data.summary && data.summary.user && data.summary.user.handle) {
+        if (data.summary.user.id) ctx.profileUserId = data.summary.user.id;
         ctx.handle = data.summary.user.handle;
         ctx.headline = headlineForUser(data.summary.user);
         if (data.summary.user.avatarUrl) ctx.avatarUrl = data.summary.user.avatarUrl;
@@ -1222,7 +1342,7 @@
         if (Array.isArray(result.session.goals)) ctx.onboardingGoals = result.session.goals;
       }
       if (result && result.user) {
-        if (result.user.id) ctx.userId = result.user.id;
+        if (result.user.id) ctx.profileUserId = result.user.id;
         if (result.user.handle) ctx.handle = result.user.handle;
         if (result.user.name) ctx.name = result.user.name;
         if (result.user.avatarUrl) ctx.avatarUrl = result.user.avatarUrl;
@@ -1292,9 +1412,13 @@
     try {
       var data = await getJson("/api/auth/session");
       if (data && data.summary) {
-        if (data.auth && data.auth.userId) ctx.userId = data.auth.userId;
+        if (data.auth && data.auth.userId) {
+          ctx.authUserId = data.auth.userId;
+          ctx.userId = data.auth.userId;
+        }
         if (data.auth && data.auth.name) ctx.name = data.auth.name;
         if (data.auth && data.auth.avatarUrl) ctx.avatarUrl = data.auth.avatarUrl;
+        if (data.summary.user && data.summary.user.id) ctx.profileUserId = data.summary.user.id;
         if (data.summary.user && data.summary.user.handle) ctx.handle = data.summary.user.handle;
         saveCtx(ctx);
         identifyPosthogUser();
@@ -1328,10 +1452,14 @@
         if (previousScope && incomingUserId && previousScope !== incomingUserId) {
           clearScopedCaches(previousScope);
         }
-        if (data.auth.userId) ctx.userId = data.auth.userId;
+        if (data.auth.userId) {
+          ctx.authUserId = data.auth.userId;
+          ctx.userId = data.auth.userId;
+        }
         if (data.auth.name) ctx.name = data.auth.name;
         if (data.auth.avatarUrl) ctx.avatarUrl = data.auth.avatarUrl;
         if (data.auth.email) ctx.email = data.auth.email;
+        if (data.summary && data.summary.user && data.summary.user.id) ctx.profileUserId = data.summary.user.id;
         if (data.summary && data.summary.user && data.summary.user.handle) ctx.handle = data.summary.user.handle;
         saveCtx(ctx);
         identifyPosthogUser();
@@ -1497,13 +1625,13 @@
     if (ctx && typeof ctx.name === "string" && ctx.name.trim()) {
       resolvedName = ctx.name.trim();
     }
-    if (user.id) ctx.userId = user.id;
+    if (user.id) ctx.profileUserId = user.id;
     ctx.handle = user.handle;
     ctx.name = resolvedName;
     ctx.headline = headlineForUser(user);
     if (user.avatarUrl) ctx.avatarUrl = user.avatarUrl;
     saveCtx(ctx);
-    maybeWarmHomeNews(user.id ? String(user.id) : ctx.userId);
+    maybeWarmHomeNews(user.id ? String(user.id) : (ctx.profileUserId || ctx.userId));
 
     var sidebarProfileLink = document.querySelector("[data-sidebar-profile='1']") ||
       document.querySelector("aside a[href='/dashboard/profile/'], aside a[href='/dashboard/profile']");
@@ -1708,7 +1836,10 @@
 
     ctx.sessionId = data.session.id;
     ctx.sessionToken = data.sessionToken;
-    if (data.user && data.user.id) ctx.userId = data.user.id;
+    if (data.user && data.user.id) {
+      ctx.profileUserId = data.user.id;
+      if (!ctx.userId) ctx.userId = data.user.id;
+    }
     if (data.user && data.user.handle) ctx.handle = data.user.handle;
     if (data.user && data.user.name) ctx.name = data.user.name;
     if (data.user && data.user.avatarUrl) ctx.avatarUrl = data.user.avatarUrl;
@@ -2057,7 +2188,7 @@
           var isLoading = unavailableReason && unavailableReason.toLowerCase().indexOf("generating") !== -1;
           if (isLoading && !rows.length) {
             updatesList.innerHTML =
-              '<a href="/dashboard/ai-news/" class="block glass p-4 rounded-xl border border-sky-500/20 bg-sky-500/5 hover:bg-white/5 transition flex gap-3">' +
+              '<a href="/dashboard/ai-news/" class="block glass p-4 rounded-xl border border-sky-500/20 bg-sky-500/5 hover:bg-white/5 transition flex gap-3" data-analytics-event="dashboard_ai_news_story_clicked" data-analytics-location="dashboard_home" data-analytics-story-index="0" data-analytics-story-state="loading" data-analytics-destination="/dashboard/ai-news/">' +
               '<div class="w-8 h-8 rounded shrink-0 bg-sky-500/20 flex items-center justify-center text-sky-400">' +
               '<span class="runtime-loader-spinner runtime-loader-spinner-sm"></span></div>' +
               "<div>" +
@@ -2065,6 +2196,7 @@
               '<p class="text-xs text-gray-400 line-clamp-2">' + escapeHtml(unavailableReason || "Preparing today's AI news briefing.") + "</p>" +
               '<p class="text-[10px] text-sky-300 mt-1">Loading</p>' +
               "</div></a>";
+            bindDatasetAnalytics(updatesList);
             return;
           }
           while (rows.length < 3) {
@@ -2075,9 +2207,9 @@
             });
           }
           updatesList.innerHTML = rows
-            .map(function (story) {
+            .map(function (story, index) {
               return (
-                '<a href="/dashboard/ai-news/" class="block glass p-4 rounded-xl border border-sky-500/20 bg-sky-500/5 hover:bg-white/5 transition flex gap-3">' +
+                '<a href="/dashboard/ai-news/" class="block glass p-4 rounded-xl border border-sky-500/20 bg-sky-500/5 hover:bg-white/5 transition flex gap-3" data-analytics-event="dashboard_ai_news_story_clicked" data-analytics-location="dashboard_home" data-analytics-story-index="' + String(index + 1) + '" data-analytics-story-title="' + escapeHtml(story.title) + '" data-analytics-story-source="' + escapeHtml(story.source) + '" data-analytics-destination="/dashboard/ai-news/">' +
                 '<div class="w-8 h-8 rounded shrink-0 bg-sky-500/20 flex items-center justify-center text-sky-400">' +
                 '<i class="fa-solid fa-newspaper text-xs"></i></div>' +
                 "<div>" +
@@ -2088,6 +2220,7 @@
               );
             })
             .join("");
+          bindDatasetAnalytics(updatesList);
         }
 
         async function refreshHomeNews() {
@@ -2097,14 +2230,29 @@
             throw new Error("No news insights returned");
           }
           renderHomeNews(insights);
+          captureEvent("ai_news_loaded", {
+            location: "dashboard_home",
+            source: "network",
+            stories_count: insights.length,
+          });
         }
 
         var cachedNews = readHomeNewsCache(summaryUserId);
         if (cachedNews && Array.isArray(cachedNews.insights) && cachedNews.insights.length) {
           renderHomeNews(cachedNews.insights);
+          captureEvent("ai_news_loaded", {
+            location: "dashboard_home",
+            source: "cache",
+            stories_count: cachedNews.insights.length,
+          });
         } else {
           renderHomeNews([], "Generating today's AI news briefing. Open AI News for live status.");
           void refreshHomeNews().catch(function (err) {
+            captureEvent("ai_news_load_failed", {
+              location: "dashboard_home",
+              source: "network",
+              reason: err && err.message ? String(err.message) : "unknown_error",
+            });
             renderHomeNews([], err && err.message ? String(err.message) : "Unable to load AI News.");
           });
         }
@@ -2194,8 +2342,17 @@
         if (!value) return;
         try {
           await navigator.clipboard.writeText(value);
+          captureEvent("project_public_link_copied", {
+            location: "projects_page",
+            destination: value,
+          });
           toast("Project link copied.", false);
-        } catch {
+        } catch (err) {
+          captureEvent("project_public_link_copy_failed", {
+            location: "projects_page",
+            destination: value,
+            reason: err && err.message ? err.message : "clipboard_unavailable",
+          });
           toast("Clipboard unavailable.", true);
         }
       });
@@ -2991,7 +3148,7 @@
       var focusSummary = result && result.focusSummary ? escapeHtml(result.focusSummary) : "Stories tailored to your goals and active projects.";
       var source = result && result.source ? escapeHtml(String(result.source)) : "personalized";
       var cards = insights
-        .map(function (insight) {
+        .map(function (insight, index) {
           var tone = storyTone(insight && insight.category);
           var title = escapeHtml(insight && insight.title ? insight.title : "AI Story");
           var summaryText = escapeHtml(insight && insight.summary ? insight.summary : "");
@@ -3036,7 +3193,7 @@
             '<span class="text-slate-500">' + sourceLabel + "</span>" +
             '<a href="' +
             url +
-            '" target="_blank" rel="noreferrer" class="text-sky-700 hover:text-sky-900 font-semibold">Open Story →</a>' +
+            '" target="_blank" rel="noreferrer" class="text-sky-700 hover:text-sky-900 font-semibold" data-analytics-event="ai_news_story_clicked" data-analytics-location="ai_news_page" data-analytics-story-index="' + String(index + 1) + '" data-analytics-story-title="' + title + '" data-analytics-story-source="' + sourceLabel + '" data-analytics-destination="' + url + '">Open Story →</a>' +
             "</div>" +
             "</article>"
           );
@@ -3056,11 +3213,16 @@
         "</div>" +
         (cards || '<div class="glass p-5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700">No stories available yet. Refresh to pull personalized recommendations.</div>') +
         "</div>";
+      bindDatasetAnalytics(contentWrap);
 
       var refreshButton = contentWrap.querySelector("button[data-ai-news-refresh='1']");
       if (refreshButton) {
         refreshButton.addEventListener("click", async function () {
           var original = refreshButton.innerHTML;
+          captureEvent("ai_news_refresh_clicked", {
+            location: "ai_news_page",
+            current_stories_count: insights.length,
+          });
           refreshButton.setAttribute("disabled", "true");
           refreshButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Refreshing';
           try {
@@ -3069,8 +3231,18 @@
               throw new Error("Unable to refresh AI news");
             }
             renderNews(refreshed);
+            captureEvent("ai_news_loaded", {
+              location: "ai_news_page",
+              source: "refresh",
+              stories_count: refreshed.insights.length,
+            });
             toast("AI news refreshed.", false);
           } catch (err) {
+            captureEvent("ai_news_load_failed", {
+              location: "ai_news_page",
+              source: "refresh",
+              reason: err instanceof Error ? err.message : "unknown_error",
+            });
             toast(err instanceof Error ? err.message : "Unable to refresh AI news", true);
           } finally {
             refreshButton.removeAttribute("disabled");
@@ -3083,6 +3255,11 @@
     var cachedNews = readHomeNewsCache(summaryUserId);
     if (cachedNews && Array.isArray(cachedNews.insights) && cachedNews.insights.length) {
       renderNews(cachedNews);
+      captureEvent("ai_news_loaded", {
+        location: "ai_news_page",
+        source: "cache",
+        stories_count: cachedNews.insights.length,
+      });
       return;
     }
 
@@ -3092,7 +3269,17 @@
         throw new Error("AI news is taking longer than expected. Refresh to retry.");
       }
       renderNews(initial);
+      captureEvent("ai_news_loaded", {
+        location: "ai_news_page",
+        source: "network",
+        stories_count: initial.insights.length,
+      });
     } catch (err) {
+      captureEvent("ai_news_load_failed", {
+        location: "ai_news_page",
+        source: "network",
+        reason: err instanceof Error ? err.message : "unknown_error",
+      });
       renderNews({
         insights: [],
         source: "unavailable",
@@ -4188,6 +4375,7 @@
       }
       try {
         await hydrateCurrentPath();
+        bindDatasetAnalytics(document);
       } catch (err) {
         captureEvent("app_route_hydrate_failed", {
           path: currentPath,
@@ -4245,6 +4433,7 @@
       ensureMobileDashboardNav();
       try {
         await hydrateCurrentPath();
+        bindDatasetAnalytics(document);
       } catch (err) {
         captureEvent("app_route_hydrate_failed", {
           path: currentPath,

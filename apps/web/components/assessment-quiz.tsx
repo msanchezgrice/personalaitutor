@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createAnalyticsEventId } from "@/lib/analytics";
 import { fbQuizStart, fbQuizComplete } from "@/lib/fb-pixel";
 import { trackAdLead } from "@/lib/ad-conversions";
 
@@ -66,10 +67,12 @@ export function AssessmentQuiz() {
         score: data.assessment.score,
         recommendedCareerPathIds: data.assessment.recommendedCareerPathIds,
       });
-      fbQuizComplete(data.assessment.score, data.assessment.recommendedCareerPathIds);
+      const leadEventId = createAnalyticsEventId("lead");
+      fbQuizComplete(data.assessment.score, data.assessment.recommendedCareerPathIds, leadEventId);
       trackAdLead({
         score: data.assessment.score,
         source: "assessment_quiz_component",
+        eventId: leadEventId,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to submit assessment");

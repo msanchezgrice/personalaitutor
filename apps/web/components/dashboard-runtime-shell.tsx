@@ -139,7 +139,13 @@ export function DashboardShell({
           className="w-full lg:w-72 glass border-y-0 border-l-0 rounded-none flex flex-col lg:h-full bg-black/20 flex-shrink-0 z-20 relative"
         >
           <div className="p-6">
-            <Link href="/" className="flex items-center gap-2 mb-8">
+            <Link
+              href="/"
+              className="flex items-center gap-2 mb-8"
+              data-analytics-event="dashboard_brand_clicked"
+              data-analytics-location="sidebar"
+              data-analytics-destination="/"
+            >
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl shadow-[0_0_15px_rgba(79,70,229,0.5)]">
                 <i className="fa-solid fa-brain text-sm"></i>
               </div>
@@ -154,6 +160,10 @@ export function DashboardShell({
                   : "flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition border border-transparent hover:border-white/10 mb-8 cursor-pointer"
               }
               data-sidebar-profile="1"
+              data-analytics-event="dashboard_nav_clicked"
+              data-analytics-location="sidebar_profile"
+              data-analytics-tab="profile"
+              data-analytics-destination="/dashboard/profile"
             >
               <img
                 src={avatarUrl}
@@ -174,7 +184,15 @@ export function DashboardShell({
               {navItems.map((item) => {
                 const active = activeTab === item.key;
                 return (
-                  <Link key={item.href} href={item.href} className={navLinkClassName(active, item.activeClassName)}>
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={navLinkClassName(active, item.activeClassName)}
+                    data-analytics-event="dashboard_nav_clicked"
+                    data-analytics-location="sidebar_nav"
+                    data-analytics-tab={item.key}
+                    data-analytics-destination={item.href}
+                  >
                     <i className={navIconClassName(item, active)}></i>
                     <span>{item.label}</span>
                   </Link>
@@ -207,6 +225,9 @@ export function DashboardShell({
               href={publicProfileUrl}
               aria-disabled={publicProfileUrl === "#" ? "true" : undefined}
               data-public-profile-link="1"
+              data-analytics-event="public_profile_clicked"
+              data-analytics-location="sidebar"
+              data-analytics-destination={publicProfileUrl}
               className={
                 "flex items-center justify-between px-4 py-2 text-gray-400 text-xs border border-white/10 rounded-lg transition" +
                 (publicProfileUrl === "#" ? " opacity-50 pointer-events-none" : "")

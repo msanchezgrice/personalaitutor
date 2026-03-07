@@ -37,13 +37,23 @@ function pixelReady(): boolean {
 export function fbEvent(
   name: string,
   params?: Record<string, unknown>,
+  eventId?: string,
 ): void {
   if (!pixelReady()) return;
+  const eventOptions = eventId ? { eventID: eventId } : undefined;
+  if (params && eventOptions) {
+    window.fbq("track", name, params, eventOptions);
+    return;
+  }
   if (params) {
     window.fbq("track", name, params);
-  } else {
-    window.fbq("track", name);
+    return;
   }
+  if (eventOptions) {
+    window.fbq("track", name, undefined, eventOptions);
+    return;
+  }
+  window.fbq("track", name);
 }
 
 /**
@@ -52,13 +62,23 @@ export function fbEvent(
 export function fbCustomEvent(
   name: string,
   params?: Record<string, unknown>,
+  eventId?: string,
 ): void {
   if (!pixelReady()) return;
+  const eventOptions = eventId ? { eventID: eventId } : undefined;
+  if (params && eventOptions) {
+    window.fbq("trackCustom", name, params, eventOptions);
+    return;
+  }
   if (params) {
     window.fbq("trackCustom", name, params);
-  } else {
-    window.fbq("trackCustom", name);
+    return;
   }
+  if (eventOptions) {
+    window.fbq("trackCustom", name, undefined, eventOptions);
+    return;
+  }
+  window.fbq("trackCustom", name);
 }
 
 /* ---------- convenience wrappers ---------- */
@@ -69,28 +89,28 @@ export function fbViewContent(contentName: string, extras?: Record<string, unkno
 }
 
 /** Clerk sign-up completed → CompleteRegistration. */
-export function fbCompleteRegistration(method = "clerk") {
+export function fbCompleteRegistration(method = "clerk", eventId?: string) {
   fbEvent("CompleteRegistration", {
     content_name: "signup",
     status: true,
     method,
-  });
+  }, eventId);
 }
 
 /** Assessment / quiz submitted → Lead. */
-export function fbQuizComplete(score: number, recommendedPaths?: string[]) {
+export function fbQuizComplete(score: number, recommendedPaths?: string[], eventId?: string) {
   // Standard event for the ad optimiser
   fbEvent("Lead", {
     content_name: "assessment_complete",
     content_category: "quiz",
     value: score,
     currency: "USD",
-  });
+  }, eventId);
   // Richer custom event for internal reporting
   fbCustomEvent("QuizComplete", {
     score,
     recommended_paths: recommendedPaths?.join(",") ?? "",
-  });
+  }, eventId ? `${eventId}_quiz_complete` : undefined);
 }
 
 /** User starts onboarding wizard. */
