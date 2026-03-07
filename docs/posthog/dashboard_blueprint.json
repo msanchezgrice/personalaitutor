@@ -1,0 +1,531 @@
+{
+  "project_name": "MyAISkillTutor",
+  "unpin_dashboards": [
+    "My App Dashboard",
+    "Funnels",
+    "Retention & Engagement",
+    "Traffic by Source"
+  ],
+  "delete_insights": [
+    "Codex Temp Insight"
+  ],
+  "cohorts": [
+    {
+      "name": "Internal / Test Traffic",
+      "description": "Internal operators and seeded test identities that should be excluded from growth reporting.",
+      "groups": [
+        {
+          "properties": [
+            {
+              "type": "person",
+              "key": "email",
+              "value": "msanchezgrice",
+              "operator": "icontains"
+            }
+          ]
+        },
+        {
+          "properties": [
+            {
+              "type": "person",
+              "key": "email",
+              "value": "+test",
+              "operator": "icontains"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "default_properties": [
+    {
+      "type": "cohort",
+      "key": "id",
+      "operator": "not_in",
+      "ref": "Internal / Test Traffic"
+    }
+  ],
+  "dashboards": [
+    {
+      "name": "Growth Funnel - Acquisition to Activation",
+      "description": "Canonical pre-signup to first-value funnel for My AI Skill Tutor.",
+      "pinned": true,
+      "tiles": [
+        {
+          "name": "Signup Funnel by Source",
+          "insight": {
+            "type": "FUNNELS",
+            "events": [
+              {
+                "id": "auth_sign_up_page_viewed",
+                "name": "Sign-up Page Viewed",
+                "type": "events",
+                "order": 0
+              },
+              {
+                "id": "clerk_sign_up_started",
+                "name": "Sign-up Started",
+                "type": "events",
+                "order": 1
+              },
+              {
+                "id": "clerk_sign_up_completed",
+                "name": "Sign-up Completed",
+                "type": "events",
+                "order": 2
+              }
+            ],
+            "breakdown": "utm_source",
+            "funnel_window_days": 7
+          }
+        },
+        {
+          "name": "Onboarding to Welcome Funnel by Paid Source",
+          "insight": {
+            "type": "FUNNELS",
+            "events": [
+              {
+                "id": "clerk_sign_up_completed",
+                "name": "Sign-up Completed",
+                "type": "events",
+                "order": 0
+              },
+              {
+                "id": "onboarding_viewed",
+                "name": "Onboarding Viewed",
+                "type": "events",
+                "order": 1
+              },
+              {
+                "id": "onboarding_assessment_complete",
+                "name": "Assessment Complete",
+                "type": "events",
+                "order": 2
+              },
+              {
+                "id": "dashboard_welcome_viewed",
+                "name": "Dashboard Welcome",
+                "type": "events",
+                "order": 3
+              }
+            ],
+            "breakdown": "paid_source",
+            "funnel_window_days": 7
+          }
+        },
+        {
+          "name": "First Value Funnel by Paid Source",
+          "insight": {
+            "type": "FUNNELS",
+            "events": [
+              {
+                "id": "clerk_sign_up_completed",
+                "name": "Sign-up Completed",
+                "type": "events",
+                "order": 0
+              },
+              {
+                "id": "dashboard_welcome_viewed",
+                "name": "Dashboard Welcome",
+                "type": "events",
+                "order": 1
+              },
+              {
+                "id": "dashboard_tab_viewed",
+                "name": "Chat Tab Viewed",
+                "type": "events",
+                "order": 2,
+                "properties": [
+                  {
+                    "key": "tab",
+                    "value": [
+                      "chat"
+                    ],
+                    "type": "event"
+                  }
+                ]
+              },
+              {
+                "id": "chat_message_sent",
+                "name": "First Chat Sent",
+                "type": "events",
+                "order": 3
+              }
+            ],
+            "breakdown": "paid_source",
+            "funnel_window_days": 7
+          }
+        },
+        {
+          "name": "Weekly Funnel Stage Volumes",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "clerk_sign_up_completed",
+                "name": "Sign-up Completed",
+                "type": "events"
+              },
+              {
+                "id": "onboarding_assessment_complete",
+                "name": "Assessment Complete",
+                "type": "events"
+              },
+              {
+                "id": "dashboard_welcome_viewed",
+                "name": "Dashboard Welcome",
+                "type": "events"
+              },
+              {
+                "id": "chat_message_sent",
+                "name": "First Chat Sent",
+                "type": "events"
+              }
+            ],
+            "interval": "week"
+          }
+        },
+        {
+          "name": "Onboarding Step Outcomes",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "onboarding_step_viewed",
+                "name": "Step Viewed",
+                "type": "events"
+              },
+              {
+                "id": "onboarding_step_completed",
+                "name": "Step Completed",
+                "type": "events"
+              },
+              {
+                "id": "onboarding_step_validation_failed",
+                "name": "Step Validation Failed",
+                "type": "events"
+              }
+            ],
+            "breakdown": "step_name",
+            "interval": "week"
+          }
+        },
+        {
+          "name": "Welcome to First Chat Path",
+          "insight": {
+            "type": "PATHS",
+            "start_point": "dashboard_welcome_viewed",
+            "end_point": "chat_message_sent",
+            "path_groupings": [
+              "tab"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Paid Acquisition - Source and Campaign",
+      "description": "Campaign, source, and Meta-specific conversion views across signup and onboarding.",
+      "pinned": true,
+      "tiles": [
+        {
+          "name": "Signups by Normalized Paid Source",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "clerk_sign_up_completed",
+                "name": "Sign-up Completed",
+                "type": "events"
+              }
+            ],
+            "breakdown": "paid_source",
+            "interval": "week"
+          }
+        },
+        {
+          "name": "Signups by UTM Source",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "clerk_sign_up_completed",
+                "name": "Sign-up Completed",
+                "type": "events"
+              }
+            ],
+            "breakdown": "utm_source",
+            "interval": "week"
+          }
+        },
+        {
+          "name": "Signups by UTM Campaign",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "clerk_sign_up_completed",
+                "name": "Sign-up Completed",
+                "type": "events"
+              }
+            ],
+            "breakdown": "utm_campaign",
+            "interval": "week"
+          }
+        },
+        {
+          "name": "Signups by UTM Content",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "clerk_sign_up_completed",
+                "name": "Sign-up Completed",
+                "type": "events"
+              }
+            ],
+            "breakdown": "utm_content",
+            "interval": "week"
+          }
+        },
+        {
+          "name": "FB Ads Full Funnel",
+          "insight": {
+            "type": "FUNNELS",
+            "events": [
+              {
+                "id": "auth_sign_up_page_viewed",
+                "name": "Sign-up Page Viewed",
+                "type": "events",
+                "order": 0
+              },
+              {
+                "id": "clerk_sign_up_started",
+                "name": "Sign-up Started",
+                "type": "events",
+                "order": 1
+              },
+              {
+                "id": "clerk_sign_up_completed",
+                "name": "Sign-up Completed",
+                "type": "events",
+                "order": 2
+              },
+              {
+                "id": "onboarding_assessment_complete",
+                "name": "Assessment Complete",
+                "type": "events",
+                "order": 3
+              },
+              {
+                "id": "dashboard_welcome_viewed",
+                "name": "Dashboard Welcome",
+                "type": "events",
+                "order": 4
+              },
+              {
+                "id": "chat_message_sent",
+                "name": "First Chat Sent",
+                "type": "events",
+                "order": 5
+              }
+            ],
+            "properties": [
+              {
+                "key": "utm_source",
+                "value": [
+                  "fb",
+                  "ig",
+                  "facebook",
+                  "instagram",
+                  "meta"
+                ],
+                "type": "event"
+              }
+            ],
+            "breakdown": "utm_campaign",
+            "funnel_window_days": 7
+          }
+        },
+        {
+          "name": "Meta Post-Signup Tab Usage",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "dashboard_tab_viewed",
+                "name": "Dashboard Tab Viewed",
+                "type": "events"
+              }
+            ],
+            "properties": [
+              {
+                "key": "utm_source",
+                "value": [
+                  "fb",
+                  "ig",
+                  "facebook",
+                  "instagram",
+                  "meta"
+                ],
+                "type": "event"
+              }
+            ],
+            "breakdown": "tab",
+            "interval": "week"
+          }
+        },
+        {
+          "name": "Meta Signups by UTM Medium",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "clerk_sign_up_completed",
+                "name": "Sign-up Completed",
+                "type": "events"
+              }
+            ],
+            "properties": [
+              {
+                "key": "utm_source",
+                "value": [
+                  "fb",
+                  "ig",
+                  "facebook",
+                  "instagram",
+                  "meta"
+                ],
+                "type": "event"
+              }
+            ],
+            "breakdown": "utm_medium",
+            "interval": "week"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Post-Signup Behavior and Day 7",
+      "description": "Retention and post-signup product usage through the first seven days.",
+      "pinned": true,
+      "tiles": [
+        {
+          "name": "Day 7 Retention - Dashboard Use",
+          "insight": {
+            "type": "RETENTION",
+            "target_entity": {
+              "id": "clerk_sign_up_completed",
+              "type": "events"
+            },
+            "returning_entity": {
+              "id": "dashboard_tab_viewed",
+              "type": "events"
+            },
+            "period": "Day"
+          }
+        },
+        {
+          "name": "Day 7 Retention - First Chat",
+          "insight": {
+            "type": "RETENTION",
+            "target_entity": {
+              "id": "clerk_sign_up_completed",
+              "type": "events"
+            },
+            "returning_entity": {
+              "id": "chat_message_sent",
+              "type": "events"
+            },
+            "period": "Day"
+          }
+        },
+        {
+          "name": "Day 7 Retention - Meta Signups",
+          "insight": {
+            "type": "RETENTION",
+            "target_entity": {
+              "id": "clerk_sign_up_completed",
+              "type": "events"
+            },
+            "returning_entity": {
+              "id": "dashboard_tab_viewed",
+              "type": "events"
+            },
+            "properties": [
+              {
+                "key": "utm_source",
+                "value": [
+                  "fb",
+                  "ig",
+                  "facebook",
+                  "instagram",
+                  "meta"
+                ],
+                "type": "event"
+              }
+            ],
+            "period": "Day"
+          }
+        },
+        {
+          "name": "Dashboard Tab Adoption by Source",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "dashboard_tab_viewed",
+                "name": "Dashboard Tab Viewed",
+                "type": "events"
+              }
+            ],
+            "breakdown": "utm_source",
+            "interval": "week"
+          }
+        },
+        {
+          "name": "Post-Signup Navigation by Tab",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "dashboard_nav_clicked",
+                "name": "Dashboard Nav Clicked",
+                "type": "events"
+              }
+            ],
+            "breakdown": "tab",
+            "interval": "week"
+          }
+        },
+        {
+          "name": "Public Profile Clicks by Source",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "public_profile_clicked",
+                "name": "Public Profile Clicked",
+                "type": "events"
+              }
+            ],
+            "breakdown": "utm_source",
+            "interval": "week"
+          }
+        },
+        {
+          "name": "Signup to First Chat Path",
+          "insight": {
+            "type": "PATHS",
+            "start_point": "clerk_sign_up_completed",
+            "end_point": "chat_message_sent",
+            "path_groupings": [
+              "tab",
+              "source"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

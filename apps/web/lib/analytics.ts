@@ -102,7 +102,15 @@ export function normalizePaidSource(attribution: AttributionEnvelope | null | un
 
   if (source.includes("linkedin")) return "linkedin";
   if (source === "x" || source.includes("twitter")) return "x";
-  if (source.includes("facebook") || source.includes("meta") || source.includes("instagram")) return "facebook";
+  if (
+    source === "fb" ||
+    source === "ig" ||
+    source.includes("facebook") ||
+    source.includes("meta") ||
+    source.includes("instagram")
+  ) {
+    return "facebook";
+  }
   if (source.includes("google") || last?.gclid) return "google";
   if (source.includes("bing") || last?.msclkid) return "bing";
   return "unknown";
