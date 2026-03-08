@@ -12,6 +12,7 @@ export default async function DashboardAiNewsPage() {
           <i className="fa-solid fa-newspaper text-sky-400"></i> AI News
         </span>
       )}
+      operatorToolsHref={state.operatorToolsUrl}
       initialUser={{
         name: user?.name ?? state.seed?.name ?? "Learner",
         headline: user?.headline ?? "AI Builder",

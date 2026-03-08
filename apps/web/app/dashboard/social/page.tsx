@@ -13,6 +13,7 @@ export default async function DashboardSocialPage() {
         </span>
       )}
       headerSubtitle="Daily first-person LinkedIn + Tweet drafts generated from your active project context."
+      operatorToolsHref={state.operatorToolsUrl}
       initialUser={{
         name: user?.name ?? state.seed?.name ?? "Learner",
         headline: user?.headline ?? "AI Builder",

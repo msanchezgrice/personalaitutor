@@ -52,6 +52,7 @@ This document lists every environment variable required or recommended for `myai
 | `POSTHOG_CLI_API_KEY` | Required for PostHog CLI dashboard checks | `pnpm posthog:dashboard:spec` | `phx_...` personal API key | PostHog personal settings -> Personal API Keys |
 | `POSTHOG_CLI_PROJECT_ID` | Required for PostHog CLI dashboard checks | `pnpm posthog:dashboard:spec` | Numeric or string project id | PostHog project URL / API |
 | `POSTHOG_CLI_HOST` | Optional override for PostHog CLI | `pnpm posthog:dashboard:spec`, `pnpm posthog:weekly:report` | e.g. `https://us.posthog.com` | PostHog region host |
+| `ADMIN_EMAIL_ALLOWLIST` | Optional | Protect internal operator routes like `/dashboard/admin/signups` | Comma-separated emails | App operator list |
 | `VERCEL_TOKEN` | Needed for CI deploy automation | Scripts/deploy pipeline | Vercel personal/team token | Vercel settings -> Tokens |
 | `RENDER_API_KEY` | Needed only if worker deploys via Render | Worker deploy automation | Render API token | Render dashboard -> API keys |
 

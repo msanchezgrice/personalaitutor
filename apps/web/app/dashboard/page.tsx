@@ -56,6 +56,7 @@ export default async function DashboardPage() {
         activeTab="home"
         headerTitle={<span data-dashboard-greeting="1">{state.greeting}</span>}
         headerSubtitle="Ready to build something new today?"
+        operatorToolsHref={state.operatorToolsUrl}
         initialUser={{
           name: user?.name ?? state.seed?.name ?? "Learner",
           headline: user?.headline ?? "AI Builder",

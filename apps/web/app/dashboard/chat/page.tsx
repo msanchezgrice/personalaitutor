@@ -14,6 +14,7 @@ export default async function DashboardChatPage() {
       headerTitle="My AI Skill Tutor Session"
       headerSubtitle={activeProject?.title ? `${activeProject.title} • Active Build` : "Active build"}
       hideHeaderActionsOnMobile
+      operatorToolsHref={state.operatorToolsUrl}
       initialUser={{
         name: user?.name ?? state.seed?.name ?? "Learner",
         headline: user?.headline ?? "AI Builder",

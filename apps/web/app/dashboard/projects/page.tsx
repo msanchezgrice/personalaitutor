@@ -23,6 +23,7 @@ export default async function DashboardProjectsPage() {
         </span>
       )}
       headerSubtitle="Manage your active builds and public proof artifacts."
+      operatorToolsHref={state.operatorToolsUrl}
       initialUser={{
         name: user?.name ?? state.seed?.name ?? "Learner",
         headline: user?.headline ?? "AI Builder",

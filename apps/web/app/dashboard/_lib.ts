@@ -1,4 +1,5 @@
 import { getAuthSeed } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/admin-access";
 import { runtimeGetDashboardSummary } from "@/lib/runtime";
 import type { DashboardSummary, Project, UserProfile } from "@aitutor/shared";
 
@@ -10,6 +11,8 @@ export type DashboardServerState = {
   completedProject: Project | null;
   publicProfileUrl: string | null;
   greeting: string;
+  isAdmin: boolean;
+  operatorToolsUrl: string | null;
 };
 
 function greetingForServerTime(date = new Date()) {
@@ -30,6 +33,8 @@ export async function getDashboardServerState(): Promise<DashboardServerState> {
       completedProject: null,
       publicProfileUrl: null,
       greeting: `${greetingForServerTime()}, there 👋`,
+      isAdmin: false,
+      operatorToolsUrl: null,
     };
   }
 
@@ -61,6 +66,7 @@ export async function getDashboardServerState(): Promise<DashboardServerState> {
     completedProject,
     publicProfileUrl: user?.handle ? `/u/${user.handle}/` : null,
     greeting: `${greetingForServerTime()}, ${firstName} 👋`,
+    isAdmin: isAdminEmail(seed.email),
+    operatorToolsUrl: isAdminEmail(seed.email) ? "/dashboard/admin/signups" : null,
   };
 }
-

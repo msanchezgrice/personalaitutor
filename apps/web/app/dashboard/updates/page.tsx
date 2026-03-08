@@ -12,6 +12,7 @@ export default async function DashboardUpdatesPage() {
           <i className="fa-solid fa-clock-rotate-left text-white"></i> Activity Log
         </span>
       )}
+      operatorToolsHref={state.operatorToolsUrl}
       initialUser={{
         name: user?.name ?? state.seed?.name ?? "Learner",
         headline: user?.headline ?? "AI Builder",

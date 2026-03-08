@@ -59,6 +59,24 @@ const DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 type PersistenceMode = "memory" | "supabase";
 
+export type SignupAuditChatSummary = {
+  userMessageCount: number;
+  lastUserMessageAt: string | null;
+  lastUserMessage: string | null;
+};
+
+export type SignupAuditRecord = {
+  profile: UserProfile & {
+    contactEmail?: string | null;
+  };
+  externalUserId: string | null;
+  welcomeEmailSentAt: string | null;
+  onboarding: OnboardingSession | null;
+  assessment: AssessmentAttempt | null;
+  projectCount: number;
+  chat: SignupAuditChatSummary;
+};
+
 function mode(): PersistenceMode {
   const explicit = process.env.PERSISTENCE_MODE?.toLowerCase();
   if (explicit === "supabase" || explicit === "memory") return explicit;
@@ -2597,6 +2615,195 @@ async function getLatestAssessmentAttemptForUser(userId: string) {
     submittedAt: data.submitted_at ?? null,
     recommendedCareerPathIds: data.recommended_career_path_ids ?? [],
   };
+}
+
+export async function runtimeListSignupAuditRecords(input?: {
+  days?: number;
+  limit?: number;
+  search?: string | null;
+  includeSeeded?: boolean;
+}) {
+  if (mode() === "memory") return [] as SignupAuditRecord[];
+
+  const supabase = getSupabaseAdmin();
+  const days = Math.max(1, Math.min(90, Math.floor(Number(input?.days ?? 7) || 7)));
+  const limit = Math.max(1, Math.min(200, Math.floor(Number(input?.limit ?? 50) || 50)));
+  const includeSeeded = input?.includeSeeded === true;
+  const search = typeof input?.search === "string" ? input.search.trim().toLowerCase() : "";
+  const fetchLimit = Math.max(limit * 4, 200);
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  let profileQuery = supabase
+    .from("learner_profiles")
+    .select(
+      "id,external_user_id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,contact_email,created_at,updated_at,welcome_email_sent_at",
+    )
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(fetchLimit);
+
+  if (!includeSeeded) {
+    profileQuery = profileQuery.not("external_user_id", "is", null);
+  }
+
+  const { data: rawProfiles } = await profileQuery;
+  const matchedProfiles = ((rawProfiles ?? []) as Array<{
+    id: string;
+    external_user_id: string | null;
+    handle: string;
+    full_name: string;
+    headline: string;
+    bio: string;
+    career_path_id: string | null;
+    published: boolean;
+    tokens_used: number;
+    goals: string[] | null;
+    tools: string[] | null;
+    social_links: Record<string, string> | null;
+    acquisition?: Record<string, unknown> | null;
+    contact_email: string | null;
+    created_at: string;
+    updated_at: string;
+    welcome_email_sent_at: string | null;
+  }>)
+    .filter((row) => {
+      if (!search) return true;
+      return [row.full_name, row.contact_email, row.handle]
+        .filter((value): value is string => typeof value === "string")
+        .some((value) => value.toLowerCase().includes(search));
+    })
+    .slice(0, limit);
+
+  if (!matchedProfiles.length) {
+    return [] as SignupAuditRecord[];
+  }
+
+  const userIds = matchedProfiles.map((row) => row.id);
+
+  const [{ data: onboardingRows }, { data: assessmentRows }, { data: projectRows }] = await Promise.all([
+    supabase
+      .from("onboarding_sessions")
+      .select("id,learner_profile_id,situation,career_path_id,linkedin_url,resume_filename,ai_knowledge_score,goals,acquisition,status,created_at,updated_at")
+      .in("learner_profile_id", userIds)
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("assessment_attempts")
+      .select("id,learner_profile_id,score,started_at,submitted_at,answers,recommended_career_path_ids,updated_at")
+      .in("learner_profile_id", userIds)
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("projects")
+      .select("id,learner_profile_id")
+      .in("learner_profile_id", userIds),
+  ]);
+
+  const latestOnboardingByUser = new Map<string, OnboardingSession>();
+  for (const row of (onboardingRows ?? []) as Array<{
+    id: string;
+    learner_profile_id: string;
+    situation: OnboardingSession["situation"];
+    career_path_id: string | null;
+    linkedin_url: string | null;
+    resume_filename: string | null;
+    ai_knowledge_score: number | null;
+    goals: string[] | null;
+    acquisition?: Record<string, unknown> | null;
+    status: OnboardingSession["status"];
+    created_at: string;
+    updated_at: string;
+  }>) {
+    if (latestOnboardingByUser.has(row.learner_profile_id)) continue;
+    latestOnboardingByUser.set(row.learner_profile_id, {
+      id: row.id,
+      userId: row.learner_profile_id,
+      situation: row.situation,
+      careerPathId: row.career_path_id,
+      linkedinUrl: row.linkedin_url,
+      resumeFilename: row.resume_filename,
+      aiKnowledgeScore: row.ai_knowledge_score,
+      goals: ((row.goals ?? []) as OnboardingSession["goals"]) || [],
+      intakeProfile: parseStoredOnboardingIntakeProfile(row.acquisition),
+      acquisition: parseAcquisition(row.acquisition) ?? undefined,
+      status: row.status,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    });
+  }
+
+  const latestAssessmentByUser = new Map<string, AssessmentAttempt>();
+  for (const row of (assessmentRows ?? []) as Array<{
+    id: string;
+    learner_profile_id: string;
+    score: number;
+    started_at: string;
+    submitted_at: string | null;
+    answers: Array<{ questionId: string; value: number }> | null;
+    recommended_career_path_ids: string[] | null;
+  }>) {
+    if (latestAssessmentByUser.has(row.learner_profile_id)) continue;
+    latestAssessmentByUser.set(row.learner_profile_id, {
+      id: row.id,
+      userId: row.learner_profile_id,
+      score: Number(row.score ?? 0),
+      startedAt: row.started_at,
+      submittedAt: row.submitted_at,
+      answers: row.answers ?? [],
+      recommendedCareerPathIds: row.recommended_career_path_ids ?? [],
+    });
+  }
+
+  const projectRowsTyped = (projectRows ?? []) as Array<{ id: string; learner_profile_id: string }>;
+  const projectCountByUser = new Map<string, number>();
+  const projectToUserId = new Map<string, string>();
+  for (const row of projectRowsTyped) {
+    projectToUserId.set(row.id, row.learner_profile_id);
+    projectCountByUser.set(row.learner_profile_id, (projectCountByUser.get(row.learner_profile_id) ?? 0) + 1);
+  }
+
+  const chatByUser = new Map<string, SignupAuditChatSummary>();
+  const projectIds = projectRowsTyped.map((row) => row.id);
+  if (projectIds.length) {
+    const { data: chatLogs } = await supabase
+      .from("build_log_entries")
+      .select("project_id,message,created_at")
+      .in("project_id", projectIds)
+      .ilike("message", "User message:%")
+      .order("created_at", { ascending: false });
+
+    for (const row of (chatLogs ?? []) as Array<{ project_id: string; message: string; created_at: string }>) {
+      const userId = projectToUserId.get(row.project_id);
+      if (!userId) continue;
+
+      const existing = chatByUser.get(userId) ?? {
+        userMessageCount: 0,
+        lastUserMessageAt: null,
+        lastUserMessage: null,
+      };
+      existing.userMessageCount += 1;
+      if (!existing.lastUserMessageAt) {
+        existing.lastUserMessageAt = row.created_at;
+        existing.lastUserMessage = row.message.replace(/^User message:\s*/i, "").trim() || null;
+      }
+      chatByUser.set(userId, existing);
+    }
+  }
+
+  return matchedProfiles.map((row) => ({
+    profile: {
+      ...profileFromRow(row, []),
+      contactEmail: row.contact_email ?? null,
+    },
+    externalUserId: row.external_user_id ?? null,
+    welcomeEmailSentAt: row.welcome_email_sent_at ?? null,
+    onboarding: latestOnboardingByUser.get(row.id) ?? null,
+    assessment: latestAssessmentByUser.get(row.id) ?? null,
+    projectCount: projectCountByUser.get(row.id) ?? 0,
+    chat: chatByUser.get(row.id) ?? {
+      userMessageCount: 0,
+      lastUserMessageAt: null,
+      lastUserMessage: null,
+    },
+  })) satisfies SignupAuditRecord[];
 }
 
 async function getAgentMemoryRowsForUser(userId: string) {

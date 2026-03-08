@@ -530,6 +530,133 @@
           }
         }
       ]
+    },
+    {
+      "name": "Signup Answers and Intake Quality",
+      "description": "Structured onboarding answer distributions and profile coverage from PostHog events.",
+      "pinned": true,
+      "tiles": [
+        {
+          "name": "Onboarding Completes by Career Category",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "onboarding_completed",
+                "name": "Onboarding Completed",
+                "type": "events"
+              }
+            ],
+            "breakdown": "career_category_label",
+            "interval": "week"
+          }
+        },
+        {
+          "name": "Onboarding Completes by Situation",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "onboarding_completed",
+                "name": "Onboarding Completed",
+                "type": "events"
+              }
+            ],
+            "breakdown": "situation",
+            "interval": "week"
+          }
+        },
+        {
+          "name": "Onboarding Completes by Primary Goal",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "onboarding_completed",
+                "name": "Onboarding Completed",
+                "type": "events"
+              }
+            ],
+            "breakdown": "primary_goal",
+            "interval": "week"
+          }
+        },
+        {
+          "name": "Onboarding Completes by Years Experience",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "onboarding_completed",
+                "name": "Onboarding Completed",
+                "type": "events"
+              }
+            ],
+            "breakdown": "years_experience",
+            "interval": "week"
+          }
+        },
+        {
+          "name": "Assessment Completes by AI Comfort",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "onboarding_assessment_complete",
+                "name": "Assessment Complete",
+                "type": "events"
+              }
+            ],
+            "breakdown": "answer_ai_comfort",
+            "interval": "week"
+          }
+        },
+        {
+          "name": "Assessment Completes by Career Experience",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "onboarding_assessment_complete",
+                "name": "Assessment Complete",
+                "type": "events"
+              }
+            ],
+            "breakdown": "answer_career_experience",
+            "interval": "week"
+          }
+        },
+        {
+          "name": "Onboarding Completes by Resume Coverage",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "onboarding_completed",
+                "name": "Onboarding Completed",
+                "type": "events"
+              }
+            ],
+            "breakdown": "has_resume",
+            "interval": "week"
+          }
+        },
+        {
+          "name": "Onboarding Completes by LinkedIn Coverage",
+          "insight": {
+            "type": "TRENDS",
+            "events": [
+              {
+                "id": "onboarding_completed",
+                "name": "Onboarding Completed",
+                "type": "events"
+              }
+            ],
+            "breakdown": "has_linkedin_url",
+            "interval": "week"
+          }
+        }
+      ]
     }
   ]
 }

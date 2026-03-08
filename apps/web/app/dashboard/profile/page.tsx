@@ -20,6 +20,7 @@ export default async function DashboardProfilePage() {
         </span>
       )}
       hideHeaderActionsOnMobile
+      operatorToolsHref={state.operatorToolsUrl}
       initialUser={{
         name: displayName,
         headline: displayHeadline,

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { captureAnalyticsEvent } from "@/lib/analytics";
 
-export function DashboardSettingsMenu() {
+export function DashboardSettingsMenu({ operatorToolsHref = null }: { operatorToolsHref?: string | null }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -51,6 +51,15 @@ export function DashboardSettingsMenu() {
     });
   }
 
+  function handleOperatorToolsClick() {
+    setOpen(false);
+    captureAnalyticsEvent("dashboard_settings_item_clicked", {
+      item: "operator_tools",
+      destination: operatorToolsHref,
+      location: "header",
+    });
+  }
+
   function handleSignOutClick() {
     setOpen(false);
     captureAnalyticsEvent("auth_sign_out_clicked", {
@@ -92,6 +101,16 @@ export function DashboardSettingsMenu() {
         >
           <i className="fa-regular fa-user mr-2"></i>Profile Settings
         </Link>
+        {operatorToolsHref ? (
+          <a
+            href={operatorToolsHref}
+            className="block px-3 py-2 text-sm text-emerald-300 rounded-lg hover:bg-emerald-500/20"
+            role="menuitem"
+            onClick={handleOperatorToolsClick}
+          >
+            <i className="fa-solid fa-chart-line mr-2"></i>Operator Tools
+          </a>
+        ) : null}
         <button
           type="button"
           className="w-full text-left px-3 py-2 text-sm text-red-300 rounded-lg hover:bg-red-500/20"

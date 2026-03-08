@@ -12,6 +12,7 @@ type DashboardShellProps = {
   headerSubtitle?: ReactNode;
   headerActions?: ReactNode;
   hideHeaderActionsOnMobile?: boolean;
+  operatorToolsHref?: string | null;
   children: ReactNode;
   decor?: ReactNode;
   initialUser?: {
@@ -114,6 +115,7 @@ export function DashboardShell({
   headerSubtitle,
   headerActions,
   hideHeaderActionsOnMobile = false,
+  operatorToolsHref = null,
   children,
   decor,
   initialUser,
@@ -272,7 +274,7 @@ export function DashboardShell({
               </div>
             ) : null}
             <div data-dashboard-header-settings="1" className="flex flex-shrink-0 items-center justify-end">
-              <DashboardSettingsMenu />
+              <DashboardSettingsMenu operatorToolsHref={operatorToolsHref} />
             </div>
           </header>
           <div data-dashboard-route="1" className="contents">
