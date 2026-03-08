@@ -5,6 +5,17 @@ import { DashboardShell } from "@/components/dashboard-runtime-shell";
 import { getDashboardServerState } from "@/app/dashboard/_lib";
 import { runtimeListSignupAuditRecords, type SignupAuditRecord } from "@/lib/runtime";
 import { getCatalogData } from "@aitutor/shared";
+import {
+  assessmentAnswerEntries,
+  formatDateTime,
+  isMetaSource,
+  resolveMetaCampaignNames,
+  resolvePosthogPersonUrls,
+  safeExternalUrl,
+  stringArray,
+  stringValue,
+  stringifyJson,
+} from "./view-helpers";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -21,14 +32,6 @@ function clampNumber(input: string, fallback: number, min: number, max: number) 
   return Math.max(min, Math.min(max, parsed));
 }
 
-function formatDateTime(value: string | null | undefined) {
-  if (!value) return "Not available";
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
 function displaySource(record: SignupAuditRecord) {
   const last = record.onboarding?.acquisition?.last ?? record.profile.acquisition?.last;
   const first = record.onboarding?.acquisition?.first ?? record.profile.acquisition?.first;
@@ -37,46 +40,10 @@ function displaySource(record: SignupAuditRecord) {
     medium: last?.utmMedium || first?.utmMedium || "unknown",
     campaign: last?.utmCampaign || first?.utmCampaign || "unknown",
     content: last?.utmContent || first?.utmContent || "unknown",
+    term: last?.utmTerm || first?.utmTerm || "unknown",
     landingPath: last?.landingPath || first?.landingPath || "unknown",
     referrer: last?.referrer || first?.referrer || "unknown",
   };
-}
-
-function stringifyJson(value: unknown) {
-  if (!value) return null;
-  return JSON.stringify(value, null, 2);
-}
-
-function stringValue(value: unknown) {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function stringArray(value: unknown) {
-  return Array.isArray(value)
-    ? value.map((entry) => stringValue(entry)).filter((entry): entry is string => Boolean(entry))
-    : [];
-}
-
-function safeExternalUrl(value: string | null | undefined) {
-  const normalized = stringValue(value);
-  if (!normalized) return null;
-  if (/^https?:\/\//i.test(normalized)) return normalized;
-  return `https://${normalized}`;
-}
-
-function assessmentAnswerMap(record: SignupAuditRecord) {
-  const labels: Record<string, string> = {
-    career_experience: "Career experience",
-    ai_comfort: "AI comfort",
-    daily_work_complexity: "Daily work complexity",
-    linkedin_context: "LinkedIn context",
-    resume_context: "Resume context",
-  };
-
-  return (record.assessment?.answers ?? []).map((entry) => ({
-    key: labels[entry.questionId] ?? entry.questionId,
-    value: entry.value,
-  }));
 }
 
 export default async function DashboardAdminSignupsPage({
@@ -104,6 +71,15 @@ export default async function DashboardAdminSignupsPage({
     limit,
     search: q || undefined,
   });
+  const attributions = records.map((record) => displaySource(record));
+  const [directPosthogUrls, metaCampaignNames] = await Promise.all([
+    resolvePosthogPersonUrls(records.map((record) => record.posthogDistinctId)),
+    resolveMetaCampaignNames(
+      attributions
+        .filter((attribution) => isMetaSource(attribution.source))
+        .map((attribution) => attribution.campaign),
+    ),
+  ]);
 
   const startedOnboarding = records.filter((record) => Boolean(record.onboarding)).length;
   const completedAssessment = records.filter((record) => Boolean(record.assessment?.submittedAt)).length;
@@ -230,6 +206,8 @@ export default async function DashboardAdminSignupsPage({
         <section className="space-y-4">
           {records.length ? records.map((record, index) => {
             const attribution = displaySource(record);
+            const directPosthogUrl = (record.posthogDistinctId && directPosthogUrls.get(record.posthogDistinctId)) || record.posthogPersonUrl;
+            const metaCampaignName = isMetaSource(attribution.source) ? metaCampaignNames.get(attribution.campaign) ?? null : null;
             const intakeProfile = record.onboarding?.intakeProfile ?? null;
             const intake = intakeProfile && typeof intakeProfile === "object" ? intakeProfile as Record<string, unknown> : {};
             const recommendedPaths = (record.assessment?.recommendedCareerPathIds ?? [])
@@ -242,6 +220,7 @@ export default async function DashboardAdminSignupsPage({
             const rawDailyWorkSummary = stringValue(intake.dailyWorkSummary);
             const rawKeySkills = stringValue(intake.keySkills);
             const rawCareerCategory = stringValue(intake.careerCategoryLabel) || stringValue(intake.careerCategory) || stringValue(intake.customCareerCategory);
+            const assessmentEntries = assessmentAnswerEntries(record.assessment?.answers);
 
             return (
               <details
@@ -280,8 +259,11 @@ export default async function DashboardAdminSignupsPage({
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2 text-xs text-gray-300">
-                      <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5">campaign: {attribution.campaign}</span>
+                      <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5">
+                        campaign: {metaCampaignName ? `${metaCampaignName} (${attribution.campaign})` : attribution.campaign}
+                      </span>
                       <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5">content: {attribution.content}</span>
+                      <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5">term: {attribution.term}</span>
                       <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5">projects: {record.projectCount}</span>
                     </div>
                   </div>
@@ -297,9 +279,9 @@ export default async function DashboardAdminSignupsPage({
                         >
                           <i className="fa-solid fa-clock-rotate-left mr-2"></i>Full timeline
                         </a>
-                        {record.posthogPersonUrl ? (
+                        {directPosthogUrl ? (
                           <a
-                            href={record.posthogPersonUrl}
+                            href={directPosthogUrl}
                             target="_blank"
                             rel="noreferrer"
                             className="btn btn-secondary px-4 py-2 text-xs"
@@ -471,9 +453,9 @@ export default async function DashboardAdminSignupsPage({
                         </div>
                       </dl>
                       <div className="mt-4 flex flex-wrap gap-2">
-                        {assessmentAnswerMap(record).length ? assessmentAnswerMap(record).map((entry) => (
-                          <span key={entry.key} className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-gray-300">
-                            {entry.key}: {entry.value}
+                        {assessmentEntries.length ? assessmentEntries.map((entry) => (
+                          <span key={entry.questionId} className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-gray-300">
+                            {entry.question}: {entry.answer}
                           </span>
                         )) : (
                           <span className="text-sm text-gray-400">No assessment answers yet.</span>
@@ -507,6 +489,20 @@ export default async function DashboardAdminSignupsPage({
                           <dd className="text-white">{attribution.source} / {attribution.medium}</dd>
                         </div>
                         <div>
+                          <dt className="text-gray-500">Campaign</dt>
+                          <dd className="text-white break-words">
+                            {metaCampaignName ? `${metaCampaignName} (${attribution.campaign})` : attribution.campaign}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-500">Content / creative id</dt>
+                          <dd className="text-white break-all">{attribution.content}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-500">Term / ad id</dt>
+                          <dd className="text-white break-all">{attribution.term}</dd>
+                        </div>
+                        <div>
                           <dt className="text-gray-500">Landing path</dt>
                           <dd className="text-white break-all">{attribution.landingPath}</dd>
                         </div>
@@ -517,12 +513,27 @@ export default async function DashboardAdminSignupsPage({
                       </dl>
                       <div className="mt-4 grid gap-4 xl:grid-cols-2">
                         <div>
-                          <div className="mb-2 text-gray-500">Onboarding intake JSON</div>
-                          <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-xs text-slate-100" style={{ color: "#e2e8f0" }}>{stringifyJson(intakeProfile) || "No intake payload saved."}</pre>
+                          <div className="mb-2 text-gray-500">Assessment answers</div>
+                          <div className="rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-sm text-slate-100">
+                            {assessmentAnswerEntries(record.assessment?.answers).length ? (
+                              <dl className="space-y-3">
+                                {assessmentAnswerEntries(record.assessment?.answers).map((entry) => (
+                                  <div key={entry.questionId}>
+                                    <dt className="text-xs uppercase tracking-[0.14em] text-slate-400">{entry.question}</dt>
+                                    <dd className="mt-1 text-slate-100">{entry.answer} <span className="text-slate-400">({entry.scoreLabel})</span></dd>
+                                  </div>
+                                ))}
+                              </dl>
+                            ) : (
+                              <div className="text-slate-400">No assessment answers saved.</div>
+                            )}
+                          </div>
                         </div>
                         <div>
-                          <div className="mb-2 text-gray-500">Assessment answers JSON</div>
-                          <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-xs text-slate-100" style={{ color: "#e2e8f0" }}>{stringifyJson(record.assessment?.answers) || "No assessment answers saved."}</pre>
+                          <div className="mb-2 text-gray-500">Acquisition JSON</div>
+                          <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-xs text-slate-100" style={{ color: "#e2e8f0" }}>
+                            {stringifyJson(record.onboarding?.acquisition ?? record.profile.acquisition) || "No acquisition payload saved."}
+                          </pre>
                         </div>
                       </div>
                     </div>

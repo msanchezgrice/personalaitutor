@@ -2991,6 +2991,17 @@ export async function runtimeGetSignupAuditDetail(userId: string) {
     if (!entry?.timestamp) return;
     timeline.push(entry);
   };
+  const includeJobEvent = (eventType: string, message: string | null | undefined) => {
+    const normalizedType = eventType.trim().toLowerCase();
+    const normalizedMessage = (message ?? "").trim().toLowerCase();
+    if (normalizedType === "job.queued" || normalizedType === "job.running") {
+      return false;
+    }
+    if (normalizedType.includes("memory") || normalizedMessage.includes("memory.refresh")) {
+      return false;
+    }
+    return true;
+  };
 
   const profileAcquisition = parseAcquisition(profileRow.acquisition);
   if (profileAcquisition?.first?.capturedAt) {
@@ -3115,6 +3126,7 @@ export async function runtimeGetSignupAuditDetail(userId: string) {
     message: string;
     created_at: string;
   }>) {
+    if (!includeJobEvent(row.event_type, row.message)) continue;
     pushTimeline({
       id: row.id,
       timestamp: row.created_at,

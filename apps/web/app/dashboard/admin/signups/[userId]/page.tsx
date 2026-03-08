@@ -5,40 +5,21 @@ import { DashboardShell } from "@/components/dashboard-runtime-shell";
 import { getDashboardServerState } from "@/app/dashboard/_lib";
 import { runtimeGetSignupAuditDetail } from "@/lib/runtime";
 import { getCatalogData } from "@aitutor/shared";
+import {
+  assessmentAnswerEntries,
+  formatDateTime,
+  isMetaSource,
+  resolveMetaCampaignNames,
+  resolvePosthogPersonUrls,
+  safeExternalUrl,
+  stringArray,
+  stringValue,
+  stringifyJson,
+} from "../view-helpers";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
-
-function formatDateTime(value: string | null | undefined) {
-  if (!value) return "Not available";
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function stringValue(value: unknown) {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function stringArray(value: unknown) {
-  return Array.isArray(value)
-    ? value.map((entry) => stringValue(entry)).filter((entry): entry is string => Boolean(entry))
-    : [];
-}
-
-function safeExternalUrl(value: string | null | undefined) {
-  const normalized = stringValue(value);
-  if (!normalized) return null;
-  if (/^https?:\/\//i.test(normalized)) return normalized;
-  return `https://${normalized}`;
-}
-
-function stringifyJson(value: unknown) {
-  if (!value) return null;
-  return JSON.stringify(value, null, 2);
-}
 
 function displaySource(detail: Awaited<ReturnType<typeof runtimeGetSignupAuditDetail>>) {
   if (!detail) {
@@ -47,6 +28,7 @@ function displaySource(detail: Awaited<ReturnType<typeof runtimeGetSignupAuditDe
       medium: "unknown",
       campaign: "unknown",
       content: "unknown",
+      term: "unknown",
       landingPath: "unknown",
       referrer: "unknown",
     };
@@ -58,6 +40,7 @@ function displaySource(detail: Awaited<ReturnType<typeof runtimeGetSignupAuditDe
     medium: last?.utmMedium || first?.utmMedium || "unknown",
     campaign: last?.utmCampaign || first?.utmCampaign || "unknown",
     content: last?.utmContent || first?.utmContent || "unknown",
+    term: last?.utmTerm || first?.utmTerm || "unknown",
     landingPath: last?.landingPath || first?.landingPath || "unknown",
     referrer: last?.referrer || first?.referrer || "unknown",
   };
@@ -118,6 +101,12 @@ export default async function DashboardAdminSignupDetailPage({
     .map((entry) => careerPathNames.get(entry) ?? entry)
     .join(", ");
   const attribution = displaySource(detail);
+  const [directPosthogUrls, metaCampaignNames] = await Promise.all([
+    resolvePosthogPersonUrls([detail.posthogDistinctId]),
+    resolveMetaCampaignNames(isMetaSource(attribution.source) ? [attribution.campaign] : []),
+  ]);
+  const directPosthogUrl = (detail.posthogDistinctId && directPosthogUrls.get(detail.posthogDistinctId)) || detail.posthogPersonUrl;
+  const metaCampaignName = isMetaSource(attribution.source) ? metaCampaignNames.get(attribution.campaign) ?? null : null;
 
   return (
     <DashboardShell
@@ -144,8 +133,8 @@ export default async function DashboardAdminSignupDetailPage({
           <Link href="/dashboard/admin/signups" className="btn btn-secondary px-4 py-2 text-xs">
             <i className="fa-solid fa-arrow-left mr-2"></i>Back to list
           </Link>
-          {detail.posthogPersonUrl ? (
-            <a href={detail.posthogPersonUrl} target="_blank" rel="noreferrer" className="btn btn-secondary px-4 py-2 text-xs">
+          {directPosthogUrl ? (
+            <a href={directPosthogUrl} target="_blank" rel="noreferrer" className="btn btn-secondary px-4 py-2 text-xs">
               <i className="fa-solid fa-arrow-up-right-from-square mr-2"></i>PostHog
             </a>
           ) : null}
@@ -181,8 +170,8 @@ export default async function DashboardAdminSignupDetailPage({
             <div className="glass rounded-2xl border border-white/10 p-6">
               <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">Identifiers</div>
               <div className="mb-4 flex flex-wrap gap-2">
-                {detail.posthogPersonUrl ? (
-                  <a href={detail.posthogPersonUrl} target="_blank" rel="noreferrer" className="btn btn-secondary px-4 py-2 text-xs">
+                {directPosthogUrl ? (
+                  <a href={directPosthogUrl} target="_blank" rel="noreferrer" className="btn btn-secondary px-4 py-2 text-xs">
                     <i className="fa-solid fa-arrow-up-right-from-square mr-2"></i>Open in PostHog
                   </a>
                 ) : null}
@@ -317,9 +306,20 @@ export default async function DashboardAdminSignupDetailPage({
                   <dd className="text-white">{recommendedPaths || "Not available"}</dd>
                 </div>
               </dl>
-              <pre className="mt-4 overflow-x-auto whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-xs text-slate-100" style={{ color: "#e2e8f0" }}>
-                {JSON.stringify(detail.assessment?.answers ?? [], null, 2)}
-              </pre>
+              <div className="mt-4 rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-sm text-slate-100">
+                {assessmentAnswerEntries(detail.assessment?.answers).length ? (
+                  <dl className="space-y-3">
+                    {assessmentAnswerEntries(detail.assessment?.answers).map((entry) => (
+                      <div key={entry.questionId}>
+                        <dt className="text-xs uppercase tracking-[0.14em] text-slate-400">{entry.question}</dt>
+                        <dd className="mt-1 text-slate-100">{entry.answer} <span className="text-slate-400">({entry.scoreLabel})</span></dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : (
+                  <div className="text-slate-400">No assessment answers saved.</div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -332,8 +332,18 @@ export default async function DashboardAdminSignupDetailPage({
                   <dd className="text-white">{attribution.source} / {attribution.medium}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Campaign / content</dt>
-                  <dd className="break-words text-white">{attribution.campaign} / {attribution.content}</dd>
+                  <dt className="text-gray-500">Campaign</dt>
+                  <dd className="break-words text-white">
+                    {metaCampaignName ? `${metaCampaignName} (${attribution.campaign})` : attribution.campaign}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">Content / creative id</dt>
+                  <dd className="break-all text-white">{attribution.content}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">Term / ad id</dt>
+                  <dd className="break-all text-white">{attribution.term}</dd>
                 </div>
                 <div>
                   <dt className="text-gray-500">Landing path</dt>
@@ -413,10 +423,21 @@ export default async function DashboardAdminSignupDetailPage({
               <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-gray-300">Raw Payloads</div>
               <div className="grid gap-4">
                 <div>
-                  <div className="mb-2 text-gray-500">Onboarding intake JSON</div>
-                  <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-xs text-slate-100" style={{ color: "#e2e8f0" }}>
-                    {stringifyJson(detail.onboarding?.intakeProfile) || "No intake payload saved."}
-                  </pre>
+                  <div className="mb-2 text-gray-500">Assessment answers</div>
+                  <div className="rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-sm text-slate-100">
+                    {assessmentAnswerEntries(detail.assessment?.answers).length ? (
+                      <dl className="space-y-3">
+                        {assessmentAnswerEntries(detail.assessment?.answers).map((entry) => (
+                          <div key={entry.questionId}>
+                            <dt className="text-xs uppercase tracking-[0.14em] text-slate-400">{entry.question}</dt>
+                            <dd className="mt-1 text-slate-100">{entry.answer} <span className="text-slate-400">({entry.scoreLabel})</span></dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : (
+                      <div className="text-slate-400">No assessment answers saved.</div>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <div className="mb-2 text-gray-500">Acquisition JSON</div>
