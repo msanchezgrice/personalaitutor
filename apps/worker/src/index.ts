@@ -391,6 +391,67 @@ type DailySignupDigestRow = {
   acquisition: Record<string, unknown> | null;
 };
 
+type DailySignupDigestOnboardingRow = {
+  id: string;
+  learner_profile_id: string;
+  situation: string | null;
+  career_path_id: string | null;
+  linkedin_url: string | null;
+  resume_filename: string | null;
+  ai_knowledge_score: number | null;
+  goals: string[] | null;
+  acquisition: Record<string, unknown> | null;
+  status: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type DailySignupDigestAssessmentRow = {
+  id: string;
+  learner_profile_id: string;
+  score: number | null;
+  started_at: string;
+  submitted_at: string | null;
+  answers: Array<{ questionId?: string; value?: number }> | null;
+  recommended_career_path_ids: string[] | null;
+  updated_at: string;
+};
+
+type DailySignupDigestProjectRow = {
+  id: string;
+  learner_profile_id: string;
+};
+
+type DailySignupDigestChatSummary = {
+  userMessageCount: number;
+  lastUserMessageAt: string | null;
+  lastUserMessage: string | null;
+};
+
+type DailySignupDigestRecord = {
+  signup: DailySignupDigestRow;
+  onboarding: DailySignupDigestOnboardingRow | null;
+  assessment: DailySignupDigestAssessmentRow | null;
+  projectCount: number;
+  chat: DailySignupDigestChatSummary;
+  intake: Record<string, unknown> | null;
+  attribution: {
+    source: string;
+    medium: string;
+    campaign: string;
+    content: string;
+    landingPath: string;
+    referrer: string;
+  };
+  linkedInUrl: string | null;
+  resume: {
+    fileName: string | null;
+    signedUrl: string | null;
+  };
+  adminUrl: string;
+  posthogUrl: string | null;
+};
+
 type DailySignupDigestState = {
   last_report_date_key?: string | null;
   last_sent_at?: string | null;
@@ -418,9 +479,264 @@ function signupSource(row: DailySignupDigestRow) {
   return firstSource || "unknown";
 }
 
+function objectRecord(input: unknown) {
+  return input && typeof input === "object" && !Array.isArray(input)
+    ? (input as Record<string, unknown>)
+    : null;
+}
+
+function stringValue(input: unknown) {
+  return typeof input === "string" && input.trim() ? input.trim() : null;
+}
+
+function stringArray(input: unknown) {
+  return Array.isArray(input)
+    ? input.map((entry) => stringValue(entry)).filter((entry): entry is string => Boolean(entry))
+    : [];
+}
+
+function trimText(input: string | null | undefined, max = 220) {
+  if (!input) return null;
+  const normalized = input.replace(/\s+/g, " ").trim();
+  if (!normalized) return null;
+  if (normalized.length <= max) return normalized;
+  return `${normalized.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
+}
+
+function safeExternalUrl(input: string | null | undefined) {
+  const normalized = stringValue(input);
+  if (!normalized) return null;
+  if (/^https?:\/\//i.test(normalized)) return normalized;
+  return `https://${normalized}`;
+}
+
+function posthogPersonUrl(query: string | null | undefined) {
+  const normalized = stringValue(query);
+  if (!normalized) return null;
+  const projectId = process.env.POSTHOG_PROJECT_ID?.trim() || process.env.POSTHOG_CLI_PROJECT_ID?.trim() || "330799";
+  return `https://us.posthog.com/project/${encodeURIComponent(projectId)}/persons?q=${encodeURIComponent(normalized)}`;
+}
+
+function extractIntakeProfile(acquisition: Record<string, unknown> | null | undefined) {
+  const topLevel = objectRecord(acquisition);
+  const nested = topLevel ? objectRecord(topLevel.intakeProfile) : null;
+  return nested ?? topLevel;
+}
+
+function dailySignupAttribution(input: {
+  signupAcquisition: Record<string, unknown> | null;
+  onboardingAcquisition: Record<string, unknown> | null;
+}) {
+  const onboarding = objectRecord(input.onboardingAcquisition);
+  const signup = objectRecord(input.signupAcquisition);
+  const last = objectRecord(onboarding?.last) ?? objectRecord(signup?.last);
+  const first = objectRecord(onboarding?.first) ?? objectRecord(signup?.first);
+  return {
+    source: stringValue(last?.utmSource) || stringValue(first?.utmSource) || "unknown",
+    medium: stringValue(last?.utmMedium) || stringValue(first?.utmMedium) || "unknown",
+    campaign: stringValue(last?.utmCampaign) || stringValue(first?.utmCampaign) || "unknown",
+    content: stringValue(last?.utmContent) || stringValue(first?.utmContent) || "unknown",
+    landingPath: stringValue(last?.landingPath) || stringValue(first?.landingPath) || "unknown",
+    referrer: stringValue(last?.referrer) || stringValue(first?.referrer) || "unknown",
+  };
+}
+
+function emptyDailySignupChatSummary(): DailySignupDigestChatSummary {
+  return {
+    userMessageCount: 0,
+    lastUserMessageAt: null,
+    lastUserMessage: null,
+  };
+}
+
+async function resolveResumeUploadForSession(input: {
+  sessionId: string;
+  resumeFilename: string | null | undefined;
+}) {
+  const fileName = stringValue(input.resumeFilename);
+  if (!input.sessionId || !fileName) {
+    return {
+      fileName,
+      signedUrl: null,
+    };
+  }
+
+  const supabase = supabaseAdmin();
+  const bucket = process.env.SUPABASE_RESUME_BUCKET?.trim() || "onboarding-resumes";
+  const folder = `onboarding/${input.sessionId}`;
+
+  try {
+    const { data: objects } = await supabase.storage.from(bucket).list(folder, {
+      limit: 20,
+      offset: 0,
+    });
+    const match = (objects ?? [])
+      .filter((entry) => typeof entry.name === "string" && entry.name.includes(fileName))
+      .sort((a, b) => b.name.localeCompare(a.name))[0];
+    if (!match?.name) {
+      return {
+        fileName,
+        signedUrl: null,
+      };
+    }
+
+    const { data: signed } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(`${folder}/${match.name}`, 60 * 60 * 24 * 7);
+    return {
+      fileName,
+      signedUrl: signed?.signedUrl ?? null,
+    };
+  } catch {
+    return {
+      fileName,
+      signedUrl: null,
+    };
+  }
+}
+
+async function hydrateDailySignupDigestRows(rows: DailySignupDigestRow[]) {
+  if (!rows.length) {
+    return [] as DailySignupDigestRecord[];
+  }
+
+  const supabase = supabaseAdmin();
+  const userIds = rows.map((row) => row.id);
+  const [{ data: onboardingRows }, { data: assessmentRows }, { data: projectRows }] = await Promise.all([
+    supabase
+      .from("onboarding_sessions")
+      .select("id,learner_profile_id,situation,career_path_id,linkedin_url,resume_filename,ai_knowledge_score,goals,acquisition,status,created_at,updated_at")
+      .in("learner_profile_id", userIds)
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("assessment_attempts")
+      .select("id,learner_profile_id,score,started_at,submitted_at,answers,recommended_career_path_ids,updated_at")
+      .in("learner_profile_id", userIds)
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("projects")
+      .select("id,learner_profile_id")
+      .in("learner_profile_id", userIds),
+  ]);
+
+  const latestOnboardingByUser = new Map<string, DailySignupDigestOnboardingRow>();
+  for (const row of (onboardingRows ?? []) as DailySignupDigestOnboardingRow[]) {
+    if (latestOnboardingByUser.has(row.learner_profile_id)) continue;
+    latestOnboardingByUser.set(row.learner_profile_id, row);
+  }
+
+  const latestAssessmentByUser = new Map<string, DailySignupDigestAssessmentRow>();
+  for (const row of (assessmentRows ?? []) as DailySignupDigestAssessmentRow[]) {
+    if (latestAssessmentByUser.has(row.learner_profile_id)) continue;
+    latestAssessmentByUser.set(row.learner_profile_id, row);
+  }
+
+  const projectCountByUser = new Map<string, number>();
+  const projectToUser = new Map<string, string>();
+  const projectIds: string[] = [];
+  for (const row of (projectRows ?? []) as DailySignupDigestProjectRow[]) {
+    projectIds.push(row.id);
+    projectToUser.set(row.id, row.learner_profile_id);
+    projectCountByUser.set(row.learner_profile_id, (projectCountByUser.get(row.learner_profile_id) ?? 0) + 1);
+  }
+
+  const chatByUser = new Map<string, DailySignupDigestChatSummary>();
+  if (projectIds.length) {
+    const { data: chatLogs } = await supabase
+      .from("build_log_entries")
+      .select("project_id,message,created_at")
+      .in("project_id", projectIds)
+      .ilike("message", "User message:%")
+      .order("created_at", { ascending: false });
+
+    for (const row of (chatLogs ?? []) as Array<{ project_id: string; message: string; created_at: string }>) {
+      const userId = projectToUser.get(row.project_id);
+      if (!userId) continue;
+      const existing = chatByUser.get(userId) ?? emptyDailySignupChatSummary();
+      existing.userMessageCount += 1;
+      if (!existing.lastUserMessageAt) {
+        existing.lastUserMessageAt = row.created_at;
+        existing.lastUserMessage = trimText(row.message.replace(/^User message:\s*/i, "").trim(), 280);
+      }
+      chatByUser.set(userId, existing);
+    }
+  }
+
+  const resumeByUser = new Map<string, { fileName: string | null; signedUrl: string | null }>();
+  await Promise.all(
+    rows.map(async (row) => {
+      const onboarding = latestOnboardingByUser.get(row.id);
+      if (!onboarding?.id) {
+        resumeByUser.set(row.id, { fileName: stringValue(onboarding?.resume_filename), signedUrl: null });
+        return;
+      }
+      resumeByUser.set(
+        row.id,
+        await resolveResumeUploadForSession({
+          sessionId: onboarding.id,
+          resumeFilename: onboarding.resume_filename,
+        }),
+      );
+    }),
+  );
+
+  return rows.map((row) => {
+    const onboarding = latestOnboardingByUser.get(row.id) ?? null;
+    const assessment = latestAssessmentByUser.get(row.id) ?? null;
+    const intake = extractIntakeProfile(onboarding?.acquisition);
+    const linkedInUrl = safeExternalUrl(
+      stringValue(intake?.linkedinUrl) || stringValue(onboarding?.linkedin_url),
+    );
+    const posthogQuery = row.external_user_id || row.contact_email || row.id;
+    return {
+      signup: row,
+      onboarding,
+      assessment,
+      projectCount: projectCountByUser.get(row.id) ?? 0,
+      chat: chatByUser.get(row.id) ?? emptyDailySignupChatSummary(),
+      intake,
+      attribution: dailySignupAttribution({
+        signupAcquisition: row.acquisition,
+        onboardingAcquisition: onboarding?.acquisition ?? null,
+      }),
+      linkedInUrl,
+      resume: resumeByUser.get(row.id) ?? { fileName: null, signedUrl: null },
+      adminUrl: `${appBaseUrl()}/dashboard/admin/signups/${row.id}`,
+      posthogUrl: posthogPersonUrl(posthogQuery),
+    };
+  });
+}
+
 function careerPathName(pathId: string | null) {
   if (!pathId) return "Unknown";
   return CAREER_PATHS.find((path) => path.id === pathId)?.name ?? pathId;
+}
+
+function assessmentScoreLabel(score: number | null | undefined) {
+  const numeric = Number(score ?? 0);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "Not submitted";
+  const percent = numeric <= 1 ? numeric * 100 : numeric;
+  return `${Math.round(percent)}%`;
+}
+
+function assessmentAnswerSummary(answers: Array<{ questionId?: string; value?: number }> | null | undefined) {
+  const labels: Record<string, string> = {
+    career_experience: "exp",
+    ai_comfort: "ai",
+    daily_work_complexity: "work",
+    linkedin_context: "linkedin",
+    resume_context: "resume",
+  };
+
+  return (answers ?? [])
+    .map((entry) => {
+      const key = typeof entry?.questionId === "string" ? entry.questionId : null;
+      const value = Number(entry?.value ?? 0);
+      if (!key || !Number.isFinite(value)) return null;
+      return `${labels[key] ?? key}:${value}`;
+    })
+    .filter((entry): entry is string => Boolean(entry))
+    .join(" | ");
 }
 
 async function sendDailySignupDigest() {
@@ -470,9 +786,10 @@ async function sendDailySignupDigest() {
     .limit(200);
 
   const rows = ((signups ?? []) as DailySignupDigestRow[]).filter((row) => row.contact_email);
+  const records = await hydrateDailySignupDigestRows(rows);
   const sourceCounts = new Map<string, number>();
-  for (const row of rows) {
-    const source = signupSource(row).toLowerCase() || "unknown";
+  for (const record of records) {
+    const source = record.attribution.source.toLowerCase() || "unknown";
     sourceCounts.set(source, (sourceCounts.get(source) ?? 0) + 1);
   }
 
@@ -482,55 +799,120 @@ async function sendDailySignupDigest() {
 
   const rangeEndLabel = formatDateTimeInTimeZone(new Date().toISOString(), timeZone);
   const rangeStartLabel = formatDateTimeInTimeZone(since, timeZone);
-  const subject = `Daily signup digest: ${rows.length} in the last ${windowHours} hours`;
+  const subject = `Daily signup digest: ${records.length} in the last ${windowHours} hours`;
+  const onboardingCount = records.filter((record) => Boolean(record.onboarding)).length;
+  const assessmentCount = records.filter((record) => Boolean(record.assessment?.submitted_at)).length;
+  const chatCount = records.filter((record) => record.chat.userMessageCount > 0).length;
+  const projectCount = records.filter((record) => record.projectCount > 0).length;
   const summaryText =
-    rows.length > 0
-      ? `${rows.length} signups in the last ${windowHours} hours. Sources: ${sourceSummary.join(", ")}`
+    records.length > 0
+      ? `${records.length} signups in the last ${windowHours} hours. Sources: ${sourceSummary.join(", ")}`
       : `No new signups in the last ${windowHours} hours.`;
-  const tableRows = rows.length
-    ? rows
-        .map((row) => {
-          const displayName = row.full_name?.trim() || "Unknown";
+  const signupCards = records.length
+    ? records
+        .map((record) => {
+          const row = record.signup;
+          const intake = record.intake ?? {};
+          const displayName = row.full_name?.trim() || stringValue(intake.fullName) || "Unknown";
           const email = row.contact_email?.trim() || "Unknown";
-          const source = signupSource(row);
           const createdAt = formatDateTimeInTimeZone(row.created_at, timeZone);
-          const path = careerPathName(row.career_path_id);
+          const path = careerPathName(record.onboarding?.career_path_id ?? row.career_path_id);
+          const goals = stringArray(intake.selectedGoals).length
+            ? stringArray(intake.selectedGoals)
+            : (record.onboarding?.goals ?? []);
+          const experience = stringValue(intake.yearsExperience) || "Not set";
+          const companySize = stringValue(intake.companySize) || "Not set";
+          const aiComfort = stringValue(intake.aiComfort) || "Not set";
+          const careerCategory =
+            stringValue(intake.careerCategoryLabel) ||
+            stringValue(intake.careerCategory) ||
+            stringValue(intake.customCareerCategory) ||
+            "Not set";
+          const jobTitle = stringValue(intake.jobTitle) || "Not set";
+          const dailyWorkSummary = trimText(stringValue(intake.dailyWorkSummary), 320) || "Not provided";
+          const keySkills = trimText(stringValue(intake.keySkills), 220) || "Not provided";
+          const answerSummary = assessmentAnswerSummary(record.assessment?.answers);
+          const recommendedPaths = (record.assessment?.recommended_career_path_ids ?? [])
+            .map((entry) => careerPathName(entry))
+            .join(", ");
+          const links = [
+            `<a href="${escapeHtml(record.adminUrl)}" style="color:#0f766e;text-decoration:underline;">Admin timeline</a>`,
+            record.posthogUrl
+              ? `<a href="${escapeHtml(record.posthogUrl)}" style="color:#0f766e;text-decoration:underline;">PostHog person</a>`
+              : null,
+            record.linkedInUrl
+              ? `<a href="${escapeHtml(record.linkedInUrl)}" style="color:#0f766e;text-decoration:underline;">LinkedIn</a>`
+              : null,
+            record.resume.signedUrl
+              ? `<a href="${escapeHtml(record.resume.signedUrl)}" style="color:#0f766e;text-decoration:underline;">Resume</a>`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ");
+
           return `
-            <tr>
-              <td style="padding:8px;border-bottom:1px solid #e2e8f0">${escapeHtml(displayName)}</td>
-              <td style="padding:8px;border-bottom:1px solid #e2e8f0">${escapeHtml(email)}</td>
-              <td style="padding:8px;border-bottom:1px solid #e2e8f0">${escapeHtml(source)}</td>
-              <td style="padding:8px;border-bottom:1px solid #e2e8f0">${escapeHtml(path)}</td>
-              <td style="padding:8px;border-bottom:1px solid #e2e8f0">${escapeHtml(createdAt)}</td>
-            </tr>
+            <section style="border:1px solid #e2e8f0;border-radius:16px;padding:18px;background:#ffffff">
+              <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+                <div>
+                  <div style="font-size:18px;font-weight:700;color:#0f172a">${escapeHtml(displayName)}</div>
+                  <div style="margin-top:4px;color:#475569">${escapeHtml(email)} · ${escapeHtml(createdAt)}</div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <span style="border:1px solid #bae6fd;background:#eff6ff;border-radius:999px;padding:4px 10px;font-size:12px;color:#0369a1">${escapeHtml(record.attribution.source)}</span>
+                  <span style="border:1px solid #d9f99d;background:#f7fee7;border-radius:999px;padding:4px 10px;font-size:12px;color:#3f6212">${escapeHtml(record.onboarding?.status || "signup_only")}</span>
+                  <span style="border:1px solid #e9d5ff;background:#faf5ff;border-radius:999px;padding:4px 10px;font-size:12px;color:#7e22ce">projects ${record.projectCount}</span>
+                  <span style="border:1px solid #f5d0fe;background:#fdf4ff;border-radius:999px;padding:4px 10px;font-size:12px;color:#a21caf">chats ${record.chat.userMessageCount}</span>
+                </div>
+              </div>
+              <div style="margin-top:14px;font-size:13px;color:#334155;line-height:1.7">
+                <div><strong>Campaign:</strong> ${escapeHtml(record.attribution.campaign)} | <strong>Content:</strong> ${escapeHtml(record.attribution.content)} | <strong>Landing:</strong> ${escapeHtml(record.attribution.landingPath)}</div>
+                <div><strong>Path:</strong> ${escapeHtml(path)} | <strong>Job title:</strong> ${escapeHtml(jobTitle)} | <strong>Career category:</strong> ${escapeHtml(careerCategory)}</div>
+                <div><strong>Situation:</strong> ${escapeHtml(record.onboarding?.situation || "Not set")} | <strong>Goals:</strong> ${escapeHtml(goals.join(", ") || "Not set")}</div>
+                <div><strong>Experience:</strong> ${escapeHtml(experience)} | <strong>Company size:</strong> ${escapeHtml(companySize)} | <strong>AI comfort:</strong> ${escapeHtml(aiComfort)}</div>
+                <div><strong>Assessment:</strong> ${escapeHtml(assessmentScoreLabel(record.assessment?.score))} ${answerSummary ? `| <strong>Answers:</strong> ${escapeHtml(answerSummary)}` : ""}</div>
+                <div><strong>Recommended:</strong> ${escapeHtml(recommendedPaths || "Not available")}</div>
+                <div><strong>Key skills:</strong> ${escapeHtml(keySkills)}</div>
+                <div><strong>Daily work summary:</strong> ${escapeHtml(dailyWorkSummary)}</div>
+                <div><strong>Last chat:</strong> ${escapeHtml(record.chat.lastUserMessage || "No chat yet")}</div>
+                <div><strong>Links:</strong> ${links || "No extra links available"}</div>
+              </div>
+            </section>
           `.trim();
         })
         .join("")
     : `
-      <tr>
-        <td colspan="5" style="padding:12px;text-align:center;color:#64748b">No new contactable signups in this window.</td>
-      </tr>
+      <section style="border:1px solid #e2e8f0;border-radius:16px;padding:18px;background:#ffffff;color:#64748b;text-align:center">
+        No new contactable signups in this window.
+      </section>
     `.trim();
 
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;color:#0f172a;background:#f8fafc;padding:24px">
-      <div style="max-width:760px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:24px">
+      <div style="max-width:900px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:24px">
         <h1 style="margin:0 0 8px;font-size:24px;">Daily signup digest</h1>
         <p style="margin:0 0 16px;color:#475569;">Window: ${escapeHtml(rangeStartLabel)} to ${escapeHtml(rangeEndLabel)} (${escapeHtml(timeZone)})</p>
         <p style="margin:0 0 16px;font-size:18px;font-weight:600;">${escapeHtml(summaryText)}</p>
-        <p style="margin:0 0 20px;color:#475569;">Source breakdown: ${escapeHtml(sourceSummary.join(", ") || "none")}</p>
-        <table style="width:100%;border-collapse:collapse;font-size:14px">
-          <thead>
-            <tr style="text-align:left;background:#f8fafc">
-              <th style="padding:8px;border-bottom:1px solid #cbd5e1">Name</th>
-              <th style="padding:8px;border-bottom:1px solid #cbd5e1">Email</th>
-              <th style="padding:8px;border-bottom:1px solid #cbd5e1">Source</th>
-              <th style="padding:8px;border-bottom:1px solid #cbd5e1">Path</th>
-              <th style="padding:8px;border-bottom:1px solid #cbd5e1">Created</th>
-            </tr>
-          </thead>
-          <tbody>${tableRows}</tbody>
-        </table>
+        <p style="margin:0 0 6px;color:#475569;">Source breakdown: ${escapeHtml(sourceSummary.join(", ") || "none")}</p>
+        <p style="margin:0 0 20px;color:#475569;">Onboarding: ${onboardingCount} · Assessment complete: ${assessmentCount} · Chatted: ${chatCount} · Built projects: ${projectCount}</p>
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 20px;">
+          <div style="border:1px solid #d1fae5;background:#ecfdf5;border-radius:14px;padding:14px">
+            <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#047857">Signups</div>
+            <div style="margin-top:8px;font-size:26px;font-weight:700;color:#064e3b">${records.length}</div>
+          </div>
+          <div style="border:1px solid #bae6fd;background:#f0f9ff;border-radius:14px;padding:14px">
+            <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#0369a1">Onboarding</div>
+            <div style="margin-top:8px;font-size:26px;font-weight:700;color:#0c4a6e">${onboardingCount}</div>
+          </div>
+          <div style="border:1px solid #fde68a;background:#fffbeb;border-radius:14px;padding:14px">
+            <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#b45309">Assessment</div>
+            <div style="margin-top:8px;font-size:26px;font-weight:700;color:#78350f">${assessmentCount}</div>
+          </div>
+          <div style="border:1px solid #e9d5ff;background:#faf5ff;border-radius:14px;padding:14px">
+            <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#7e22ce">Chatters</div>
+            <div style="margin-top:8px;font-size:26px;font-weight:700;color:#581c87">${chatCount}</div>
+          </div>
+        </div>
+        <div style="display:grid;gap:14px">${signupCards}</div>
       </div>
     </div>
   `.trim();
@@ -540,14 +922,36 @@ async function sendDailySignupDigest() {
     `Window: ${rangeStartLabel} to ${rangeEndLabel} (${timeZone})`,
     summaryText,
     `Source breakdown: ${sourceSummary.join(", ") || "none"}`,
+    `Onboarding: ${onboardingCount} | Assessment complete: ${assessmentCount} | Chatted: ${chatCount} | Built projects: ${projectCount}`,
     "",
-    ...rows.map((row) => {
-      const displayName = row.full_name?.trim() || "Unknown";
+    ...records.map((record) => {
+      const row = record.signup;
+      const intake = record.intake ?? {};
+      const displayName = row.full_name?.trim() || stringValue(intake.fullName) || "Unknown";
       const email = row.contact_email?.trim() || "Unknown";
-      const source = signupSource(row);
-      const path = careerPathName(row.career_path_id);
       const createdAt = formatDateTimeInTimeZone(row.created_at, timeZone);
-      return `${displayName} | ${email} | ${source} | ${path} | ${createdAt}`;
+      const path = careerPathName(record.onboarding?.career_path_id ?? row.career_path_id);
+      const goals = stringArray(intake.selectedGoals).length
+        ? stringArray(intake.selectedGoals).join(", ")
+        : (record.onboarding?.goals ?? []).join(", ");
+      const answerSummary = assessmentAnswerSummary(record.assessment?.answers) || "none";
+      return [
+        `${displayName} | ${email} | ${record.attribution.source} | ${path} | ${createdAt}`,
+        `  admin: ${record.adminUrl}`,
+        record.posthogUrl ? `  posthog: ${record.posthogUrl}` : null,
+        record.linkedInUrl ? `  linkedin: ${record.linkedInUrl}` : null,
+        record.resume.signedUrl ? `  resume: ${record.resume.signedUrl}` : null,
+        `  status: onboarding=${record.onboarding?.status || "signup_only"} assessment=${assessmentScoreLabel(record.assessment?.score)} projects=${record.projectCount} chats=${record.chat.userMessageCount}`,
+        `  campaign: ${record.attribution.campaign} | content: ${record.attribution.content} | landing: ${record.attribution.landingPath}`,
+        `  title: ${stringValue(intake.jobTitle) || "Not set"} | category: ${stringValue(intake.careerCategoryLabel) || stringValue(intake.careerCategory) || stringValue(intake.customCareerCategory) || "Not set"} | goals: ${goals || "Not set"}`,
+        `  answers: ${answerSummary}`,
+        `  key skills: ${trimText(stringValue(intake.keySkills), 200) || "Not provided"}`,
+        `  daily work: ${trimText(stringValue(intake.dailyWorkSummary), 240) || "Not provided"}`,
+        `  last chat: ${record.chat.lastUserMessage || "No chat yet"}`,
+        "",
+      ]
+        .filter((entry): entry is string => Boolean(entry))
+        .join("\n");
     }),
   ];
 
@@ -571,7 +975,7 @@ async function sendDailySignupDigest() {
       memory_value: {
         last_report_date_key: reportDateKey,
         last_sent_at: nowIso(),
-        signup_count: rows.length,
+        signup_count: records.length,
         recipient_count: recipients.length,
         window_hours: windowHours,
       },
@@ -580,7 +984,7 @@ async function sendDailySignupDigest() {
     { onConflict: "learner_profile_id,memory_key" },
   );
 
-  console.log(`[worker] daily signup digest sent count=${rows.length} recipients=${recipients.length}`);
+  console.log(`[worker] daily signup digest sent count=${records.length} recipients=${recipients.length}`);
 }
 
 async function latestOnboardingForUser(userId: string) {

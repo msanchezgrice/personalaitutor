@@ -47,6 +47,23 @@ function stringifyJson(value: unknown) {
   return JSON.stringify(value, null, 2);
 }
 
+function stringValue(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function stringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.map((entry) => stringValue(entry)).filter((entry): entry is string => Boolean(entry))
+    : [];
+}
+
+function safeExternalUrl(value: string | null | undefined) {
+  const normalized = stringValue(value);
+  if (!normalized) return null;
+  if (/^https?:\/\//i.test(normalized)) return normalized;
+  return `https://${normalized}`;
+}
+
 function assessmentAnswerMap(record: SignupAuditRecord) {
   const labels: Record<string, string> = {
     career_experience: "Career experience",
@@ -218,6 +235,13 @@ export default async function DashboardAdminSignupsPage({
             const recommendedPaths = (record.assessment?.recommendedCareerPathIds ?? [])
               .map((entry) => careerPathNames.get(entry) ?? entry)
               .join(", ");
+            const linkedInUrl = safeExternalUrl(stringValue(intake.linkedinUrl) || record.onboarding?.linkedinUrl || record.profile.socialLinks.linkedin || null);
+            const goalList = stringArray(intake.selectedGoals);
+            const rawFullName = stringValue(intake.fullName);
+            const rawJobTitle = stringValue(intake.jobTitle);
+            const rawDailyWorkSummary = stringValue(intake.dailyWorkSummary);
+            const rawKeySkills = stringValue(intake.keySkills);
+            const rawCareerCategory = stringValue(intake.careerCategoryLabel) || stringValue(intake.careerCategory) || stringValue(intake.customCareerCategory);
 
             return (
               <details
@@ -265,6 +289,67 @@ export default async function DashboardAdminSignupsPage({
 
                 <div className="mt-6 grid gap-6 xl:grid-cols-[0.95fr,1.05fr]">
                   <section className="space-y-6">
+                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+                      <div className="mb-4 flex flex-wrap gap-2">
+                        <a
+                          href={`/dashboard/admin/signups/${record.profile.id}`}
+                          className="btn btn-primary px-4 py-2 text-xs"
+                        >
+                          <i className="fa-solid fa-clock-rotate-left mr-2"></i>Full timeline
+                        </a>
+                        {record.posthogPersonUrl ? (
+                          <a
+                            href={record.posthogPersonUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn btn-secondary px-4 py-2 text-xs"
+                          >
+                            <i className="fa-solid fa-arrow-up-right-from-square mr-2"></i>Open in PostHog
+                          </a>
+                        ) : null}
+                        {linkedInUrl ? (
+                          <a
+                            href={linkedInUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn btn-secondary px-4 py-2 text-xs"
+                          >
+                            <i className="fa-brands fa-linkedin mr-2"></i>LinkedIn
+                          </a>
+                        ) : null}
+                        {record.resume.signedUrl ? (
+                          <a
+                            href={record.resume.signedUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn btn-secondary px-4 py-2 text-xs"
+                          >
+                            <i className="fa-solid fa-file-arrow-down mr-2"></i>Open resume
+                          </a>
+                        ) : null}
+                      </div>
+                      <dl className="grid gap-3 text-sm md:grid-cols-2">
+                        <div>
+                          <dt className="text-gray-500">PostHog distinct id</dt>
+                          <dd className="break-all text-white">{record.posthogDistinctId || "Not available"}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-500">Resume file</dt>
+                          <dd className="break-all text-white">{record.resume.fileName || "No uploaded resume"}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-500">LinkedIn URL</dt>
+                          <dd className="break-all text-white">
+                            {linkedInUrl ? <a href={linkedInUrl} target="_blank" rel="noreferrer" className="text-sky-300 underline underline-offset-2">{linkedInUrl}</a> : "Not provided"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-500">External auth id</dt>
+                          <dd className="break-all text-white">{record.externalUserId || "Not available"}</dd>
+                        </div>
+                      </dl>
+                    </div>
+
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
                       <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">Profile</div>
                       <dl className="grid gap-3 text-sm md:grid-cols-2">
@@ -286,14 +371,22 @@ export default async function DashboardAdminSignupsPage({
                         </div>
                       </dl>
                       <div className="mt-4">
-                        <div className="text-gray-500">Bio</div>
+                        <div className="text-gray-500">Bio (synthesized)</div>
                         <div className="mt-1 whitespace-pre-wrap text-sm text-gray-300">{record.profile.bio || "Not set"}</div>
                       </div>
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
-                      <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-sky-400">Onboarding Intake</div>
+                      <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-sky-400">Raw Onboarding Inputs</div>
                       <dl className="grid gap-3 text-sm md:grid-cols-2">
+                        <div>
+                          <dt className="text-gray-500">Entered full name</dt>
+                          <dd className="text-white">{rawFullName || "Not set"}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-500">Entered job title</dt>
+                          <dd className="text-white">{rawJobTitle || "Not set"}</dd>
+                        </div>
                         <div>
                           <dt className="text-gray-500">Situation</dt>
                           <dd className="text-white">{record.onboarding?.situation || String(intake.situation || "Not set")}</dd>
@@ -301,14 +394,14 @@ export default async function DashboardAdminSignupsPage({
                         <div>
                           <dt className="text-gray-500">Primary goal</dt>
                           <dd className="text-white">
-                            {Array.isArray(intake.selectedGoals) && intake.selectedGoals.length
-                              ? String(intake.selectedGoals[0])
+                            {goalList.length
+                              ? goalList[0]
                               : record.onboarding?.goals?.[0] || "Not set"}
                           </dd>
                         </div>
                         <div>
                           <dt className="text-gray-500">Career category</dt>
-                          <dd className="text-white">{String(intake.careerCategoryLabel || intake.careerCategory || "Not set")}</dd>
+                          <dd className="text-white">{rawCareerCategory || "Not set"}</dd>
                         </div>
                         <div>
                           <dt className="text-gray-500">Years experience</dt>
@@ -324,21 +417,35 @@ export default async function DashboardAdminSignupsPage({
                         </div>
                         <div>
                           <dt className="text-gray-500">LinkedIn</dt>
-                          <dd className="text-white break-all">{String(intake.linkedinUrl || record.onboarding?.linkedinUrl || "Not set")}</dd>
+                          <dd className="text-white break-all">
+                            {linkedInUrl ? <a href={linkedInUrl} target="_blank" rel="noreferrer" className="text-sky-300 underline underline-offset-2">{linkedInUrl}</a> : "Not set"}
+                          </dd>
                         </div>
                         <div>
                           <dt className="text-gray-500">Resume file</dt>
-                          <dd className="text-white">{String(intake.resumeFilename || record.onboarding?.resumeFilename || "Not set")}</dd>
+                          <dd className="text-white">
+                            {record.resume.signedUrl ? (
+                              <a href={record.resume.signedUrl} target="_blank" rel="noreferrer" className="text-sky-300 underline underline-offset-2">
+                                {record.resume.fileName}
+                              </a>
+                            ) : (
+                              record.resume.fileName || "Not set"
+                            )}
+                          </dd>
+                        </div>
+                        <div className="md:col-span-2">
+                          <dt className="text-gray-500">All selected goals</dt>
+                          <dd className="text-white">{goalList.length ? goalList.join(", ") : (record.onboarding?.goals.length ? record.onboarding.goals.join(", ") : "Not set")}</dd>
                         </div>
                       </dl>
                       <div className="mt-4 space-y-4">
                         <div>
                           <div className="text-gray-500">Daily work summary</div>
-                          <div className="mt-1 whitespace-pre-wrap text-sm text-gray-300">{String(intake.dailyWorkSummary || "Not set")}</div>
+                          <div className="mt-1 whitespace-pre-wrap rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-sm text-slate-100">{rawDailyWorkSummary || "Not set"}</div>
                         </div>
                         <div>
                           <div className="text-gray-500">Key skills</div>
-                          <div className="mt-1 whitespace-pre-wrap text-sm text-gray-300">{String(intake.keySkills || "Not set")}</div>
+                          <div className="mt-1 whitespace-pre-wrap rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-sm text-slate-100">{rawKeySkills || "Not set"}</div>
                         </div>
                       </div>
                     </div>
@@ -411,11 +518,11 @@ export default async function DashboardAdminSignupsPage({
                       <div className="mt-4 grid gap-4 xl:grid-cols-2">
                         <div>
                           <div className="mb-2 text-gray-500">Onboarding intake JSON</div>
-                          <pre className="overflow-x-auto rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-xs text-gray-300">{stringifyJson(intakeProfile) || "No intake payload saved."}</pre>
+                          <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-xs text-slate-100" style={{ color: "#e2e8f0" }}>{stringifyJson(intakeProfile) || "No intake payload saved."}</pre>
                         </div>
                         <div>
                           <div className="mb-2 text-gray-500">Assessment answers JSON</div>
-                          <pre className="overflow-x-auto rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-xs text-gray-300">{stringifyJson(record.assessment?.answers) || "No assessment answers saved."}</pre>
+                          <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-xs text-slate-100" style={{ color: "#e2e8f0" }}>{stringifyJson(record.assessment?.answers) || "No assessment answers saved."}</pre>
                         </div>
                       </div>
                     </div>

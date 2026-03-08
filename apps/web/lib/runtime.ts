@@ -70,11 +70,60 @@ export type SignupAuditRecord = {
     contactEmail?: string | null;
   };
   externalUserId: string | null;
+  posthogDistinctId: string | null;
+  posthogPersonUrl: string | null;
   welcomeEmailSentAt: string | null;
   onboarding: OnboardingSession | null;
   assessment: AssessmentAttempt | null;
   projectCount: number;
   chat: SignupAuditChatSummary;
+  resume: {
+    fileName: string | null;
+    signedUrl: string | null;
+  };
+};
+
+export type SignupAuditProjectSummary = {
+  id: string;
+  slug: string;
+  title: string;
+  state: Project["state"];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SignupAuditTimelineEntry = {
+  id: string;
+  timestamp: string;
+  category: "attribution" | "signup" | "email" | "onboarding" | "assessment" | "project" | "chat" | "job";
+  title: string;
+  detail: string | null;
+  projectId?: string | null;
+};
+
+export type SignupAuditDetail = SignupAuditRecord & {
+  projects: SignupAuditProjectSummary[];
+  timeline: SignupAuditTimelineEntry[];
+};
+
+type SignupAuditProfileRow = {
+  id: string;
+  external_user_id: string | null;
+  handle: string;
+  full_name: string;
+  headline: string;
+  bio: string;
+  career_path_id: string | null;
+  published: boolean;
+  tokens_used: number;
+  goals: string[] | null;
+  tools: string[] | null;
+  social_links: Record<string, string> | null;
+  acquisition?: Record<string, unknown> | null;
+  contact_email: string | null;
+  created_at: string;
+  updated_at: string;
+  welcome_email_sent_at: string | null;
 };
 
 function mode(): PersistenceMode {
@@ -2617,68 +2666,74 @@ async function getLatestAssessmentAttemptForUser(userId: string) {
   };
 }
 
-export async function runtimeListSignupAuditRecords(input?: {
-  days?: number;
-  limit?: number;
-  search?: string | null;
-  includeSeeded?: boolean;
+function emptySignupAuditChatSummary(): SignupAuditChatSummary {
+  return {
+    userMessageCount: 0,
+    lastUserMessageAt: null,
+    lastUserMessage: null,
+  };
+}
+
+function posthogPersonUrl(query: string | null | undefined) {
+  const normalized = typeof query === "string" ? query.trim() : "";
+  if (!normalized) return null;
+  const projectId = process.env.POSTHOG_PROJECT_ID?.trim() || process.env.POSTHOG_CLI_PROJECT_ID?.trim() || "330799";
+  return `https://us.posthog.com/project/${encodeURIComponent(projectId)}/persons?q=${encodeURIComponent(normalized)}`;
+}
+
+async function resolveResumeUploadForSession(input: {
+  sessionId: string;
+  resumeFilename: string | null | undefined;
 }) {
-  if (mode() === "memory") return [] as SignupAuditRecord[];
-
-  const supabase = getSupabaseAdmin();
-  const days = Math.max(1, Math.min(90, Math.floor(Number(input?.days ?? 7) || 7)));
-  const limit = Math.max(1, Math.min(200, Math.floor(Number(input?.limit ?? 50) || 50)));
-  const includeSeeded = input?.includeSeeded === true;
-  const search = typeof input?.search === "string" ? input.search.trim().toLowerCase() : "";
-  const fetchLimit = Math.max(limit * 4, 200);
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-
-  let profileQuery = supabase
-    .from("learner_profiles")
-    .select(
-      "id,external_user_id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,contact_email,created_at,updated_at,welcome_email_sent_at",
-    )
-    .gte("created_at", since)
-    .order("created_at", { ascending: false })
-    .limit(fetchLimit);
-
-  if (!includeSeeded) {
-    profileQuery = profileQuery.not("external_user_id", "is", null);
+  const fileName = typeof input.resumeFilename === "string" && input.resumeFilename.trim() ? input.resumeFilename.trim() : null;
+  if (!input.sessionId || !fileName) {
+    return {
+      fileName,
+      signedUrl: null,
+    };
   }
 
-  const { data: rawProfiles } = await profileQuery;
-  const matchedProfiles = ((rawProfiles ?? []) as Array<{
-    id: string;
-    external_user_id: string | null;
-    handle: string;
-    full_name: string;
-    headline: string;
-    bio: string;
-    career_path_id: string | null;
-    published: boolean;
-    tokens_used: number;
-    goals: string[] | null;
-    tools: string[] | null;
-    social_links: Record<string, string> | null;
-    acquisition?: Record<string, unknown> | null;
-    contact_email: string | null;
-    created_at: string;
-    updated_at: string;
-    welcome_email_sent_at: string | null;
-  }>)
-    .filter((row) => {
-      if (!search) return true;
-      return [row.full_name, row.contact_email, row.handle]
-        .filter((value): value is string => typeof value === "string")
-        .some((value) => value.toLowerCase().includes(search));
-    })
-    .slice(0, limit);
+  const supabase = getSupabaseAdmin();
+  const bucket = process.env.SUPABASE_RESUME_BUCKET?.trim() || "onboarding-resumes";
+  const folder = `onboarding/${input.sessionId}`;
 
-  if (!matchedProfiles.length) {
+  try {
+    const { data: objects } = await supabase.storage.from(bucket).list(folder, {
+      limit: 20,
+      offset: 0,
+    });
+    const candidates = (objects ?? [])
+      .filter((entry) => typeof entry.name === "string" && entry.name.includes(fileName))
+      .sort((a, b) => b.name.localeCompare(a.name));
+    const match = candidates[0];
+    if (!match?.name) {
+      return {
+        fileName,
+        signedUrl: null,
+      };
+    }
+
+    const objectPath = `${folder}/${match.name}`;
+    const { data: signed } = await supabase.storage.from(bucket).createSignedUrl(objectPath, 60 * 60);
+    return {
+      fileName,
+      signedUrl: signed?.signedUrl ?? null,
+    };
+  } catch {
+    return {
+      fileName,
+      signedUrl: null,
+    };
+  }
+}
+
+async function hydrateSignupAuditRecords(profileRows: SignupAuditProfileRow[]) {
+  if (!profileRows.length) {
     return [] as SignupAuditRecord[];
   }
 
-  const userIds = matchedProfiles.map((row) => row.id);
+  const supabase = getSupabaseAdmin();
+  const userIds = profileRows.map((row) => row.id);
 
   const [{ data: onboardingRows }, { data: assessmentRows }, { data: projectRows }] = await Promise.all([
     supabase
@@ -2774,11 +2829,7 @@ export async function runtimeListSignupAuditRecords(input?: {
       const userId = projectToUserId.get(row.project_id);
       if (!userId) continue;
 
-      const existing = chatByUser.get(userId) ?? {
-        userMessageCount: 0,
-        lastUserMessageAt: null,
-        lastUserMessage: null,
-      };
+      const existing = chatByUser.get(userId) ?? emptySignupAuditChatSummary();
       existing.userMessageCount += 1;
       if (!existing.lastUserMessageAt) {
         existing.lastUserMessageAt = row.created_at;
@@ -2788,22 +2839,335 @@ export async function runtimeListSignupAuditRecords(input?: {
     }
   }
 
-  return matchedProfiles.map((row) => ({
+  const resumeByUser = new Map<string, { fileName: string | null; signedUrl: string | null }>();
+  await Promise.all(
+    profileRows.map(async (row) => {
+      const onboarding = latestOnboardingByUser.get(row.id);
+      if (!onboarding?.id) {
+        resumeByUser.set(row.id, { fileName: onboarding?.resumeFilename ?? null, signedUrl: null });
+        return;
+      }
+      resumeByUser.set(
+        row.id,
+        await resolveResumeUploadForSession({
+          sessionId: onboarding.id,
+          resumeFilename: onboarding.resumeFilename,
+        }),
+      );
+    }),
+  );
+
+  return profileRows.map((row) => ({
     profile: {
       ...profileFromRow(row, []),
       contactEmail: row.contact_email ?? null,
     },
     externalUserId: row.external_user_id ?? null,
+    posthogDistinctId: row.external_user_id ?? row.contact_email ?? row.id,
+    posthogPersonUrl: posthogPersonUrl(row.external_user_id ?? row.contact_email ?? row.id),
     welcomeEmailSentAt: row.welcome_email_sent_at ?? null,
     onboarding: latestOnboardingByUser.get(row.id) ?? null,
     assessment: latestAssessmentByUser.get(row.id) ?? null,
     projectCount: projectCountByUser.get(row.id) ?? 0,
-    chat: chatByUser.get(row.id) ?? {
-      userMessageCount: 0,
-      lastUserMessageAt: null,
-      lastUserMessage: null,
-    },
+    chat: chatByUser.get(row.id) ?? emptySignupAuditChatSummary(),
+    resume: resumeByUser.get(row.id) ?? { fileName: null, signedUrl: null },
   })) satisfies SignupAuditRecord[];
+}
+
+export async function runtimeListSignupAuditRecords(input?: {
+  days?: number;
+  limit?: number;
+  search?: string | null;
+  includeSeeded?: boolean;
+}) {
+  if (mode() === "memory") return [] as SignupAuditRecord[];
+
+  const supabase = getSupabaseAdmin();
+  const days = Math.max(1, Math.min(90, Math.floor(Number(input?.days ?? 7) || 7)));
+  const limit = Math.max(1, Math.min(200, Math.floor(Number(input?.limit ?? 50) || 50)));
+  const includeSeeded = input?.includeSeeded === true;
+  const search = typeof input?.search === "string" ? input.search.trim().toLowerCase() : "";
+  const fetchLimit = Math.max(limit * 4, 200);
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  let profileQuery = supabase
+    .from("learner_profiles")
+    .select(
+      "id,external_user_id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,contact_email,created_at,updated_at,welcome_email_sent_at",
+    )
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(fetchLimit);
+
+  if (!includeSeeded) {
+    profileQuery = profileQuery.not("external_user_id", "is", null);
+  }
+
+  const { data: rawProfiles } = await profileQuery;
+  const matchedProfiles = ((rawProfiles ?? []) as SignupAuditProfileRow[])
+    .filter((row) => {
+      if (!search) return true;
+      return [row.full_name, row.contact_email, row.handle]
+        .filter((value): value is string => typeof value === "string")
+        .some((value) => value.toLowerCase().includes(search));
+    })
+    .slice(0, limit);
+
+  if (!matchedProfiles.length) {
+    return [] as SignupAuditRecord[];
+  }
+
+  return hydrateSignupAuditRecords(matchedProfiles);
+}
+
+export async function runtimeGetSignupAuditDetail(userId: string) {
+  if (mode() === "memory") return null as SignupAuditDetail | null;
+
+  const supabase = getSupabaseAdmin();
+  const normalizedUserId = normalizeUserId(userId);
+  const { data: rawProfile } = await supabase
+    .from("learner_profiles")
+    .select(
+      "id,external_user_id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,contact_email,created_at,updated_at,welcome_email_sent_at",
+    )
+    .eq("id", normalizedUserId)
+    .maybeSingle();
+
+  const profileRow = (rawProfile as SignupAuditProfileRow | null) ?? null;
+  if (!profileRow?.id) return null;
+
+  const [baseRecord] = await hydrateSignupAuditRecords([profileRow]);
+  if (!baseRecord) return null;
+
+  const [{ data: onboardingRows }, { data: assessmentRows }, { data: projectRows }, { data: jobEvents }, { data: buildLogs }] =
+    await Promise.all([
+      supabase
+        .from("onboarding_sessions")
+        .select("id,situation,career_path_id,linkedin_url,resume_filename,ai_knowledge_score,goals,acquisition,status,created_at,updated_at")
+        .eq("learner_profile_id", profileRow.id)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("assessment_attempts")
+        .select("id,score,answers,recommended_career_path_ids,started_at,submitted_at,updated_at")
+        .eq("learner_profile_id", profileRow.id)
+        .order("started_at", { ascending: true }),
+      supabase
+        .from("projects")
+        .select("id,slug,title,state,created_at,updated_at")
+        .eq("learner_profile_id", profileRow.id)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("agent_job_events")
+        .select("id,project_id,event_type,message,created_at")
+        .eq("learner_profile_id", profileRow.id)
+        .order("created_at", { ascending: true })
+        .limit(200),
+      supabase
+        .from("build_log_entries")
+        .select("id,project_id,level,message,created_at")
+        .eq("learner_profile_id", profileRow.id)
+        .order("created_at", { ascending: true })
+        .limit(200),
+    ]);
+
+  const projects = ((projectRows ?? []) as Array<{
+    id: string;
+    slug: string;
+    title: string;
+    state: Project["state"];
+    created_at: string;
+    updated_at: string;
+  }>).map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    state: row.state,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  })) satisfies SignupAuditProjectSummary[];
+
+  const timeline: SignupAuditTimelineEntry[] = [];
+  const pushTimeline = (entry: SignupAuditTimelineEntry | null | undefined) => {
+    if (!entry?.timestamp) return;
+    timeline.push(entry);
+  };
+
+  const profileAcquisition = parseAcquisition(profileRow.acquisition);
+  if (profileAcquisition?.first?.capturedAt) {
+    pushTimeline({
+      id: `attr-first-${profileRow.id}`,
+      timestamp: profileAcquisition.first.capturedAt,
+      category: "attribution",
+      title: "First attribution captured",
+      detail: [profileAcquisition.first.utmSource, profileAcquisition.first.utmCampaign, profileAcquisition.first.landingPath]
+        .filter(Boolean)
+        .join(" • ") || null,
+    });
+  }
+  if (profileAcquisition?.last?.capturedAt && profileAcquisition.last.capturedAt !== profileAcquisition.first?.capturedAt) {
+    pushTimeline({
+      id: `attr-last-${profileRow.id}`,
+      timestamp: profileAcquisition.last.capturedAt,
+      category: "attribution",
+      title: "Last attribution touch captured",
+      detail: [profileAcquisition.last.utmSource, profileAcquisition.last.utmCampaign, profileAcquisition.last.landingPath]
+        .filter(Boolean)
+        .join(" • ") || null,
+    });
+  }
+
+  pushTimeline({
+    id: `signup-${profileRow.id}`,
+    timestamp: profileRow.created_at,
+    category: "signup",
+    title: "Signup recorded",
+    detail: profileRow.contact_email ?? profileRow.handle,
+  });
+
+  if (profileRow.welcome_email_sent_at) {
+    pushTimeline({
+      id: `welcome-${profileRow.id}`,
+      timestamp: profileRow.welcome_email_sent_at,
+      category: "email",
+      title: "Welcome email sent",
+      detail: profileRow.contact_email ?? null,
+    });
+  }
+
+  for (const row of (onboardingRows ?? []) as Array<{
+    id: string;
+    situation: OnboardingSession["situation"];
+    career_path_id: string | null;
+    linkedin_url: string | null;
+    resume_filename: string | null;
+    ai_knowledge_score: number | null;
+    goals: string[] | null;
+    acquisition?: Record<string, unknown> | null;
+    status: OnboardingSession["status"];
+    created_at: string;
+    updated_at: string;
+  }>) {
+    pushTimeline({
+      id: `onboarding-start-${row.id}`,
+      timestamp: row.created_at,
+      category: "onboarding",
+      title: "Onboarding session started",
+      detail: [row.status, row.career_path_id, row.situation].filter(Boolean).join(" • ") || null,
+    });
+    if (row.updated_at && row.updated_at !== row.created_at) {
+      const intake = parseStoredOnboardingIntakeProfile(row.acquisition);
+      const primaryGoal = Array.isArray((intake as Record<string, unknown> | undefined)?.selectedGoals)
+        ? String(((intake as Record<string, unknown>).selectedGoals as unknown[])[0] ?? "")
+        : row.goals?.[0] ?? null;
+      pushTimeline({
+        id: `onboarding-update-${row.id}`,
+        timestamp: row.updated_at,
+        category: "onboarding",
+        title: "Onboarding draft updated",
+        detail: [row.status, primaryGoal, row.resume_filename ? "resume" : "", row.linkedin_url ? "linkedin" : ""]
+          .filter(Boolean)
+          .join(" • ") || null,
+      });
+    }
+  }
+
+  for (const row of (assessmentRows ?? []) as Array<{
+    id: string;
+    score: number;
+    answers: Array<{ questionId: string; value: number }> | null;
+    recommended_career_path_ids: string[] | null;
+    started_at: string;
+    submitted_at: string | null;
+  }>) {
+    pushTimeline({
+      id: `assessment-start-${row.id}`,
+      timestamp: row.started_at,
+      category: "assessment",
+      title: "Assessment started",
+      detail: null,
+    });
+    if (row.submitted_at) {
+      pushTimeline({
+        id: `assessment-submit-${row.id}`,
+        timestamp: row.submitted_at,
+        category: "assessment",
+        title: "Assessment submitted",
+        detail: `Score ${Math.round((Number(row.score ?? 0) <= 1 ? Number(row.score ?? 0) * 100 : Number(row.score ?? 0)) || 0)}%`,
+      });
+    }
+  }
+
+  for (const project of projects) {
+    pushTimeline({
+      id: `project-${project.id}`,
+      timestamp: project.createdAt,
+      category: "project",
+      title: `Project created: ${project.title}`,
+      detail: project.state,
+      projectId: project.id,
+    });
+  }
+
+  for (const row of (jobEvents ?? []) as Array<{
+    id: string;
+    project_id: string | null;
+    event_type: string;
+    message: string;
+    created_at: string;
+  }>) {
+    pushTimeline({
+      id: row.id,
+      timestamp: row.created_at,
+      category: "job",
+      title: row.event_type,
+      detail: row.message ?? null,
+      projectId: row.project_id,
+    });
+  }
+
+  for (const row of (buildLogs ?? []) as Array<{
+    id: string;
+    project_id: string | null;
+    level: BuildLogEntry["level"];
+    message: string;
+    created_at: string;
+  }>) {
+    const message = row.message?.trim() ?? "";
+    if (!message) continue;
+    if (/^User message:/i.test(message)) {
+      pushTimeline({
+        id: row.id,
+        timestamp: row.created_at,
+        category: "chat",
+        title: "User chat message",
+        detail: message.replace(/^User message:\s*/i, "").trim() || null,
+        projectId: row.project_id,
+      });
+      continue;
+    }
+    if (/^Artifact generated:/i.test(message) || /^Project .* created\.$/i.test(message) || /^My AI Skill Tutor reply generated/i.test(message)) {
+      pushTimeline({
+        id: row.id,
+        timestamp: row.created_at,
+        category: "project",
+        title: message,
+        detail: row.level,
+        projectId: row.project_id,
+      });
+    }
+  }
+
+  timeline.sort((a, b) => {
+    const time = a.timestamp.localeCompare(b.timestamp);
+    if (time !== 0) return time;
+    return a.id.localeCompare(b.id);
+  });
+
+  return {
+    ...baseRecord,
+    projects,
+    timeline,
+  } satisfies SignupAuditDetail;
 }
 
 async function getAgentMemoryRowsForUser(userId: string) {
