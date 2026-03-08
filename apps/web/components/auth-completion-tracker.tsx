@@ -4,11 +4,42 @@ import { useEffect, useRef } from "react";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { trackAdCompleteRegistration } from "@/lib/ad-conversions";
 import { captureAnalyticsEvent, identifyAnalyticsUser } from "@/lib/analytics";
-import { COMPLETE_REGISTRATION_FIRED_KEY, SIGN_UP_INTENT_KEY } from "@/components/auth-tracking-keys";
+import {
+  COMPLETE_REGISTRATION_FIRED_KEY,
+  SIGN_UP_COMPLETION_TRACKED_KEY,
+  SIGN_UP_INTENT_KEY,
+} from "@/components/auth-tracking-keys";
 
 function onboardingSessionIdFromLocation() {
   try {
     return new URL(window.location.href).searchParams.get("onboardingSessionId");
+  } catch {
+    return null;
+  }
+}
+
+function readStoredSignUpIntent() {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(SIGN_UP_INTENT_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as { source?: unknown; startedAt?: unknown } | null;
+    const source =
+      typeof parsed?.source === "string" && parsed.source.trim() ? parsed.source.trim() : undefined;
+    const startedAtValue = parsed?.startedAt;
+    const signupStartedAt =
+      typeof startedAtValue === "number" && Number.isFinite(startedAtValue)
+        ? new Date(startedAtValue).toISOString()
+        : typeof startedAtValue === "string" && startedAtValue.trim()
+          ? startedAtValue.trim()
+          : undefined;
+
+    return {
+      source,
+      signupStartedAt,
+    };
   } catch {
     return null;
   }
@@ -46,28 +77,37 @@ export function AuthCompletionTracker() {
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !userId || authEventTrackedRef.current || typeof window === "undefined") return;
-
-    let intentSource: string | undefined;
-    let signupStartedAt: string | undefined;
-
+    const signUpIntent = readStoredSignUpIntent();
+    let completionAlreadyTracked = false;
     try {
-      const raw = window.sessionStorage.getItem(SIGN_UP_INTENT_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as { source?: string; startedAt?: string } | null;
-        intentSource = typeof parsed?.source === "string" && parsed.source.trim() ? parsed.source.trim() : undefined;
-        signupStartedAt = typeof parsed?.startedAt === "string" && parsed.startedAt.trim() ? parsed.startedAt.trim() : undefined;
-      }
+      completionAlreadyTracked = window.sessionStorage.getItem(SIGN_UP_COMPLETION_TRACKED_KEY) === "1";
     } catch {
-      intentSource = undefined;
-      signupStartedAt = undefined;
+      completionAlreadyTracked = false;
     }
 
     authEventTrackedRef.current = true;
-    if (signupStartedAt) {
+    if (signUpIntent?.signupStartedAt) {
+      if (!completionAlreadyTracked) {
+        captureAnalyticsEvent("clerk_sign_up_completed", {
+          auth_provider: "clerk",
+          source: signUpIntent.source ?? "auth_completion_tracker",
+          signup_started_at: signUpIntent.signupStartedAt,
+        });
+        captureAnalyticsEvent("auth_clerk_sign_up_completed", {
+          auth_provider: "clerk",
+          source: signUpIntent.source ?? "auth_completion_tracker",
+          signup_started_at: signUpIntent.signupStartedAt,
+        });
+        try {
+          window.sessionStorage.setItem(SIGN_UP_COMPLETION_TRACKED_KEY, "1");
+        } catch {
+          // Ignore strict privacy mode storage errors.
+        }
+      }
       captureAnalyticsEvent("auth_sign_up_completed", {
         auth_provider: "clerk",
-        source: intentSource ?? "auth_completion_tracker",
-        signup_started_at: signupStartedAt,
+        source: signUpIntent.source ?? "auth_completion_tracker",
+        signup_started_at: signUpIntent.signupStartedAt,
       });
       return;
     }
@@ -89,11 +129,9 @@ export function AuthCompletionTracker() {
         return;
       }
 
-      const raw = window.sessionStorage.getItem(SIGN_UP_INTENT_KEY);
-      if (!raw) return;
-
-      const parsed = JSON.parse(raw) as { source?: string } | null;
-      source = typeof parsed?.source === "string" && parsed.source.trim() ? parsed.source.trim() : undefined;
+      const signUpIntent = readStoredSignUpIntent();
+      if (!signUpIntent) return;
+      source = signUpIntent.source;
       sessionId = onboardingSessionIdFromLocation();
     } catch {
       return;

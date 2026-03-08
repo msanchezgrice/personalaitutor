@@ -251,7 +251,7 @@
           ? "linkedin"
           : source === "x" || source.indexOf("twitter") !== -1
             ? "x"
-            : source.indexOf("facebook") !== -1 || source.indexOf("meta") !== -1 || source.indexOf("instagram") !== -1
+            : source === "fb" || source === "ig" || source === "an" || source.indexOf("facebook") !== -1 || source.indexOf("meta") !== -1 || source.indexOf("instagram") !== -1
             ? "facebook"
             : source.indexOf("google") !== -1 || last.gclid
               ? "google"
@@ -367,7 +367,7 @@
         ? "linkedin"
         : source === "x" || source.indexOf("twitter") !== -1
           ? "x"
-          : source.indexOf("facebook") !== -1 || source.indexOf("meta") !== -1 || source.indexOf("instagram") !== -1
+          : source === "fb" || source === "ig" || source === "an" || source.indexOf("facebook") !== -1 || source.indexOf("meta") !== -1 || source.indexOf("instagram") !== -1
             ? "facebook"
             : source.indexOf("google") !== -1 || last.gclid
               ? "google"
@@ -453,7 +453,7 @@
     if (!source) return "unknown";
     if (source.indexOf("linkedin") !== -1) return "linkedin";
     if (source === "x" || source.indexOf("twitter") !== -1) return "x";
-    if (source.indexOf("facebook") !== -1 || source.indexOf("meta") !== -1 || source.indexOf("instagram") !== -1) {
+    if (source === "fb" || source === "ig" || source === "an" || source.indexOf("facebook") !== -1 || source.indexOf("meta") !== -1 || source.indexOf("instagram") !== -1) {
       return "facebook";
     }
     return source;

@@ -2,14 +2,14 @@
 
 import { useEffect, useMemo } from "react";
 import { readClientAttributionEnvelope } from "@/lib/attribution";
-import { captureAnalyticsEvent } from "@/lib/analytics";
-import { SIGN_UP_INTENT_KEY } from "@/components/auth-tracking-keys";
+import { captureAnalyticsEvent, isMetaAttributionSource } from "@/lib/analytics";
+import { SIGN_UP_COMPLETION_TRACKED_KEY, SIGN_UP_INTENT_KEY } from "@/components/auth-tracking-keys";
 
 function detectPreferredProvider() {
   const source = readClientAttributionEnvelope()?.last?.utmSource?.toLowerCase() ?? "";
   if (source.includes("linkedin")) return "linkedin";
   if (source === "x" || source.includes("twitter")) return "x";
-  if (source.includes("facebook") || source.includes("meta") || source.includes("instagram")) return "facebook";
+  if (isMetaAttributionSource(source)) return "facebook";
   return "google";
 }
 
@@ -32,6 +32,7 @@ export function AuthPageTracking({
             JSON.stringify({ startedAt: Date.now(), source: "clerk_sign_up_page" }),
           );
         }
+        window.sessionStorage.removeItem(SIGN_UP_COMPLETION_TRACKED_KEY);
       } catch {
         // Ignore strict privacy mode storage failures.
       }

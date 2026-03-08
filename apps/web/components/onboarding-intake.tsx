@@ -13,9 +13,14 @@ import {
   trackAdOnboardingStart,
   trackAdQuizStart,
 } from "@/lib/ad-conversions";
-import { captureAnalyticsEvent } from "@/lib/analytics";
+import { captureAnalyticsEvent, isMetaAttributionSource } from "@/lib/analytics";
 import { readClientAttributionEnvelope } from "@/lib/attribution";
-import { COMPLETE_REGISTRATION_FIRED_KEY, PENDING_SESSION_KEY, SIGN_UP_INTENT_KEY } from "@/components/auth-tracking-keys";
+import {
+  COMPLETE_REGISTRATION_FIRED_KEY,
+  PENDING_SESSION_KEY,
+  SIGN_UP_COMPLETION_TRACKED_KEY,
+  SIGN_UP_INTENT_KEY,
+} from "@/components/auth-tracking-keys";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -444,7 +449,7 @@ function preferredSourceLabel(): string {
   const source = readClientAttributionEnvelope()?.last?.utmSource?.toLowerCase() ?? "";
   if (source.includes("linkedin")) return "LinkedIn sign-in";
   if (source === "x" || source.includes("twitter")) return "X sign-in";
-  if (source.includes("facebook") || source.includes("meta") || source.includes("instagram")) return "Facebook sign-in";
+  if (isMetaAttributionSource(source)) return "Facebook sign-in";
   return "social login";
 }
 
@@ -547,6 +552,54 @@ export function OnboardingIntake() {
     return "#16a34a";
   }, [riskBand]);
   const recommendedAuthSource = useMemo(() => preferredSourceLabel(), []);
+  const hasLinkedInUrl = useMemo(() => Boolean(linkedinUrl.trim()), [linkedinUrl]);
+  const hasResume = useMemo(() => Boolean(uploadedResumeName || resumeFile), [resumeFile, uploadedResumeName]);
+  const onboardingAnalyticsContext = useMemo(
+    () => ({
+      session_id: sessionId,
+      career_category: careerCategory,
+      career_path_id: selectedCareer.path,
+      career_category_label: selectedCareerLabel,
+      years_experience: yearsExperience,
+      company_size: companySize || null,
+      situation,
+      ai_comfort: aiComfort,
+      goals: selectedGoals,
+      goals_count: selectedGoals.length,
+      primary_goal: selectedGoals[0] ?? null,
+      has_linkedin_url: hasLinkedInUrl,
+      linkedin_connected: linkedinConnected,
+      has_resume: hasResume,
+      has_key_skills: Boolean(keySkills.trim()),
+      has_daily_work_summary: Boolean(dailyWorkSummary.trim()),
+    }),
+    [
+      aiComfort,
+      careerCategory,
+      companySize,
+      dailyWorkSummary,
+      hasLinkedInUrl,
+      hasResume,
+      keySkills,
+      linkedinConnected,
+      selectedCareer.path,
+      selectedCareerLabel,
+      selectedGoals,
+      sessionId,
+      situation,
+      yearsExperience,
+    ],
+  );
+  const assessmentAnswerProps = useMemo(
+    () => ({
+      answer_career_experience: selectedExperience.score,
+      answer_ai_comfort: aiComfort,
+      answer_daily_work_complexity: Math.min(5, Math.max(1, Math.ceil(dailyWorkSummary.trim().length / 70))),
+      answer_linkedin_context: hasLinkedInUrl ? 5 : 2,
+      answer_resume_context: hasResume ? 4 : 2,
+    }),
+    [aiComfort, dailyWorkSummary, hasLinkedInUrl, hasResume, selectedExperience.score],
+  );
   const hasMeaningfulInput = useMemo(() => {
     const hasDefaultGoals =
       selectedGoals.length === 1 && selectedGoals[0] === "upskill_current_job";
@@ -627,17 +680,17 @@ export function OnboardingIntake() {
   const continueAfterSummary = () => {
     if (!nextRedirectHref || !isSignedIn) return;
     trackPosthog("assessment_summary_cta_clicked", {
-      session_id: sessionId,
+      ...onboardingAnalyticsContext,
+      ...assessmentAnswerProps,
       destination: nextRedirectHref,
       action: "open_dashboard",
-      career_category: careerCategory,
       score: normalizedScore,
       risk_band: riskBand,
     });
     trackPosthog("onboarding_continue_to_dashboard", {
-      session_id: sessionId,
+      ...onboardingAnalyticsContext,
+      ...assessmentAnswerProps,
       destination: nextRedirectHref,
-      career_category: careerCategory,
       score: normalizedScore,
       risk_band: riskBand,
       requires_signup: !isSignedIn,
@@ -841,18 +894,22 @@ export function OnboardingIntake() {
       auth_provider: "clerk",
       signup_started_at: intent.startedAt,
       source: intent.source ?? "onboarding_auth_gate",
+      ...onboardingAnalyticsContext,
     });
     trackPosthog("auth_clerk_sign_up_completed", {
       auth_provider: "clerk",
       signup_started_at: intent.startedAt,
       source: intent.source ?? "onboarding_auth_gate",
+      ...onboardingAnalyticsContext,
     });
     trackFunnelStep("clerk_sign_up_completed", {
       auth_provider: "clerk",
       signup_started_at: intent.startedAt,
       source: intent.source ?? "onboarding_auth_gate",
+      ...onboardingAnalyticsContext,
     });
     try {
+      window.sessionStorage.setItem(SIGN_UP_COMPLETION_TRACKED_KEY, "1");
       if (window.sessionStorage.getItem(COMPLETE_REGISTRATION_FIRED_KEY) !== "1") {
         trackAdCompleteRegistration({
           sessionId,
@@ -877,15 +934,19 @@ export function OnboardingIntake() {
     trackPosthog("onboarding_viewed", {
       entry_point: signUpIntent ? "clerk_sign_up" : "direct",
       has_existing_session: Boolean(sessionId),
-      career_category: careerCategory,
+      ...onboardingAnalyticsContext,
     });
     trackFunnelStep("onboarding_viewed", {
       entry_point: signUpIntent ? "clerk_sign_up" : "direct",
       has_existing_session: Boolean(sessionId),
-      career_category: careerCategory,
+      ...onboardingAnalyticsContext,
     });
-    trackPosthog("onboarding_step_viewed", { step: 1, step_name: STEP_NAMES[1] });
-  }, [careerCategory, sessionId]);
+    trackPosthog("onboarding_step_viewed", {
+      step: 1,
+      step_name: STEP_NAMES[1],
+      ...onboardingAnalyticsContext,
+    });
+  }, [onboardingAnalyticsContext, sessionId]);
 
   // Track every step transition in PostHog
   const prevStepRef = useRef<Step>(1);
@@ -894,16 +955,14 @@ export function OnboardingIntake() {
     trackPosthog("onboarding_step_viewed", {
       step,
       step_name: STEP_NAMES[step],
-      session_id: sessionId,
-      career_category: careerCategory,
+      ...onboardingAnalyticsContext,
     });
     trackFunnelStep(STEP_NAMES[step], {
       step,
-      session_id: sessionId,
-      career_category: careerCategory,
+      ...onboardingAnalyticsContext,
     });
     prevStepRef.current = step;
-  }, [step, sessionId, careerCategory]);
+  }, [onboardingAnalyticsContext, step]);
 
   useEffect(() => {
     if (step !== 4) return;
@@ -927,29 +986,30 @@ export function OnboardingIntake() {
     trackPosthog("onboarding_step_completed", {
       step: 4,
       step_name: "ai_analysis",
-      session_id: sessionId,
+      ...onboardingAnalyticsContext,
+      ...assessmentAnswerProps,
     });
     trackPosthog("onboarding_assessment_complete", {
       step: 5,
       step_name: "assessment_complete",
-      session_id: sessionId,
-      career_category: careerCategory,
+      ...onboardingAnalyticsContext,
+      ...assessmentAnswerProps,
       score: normalizedScore,
       risk_band: riskBand,
     });
     trackPosthog("onboarding_completed", {
-      session_id: sessionId,
-      career_category: careerCategory,
+      ...onboardingAnalyticsContext,
+      ...assessmentAnswerProps,
       score: normalizedScore,
       risk_band: riskBand,
     });
     trackFunnelStep("onboarding_completed", {
-      session_id: sessionId,
-      career_category: careerCategory,
+      ...onboardingAnalyticsContext,
+      ...assessmentAnswerProps,
       score: normalizedScore,
       risk_band: riskBand,
     });
-  }, [step, sessionId, careerCategory, selectedCareer.path, normalizedScore, riskBand]);
+  }, [assessmentAnswerProps, onboardingAnalyticsContext, step, selectedCareer.path, normalizedScore, riskBand]);
 
   const toggleGoal = (goal: GoalType) => {
     setSelectedGoals((prev) =>
@@ -1112,7 +1172,7 @@ export function OnboardingIntake() {
     const stepOneError = validateStepOne();
     if (stepOneError) {
       trackValidationFailure(1, stepOneError, {
-        career_category: careerCategory,
+        ...onboardingAnalyticsContext,
       });
       setStep(1);
       setError(stepOneError);
@@ -1121,8 +1181,7 @@ export function OnboardingIntake() {
     const stepTwoError = validateStepTwo();
     if (stepTwoError) {
       trackValidationFailure(2, stepTwoError, {
-        has_linkedin: !!linkedinUrl.trim() || linkedinConnected,
-        goals_count: selectedGoals.length,
+        ...onboardingAnalyticsContext,
       });
       setStep(2);
       setError(stepTwoError);
@@ -1132,16 +1191,16 @@ export function OnboardingIntake() {
     trackPosthog("onboarding_step_completed", {
       step: 3,
       step_name: "resume_review",
-      has_resume: !!(uploadedResumeName || resumeFile),
-      session_id: sessionId,
+      ...onboardingAnalyticsContext,
     });
     setStep(4);
     setBusy(true);
     try {
       const session = await ensureSession();
       trackPosthog("onboarding_analysis_started", {
+        ...onboardingAnalyticsContext,
+        ...assessmentAnswerProps,
         session_id: session.id,
-        career_category: careerCategory,
       });
       if (!quizStartFired.current) {
         quizStartFired.current = true;
@@ -1268,6 +1327,7 @@ export function OnboardingIntake() {
                         SIGN_UP_INTENT_KEY,
                         JSON.stringify({ startedAt: Date.now(), source: "onboarding_auth_gate" }),
                       );
+                      window.sessionStorage.removeItem(SIGN_UP_COMPLETION_TRACKED_KEY);
                     } catch {
                       // Ignore storage failures.
                     }
@@ -1774,10 +1834,10 @@ export function OnboardingIntake() {
                     disabled={!nextRedirectHref || navigatingAfterSummary}
                     onClick={() => {
                         trackPosthog("assessment_summary_cta_clicked", {
-                          session_id: sessionId,
+                          ...onboardingAnalyticsContext,
+                          ...assessmentAnswerProps,
                           destination: nextRedirectHref,
                           action: "create_account_to_continue",
-                          career_category: careerCategory,
                           score: normalizedScore,
                           risk_band: riskBand,
                         });
@@ -1786,6 +1846,7 @@ export function OnboardingIntake() {
                             SIGN_UP_INTENT_KEY,
                             JSON.stringify({ startedAt: Date.now(), source: "assessment_complete_cta" }),
                           );
+                          window.sessionStorage.removeItem(SIGN_UP_COMPLETION_TRACKED_KEY);
                         } catch {
                           // Ignore storage failures.
                         }
@@ -1851,7 +1912,7 @@ export function OnboardingIntake() {
                       const validation = validateStepOne();
                       if (validation) {
                         trackValidationFailure(1, validation, {
-                          career_category: careerCategory,
+                          ...onboardingAnalyticsContext,
                         });
                         setError(validation);
                         return;
@@ -1867,18 +1928,15 @@ export function OnboardingIntake() {
                       trackPosthog("onboarding_step_completed", {
                         step: 1,
                         step_name: "basic_information",
-                        career_category: careerCategory,
                         job_title: jobTitle,
-                        years_experience: yearsExperience,
-                        session_id: sessionId,
+                        ...onboardingAnalyticsContext,
                       });
                     }
                     if (step === 2) {
                       const validation = validateStepTwo();
                       if (validation) {
                         trackValidationFailure(2, validation, {
-                          has_linkedin: !!linkedinUrl.trim() || linkedinConnected,
-                          goals_count: selectedGoals.length,
+                          ...onboardingAnalyticsContext,
                         });
                         setError(validation);
                         return;
@@ -1887,10 +1945,7 @@ export function OnboardingIntake() {
                         step: 2,
                         step_name: "work_details",
                         has_linkedin: !!linkedinUrl.trim() || linkedinConnected,
-                        goals_count: selectedGoals.length,
-                        ai_comfort: aiComfort,
-                        situation,
-                        session_id: sessionId,
+                        ...onboardingAnalyticsContext,
                       });
                     }
                     setStep((prev) => (prev < 5 ? ((prev + 1) as Step) : prev));

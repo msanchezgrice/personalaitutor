@@ -39,6 +39,20 @@ function cleanText(value: string | null | undefined) {
   return normalized || null;
 }
 
+export function isMetaAttributionSource(value: string | null | undefined) {
+  const source = cleanText(value)?.toLowerCase() ?? "";
+  if (!source) return false;
+
+  return (
+    source === "fb" ||
+    source === "ig" ||
+    source === "an" ||
+    source.includes("facebook") ||
+    source.includes("meta") ||
+    source.includes("instagram")
+  );
+}
+
 function eventAttributionProps(attribution: AttributionEnvelope | null | undefined) {
   const first = attribution?.first;
   const last = attribution?.last;
@@ -102,13 +116,7 @@ export function normalizePaidSource(attribution: AttributionEnvelope | null | un
 
   if (source.includes("linkedin")) return "linkedin";
   if (source === "x" || source.includes("twitter")) return "x";
-  if (
-    source === "fb" ||
-    source === "ig" ||
-    source.includes("facebook") ||
-    source.includes("meta") ||
-    source.includes("instagram")
-  ) {
+  if (isMetaAttributionSource(source)) {
     return "facebook";
   }
   if (source.includes("google") || last?.gclid) return "google";
