@@ -2019,21 +2019,23 @@
       return "";
     }
 
+    var narrowViewport = isNarrowViewport();
+
     var todayUpdateText = summarizeText(
       (summary.dailyUpdate && summary.dailyUpdate.summary) ||
       latestEventMessage(summary.latestEvents) ||
       "You are set up for focused progress today. Pick one concrete task and ship it.",
-      180,
+      narrowViewport ? 96 : 180,
     );
 
     var continuationText = summarizeText(
       latestBuildLogMessage(activeProject) ||
       latestChatCacheMessage(activeProject && activeProject.id ? activeProject.id : ctx.projectId) ||
       "Share your latest blocker and I will help you take the next verified step.",
-      200,
+      narrowViewport ? 116 : 200,
     );
 
-    var tutorBanner = document.querySelector("div.glass-panel.p-6.rounded-2xl.mb-8");
+    var tutorBanner = document.querySelector("[data-dashboard-home-hero='1']") || document.querySelector("div.glass-panel.p-6.rounded-2xl.mb-8");
     if (tutorBanner) {
       var bannerTitle = tutorBanner.querySelector("h3");
       var bannerBody = tutorBanner.querySelector("p.text-sm.text-gray-400");
@@ -2050,7 +2052,7 @@
       }
     }
 
-    var cards = document.querySelectorAll("section .grid.sm\\:grid-cols-2 > a");
+    var cards = document.querySelectorAll("[data-dashboard-home-card='1']");
     if (cards[0] && activeCard) {
       var title = cards[0].querySelector("h3");
       var desc = cards[0].querySelector("p.text-xs");
@@ -2067,7 +2069,7 @@
       setHref(cards[1], "/dashboard/projects/");
     }
 
-    var skillStack = Array.prototype.find.call(document.querySelectorAll("section .glass.p-6.rounded-xl"), function (node) {
+    var skillStack = document.querySelector("[data-dashboard-home-skills='1']") || Array.prototype.find.call(document.querySelectorAll("section .glass.p-6.rounded-xl"), function (node) {
       return (node.textContent || "").indexOf("Add Target Skill") !== -1;
     });
 
@@ -2111,9 +2113,9 @@
       if (addTargetSkill) skillStack.appendChild(addTargetSkill);
     }
 
-    var socialQuote = document.querySelector("section p.text-sm.text-gray-300.mb-4.italic");
+    var socialQuote = document.querySelector("[data-dashboard-home-social-quote='1']") || document.querySelector("section p.text-sm.text-gray-300.mb-4.italic");
     var socialSection = socialQuote ? socialQuote.closest("section") : null;
-    var socialCta = socialSection ? socialSection.querySelector("a[href='/dashboard/social/'], a[href='/dashboard/social']") : null;
+    var socialCta = document.querySelector("[data-dashboard-home-social-cta='1']") || (socialSection ? socialSection.querySelector("a[href='/dashboard/social/'], a[href='/dashboard/social']") : null);
     if (socialCta) {
       setHref(socialCta, "/dashboard/social/");
       socialCta.textContent = "Open Social Drafts";
@@ -2121,7 +2123,7 @@
 
     function applySocialQuote(tweetText) {
       if (!socialQuote) return;
-      var normalized = summarizeText(tweetText, 200);
+      var normalized = summarizeText(tweetText, narrowViewport ? 132 : 200);
       if (!normalized) return;
       socialQuote.textContent = '"' + normalized + '"';
     }
@@ -2165,10 +2167,12 @@
         updatesLink.textContent = "View all";
       }
 
-      var updatesList = updatesSection.querySelector(".space-y-3");
+      var updatesList = updatesSection.querySelector("[data-dashboard-home-news-list='1']") || updatesSection.querySelector(".space-y-3");
       if (updatesList) {
+        var desiredHomeNewsCount = narrowViewport ? 2 : 3;
+
         function normalizeHomeNews(insights) {
-          var rows = Array.isArray(insights) ? insights.slice(0, 3) : [];
+          var rows = Array.isArray(insights) ? insights.slice(0, desiredHomeNewsCount) : [];
           return rows
             .map(function (insight) {
               return {
@@ -2180,7 +2184,7 @@
             .filter(function (story) {
               return Boolean(story.title);
             })
-            .slice(0, 3);
+            .slice(0, desiredHomeNewsCount);
         }
 
         function renderHomeNews(insights, unavailableReason) {
@@ -2199,7 +2203,7 @@
             bindDatasetAnalytics(updatesList);
             return;
           }
-          while (rows.length < 3) {
+          while (rows.length < desiredHomeNewsCount) {
             rows.push({
               title: isLoading ? "Generating AI News" : "AI News unavailable",
               summary: unavailableReason || "News generation is currently unavailable. Open AI News to retry.",
@@ -2552,7 +2556,8 @@
       document.title = document.title.replace(/Social Media/g, "Social Drafts");
     }
 
-    var contentWrap = document.querySelector(
+    var routeRoot = document.querySelector("[data-dashboard-route='1']");
+    var contentWrap = routeRoot && routeRoot.firstElementChild ? routeRoot.firstElementChild : document.querySelector(
       "main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-8, main .p-6.md\\:p-10.max-w-5xl.mx-auto.w-full.pb-24",
     );
     if (!contentWrap) return;
@@ -2576,7 +2581,7 @@
     }
 
     contentWrap.innerHTML =
-      '<section class="glass p-6 md:p-8 rounded-2xl border border-white/10 bg-white/5">' +
+      '<section class="glass runtime-social-shell p-6 md:p-8 rounded-2xl border border-white/10 bg-white/5">' +
       '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">' +
       '<div><h2 class="text-lg font-[Outfit] font-semibold text-slate-900">Social Drafts</h2>' +
       '<p class="text-xs text-slate-600">Edit and share native drafts for LinkedIn and X/Twitter.</p>' +
@@ -2621,10 +2626,9 @@
       '<button type="button" data-social-share="x" class="btn bg-white text-[#111827] hover:bg-gray-200 text-xs"><i class="fa-brands fa-x-twitter mr-2"></i>Tweet</button>' +
       "</div></article>" +
       "</div>" +
-      '<div class="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">' +
-      '<span data-social-context="1">Context: preparing personalized draft...</span>' +
-      '<span>•</span>' +
-      '<span data-social-source="1">Warming from active project context...</span>' +
+      '<div class="mt-4 runtime-social-meta text-[11px] text-slate-500">' +
+      '<div data-social-context="1">Context: preparing personalized draft...</div>' +
+      '<div data-social-source="1">Warming from active project context...</div>' +
       "</div>" +
       "</section>";
 

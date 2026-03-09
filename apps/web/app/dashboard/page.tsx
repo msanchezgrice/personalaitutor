@@ -68,10 +68,13 @@ export default async function DashboardPage() {
           levelProgressText: "Start building to level up",
         }}
       >
-        <div className="p-10 max-w-6xl mx-auto w-full pb-24">
-          <div className="glass-panel p-6 rounded-2xl mb-8 flex flex-col md:flex-row items-center justify-between gap-6 border border-emerald-500/30 overflow-hidden relative">
+        <div data-dashboard-home-content="1" className="p-10 max-w-6xl mx-auto w-full pb-24">
+          <div
+            data-dashboard-home-hero="1"
+            className="glass-panel p-6 rounded-2xl mb-8 flex flex-col md:flex-row items-center justify-between gap-6 border border-emerald-500/30 overflow-hidden relative"
+          >
             <div className="absolute right-0 top-0 w-64 h-full bg-gradient-to-l from-emerald-500/10 to-transparent pointer-events-none"></div>
-            <div className="flex items-center gap-4 relative z-10">
+            <div data-dashboard-home-hero-copy="1" className="flex items-center gap-4 relative z-10">
               <div className="w-12 h-12 rounded-full border-2 border-emerald-500 p-1">
                 <div className="w-full h-full bg-emerald-500 rounded-full flex items-center justify-center">
                   <i className="fa-solid fa-robot text-white text-xl"></i>
@@ -86,6 +89,7 @@ export default async function DashboardPage() {
             </div>
             <a
               href="/dashboard/chat/"
+              data-dashboard-home-hero-cta="1"
               className="btn btn-primary whitespace-nowrap relative z-10"
               data-analytics-event="dashboard_home_cta_clicked"
               data-analytics-cta="continue_chat"
@@ -96,9 +100,9 @@ export default async function DashboardPage() {
             </a>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8">
-              <section>
+          <div data-dashboard-home-grid="1" className="grid lg:grid-cols-3 gap-8">
+            <div data-dashboard-home-primary="1" className="lg:col-span-2 space-y-8">
+              <section data-dashboard-home-section="projects">
                 <div className="flex justify-between items-end mb-4">
                   <h2 className="text-lg font-[Outfit] font-medium text-white flex items-center gap-2">
                     <i className="fa-solid fa-folder-open text-amber-400"></i> Active Projects
@@ -114,9 +118,10 @@ export default async function DashboardPage() {
                     View All
                   </a>
                 </div>
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div data-dashboard-home-card-grid="1" className="grid sm:grid-cols-2 gap-4">
                   <a
                     href="/dashboard/projects/"
+                    data-dashboard-home-card="1"
                     className="glass p-5 rounded-xl hover:bg-white/5 border border-white/10 hover:border-emerald-500/40 transition group cursor-pointer block"
                     data-analytics-event="dashboard_home_cta_clicked"
                     data-analytics-cta="open_active_projects"
@@ -143,6 +148,7 @@ export default async function DashboardPage() {
                   </a>
                   <a
                     href="/dashboard/projects/"
+                    data-dashboard-home-card="1"
                     className="glass p-5 rounded-xl hover:bg-white/5 border border-emerald-500/30 bg-emerald-500/5 transition group cursor-pointer block relative overflow-hidden"
                     data-analytics-event="dashboard_home_cta_clicked"
                     data-analytics-cta="open_latest_proof"
@@ -174,11 +180,11 @@ export default async function DashboardPage() {
                 </div>
               </section>
 
-              <section>
+              <section data-dashboard-home-section="skills">
                 <h2 className="text-lg font-[Outfit] font-medium text-white mb-4 flex items-center gap-2">
                   <i className="fa-solid fa-layer-group text-teal-400"></i> Verified Skill Stack
                 </h2>
-                <div className="glass p-6 rounded-xl flex flex-wrap gap-2">
+                <div data-dashboard-home-skills="1" className="glass p-6 rounded-xl flex flex-wrap gap-2">
                   {skills.map((skill) => (
                     <div
                       key={skill.label}
@@ -202,23 +208,27 @@ export default async function DashboardPage() {
               </section>
             </div>
 
-            <div className="space-y-8">
-              <section>
+            <div data-dashboard-home-secondary="1" className="space-y-8">
+              <section data-dashboard-home-section="social">
                 <div className="flex justify-between items-end mb-4">
                   <h2 className="text-lg font-[Outfit] font-medium text-white flex items-center gap-2">
                     <i className="fa-brands fa-linkedin text-[#0077b5]"></i> Social Drafts
                   </h2>
                 </div>
-                <div className="glass border border-[#0077b5]/30 bg-gradient-to-b from-[#0077b5]/10 to-transparent p-5 rounded-xl">
+                <div data-dashboard-home-preview-card="social" className="glass border border-[#0077b5]/30 bg-gradient-to-b from-[#0077b5]/10 to-transparent p-5 rounded-xl">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="runtime-loader-spinner runtime-loader-spinner-sm"></span>
                     <span className="text-xs font-medium text-[#0077b5] uppercase tracking-wider">Today&apos;s draft</span>
                   </div>
-                  <p className="text-sm text-gray-300 mb-4 italic border-l-2 border-[#0077b5] pl-3 py-1 bg-black/20 rounded-r">
+                  <p
+                    data-dashboard-home-social-quote="1"
+                    className="text-sm text-gray-300 mb-4 italic border-l-2 border-[#0077b5] pl-3 py-1 bg-black/20 rounded-r"
+                  >
                     &quot;Preparing a first-person draft from your active project context.&quot;
                   </p>
                   <a
                     href="/dashboard/social/"
+                    data-dashboard-home-social-cta="1"
                     className="btn bg-[#0077b5] hover:bg-[#005582] text-white w-full py-2 text-sm"
                     data-analytics-event="dashboard_home_cta_clicked"
                     data-analytics-cta="open_social_drafts"
@@ -230,7 +240,7 @@ export default async function DashboardPage() {
                 </div>
               </section>
 
-              <section data-home-ai-news="1">
+              <section data-home-ai-news="1" data-dashboard-home-section="news">
                 <div className="flex justify-between items-end mb-4">
                   <h2 className="text-lg font-[Outfit] font-medium text-white flex items-center gap-2">
                     <i className="fa-solid fa-newspaper text-sky-400"></i> AI News
@@ -246,9 +256,10 @@ export default async function DashboardPage() {
                     View all
                   </a>
                 </div>
-                <div className="space-y-3">
+                <div data-dashboard-home-news-list="1" className="space-y-3">
                   <a
                     href="/dashboard/ai-news/"
+                    data-dashboard-home-news-card="1"
                     className="block glass p-4 rounded-xl border border-sky-500/20 bg-sky-500/5 hover:bg-white/5 transition flex gap-3"
                     data-analytics-event="dashboard_home_cta_clicked"
                     data-analytics-cta="open_ai_news"
@@ -265,6 +276,7 @@ export default async function DashboardPage() {
                   </a>
                   <a
                     href="/dashboard/ai-news/"
+                    data-dashboard-home-news-card="1"
                     className="block glass p-4 rounded-xl border border-sky-500/20 bg-sky-500/5 hover:bg-white/5 transition flex gap-3"
                     data-analytics-event="dashboard_home_cta_clicked"
                     data-analytics-cta="open_ai_news_cache_warm"
