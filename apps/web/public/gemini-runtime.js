@@ -177,7 +177,9 @@
         existing.projectId = null;
         existing.handle = null;
         existing.avatarUrl = null;
+        existing.published = false;
       }
+      if (typeof existing.published !== "boolean") existing.published = false;
       return existing;
     }
 
@@ -192,6 +194,7 @@
       careerPathId: "product-management",
       avatarUrl: null,
       email: null,
+      published: false,
     };
     saveCtx(created);
     return created;
@@ -647,6 +650,7 @@
     ctx.avatarUrl = null;
     ctx.email = null;
     ctx.headline = null;
+    ctx.published = false;
     ctx.name = "New Learner";
     saveCtx(ctx);
   }
@@ -972,7 +976,7 @@
         sidebarAvatar.setAttribute("alt", ctx.name);
       }
     }
-    if (ctx && ctx.handle) {
+    if (ctx && ctx.handle && ctx.published) {
       Array.prototype.forEach.call(
         document.querySelectorAll("[data-public-profile-link='1'], a[href='/u/alex-chen-ai/'], a[href='/u/test-user-0001/'], a[href='/u/alex-chen-ai'], a[href='/u/test-user-0001']"),
         function (node) {
@@ -1049,6 +1053,7 @@
         if (typeof node.innerHTML === "string") {
           node.innerHTML = node.innerHTML.replace(/Social Hooks/g, "Social Drafts");
           node.innerHTML = node.innerHTML.replace(/Social Media/g, "Social Drafts");
+          node.innerHTML = node.innerHTML.replace(/Social Radar/g, "Social Drafts");
         }
       },
     );
@@ -1301,6 +1306,7 @@
         if (data.summary.user.id) ctx.profileUserId = data.summary.user.id;
         ctx.handle = data.summary.user.handle;
         ctx.headline = headlineForUser(data.summary.user);
+        ctx.published = Boolean(data.summary.user.published);
         if (data.summary.user.avatarUrl) ctx.avatarUrl = data.summary.user.avatarUrl;
         primeDashboardDailyData(data.summary);
       }
@@ -1420,6 +1426,7 @@
         if (data.auth && data.auth.avatarUrl) ctx.avatarUrl = data.auth.avatarUrl;
         if (data.summary.user && data.summary.user.id) ctx.profileUserId = data.summary.user.id;
         if (data.summary.user && data.summary.user.handle) ctx.handle = data.summary.user.handle;
+        if (data.summary.user) ctx.published = Boolean(data.summary.user.published);
         saveCtx(ctx);
         identifyPosthogUser();
         maybeTrackSignUpCompletion("landing_auth");
@@ -1461,6 +1468,7 @@
         if (data.auth.email) ctx.email = data.auth.email;
         if (data.summary && data.summary.user && data.summary.user.id) ctx.profileUserId = data.summary.user.id;
         if (data.summary && data.summary.user && data.summary.user.handle) ctx.handle = data.summary.user.handle;
+        if (data.summary && data.summary.user) ctx.published = Boolean(data.summary.user.published);
         saveCtx(ctx);
         identifyPosthogUser();
         maybeTrackSignUpCompletion("optional_auth");
@@ -1629,6 +1637,7 @@
     ctx.handle = user.handle;
     ctx.name = resolvedName;
     ctx.headline = headlineForUser(user);
+    ctx.published = Boolean(user.published);
     if (user.avatarUrl) ctx.avatarUrl = user.avatarUrl;
     saveCtx(ctx);
     maybeWarmHomeNews(user.id ? String(user.id) : (ctx.profileUserId || ctx.userId));
@@ -1985,6 +1994,7 @@
       events.forEach(function (event) {
         var message = normalizeInlineText(event && event.message);
         if (!message) return;
+        if (message.toLowerCase().indexOf("memory.refresh") !== -1) return;
         var parsed = Date.parse(event && event.createdAt ? String(event.createdAt) : "");
         var ts = Number.isFinite(parsed) ? parsed : 0;
         if (ts >= bestTs) {
@@ -2041,14 +2051,31 @@
       var bannerBody = tutorBanner.querySelector("p.text-sm.text-gray-400");
       var bannerCta = tutorBanner.querySelector("a.btn");
       if (bannerTitle) {
-        bannerTitle.innerHTML = '<span class="text-emerald-400">Today&apos;s update:</span> ' + escapeHtml(todayUpdateText);
+        bannerTitle.innerHTML = '<span class="text-emerald-400">Welcome to your dashboard:</span> ' + escapeHtml(todayUpdateText);
       }
       if (bannerBody) {
-        bannerBody.textContent = "Continue where we left off: " + continuationText;
+        bannerBody.textContent = "Based on your answers, start here: " + continuationText;
       }
       if (bannerCta) {
-        bannerCta.textContent = "Continue where we left off";
+        bannerCta.textContent = "Start Recommended Work";
         setHref(bannerCta, "/dashboard/chat/");
+      }
+    }
+
+    var welcomeParams = new URLSearchParams(window.location.search || "");
+    if (welcomeParams.get("welcome") === "1") {
+      var homeRoot = document.querySelector("[data-dashboard-home-content='1']");
+      if (homeRoot && !homeRoot.querySelector("[data-dashboard-ftux='1']")) {
+        var primaryGoal = Array.isArray(summary.user.goals) && summary.user.goals.length ? String(summary.user.goals[0]).replace(/_/g, " ") : "build practical AI skills";
+        var startPath = topRecommendation && topRecommendation.title ? topRecommendation.title : (activeCard && activeCard.title ? activeCard.title : "your starter pack");
+        var ftux = document.createElement("section");
+        ftux.setAttribute("data-dashboard-ftux", "1");
+        ftux.className = "glass p-5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 mb-6";
+        ftux.innerHTML =
+          '<p class="text-[11px] uppercase tracking-[0.18em] text-emerald-300 mb-2">Dashboard Welcome</p>' +
+          '<h3 class="text-lg font-[Outfit] font-semibold text-white mb-2">Welcome to your dashboard experience</h3>' +
+          '<p class="text-sm text-gray-300">Based on your onboarding answers, begin with <strong class="text-emerald-300">' + escapeHtml(startPath) + '</strong> and stay focused on <strong class="text-emerald-300">' + escapeHtml(primaryGoal) + "</strong>.</p>";
+        homeRoot.insertBefore(ftux, homeRoot.firstElementChild || null);
       }
     }
 
@@ -2072,6 +2099,13 @@
     var skillStack = document.querySelector("[data-dashboard-home-skills='1']") || Array.prototype.find.call(document.querySelectorAll("section .glass.p-6.rounded-xl"), function (node) {
       return (node.textContent || "").indexOf("Add Target Skill") !== -1;
     });
+    var hasVerifiedSkills = Boolean(summary.user && Array.isArray(summary.user.skills) && summary.user.skills.some(function (skill) {
+      return skill && skill.status === "verified";
+    }));
+    var skillHeading = document.querySelector("[data-dashboard-home-section='skills'] h2");
+    if (skillHeading) {
+      skillHeading.innerHTML = '<i class="fa-solid fa-layer-group text-teal-400"></i> ' + (hasVerifiedSkills ? "Verified Skill Stack" : "Starter Skill Plan");
+    }
 
     if (skillStack && summary.user && Array.isArray(summary.user.skills) && summary.user.skills.length) {
       var addTarget = Array.prototype.find.call(skillStack.children, function (child) {
@@ -2097,7 +2131,7 @@
       if (addTarget) skillStack.appendChild(addTarget);
     } else if (skillStack && Array.isArray(summary.moduleRecommendations) && summary.moduleRecommendations.length) {
       var addTargetSkill = Array.prototype.find.call(skillStack.children, function (child) {
-        return (child.textContent || "").indexOf("Add Target Skill") !== -1;
+        return (child.textContent || "").toLowerCase().indexOf("keep building") !== -1 || (child.textContent || "").indexOf("Add Target Skill") !== -1;
       });
       skillStack.innerHTML = "";
       summary.moduleRecommendations.slice(0, 3).forEach(function (track, index) {
@@ -2105,9 +2139,8 @@
         fallback.className = index === 0
           ? "flex border border-emerald-500/30 bg-emerald-500/10 rounded-full items-center px-3 py-1.5"
           : "flex border border-white/10 bg-white/5 rounded-full items-center px-3 py-1.5";
-        var pct = index === 0 ? "20%" : index === 1 ? "10%" : "5%";
         fallback.innerHTML = '<span class="text-xs ' + (index === 0 ? "text-emerald-400" : "text-gray-300") + '"></span>';
-        setText(fallback.querySelector("span"), track.title + " (" + pct + ")");
+        setText(fallback.querySelector("span"), track.title + (index === 0 ? " (Start here)" : " (Next)"));
         skillStack.appendChild(fallback);
       });
       if (addTargetSkill) skillStack.appendChild(addTargetSkill);
@@ -2303,32 +2336,68 @@
       return project.state === "built" || project.state === "showcased";
     });
 
+    var proofHeading = Array.prototype.find.call(document.querySelectorAll("section h2"), function (node) {
+      var text = (node.textContent || "").toLowerCase();
+      return text.indexOf("completed") !== -1 || text.indexOf("published proof") !== -1;
+    });
+
     var grid = document.querySelector("section .grid.md\\:grid-cols-2.gap-6");
     if (grid) {
       var template = grid.children[0] ? grid.children[0].cloneNode(true) : null;
       grid.innerHTML = "";
 
-      var rows = completed.length ? completed.slice(0, 6) : (active ? [active] : []);
-      rows.forEach(function (project) {
-        if (!template) return;
-        var card = template.cloneNode(true);
-        var title = card.querySelector("h3");
-        var desc = card.querySelector("p.text-sm.text-gray-400");
-        setText(title, project.title);
-        setText(desc, project.description);
-
-        var publicLink = card.querySelector("a[href*='/u/']");
-        if (publicLink && ctx.handle) {
-          setHref(publicLink, "/u/" + ctx.handle + "/projects/" + project.slug + "/");
+      if (!completed.length) {
+        if (proofHeading) {
+          setText(proofHeading, "Recommended Packs");
         }
-
-        var copyBtn = card.querySelector("button[title='Copy Link']");
-        if (copyBtn && ctx.handle) {
-          copyBtn.dataset.copyUrl = window.location.origin + "/u/" + ctx.handle + "/projects/" + project.slug + "/";
+        var recommendations = Array.isArray(summary.moduleRecommendations) ? summary.moduleRecommendations.slice(0, 3) : [];
+        if (!recommendations.length && active) {
+          recommendations = [{
+            title: active.title || "Starter Pack",
+            summary: active.description || "Start this pack to build your first outcome.",
+          }];
         }
+        grid.innerHTML = recommendations.map(function (track, index) {
+          var title = escapeHtml(track && track.title ? track.title : "Starter Pack");
+          var summaryText = escapeHtml(track && track.summary ? track.summary : "Build one outcome and turn it into proof.");
+          return (
+            '<article class="glass flex flex-col p-6 rounded-xl border border-amber-400/20 bg-amber-500/5">' +
+            '<div class="flex items-center justify-between gap-2 mb-3">' +
+            '<span class="text-[10px] uppercase tracking-wider text-amber-300">' + (index === 0 ? "Start here" : "Recommended") + "</span>" +
+            '<i class="fa-solid fa-compass text-amber-400"></i>' +
+            "</div>" +
+            '<h3 class="text-lg font-medium text-white mb-2">' + title + "</h3>" +
+            '<p class="text-sm text-gray-300 mb-5 flex-grow">' + summaryText + "</p>" +
+            '<a href="/dashboard/chat/" class="btn btn-primary text-xs px-3 py-2" data-analytics-event="projects_cta_clicked" data-analytics-cta="start_recommended_pack" data-analytics-location="recommended_pack" data-analytics-destination="/dashboard/chat/">' +
+            '<i class="fa-solid fa-play mr-1"></i> Click to Start' +
+            "</a>" +
+            "</article>"
+          );
+        }).join("");
+        bindDatasetAnalytics(grid);
+      } else {
+        var rows = completed.slice(0, 6);
+        rows.forEach(function (project) {
+          if (!template) return;
+          var card = template.cloneNode(true);
+          var title = card.querySelector("h3");
+          var desc = card.querySelector("p.text-sm.text-gray-400");
+          setText(title, project.title);
+          setText(desc, project.description);
 
-        grid.appendChild(card);
-      });
+          var publicLink = card.querySelector("a[href*='/u/']");
+          if (publicLink && ctx.handle) {
+            setHref(publicLink, "/u/" + ctx.handle + "/projects/" + project.slug + "/");
+          }
+
+          var copyBtn = card.querySelector("button[title='Copy Link']");
+          if (copyBtn && ctx.handle) {
+            copyBtn.dataset.copyUrl = window.location.origin + "/u/" + ctx.handle + "/projects/" + project.slug + "/";
+          }
+
+          grid.appendChild(card);
+        });
+      }
     }
 
     Array.prototype.forEach.call(document.querySelectorAll("button[title='Copy Link']"), function (button) {
@@ -2417,7 +2486,7 @@
     if (!history || !textarea || !sendBtn) return;
 
     history.innerHTML = "";
-    history.appendChild(createBubble("Loading your latest session context...", false));
+    history.appendChild(createBubble("Welcome! Loading your workspace context...", false));
 
     var summary = await getDashboardSummary();
     updateSharedUserUi(summary);
@@ -2482,11 +2551,11 @@
         renderMessage(entry.role, entry.text);
       });
     } else {
-      var introText = "I’m your AI Tutor. Share your current blocker and I’ll give concrete next steps plus a verification check.";
+      var introText = "Welcome! Let’s get started. I’m your AI Skill Tutor. I help you learn faster, build projects, and turn your work into proof you can show.";
       if (project && project.title) {
-        introText = "I’m your AI Tutor. Let’s continue " +
+        introText = "Welcome! Let’s get started. I’m your AI Skill Tutor. Let’s continue " +
           project.title +
-          ". Share your current blocker and I’ll give concrete next steps plus a verification check.";
+          ". Share where you’re stuck and I’ll guide your next move.";
       }
       renderMessage("assistant", introText);
       appendAndPersist("assistant", introText);
@@ -2549,7 +2618,7 @@
     }
     var socialSubheading = document.querySelector("header p.text-xs.text-gray-400");
     if (socialSubheading) {
-      socialSubheading.textContent = "Daily first-person LinkedIn + Tweet drafts generated from your active project context.";
+      socialSubheading.textContent = "This tab gives you ready-to-edit first-person LinkedIn and X drafts from your latest work.";
     }
     if (typeof document.title === "string") {
       document.title = document.title.replace(/Social Hooks/g, "Social Drafts");
@@ -2584,9 +2653,9 @@
       '<section class="glass runtime-social-shell p-6 md:p-8 rounded-2xl border border-white/10 bg-white/5">' +
       '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">' +
       '<div><h2 class="text-lg font-[Outfit] font-semibold text-slate-900">Social Drafts</h2>' +
-      '<p class="text-xs text-slate-600">Edit and share native drafts for LinkedIn and X/Twitter.</p>' +
+      '<p class="text-xs text-slate-600">Use this tab to post quick updates about what you built today.</p>' +
       '<p class="text-[11px] text-slate-500 mt-1">Voice: <span data-social-author="1"></span></p></div>' +
-      '<button type="button" data-social-refresh="1" class="btn btn-secondary text-sm whitespace-nowrap"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh Ideas</button>' +
+      '<button type="button" data-social-refresh="1" class="btn btn-secondary text-sm whitespace-nowrap"><i class="fa-solid fa-rotate-right mr-2"></i>Get Today&apos;s Drafts</button>' +
       "</div>" +
       '<div class="grid gap-4 md:grid-cols-2">' +
       '<article data-social-card="linkedin" class="rounded-xl border border-[#0a66c2]/30 bg-[#eef5ff] p-4 runtime-social-card runtime-social-card-linkedin">' +
@@ -2661,15 +2730,21 @@
       if (name) {
         var escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         result = result.replace(new RegExp("\\b" + escaped + "\\b", "gi"), "I");
+        result = result.replace(new RegExp("\\b" + escaped + "'s\\b", "gi"), "my");
       }
       result = result
-        .replace(/\b(?:he|she|they)\s+(am|is|was|has|have|started|built|launched|created|completed|learned|uses|used|shipped|ship|write|writes|share|shares)\b/gi, "I $1")
+        .replace(/\b(?:he|she|they)\s+(am|is)\b/gi, "I am")
+        .replace(/\b(?:he|she|they)\s+(was|were)\b/gi, "I was")
+        .replace(/\b(?:he|she|they)\s+(has|have)\b/gi, "I have")
+        .replace(/\b(?:he|she|they)\s+(started|built|launched|created|completed|learned|uses|used|shipped|ship|write|writes|share|shares)\b/gi, "I $1")
         .replace(/\byou\s+(are|were|have|had|built|launched|created|completed|learned|use|used|share|shared)\b/gi, "I $1")
         .replace(/\byour\b/gi, "my")
         .replace(/\bhis\b/gi, "my")
         .replace(/\bher\b/gi, "my")
         .replace(/\btheir\b/gi, "my")
-        .replace(/\bthem\b/gi, "me");
+        .replace(/\bthem\b/gi, "me")
+        .replace(/\bI\s+is\b/gi, "I am")
+        .replace(/\bI\s+has\b/gi, "I have");
       if (!/\b(i|i'm|i've|my|me|mine)\b/i.test(result)) {
         result = "I'm sharing this update: " + result;
       }
@@ -2748,7 +2823,7 @@
       var ideas = await warmSocialDrafts(primaryProject ? primaryProject.id : null, Boolean(forceRefresh));
       draftState.linkedin = normalizeDraftText(ideas && ideas.linkedin || "");
       draftState.x = normalizeDraftText(ideas && ideas.x || "");
-      draftState.contextLabel = normalizeDraftText(ideas && ideas.contextLabel || draftState.contextLabel || "Fresh ideas");
+      draftState.contextLabel = String(ideas && ideas.contextLabel || draftState.contextLabel || "Fresh ideas").trim();
       if (!draftState.linkedin || !draftState.x) {
         throw new Error("Social idea generator returned an empty response.");
       }
@@ -2843,7 +2918,7 @@
     if (cachedDrafts && (hasMeaningfulDraftText(cachedDrafts.linkedin) || hasMeaningfulDraftText(cachedDrafts.x))) {
       draftState.linkedin = normalizeDraftText(cachedDrafts.linkedin || "");
       draftState.x = normalizeDraftText(cachedDrafts.x || "");
-      draftState.contextLabel = normalizeDraftText(cachedDrafts.contextLabel || draftState.contextLabel || "Fresh ideas");
+      draftState.contextLabel = String(cachedDrafts.contextLabel || draftState.contextLabel || "Fresh ideas").trim();
       updateDraftInputs();
       if (sourceNode) sourceNode.textContent = cachedDrafts.source === "llm" ? "Cached personalized ideas" : "Cached draft ideas";
       captureEvent("social_ideas_cache_hit", { source: cachedDrafts.source || "cached" });
@@ -2879,10 +2954,7 @@
     var contentWrap = document.querySelector("main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-4");
     if (!contentWrap) return;
 
-    var updates = Array.isArray(summary.latestEvents) ? summary.latestEvents.slice(0, 12) : [];
-    var groupedUpdates = [];
-    var groupedLifecycleJobs = Object.create(null);
-    var dailyUpdate = summary.dailyUpdate || null;
+    var updates = Array.isArray(summary.latestEvents) ? summary.latestEvents.slice(0, 30) : [];
 
     function relativeTimeLabel(input) {
       if (!input) return "Just now";
@@ -2895,20 +2967,19 @@
       return Math.floor(deltaSeconds / 86400) + " day ago";
     }
 
-    function eventClasses(type) {
-      var lowered = String(type || "").toLowerCase();
-      if (lowered.indexOf("failed") !== -1 || lowered.indexOf("error") !== -1) {
+    function actionTone(kind) {
+      if (kind === "error") {
         return {
           card: "border-red-300 bg-red-50",
           icon: "bg-red-100 text-red-600",
           iconName: "fa-triangle-exclamation",
         };
       }
-      if (lowered.indexOf("queued") !== -1 || lowered.indexOf("running") !== -1) {
+      if (kind === "start") {
         return {
           card: "border-amber-300 bg-amber-50",
           icon: "bg-amber-100 text-amber-600",
-          iconName: "fa-hourglass-half",
+          iconName: "fa-play",
         };
       }
       return {
@@ -2918,173 +2989,87 @@
       };
     }
 
-    function normalizeLifecycleEvent(event) {
+    function toUserAction(event) {
       var message = String(event && event.message || "").trim();
       if (!message) return null;
-      var queuedOrDone = message.match(/^([a-z0-9._-]+)\s+(queued|completed|failed)$/i);
-      if (queuedOrDone && queuedOrDone[1] && queuedOrDone[2]) {
-        return {
-          scope: String(queuedOrDone[1]).toLowerCase(),
-          status: String(queuedOrDone[2]).toLowerCase(),
-        };
+      var lower = message.toLowerCase();
+      var payload = event && event.payload && typeof event.payload === "object" ? event.payload : {};
+      var reason = String(payload.reason || "").toLowerCase();
+      if (reason === "scheduler_refresh_slot") return null;
+      if (lower.indexOf("memory.refresh") !== -1) return null;
+      if (lower.indexOf("daily update") !== -1) return null;
+
+      if (lower.indexOf("onboarding session") !== -1 && lower.indexOf("started") !== -1) {
+        return { title: "Signed up and started onboarding", detail: null, kind: "start" };
       }
-      var running = message.match(/^([a-z0-9._-]+)\s+is\s+(running)$/i);
-      if (running && running[1] && running[2]) {
-        return {
-          scope: String(running[1]).toLowerCase(),
-          status: String(running[2]).toLowerCase(),
-        };
+      if (lower.indexOf("project.generate_website queued") !== -1 || lower.indexOf("project.generate_artifact queued") !== -1) {
+        return { title: "Started a project pack", detail: null, kind: "start" };
+      }
+      if (lower.indexOf("generation completed") !== -1) {
+        return { title: "Generated a project artifact", detail: null, kind: "success" };
+      }
+      if (lower.indexOf("project.chat queued") !== -1) {
+        return { title: "Asked Chat Tutor for help", detail: null, kind: "start" };
+      }
+      if (lower.indexOf("project.chat completed") !== -1) {
+        return { title: "Received Chat Tutor guidance", detail: null, kind: "success" };
+      }
+      if (lower.indexOf("failed") !== -1 || String(event && event.type || "").toLowerCase().indexOf("failed") !== -1) {
+        return { title: "A requested action failed", detail: message, kind: "error" };
       }
       return null;
     }
 
-    function statusSummaryText(counts) {
-      var parts = [];
-      ["completed", "running", "queued", "failed"].forEach(function (status) {
-        var count = Number(counts && counts[status] || 0);
-        if (!count) return;
-        parts.push(count + " " + status);
+    var actions = updates
+      .map(function (event) {
+        var action = toUserAction(event);
+        if (!action) return null;
+        return {
+          id: event.id,
+          title: action.title,
+          detail: action.detail,
+          kind: action.kind,
+          createdAt: event.createdAt,
+        };
+      })
+      .filter(function (entry) {
+        return Boolean(entry);
       });
-      return parts.join(" · ");
-    }
 
-    updates.forEach(function (event) {
-      var lifecycle = normalizeLifecycleEvent(event);
-      if (lifecycle && lifecycle.scope.indexOf(".") !== -1) {
-        var existingGroup = groupedLifecycleJobs[lifecycle.scope];
-        if (!existingGroup) {
-          existingGroup = {
-            kind: "group",
-            scope: lifecycle.scope,
-            latestStatus: lifecycle.status,
-            latestCreatedAt: event.createdAt,
-            latestMessage: event.message,
-            counts: Object.create(null),
-            totalCount: 0,
-          };
-          groupedLifecycleJobs[lifecycle.scope] = existingGroup;
-          groupedUpdates.push(existingGroup);
-        }
-        existingGroup.totalCount += 1;
-        existingGroup.counts[lifecycle.status] = Number(existingGroup.counts[lifecycle.status] || 0) + 1;
-        if (
-          event.createdAt &&
-          (!existingGroup.latestCreatedAt || Date.parse(String(event.createdAt)) > Date.parse(String(existingGroup.latestCreatedAt)))
-        ) {
-          existingGroup.latestCreatedAt = event.createdAt;
-          existingGroup.latestStatus = lifecycle.status;
-          existingGroup.latestMessage = event.message;
-        }
+    var dedupedActions = [];
+    actions.forEach(function (entry) {
+      var last = dedupedActions[dedupedActions.length - 1];
+      if (last && last.title === entry.title && String(last.detail || "") === String(entry.detail || "")) {
         return;
       }
-
-      var last = groupedUpdates[groupedUpdates.length - 1];
-      if (
-        last &&
-        last.kind === "event" &&
-        String(last.type || "") === String(event.type || "") &&
-        String(last.message || "") === String(event.message || "")
-      ) {
-        last.count = (last.count || 1) + 1;
-        if (event.createdAt && (!last.createdAt || Date.parse(String(event.createdAt)) > Date.parse(String(last.createdAt)))) {
-          last.createdAt = event.createdAt;
-        }
-        return;
-      }
-
-      groupedUpdates.push({
-        kind: "event",
-        id: event.id,
-        type: event.type,
-        message: event.message,
-        createdAt: event.createdAt,
-        count: 1,
-      });
+      dedupedActions.push(entry);
     });
 
-    var eventsHtml = groupedUpdates
+    var eventsHtml = dedupedActions
       .map(function (entry) {
-        if (entry.kind === "group") {
-          var latestStatus = String(entry.latestStatus || "running");
-          var tone = eventClasses(latestStatus);
-          var totalCount = Number(entry.totalCount || 0);
-          var groupedLabel = escapeHtml(entry.scope.replace(/\./g, " "));
-          var groupedSummary = escapeHtml(statusSummaryText(entry.counts) || "Grouped background job updates");
-          return (
-            '<article class="glass p-5 rounded-xl border ' + tone.card + ' flex gap-4">' +
-            '<div class="w-10 h-10 rounded shrink-0 ' + tone.icon + ' flex items-center justify-center mt-1">' +
-            '<i class="fa-solid ' + tone.iconName + '"></i></div>' +
-            '<div class="min-w-0 flex-1">' +
-            '<div class="flex flex-wrap items-center gap-2 mb-1">' +
-            '<h4 class="font-medium text-slate-900 text-base">' + groupedLabel + "</h4>" +
-            (totalCount > 1
-              ? '<span class="inline-flex items-center rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">x' + totalCount + "</span>"
-              : "") +
-            '<span class="text-[10px] text-slate-500">' + relativeTimeLabel(entry.latestCreatedAt) + "</span>" +
-            "</div>" +
-            '<p class="text-xs text-slate-600 uppercase tracking-wide">Latest state: ' + escapeHtml(latestStatus) + "</p>" +
-            '<p class="text-xs text-slate-500 mt-1">' + groupedSummary + "</p>" +
-            "</div></article>"
-          );
-        }
-
-        var event = entry;
-        var tone = eventClasses(event.type);
-        var message = escapeHtml(event.message || "Tutor update");
-        var kind = escapeHtml(String(event.type || "job.update").replace(/\./g, " "));
-        var repetition = Number(event.count || 1);
+        var tone = actionTone(entry.kind);
         return (
           '<article class="glass p-5 rounded-xl border ' + tone.card + ' flex gap-4">' +
           '<div class="w-10 h-10 rounded shrink-0 ' + tone.icon + ' flex items-center justify-center mt-1">' +
           '<i class="fa-solid ' + tone.iconName + '"></i></div>' +
           '<div class="min-w-0 flex-1">' +
           '<div class="flex items-center justify-between gap-3 mb-1">' +
-          '<div class="min-w-0 flex items-center gap-2">' +
-          '<h4 class="font-medium text-slate-900 text-base truncate">' + message + "</h4>" +
-          (repetition > 1
-            ? '<span class="inline-flex items-center rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">x' + repetition + "</span>"
-            : "") +
+          '<h4 class="font-medium text-slate-900 text-base">' + escapeHtml(entry.title) + "</h4>" +
+          '<span class="text-[10px] text-slate-500 whitespace-nowrap">' + relativeTimeLabel(entry.createdAt) + "</span>" +
           "</div>" +
-          '<span class="text-[10px] text-slate-500 whitespace-nowrap">' + relativeTimeLabel(event.createdAt) + "</span>" +
-          "</div>" +
-          '<p class="text-xs text-slate-600 uppercase tracking-wide">Event: ' + kind + "</p>" +
+          (entry.detail ? '<p class="text-xs text-slate-600">' + escapeHtml(entry.detail) + "</p>" : "") +
           "</div></article>"
         );
       })
       .join("");
 
-    var dailyHtml = "";
-    if (dailyUpdate) {
-      var summaryText = escapeHtml(dailyUpdate.summary || "Daily update ready.");
-      var tasks = Array.isArray(dailyUpdate.upcomingTasks) ? dailyUpdate.upcomingTasks : [];
-      dailyHtml =
-        '<section class="glass p-5 rounded-xl border border-sky-300 bg-sky-50">' +
-        '<div class="flex items-center justify-between gap-3 mb-3">' +
-        '<h3 class="font-[Outfit] text-base text-slate-900 flex items-center gap-2"><i class="fa-solid fa-envelope text-sky-600"></i>Latest Daily Update</h3>' +
-        '<span class="text-[10px] text-slate-500">' + relativeTimeLabel(dailyUpdate.createdAt) + "</span>" +
-        "</div>" +
-        '<p class="text-sm text-slate-700 mb-3">' + summaryText + "</p>" +
-        (tasks.length
-          ? '<ul class="list-disc list-inside text-sm text-slate-700 space-y-1">' +
-            tasks
-              .slice(0, 4)
-              .map(function (task) {
-                return "<li>" + escapeHtml(task) + "</li>";
-              })
-              .join("") +
-            "</ul>"
-          : "") +
-        "</section>";
-    }
-
     contentWrap.innerHTML =
       '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">' +
-      '<div><h2 class="text-lg font-[Outfit] font-semibold text-slate-900">Recent tutor events</h2>' +
-      '<p class="text-xs text-slate-500 mt-1">Background jobs and your latest daily update.</p></div>' +
-      '<button type="button" data-updates-refresh="1" class="btn btn-secondary text-xs"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh Activity + Daily Update</button>' +
+      '<div><h2 class="text-lg font-[Outfit] font-semibold text-slate-900">Recent user activity</h2>' +
+      '<p class="text-xs text-slate-500 mt-1">Sign-up and build actions only.</p></div>' +
+      '<button type="button" data-updates-refresh="1" class="btn btn-secondary text-xs"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh Activity</button>' +
       "</div>" +
-      (dailyHtml || "") +
-      (eventsHtml || '<div class="glass p-5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700">No live events yet. Trigger a tutor action to populate this feed.</div>');
+      (eventsHtml || '<div class="glass p-5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700">No user actions yet. Start a pack or message Chat Tutor to populate this feed.</div>');
 
     var refreshButton = contentWrap.querySelector("button[data-updates-refresh='1']");
     if (refreshButton) {
@@ -3093,7 +3078,8 @@
         refreshButton.setAttribute("disabled", "true");
         refreshButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Refreshing';
         try {
-          await postJson("/api/scheduler/daily-update", {});
+          var summaryKey = dashboardSummaryCacheKey();
+          if (summaryKey) removeSessionObject(summaryKey);
           toast("Activity refreshed.", false);
           await hydrateUpdatesPage();
         } catch (err) {
@@ -3118,7 +3104,7 @@
         '<span class="runtime-loader-spinner"></span>' +
         '<span class="font-semibold">Preparing today&apos;s AI news briefing</span>' +
         "</div>" +
-        '<p class="text-sm text-slate-700 mb-4">' + escapeHtml(message || "Fetching and caching personalized stories for this session.") + "</p>" +
+        '<p class="text-sm text-slate-700 mb-4">' + escapeHtml(message || "Here are relevant AI news stories so you stay current on developments impacting your role.") + "</p>" +
         '<div class="space-y-3">' +
         '<div class="rounded-xl border border-sky-200 bg-white/90 p-4">' +
         '<div class="flex items-center justify-between gap-3 mb-2"><div class="h-3 w-20 rounded bg-sky-100 runtime-skeleton"></div><div class="h-3 w-16 rounded bg-sky-100 runtime-skeleton"></div></div>' +
@@ -3132,7 +3118,7 @@
         "</section>";
     }
 
-    renderLoading("Fetching and caching personalized stories for this session.");
+    renderLoading("Here are relevant AI news stories so you stay current on developments impacting your role.");
 
     var summary = await getDashboardSummary();
     var summaryUserId = summary && summary.user && summary.user.id ? String(summary.user.id) : null;
@@ -3149,7 +3135,7 @@
 
     function renderNews(result) {
       var insights = Array.isArray(result && result.insights) ? result.insights : [];
-      var focusSummary = result && result.focusSummary ? escapeHtml(result.focusSummary) : "Stories tailored to your goals and active projects.";
+      var focusSummary = result && result.focusSummary ? escapeHtml(result.focusSummary) : "Here are relevant AI news stories so you stay current on developments impacting your role.";
       var source = result && result.source ? escapeHtml(String(result.source)) : "personalized";
       var cards = insights
         .map(function (insight, index) {
@@ -3413,11 +3399,33 @@
       });
     }
 
-    var publicBtn = Array.prototype.find.call(document.querySelectorAll("a"), function (node) {
-      return (node.textContent || "").indexOf("View Public Profile") !== -1;
-    });
-    if (publicBtn && profileUser.handle) {
-      setHref(publicBtn, "/u/" + profileUser.handle + "/");
+    var privatePreviewBtn = document.querySelector("a[data-analytics-event='public_profile_preview_clicked']");
+    var liveProfileBtn = document.querySelector("a[data-analytics-event='public_profile_clicked'][data-analytics-location='profile_nux']");
+    var publishProfileBtn = document.querySelector("button[data-profile-publish='1']");
+
+    function applyPublicProfileUrl(handle, enableSidebar) {
+      if (!handle) return null;
+      var url = "/u/" + handle + "/";
+      if (privatePreviewBtn) {
+        setHref(privatePreviewBtn, url);
+        privatePreviewBtn.setAttribute("data-analytics-destination", url);
+      }
+      if (liveProfileBtn) {
+        setHref(liveProfileBtn, url);
+        liveProfileBtn.setAttribute("data-analytics-destination", url);
+      }
+      var sidebarPublicLink = document.querySelector("[data-public-profile-link='1']");
+      if (sidebarPublicLink && enableSidebar) {
+        sidebarPublicLink.setAttribute("href", url);
+        sidebarPublicLink.removeAttribute("aria-disabled");
+        sidebarPublicLink.classList.remove("opacity-50", "pointer-events-none");
+        sidebarPublicLink.setAttribute("data-analytics-destination", url);
+      }
+      return url;
+    }
+
+    if (profileUser.handle) {
+      applyPublicProfileUrl(profileUser.handle, Boolean(profileUser.published));
     }
 
     var saveButton = Array.prototype.find.call(document.querySelectorAll("button"), function (node) {
@@ -3471,7 +3479,7 @@
               currentAvatarUrl = nextAvatar;
             }
             saveCtx(ctx);
-            if (publicBtn) setHref(publicBtn, "/u/" + data.profile.handle + "/");
+            applyPublicProfileUrl(data.profile.handle, Boolean(data.profile.published));
             if (avatarUrlInput && currentAvatarUrl) avatarUrlInput.value = currentAvatarUrl;
             applyAvatarToUi(currentAvatarUrl);
           }
@@ -3483,6 +3491,56 @@
           toast("Profile saved.", false);
         } catch (err) {
           toast(err instanceof Error ? err.message : "Profile save failed", true);
+        }
+      });
+    }
+
+    if (publishProfileBtn) {
+      publishProfileBtn.addEventListener("click", async function () {
+        var original = publishProfileBtn.innerHTML;
+        publishProfileBtn.setAttribute("disabled", "true");
+        publishProfileBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Publishing';
+        try {
+          var response = await fetch("/api/profile/publish", {
+            method: "POST",
+            headers: requestHeaders(false),
+            cache: "no-store",
+            credentials: "same-origin",
+          });
+          var data = await response.json().catch(function () {
+            return {};
+          });
+          if (!response.ok || !data.ok) {
+            throw new Error(data && data.error && data.error.message ? data.error.message : "Unable to publish profile");
+          }
+          var profileUrl = applyPublicProfileUrl(
+            data.profile && data.profile.handle ? data.profile.handle : (ctx.handle || ""),
+            true,
+          );
+          ctx.published = true;
+          if (data.profile && data.profile.handle) ctx.handle = data.profile.handle;
+          saveCtx(ctx);
+          if (!liveProfileBtn && profileUrl) {
+            var actionsWrap = publishProfileBtn.parentElement;
+            if (actionsWrap) {
+              var newLiveLink = document.createElement("a");
+              newLiveLink.setAttribute("href", profileUrl);
+              newLiveLink.className = "btn btn-secondary text-xs px-4 py-2";
+              newLiveLink.setAttribute("data-analytics-event", "public_profile_clicked");
+              newLiveLink.setAttribute("data-analytics-location", "profile_nux");
+              newLiveLink.setAttribute("data-analytics-destination", profileUrl);
+              newLiveLink.innerHTML = '<i class="fa-solid fa-globe mr-1"></i>Open Live Profile';
+              actionsWrap.appendChild(newLiveLink);
+              liveProfileBtn = newLiveLink;
+            }
+          }
+          captureEvent("profile_published", { destination: profileUrl || null });
+          toast("Profile published. Open Live Profile when you are ready.", false);
+        } catch (err) {
+          toast(err instanceof Error ? err.message : "Unable to publish profile", true);
+        } finally {
+          publishProfileBtn.removeAttribute("disabled");
+          publishProfileBtn.innerHTML = original;
         }
       });
     }

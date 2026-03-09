@@ -9,7 +9,8 @@ export default async function DashboardProfilePage() {
   const displayBio = user?.bio?.trim() || "Building practical AI workflows and sharing public proof of execution.";
   const linkedInUrl = user?.socialLinks?.linkedin?.trim() || "";
   const avatarUrl = user?.avatarUrl?.trim() || state.seed?.avatarUrl?.trim() || "/assets/avatar.png";
-  const publicProfileUrl = state.publicProfileUrl || "/dashboard/profile";
+  const privatePreviewUrl = user?.handle ? `/u/${user.handle}/` : "/dashboard/profile";
+  const publicProfileUrl = state.publicProfileUrl;
   const displayEmail = state.seed?.email?.trim() || "No email on file";
   return (
     <DashboardShell
@@ -25,36 +26,49 @@ export default async function DashboardProfilePage() {
         name: displayName,
         headline: displayHeadline,
         avatarUrl,
-        publicProfileUrl,
+        publicProfileUrl: publicProfileUrl ?? null,
         levelLabel: "Level 1",
         levelSubtitle: "Starter Builder",
         levelProgressPct: 20,
         levelProgressText: "Start building to level up",
       }}
-      headerActions={(
-        <a
-          href={publicProfileUrl}
-          className="btn btn-primary text-xs px-4 py-2"
-          data-analytics-event="public_profile_clicked"
-          data-analytics-location="profile_header"
-          data-analytics-destination={publicProfileUrl}
-        >
-          <i className="fa-solid fa-globe mr-1"></i> View Public Profile
-        </a>
-      )}
     >
       <div className="p-10 max-w-3xl mx-auto w-full pb-24 space-y-8">
-        <div className="lg:hidden">
-          <a
-            href={publicProfileUrl}
-            className="btn btn-primary w-full justify-center text-sm px-4 py-3"
-            data-analytics-event="public_profile_clicked"
-            data-analytics-location="profile_mobile_header"
-            data-analytics-destination={publicProfileUrl}
-          >
-            <i className="fa-solid fa-globe mr-2"></i> View Public Profile
-          </a>
-        </div>
+        <section className="glass p-5 rounded-xl border border-emerald-500/20 bg-emerald-500/10">
+          <h2 className="text-white font-[Outfit] text-lg mb-2">Welcome to your profile</h2>
+          <p className="text-sm text-gray-300">
+            Complete your profile first, then publish when you are ready. Your public site does not go live until you choose to publish.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <a
+              href={privatePreviewUrl}
+              className="btn btn-secondary text-xs px-4 py-2"
+              data-analytics-event="public_profile_preview_clicked"
+              data-analytics-location="profile_nux"
+              data-analytics-destination={privatePreviewUrl}
+            >
+              <i className="fa-solid fa-eye mr-1"></i> Preview Private Page
+            </a>
+            <button
+              type="button"
+              data-profile-publish="1"
+              className="btn btn-primary text-xs px-4 py-2"
+            >
+              <i className="fa-solid fa-rocket mr-1"></i> Publish Public Profile
+            </button>
+            {publicProfileUrl ? (
+              <a
+                href={publicProfileUrl}
+                className="btn btn-secondary text-xs px-4 py-2"
+                data-analytics-event="public_profile_clicked"
+                data-analytics-location="profile_nux"
+                data-analytics-destination={publicProfileUrl}
+              >
+                <i className="fa-solid fa-globe mr-1"></i> Open Live Profile
+              </a>
+            ) : null}
+          </div>
+        </section>
         <div className="glass p-8 w-full rounded-2xl">
           <h2 className="text-white font-[Outfit] text-lg mb-6 border-b border-white/10 pb-2">Basic Information</h2>
 

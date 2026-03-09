@@ -202,6 +202,7 @@ function normalizeToolUpdate(raw: string): RealtimeOnboardingUpdate {
             (entry): entry is OnboardingNotes["selectedGoals"][number] =>
               entry === "build_business" ||
               entry === "upskill_current_job" ||
+              entry === "find_new_role" ||
               entry === "showcase_for_job" ||
               entry === "learn_foundations" ||
               entry === "ship_ai_projects",

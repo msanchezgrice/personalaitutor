@@ -31,7 +31,7 @@ export default async function DashboardUpdatesPage() {
             <span className="runtime-loader-spinner"></span>
             <span className="font-semibold">Loading activity feed</span>
           </div>
-          <p className="text-sm text-slate-700">Fetching recent tutor events and your latest daily update.</p>
+          <p className="text-sm text-slate-700">Showing recent user actions like sign-up, starting packs, and generated outputs.</p>
         </section>
       </div>
     </DashboardShell>

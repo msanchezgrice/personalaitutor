@@ -10,7 +10,7 @@ const links = [
   { href: "/dashboard", label: "Home", icon: "⌂" },
   { href: "/dashboard/chat", label: "Chat Tutor", icon: "✦" },
   { href: "/dashboard/projects", label: "Projects", icon: "▣" },
-  { href: "/dashboard/social", label: "Social Media", icon: "in" },
+  { href: "/dashboard/social", label: "Social Drafts", icon: "in" },
   { href: "/dashboard/ai-news", label: "AI News", icon: "🗞" },
   { href: "/dashboard/updates", label: "Activity", icon: "◷", count: 2 },
   { href: "/dashboard/profile", label: "Profile", icon: "◉" },
@@ -27,10 +27,10 @@ export function DashboardSidebar() {
       </Link>
 
       <div className="dash-user">
-        <img className="dash-avatar" src="/assets/avatar.png" alt="Alex Chen" style={{ objectFit: "cover" }} />
+        <img className="dash-avatar" src="/assets/avatar.png" alt="Learner" style={{ objectFit: "cover" }} />
         <div>
-          <h4>Alex Chen</h4>
-          <p>Product Manager</p>
+          <h4>Learner</h4>
+          <p>AI Builder</p>
         </div>
       </div>
 

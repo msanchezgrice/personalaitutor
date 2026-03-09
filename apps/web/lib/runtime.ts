@@ -297,6 +297,7 @@ function parseAcquisition(input: unknown): AcquisitionAttribution | undefined {
 const ONBOARDING_GOALS = new Set([
   "build_business",
   "upskill_current_job",
+  "find_new_role",
   "showcase_for_job",
   "learn_foundations",
   "ship_ai_projects",
@@ -313,6 +314,7 @@ const ONBOARDING_SITUATIONS = new Set([
 
 const ONBOARDING_CAREER_CATEGORIES = new Set([
   "product-manager",
+  "customer-service",
   "designer",
   "marketing",
   "accounting",
@@ -1163,8 +1165,9 @@ export async function runtimeUpdateOnboardingCareerImport(input: {
       updated_at: new Date().toISOString(),
     };
 
-    if (input.jobTitle?.trim()) {
-      profilePatch.headline = input.jobTitle.trim();
+    const resolvedHeadline = input.jobTitle?.trim() || input.careerCategoryLabel?.trim();
+    if (resolvedHeadline) {
+      profilePatch.headline = resolvedHeadline.slice(0, 140);
     }
     if (input.dailyWorkSummary?.trim()) {
       profilePatch.bio = input.dailyWorkSummary.trim().slice(0, 600);
@@ -1565,6 +1568,7 @@ export async function runtimeSubmitAssessment(input: {
   const goalHintsByPath: Record<string, string[]> = {
     build_business: ["product-management", "marketing-seo", "sales-revops"],
     upskill_current_job: [primaryPath, "operations", "software-engineering"],
+    find_new_role: ["sales-revops", "customer-support", "product-management"],
     showcase_for_job: ["software-engineering", "quality-assurance", "product-management"],
     learn_foundations: ["operations", "product-management", "software-engineering"],
     ship_ai_projects: ["software-engineering", "product-management", "customer-support"],
@@ -2224,6 +2228,18 @@ export async function runtimeGetDashboardSummary(
     .order("created_at", { ascending: false })
     .limit(20);
 
+  const filteredEvents = (events ?? []).filter((event) => {
+    const message = String(event.message ?? "").toLowerCase();
+    const eventType = String(event.event_type ?? "").toLowerCase();
+    const payload = event.payload && typeof event.payload === "object" ? (event.payload as Record<string, unknown>) : {};
+    const reason = String(payload.reason ?? "").toLowerCase();
+
+    if (reason === "scheduler_refresh_slot") return false;
+    if (message.includes("memory.refresh")) return false;
+    if (eventType.includes("scheduler")) return false;
+    return true;
+  });
+
   const daily = await getLatestDailyUpdate(profile.id);
 
   return {
@@ -2243,7 +2259,7 @@ export async function runtimeGetDashboardSummary(
       leaseUntil: job.lease_until,
       lastErrorCode: job.last_error_code,
     })),
-    latestEvents: (events ?? []).map((event) => ({
+    latestEvents: filteredEvents.map((event) => ({
       id: event.id,
       jobId: event.job_id,
       userId: event.learner_profile_id,
@@ -2529,7 +2545,7 @@ function scoreNewsStory(story: PersonalizedNewsStory, context: LearnerNewsContex
   if (story.category === "workflow" && context.projects.some((entry) => entry.state === "building" || entry.state === "built")) {
     score += 5;
   }
-  if (story.category === "policy" && userGoals.has("showcase_for_job")) {
+  if (story.category === "policy" && (userGoals.has("showcase_for_job") || userGoals.has("find_new_role"))) {
     score += 4;
   }
 
@@ -4380,7 +4396,7 @@ export async function runtimeGetTalentByHandle(handle: string) {
       handle: profile.handle,
       name: profile.name,
       avatarUrl: profile.avatarUrl ?? null,
-      careerType: profile.goals.includes("showcase_for_job") ? "Job Seeker" : "Employed",
+      careerType: profile.goals.includes("showcase_for_job") || profile.goals.includes("find_new_role") ? "Job Seeker" : "Employed",
       role: profile.headline || "AI Builder",
       status,
       topSkills: topSkills.length ? topSkills : ["AI Foundations"],

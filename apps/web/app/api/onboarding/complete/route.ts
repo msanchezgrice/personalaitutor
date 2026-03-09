@@ -16,6 +16,7 @@ import { verifyOnboardingSessionToken } from "@/lib/onboarding-session-token";
 const goalEnum = z.enum([
   "build_business",
   "upskill_current_job",
+  "find_new_role",
   "showcase_for_job",
   "learn_foundations",
   "ship_ai_projects",

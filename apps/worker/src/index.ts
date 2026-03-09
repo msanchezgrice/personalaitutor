@@ -2121,17 +2121,6 @@ async function queueMemoryRefreshJobs() {
       max_attempts: 3,
     });
 
-    await insertJobEvent({
-      jobId,
-      userId: profile.id,
-      projectId: null,
-      type: "job.queued",
-      message: "memory.refresh queued",
-      payload: {
-        reason: "scheduler_refresh_slot",
-      },
-    });
-
     queuedCount += 1;
   }
 

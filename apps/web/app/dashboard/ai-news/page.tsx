@@ -31,7 +31,9 @@ export default async function DashboardAiNewsPage() {
             <span className="runtime-loader-spinner"></span>
             <span className="font-semibold">Preparing today&apos;s AI news briefing</span>
           </div>
-          <p className="text-sm text-slate-700 mb-4">Fetching and caching personalized stories for this session.</p>
+          <p className="text-sm text-slate-700 mb-4">
+            Here are relevant AI news stories so you stay current on developments impacting your role.
+          </p>
           <div className="space-y-3">
             {Array.from({ length: 2 }).map((_, index) => (
               <div key={index} className="rounded-xl border border-sky-200 bg-white/90 p-4">

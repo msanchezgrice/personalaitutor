@@ -91,6 +91,7 @@ export const SITUATION_LABELS: Record<SituationStatus, string> = {
 export const GOAL_LABELS: Record<GoalType, string> = {
   build_business: "Build a business",
   upskill_current_job: "Upskill for current job",
+  find_new_role: "Find a new role",
   showcase_for_job: "Showcase skills for a new role",
   learn_foundations: "Learn foundations",
   ship_ai_projects: "Ship AI projects",
@@ -182,7 +183,7 @@ You must collect these fields before you wrap:
 7. situation using one of: employed, unemployed, student, founder, freelancer, career_switcher
 8. dailyWorkSummary describing the user's day-to-day work
 9. keySkills as a short list of tools, systems, or skills
-10. selectedGoals using one or more of: build_business, upskill_current_job, showcase_for_job, learn_foundations, ship_ai_projects
+10. selectedGoals using one or more of: build_business, upskill_current_job, find_new_role, showcase_for_job, learn_foundations, ship_ai_projects
 11. aiComfort as an integer from 1 to 5
 12. linkedinUrl if the user wants to share it
 13. resumeFilename if the user mentions a resume they want to upload later
@@ -246,7 +247,7 @@ export const REALTIME_ONBOARDING_TOOL = {
         type: "array",
         items: {
           type: "string",
-          enum: ["build_business", "upskill_current_job", "showcase_for_job", "learn_foundations", "ship_ai_projects"],
+          enum: ["build_business", "upskill_current_job", "find_new_role", "showcase_for_job", "learn_foundations", "ship_ai_projects"],
         },
         maxItems: 5,
       },
@@ -376,6 +377,7 @@ export function buildAssessmentAnswers(notes: OnboardingNotes) {
 
 function goalNarrative(goal: GoalType) {
   if (goal === "build_business") return "turning this into a business-facing workflow";
+  if (goal === "find_new_role") return "proving this work supports your next role move";
   if (goal === "showcase_for_job") return "packaging the work into hiring-ready proof";
   if (goal === "ship_ai_projects") return "shipping a project you can demo publicly";
   if (goal === "learn_foundations") return "building a clean AI fundamentals base";

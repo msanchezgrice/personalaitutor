@@ -17,6 +17,7 @@ export default async function DashboardPage() {
   const activeProject = state.activeProject;
   const completedProject = state.completedProject;
   const topRecommendation = summary?.moduleRecommendations?.[0] ?? null;
+  const hasVerifiedSkills = Boolean(user?.skills?.some((skill) => skill.status === "verified"));
   const activeCard = activeProject || (topRecommendation
     ? {
         title: topRecommendation.title,
@@ -33,7 +34,7 @@ export default async function DashboardPage() {
   );
   const continuationText = summarize(
     activeProject?.buildLog?.at(-1)?.message,
-    "Share your latest blocker and I will help you take the next verified step.",
+    "Start with your first recommended pack and ask Chat Tutor for help when you get blocked.",
     200,
   );
   const skills = user?.skills?.length
@@ -45,7 +46,7 @@ export default async function DashboardPage() {
     : (summary?.moduleRecommendations?.slice(0, 3).map((track, index) => ({
         label: track.title,
         accent: index === 0,
-        suffix: index === 0 ? " (20%)" : index === 1 ? " (10%)" : " (5%)",
+        suffix: index === 0 ? " (Start here)" : " (Next)",
       })) ?? []);
   return (
     <>
@@ -55,7 +56,7 @@ export default async function DashboardPage() {
       <DashboardShell
         activeTab="home"
         headerTitle={<span data-dashboard-greeting="1">{state.greeting}</span>}
-        headerSubtitle="Ready to build something new today?"
+        headerSubtitle="Welcome to your dashboard. Let's start with one focused win."
         operatorToolsHref={state.operatorToolsUrl}
         initialUser={{
           name: user?.name ?? state.seed?.name ?? "Learner",
@@ -82,9 +83,9 @@ export default async function DashboardPage() {
               </div>
               <div>
                 <h3 className="text-lg font-medium text-white mb-1">
-                  <span className="text-emerald-400">Today&apos;s update:</span> {todayUpdateText}
+                  <span className="text-emerald-400">Welcome to your dashboard:</span> {todayUpdateText}
                 </h3>
-                <p className="text-sm text-gray-400">Continue where we left off: {continuationText}</p>
+                <p className="text-sm text-gray-400">Based on your answers, here is the best next move: {continuationText}</p>
               </div>
             </div>
             <a
@@ -96,7 +97,7 @@ export default async function DashboardPage() {
               data-analytics-location="hero"
               data-analytics-destination="/dashboard/chat/"
             >
-              Continue where we left off
+              Start Recommended Work
             </a>
           </div>
 
@@ -182,7 +183,7 @@ export default async function DashboardPage() {
 
               <section data-dashboard-home-section="skills">
                 <h2 className="text-lg font-[Outfit] font-medium text-white mb-4 flex items-center gap-2">
-                  <i className="fa-solid fa-layer-group text-teal-400"></i> Verified Skill Stack
+                  <i className="fa-solid fa-layer-group text-teal-400"></i> {hasVerifiedSkills ? "Verified Skill Stack" : "Starter Skill Plan"}
                 </h2>
                 <div data-dashboard-home-skills="1" className="glass p-6 rounded-xl flex flex-wrap gap-2">
                   {skills.map((skill) => (
@@ -201,7 +202,7 @@ export default async function DashboardPage() {
                   ))}
                   <div className="flex border border-white/5 border-dashed bg-transparent rounded-full items-center px-3 py-1.5">
                     <span className="text-xs text-gray-500">
-                      <i className="fa-solid fa-plus mr-1"></i> Add Target Skill
+                      <i className="fa-solid fa-compass mr-1"></i> Keep building to verify your first skill
                     </span>
                   </div>
                 </div>
@@ -216,6 +217,9 @@ export default async function DashboardPage() {
                   </h2>
                 </div>
                 <div data-dashboard-home-preview-card="social" className="glass border border-[#0077b5]/30 bg-gradient-to-b from-[#0077b5]/10 to-transparent p-5 rounded-xl">
+                  <p className="text-xs text-[#c6def7] mb-3">
+                    Use this tab to grab ready-to-edit posts that summarize your work in first person.
+                  </p>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="runtime-loader-spinner runtime-loader-spinner-sm"></span>
                     <span className="text-xs font-medium text-[#0077b5] uppercase tracking-wider">Today&apos;s draft</span>
@@ -271,7 +275,7 @@ export default async function DashboardPage() {
                     </div>
                     <div>
                       <h4 className="font-medium text-white text-sm mb-0.5">Preparing AI News</h4>
-                      <p className="text-xs text-gray-400 line-clamp-2">Fetching and caching today&apos;s personalized stories before you open the briefing.</p>
+                      <p className="text-xs text-gray-400 line-clamp-2">Here are relevant AI news stories so you can stay current on what impacts your role.</p>
                     </div>
                   </a>
                   <a

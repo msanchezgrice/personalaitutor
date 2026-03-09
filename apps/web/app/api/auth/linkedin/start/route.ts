@@ -5,7 +5,7 @@ import { getAuthUserId } from "@/lib/auth";
 import { runtimeFindOnboardingSession } from "@/lib/runtime";
 import { issueOAuthStateToken } from "@/lib/oauth-state";
 
-const required = ["LINKEDIN_CLIENT_ID"];
+const required = ["LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET"];
 
 function allowMockOAuth() {
   const explicit = process.env.ALLOW_MOCK_OAUTH?.trim().toLowerCase();

@@ -64,7 +64,7 @@ export async function getDashboardServerState(): Promise<DashboardServerState> {
     user,
     activeProject,
     completedProject,
-    publicProfileUrl: user?.handle ? `/u/${user.handle}/` : null,
+    publicProfileUrl: user?.published && user?.handle ? `/u/${user.handle}/` : null,
     greeting: `${greetingForServerTime()}, ${firstName} 👋`,
     isAdmin: isAdminEmail(seed.email),
     operatorToolsUrl: isAdminEmail(seed.email) ? "/dashboard/admin/signups" : null,

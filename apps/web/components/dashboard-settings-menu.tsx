@@ -75,7 +75,7 @@ export function DashboardSettingsMenu({ operatorToolsHref = null }: { operatorTo
     <div id="dashboard-settings-menu" ref={rootRef} className="relative">
       <button
         type="button"
-        className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 text-xs text-gray-300 hover:bg-white/10"
+        className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-xl border border-white/15 bg-black/30 px-3 text-xs text-gray-200 hover:bg-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.25)]"
         data-settings-toggle="1"
         aria-expanded={open ? "true" : "false"}
         aria-haspopup="menu"
@@ -88,14 +88,14 @@ export function DashboardSettingsMenu({ operatorToolsHref = null }: { operatorTo
       <div
         className={
           (open ? "block" : "hidden") +
-          " absolute right-0 top-full mt-2 min-w-[170px] rounded-xl border border-white/10 bg-[#0f111a]/95 backdrop-blur-xl shadow-2xl p-1 z-40"
+          " absolute right-0 top-full mt-2 min-w-[190px] rounded-xl border border-white/15 bg-[#0f111a]/95 backdrop-blur-xl shadow-2xl p-1 z-40"
         }
         data-settings-panel="1"
         role="menu"
       >
         <Link
           href="/dashboard/profile"
-          className="block px-3 py-2 text-sm text-gray-200 rounded-lg hover:bg-white/10"
+          className="block px-3 py-2 text-sm text-gray-100 rounded-lg hover:bg-white/10"
           role="menuitem"
           onClick={handleProfileClick}
         >

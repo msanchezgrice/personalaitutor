@@ -96,6 +96,9 @@ export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
   if (!code) {
     await runtimeMarkOAuthFailure(userId, "linkedin_profile", "LINKEDIN_OAUTH_CODE_MISSING");
+    if (shouldRedirect) {
+      return NextResponse.redirect(buildRedirectTarget(req, "linkedin_denied", redirectPath));
+    }
     return jsonError("LINKEDIN_OAUTH_CODE_MISSING", "LinkedIn callback missing authorization code", 400);
   }
 
@@ -106,6 +109,9 @@ export async function GET(req: NextRequest) {
     const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
       await runtimeMarkOAuthFailure(userId, "linkedin_profile", "LINKEDIN_OAUTH_CONFIG_MISSING");
+      if (shouldRedirect) {
+        return NextResponse.redirect(buildRedirectTarget(req, "linkedin_denied", redirectPath));
+      }
       return jsonError("LINKEDIN_OAUTH_CONFIG_MISSING", "LinkedIn OAuth is not configured", 503, {
         missing: [
           !clientId ? "LINKEDIN_CLIENT_ID" : null,
@@ -130,6 +136,9 @@ export async function GET(req: NextRequest) {
     if (!tokenRes.ok) {
       const text = await tokenRes.text();
       await runtimeMarkOAuthFailure(userId, "linkedin_profile", "LINKEDIN_TOKEN_EXCHANGE_FAILED");
+      if (shouldRedirect) {
+        return NextResponse.redirect(buildRedirectTarget(req, "linkedin_denied", redirectPath));
+      }
       return jsonError("LINKEDIN_TOKEN_EXCHANGE_FAILED", "LinkedIn token exchange failed", 502, {
         response: text.slice(0, 300),
       });
@@ -139,6 +148,9 @@ export async function GET(req: NextRequest) {
     const accessToken = tokenPayload.access_token;
     if (!accessToken) {
       await runtimeMarkOAuthFailure(userId, "linkedin_profile", "LINKEDIN_TOKEN_MISSING");
+      if (shouldRedirect) {
+        return NextResponse.redirect(buildRedirectTarget(req, "linkedin_denied", redirectPath));
+      }
       return jsonError("LINKEDIN_TOKEN_MISSING", "LinkedIn token response missing access token", 502);
     }
 

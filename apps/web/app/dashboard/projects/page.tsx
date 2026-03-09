@@ -117,7 +117,7 @@ export default async function DashboardProjectsPage() {
 
         <section>
           <h2 className="text-lg font-[Outfit] font-medium text-white mb-6 uppercase tracking-wider text-sm text-gray-400 border-b border-white/10 pb-2">
-            Completed &amp; Published Proof
+            {completedProject ? "Completed & Published Proof" : "Recommended Packs"}
           </h2>
           <div className="grid md:grid-cols-2 gap-6">
             <div className="glass flex flex-col p-6 rounded-xl border border-emerald-500/30 bg-emerald-500/5 relative overflow-hidden h-full">
@@ -130,40 +130,55 @@ export default async function DashboardProjectsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-wider bg-transparent text-gray-500 border border-white/10 px-2 py-1 rounded">
-                    {completedProject ? "Ready" : "Waiting"}
+                    {completedProject ? "Ready" : "Start Here"}
                   </span>
                   <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-                    {completedProject ? "Published" : "Synced"}
+                    {completedProject ? "Published" : "Not Started"}
                   </span>
                 </div>
               </div>
               <h3 className="text-lg font-medium text-white mb-2 relative z-10">
-                {completedProject?.title || "Latest proof artifact"}
+                {completedProject?.title || activeProject?.title || "Starter AI Pack"}
               </h3>
               <p className="text-sm text-gray-400 mb-6 flex-grow relative z-10">
                 {summarize(
-                  completedProject?.description,
-                  "Completed artifacts and public proof links appear here after your first project ships.",
+                  completedProject?.description || activeProject?.description,
+                  "Start this recommended pack first. Completed projects will appear here after your first shipped outcome.",
                 )}
               </p>
               <div className="flex items-center gap-3 mt-auto relative z-10 pt-4 border-t border-white/5">
-                <a
-                  href={state.publicProfileUrl || "/dashboard/profile"}
-                  className="btn btn-secondary text-xs px-3 py-1.5 flex-1 text-center"
-                  data-analytics-event="public_profile_clicked"
-                  data-analytics-location="projects_page"
-                  data-analytics-destination={state.publicProfileUrl || "/dashboard/profile"}
-                >
-                  <i className="fa-solid fa-globe mr-1"></i> View Public Page
-                </a>
-                <button
-                  className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 transition"
-                  title="Copy Link"
-                  data-analytics-event="project_public_link_copy_clicked"
-                  data-analytics-location="projects_page"
-                >
-                  <i className="fa-solid fa-link"></i>
-                </button>
+                {completedProject ? (
+                  <>
+                    <a
+                      href={state.publicProfileUrl || "/dashboard/profile"}
+                      className="btn btn-secondary text-xs px-3 py-1.5 flex-1 text-center"
+                      data-analytics-event="public_profile_clicked"
+                      data-analytics-location="projects_page"
+                      data-analytics-destination={state.publicProfileUrl || "/dashboard/profile"}
+                    >
+                      <i className="fa-solid fa-globe mr-1"></i> View Public Page
+                    </a>
+                    <button
+                      className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 transition"
+                      title="Copy Link"
+                      data-analytics-event="project_public_link_copy_clicked"
+                      data-analytics-location="projects_page"
+                    >
+                      <i className="fa-solid fa-link"></i>
+                    </button>
+                  </>
+                ) : (
+                  <a
+                    href="/dashboard/chat/"
+                    className="btn btn-primary text-xs px-3 py-2 flex-1 text-center"
+                    data-analytics-event="projects_cta_clicked"
+                    data-analytics-cta="start_recommended_pack"
+                    data-analytics-location="recommended_pack_card"
+                    data-analytics-destination="/dashboard/chat/"
+                  >
+                    <i className="fa-solid fa-play mr-1"></i> Click to Start
+                  </a>
+                )}
               </div>
             </div>
           </div>

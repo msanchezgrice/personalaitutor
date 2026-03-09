@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SignUpButton, useAuth, useUser } from "@clerk/nextjs";
-import type { GoalType, SituationStatus } from "@aitutor/shared";
+import { getCareerPath, type GoalType, type SituationStatus } from "@aitutor/shared";
 import {
   fbViewContent,
 } from "@/lib/fb-pixel";
@@ -128,6 +128,7 @@ const analysisSteps = [
 
 const careerCategoryOptions = [
   { value: "product-manager", label: "Product Manager", path: "product-management" },
+  { value: "customer-service", label: "Customer Service", path: "customer-support" },
   { value: "designer", label: "Designer", path: "branding-design" },
   { value: "marketing", label: "Marketing", path: "marketing-seo" },
   { value: "accounting", label: "Accounting", path: "operations" },
@@ -152,6 +153,14 @@ const careerQuestionContent: Record<
       "Describe your product management activities like roadmap planning, user story writing, stakeholder meetings, data analysis, feature prioritization, sprint planning...",
     skillsPlaceholder:
       "e.g., Jira, Confluence, Product Analytics, User Research, Roadmapping, Agile/Scrum, SQL, Stakeholder Management...",
+  },
+  "customer-service": {
+    subtitle: "Specialized analysis for support workflows, customer response quality, and ticket operations",
+    jobTitlePlaceholder: "e.g., Customer Support Manager, Support Lead, Customer Success Manager",
+    workSummaryPlaceholder:
+      "Describe your support workflow, ticket volume, escalation handling, and the recurring customer issues your team solves...",
+    skillsPlaceholder:
+      "e.g., Zendesk, Intercom, Knowledge Base Ops, Escalation Management, Customer Communication...",
   },
   designer: {
     subtitle: "Specialized analysis for design workflow, creative tooling, and review cycles",
@@ -226,6 +235,30 @@ const assessmentTemplates: Record<(typeof careerCategoryOptions)[number]["value"
       "Automate one weekly reporting workflow in your stack",
       "Create a repeatable AI prompt pack for discovery + planning",
       "Ship a public project card showing before/after cycle-time impact",
+    ],
+  },
+  "customer-service": {
+    title: "Customer Service Assessment",
+    description:
+      "Analysis of AI automation impact on support workflows, ticket triage, and customer resolution quality.",
+    riskAreas: [
+      { label: "Tier 1 reply drafting and repetitive support responses", level: "High" },
+      { label: "Ticket tagging, routing, and SLA monitoring", level: "Medium" },
+      { label: "Escalation strategy and high-empathy customer recovery", level: "Low" },
+    ],
+    recommendedActions: [
+      "Use AI for first drafts and triage while you own final customer judgment",
+      "Build stronger playbooks for escalation and high-risk customer moments",
+      "Track and publish response-time and resolution-quality improvements",
+    ],
+    aiToolAnalysis:
+      "AI can accelerate triage and response suggestions, but customer trust and escalation quality still depend on human ownership.",
+    careerStrategies:
+      "Position yourself as the support operator who blends AI speed with strong customer outcomes and measurable service quality.",
+    actionPlan: [
+      "Automate one repetitive support flow and measure time saved",
+      "Create a human-review checklist for AI-generated customer responses",
+      "Publish one proof card showing improved CSAT or faster resolution time",
     ],
   },
   designer: {
@@ -402,6 +435,7 @@ const situationOptions: Array<{ value: SituationStatus; label: string }> = [
 const goalOptions: Array<{ value: GoalType; label: string }> = [
   { value: "build_business", label: "Build a business" },
   { value: "upskill_current_job", label: "Upskill for current job" },
+  { value: "find_new_role", label: "Find a new role" },
   { value: "showcase_for_job", label: "Showcase skills for a new role" },
   { value: "ship_ai_projects", label: "Ship AI projects" },
   { value: "learn_foundations", label: "Learn foundations" },
@@ -551,6 +585,13 @@ export function OnboardingIntake() {
     if (riskBand === "Moderate") return "#d97706";
     return "#16a34a";
   }, [riskBand]);
+  const recommendedPathDetails = useMemo(() => {
+    const pathIds = recommendedPaths.length ? recommendedPaths : [selectedCareer.path];
+    return pathIds
+      .map((pathId) => getCareerPath(pathId))
+      .filter((path): path is NonNullable<ReturnType<typeof getCareerPath>> => Boolean(path))
+      .slice(0, 3);
+  }, [recommendedPaths, selectedCareer.path]);
   const recommendedAuthSource = useMemo(() => preferredSourceLabel(), []);
   const hasLinkedInUrl = useMemo(() => Boolean(linkedinUrl.trim()), [linkedinUrl]);
   const hasResume = useMemo(() => Boolean(uploadedResumeName || resumeFile), [resumeFile, uploadedResumeName]);
@@ -570,17 +611,13 @@ export function OnboardingIntake() {
       has_linkedin_url: hasLinkedInUrl,
       linkedin_connected: linkedinConnected,
       has_resume: hasResume,
-      has_key_skills: Boolean(keySkills.trim()),
-      has_daily_work_summary: Boolean(dailyWorkSummary.trim()),
     }),
     [
       aiComfort,
       careerCategory,
       companySize,
-      dailyWorkSummary,
       hasLinkedInUrl,
       hasResume,
-      keySkills,
       linkedinConnected,
       selectedCareer.path,
       selectedCareerLabel,
@@ -594,11 +631,11 @@ export function OnboardingIntake() {
     () => ({
       answer_career_experience: selectedExperience.score,
       answer_ai_comfort: aiComfort,
-      answer_daily_work_complexity: Math.min(5, Math.max(1, Math.ceil(dailyWorkSummary.trim().length / 70))),
+      answer_daily_work_complexity: Math.min(5, Math.max(1, selectedExperience.score + (aiComfort >= 4 ? 1 : 0))),
       answer_linkedin_context: hasLinkedInUrl ? 5 : 2,
       answer_resume_context: hasResume ? 4 : 2,
     }),
-    [aiComfort, dailyWorkSummary, hasLinkedInUrl, hasResume, selectedExperience.score],
+    [aiComfort, hasLinkedInUrl, hasResume, selectedExperience.score],
   );
   const hasMeaningfulInput = useMemo(() => {
     const hasDefaultGoals =
@@ -607,8 +644,6 @@ export function OnboardingIntake() {
       fullName.trim() ||
         customCareerCategory.trim() ||
         jobTitle.trim() ||
-        dailyWorkSummary.trim() ||
-        keySkills.trim() ||
         linkedinUrl.trim() ||
         uploadedResumeName ||
         resumeFile ||
@@ -624,10 +659,8 @@ export function OnboardingIntake() {
     careerCategory,
     companySize,
     customCareerCategory,
-    dailyWorkSummary,
     fullName,
     jobTitle,
-    keySkills,
     linkedinUrl,
     resumeFile,
     selectedGoals,
@@ -1214,7 +1247,7 @@ export function OnboardingIntake() {
       const answers = [
         { questionId: "career_experience", value: selectedExperience.score },
         { questionId: "ai_comfort", value: aiComfort },
-        { questionId: "daily_work_complexity", value: Math.min(5, Math.max(1, Math.ceil(dailyWorkSummary.trim().length / 70))) },
+        { questionId: "daily_work_complexity", value: Math.min(5, Math.max(1, selectedExperience.score + (aiComfort >= 4 ? 1 : 0))) },
         { questionId: "linkedin_context", value: linkedinUrl.trim() ? 5 : 2 },
         { questionId: "resume_context", value: uploadedResumeName || resumeFile ? 4 : 2 },
       ];
@@ -1227,8 +1260,6 @@ export function OnboardingIntake() {
         jobTitle: jobTitle.trim() || undefined,
         yearsExperience,
         companySize: companySize || null,
-        dailyWorkSummary: dailyWorkSummary.trim(),
-        keySkills: keySkills.trim() || null,
         aiComfort,
         linkedinUrl: linkedinUrl.trim() || null,
         resumeFilename: uploadedResumeName ?? resumeFile?.name ?? null,
@@ -1380,7 +1411,7 @@ export function OnboardingIntake() {
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-3xl font-[Outfit] font-semibold text-[#0f172a]">
               {step === 1 && "Basic Information"}
-              {step === 2 && "Work Details"}
+              {step === 2 && "Goals & Setup"}
               {step === 3 && "Resume & Review"}
               {step === 4 && "AI Analysis"}
               {step === 5 && "Assessment Complete"}
@@ -1507,35 +1538,14 @@ export function OnboardingIntake() {
 
           {step === 2 ? (
             <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium mb-2 text-[#334155]">Daily Work Summary</label>
-                <textarea
-                  rows={4}
-                  value={dailyWorkSummary}
-                  onChange={(event) => setDailyWorkSummary(event.target.value)}
-                  placeholder={selectedCareerContent.workSummaryPlaceholder}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[#1e293b] placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 transition-colors"
-                />
-                <p className="mt-2 text-sm text-slate-500">
-                  {dailyWorkSummary.trim().length}/300 characters (recommended 20+ for better recommendations)
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2 text-[#334155]">Key Skills &amp; Tools (Optional)</label>
-                <textarea
-                  rows={3}
-                  value={keySkills}
-                  onChange={(event) => setKeySkills(event.target.value)}
-                  placeholder={selectedCareerContent.skillsPlaceholder}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[#1e293b] placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 transition-colors"
-                />
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                Quick setup: choose your current situation, goals, and AI comfort level. This helps us build your first dashboard plan.
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-2 text-[#334155]">
                   <i className="fa-brands fa-linkedin text-[#0a66c2] mr-2" />
-                  LinkedIn Profile URL
+                  LinkedIn Profile (Optional)
                 </label>
                 <input
                   type="url"
@@ -1544,7 +1554,7 @@ export function OnboardingIntake() {
                   placeholder="https://linkedin.com/in/your-profile"
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[#1e293b] placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 transition-colors"
                 />
-                <p className="mt-2 text-sm text-slate-500">We use this for profile context and recommendations.</p>
+                <p className="mt-2 text-sm text-slate-500">Optional, but useful for stronger role-specific recommendations.</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -1554,7 +1564,7 @@ export function OnboardingIntake() {
                   className="mt-3 btn btn-secondary"
                 >
                   <i className="fa-brands fa-linkedin mr-2" />
-                  Connect LinkedIn OAuth
+                  Connect LinkedIn
                 </button>
               </div>
 
@@ -1710,6 +1720,9 @@ export function OnboardingIntake() {
               <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
                 <div className="space-y-4">
                   <h3 className="text-3xl font-[Outfit] font-semibold text-[#0f172a]">{activeAssessmentTemplate.title}</h3>
+                  <p className="text-sm text-slate-600">
+                    Based on your answers, here is your AI impact risk and the recommended place to start.
+                  </p>
                   <div className="flex items-center gap-3 text-sm">
                     <span
                       className="rounded-full px-3 py-1 font-semibold"
@@ -1768,7 +1781,7 @@ export function OnboardingIntake() {
                   </div>
 
                   <h4 className="mt-6 text-3xl font-[Outfit] text-[#0f172a] text-center">{activeAssessmentTemplate.title}</h4>
-                  <p className="text-center text-slate-500 mb-4">Risk Assessment Report</p>
+                  <p className="text-center text-slate-500 mb-4">Your risk snapshot</p>
 
                   <div className="space-y-3">
                     {activeAssessmentTemplate.riskAreas.slice(0, 2).map((item) => (
@@ -1799,15 +1812,15 @@ export function OnboardingIntake() {
 
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                  <h4 className="text-xl font-[Outfit] text-[#0f172a] mb-2">AI Tool Analysis</h4>
+                  <h4 className="text-xl font-[Outfit] text-[#0f172a] mb-2">AI Impact</h4>
                   <p className="text-slate-500">{activeAssessmentTemplate.aiToolAnalysis}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                  <h4 className="text-xl font-[Outfit] text-[#0f172a] mb-2">Career Strategies</h4>
+                  <h4 className="text-xl font-[Outfit] text-[#0f172a] mb-2">Career Direction</h4>
                   <p className="text-slate-500">{activeAssessmentTemplate.careerStrategies}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                  <h4 className="text-xl font-[Outfit] text-[#0f172a] mb-2">Action Plan</h4>
+                  <h4 className="text-xl font-[Outfit] text-[#0f172a] mb-2">Next 3 Moves</h4>
                   <ul className="list-disc list-inside space-y-1 text-slate-500">
                     {activeAssessmentTemplate.actionPlan.map((stepItem) => (
                       <li key={stepItem}>{stepItem}</li>
@@ -1816,15 +1829,33 @@ export function OnboardingIntake() {
                 </div>
               </div>
 
-              {recommendedPaths.length ? (
-                <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-[#0f172a]">
-                  Recommended skill tracks: {recommendedPaths.join(", ")}
+              {recommendedPathDetails.length ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                  <h4 className="text-xl font-[Outfit] text-[#0f172a] mb-2">Recommended Skills, Modules, and Tools</h4>
+                  <p className="text-sm text-slate-600 mb-4">
+                    Start with the first track below. It is the fastest path based on your answers.
+                  </p>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    {recommendedPathDetails.map((path, index) => (
+                      <div key={path.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                          {index === 0 ? "Start Here" : "Then"}
+                        </p>
+                        <h5 className="text-base font-semibold text-[#0f172a] mt-1">{path.name}</h5>
+                        <p className="text-xs text-slate-600 mt-1">{path.coreSkillDomain}</p>
+                        <p className="text-xs font-semibold text-slate-700 mt-3">Modules</p>
+                        <p className="text-xs text-slate-600">{path.modules.slice(0, 2).join(" • ")}</p>
+                        <p className="text-xs font-semibold text-slate-700 mt-3">Tools</p>
+                        <p className="text-xs text-slate-600">{path.tools.slice(0, 2).join(" • ")}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : null}
 
               <div className="flex flex-col gap-3 border-t border-slate-200 pt-6 md:flex-row md:items-center md:justify-between">
                 <p className="text-sm text-slate-500">
-                  Review complete. Continue to activate your tutor dashboard and personalized modules.
+                  You are set. Continue to your dashboard to start the first recommended module.
                 </p>
                 {!isSignedIn ? (
                   <SignUpButton mode="modal" forceRedirectUrl={nextRedirectHref ?? "/dashboard/?welcome=1"} fallbackRedirectUrl={nextRedirectHref ?? "/dashboard/?welcome=1"}>
