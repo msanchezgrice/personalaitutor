@@ -35,21 +35,33 @@ export default async function SignUpPage({
   const forceRedirectUrl = safeRedirect(params?.redirect_url);
 
   return (
-    <main className="min-h-screen bg-[#eef3f2] text-[#0f172a] px-6 py-10">
-      <div className="mx-auto grid min-h-[calc(100vh-5rem)] w-full max-w-6xl items-center gap-10 lg:grid-cols-[minmax(0,1fr),auto]">
-        <section className="max-w-xl space-y-6">
-          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 shadow-sm">
+    <main className="min-h-screen bg-[#eef3f2] text-[#0f172a] px-4 py-6 sm:px-6 sm:py-10">
+      <div className="mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-6xl items-center gap-6 sm:gap-10 lg:min-h-[calc(100vh-5rem)] lg:grid-cols-[minmax(0,1fr),auto]">
+        <section className="max-w-xl space-y-4 sm:space-y-6">
+          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-white/80 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 shadow-sm sm:px-4 sm:py-2 sm:text-xs">
             Personalized assessment
           </span>
-          <div className="space-y-4">
-            <h1 className="font-[Outfit] text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-              Sign up to get your personalized AI assessment report sent to your inbox when complete.
+          <div className="space-y-3 sm:space-y-4">
+            <h1 className="font-[Outfit] text-3xl font-semibold leading-[1.05] tracking-tight text-slate-950 sm:text-5xl">
+              <span className="sm:hidden">Get your AI assessment report by email.</span>
+              <span className="hidden sm:inline">Sign up to get your personalized AI assessment report sent to your inbox when complete.</span>
             </h1>
-            <p className="max-w-lg text-base leading-7 text-slate-600 sm:text-lg">
+            <p className="max-w-lg text-sm leading-6 text-slate-600 sm:text-lg sm:leading-7">
               Create your account first so we can save your answers, email your results, and keep your progress tied to one profile.
             </p>
           </div>
-          <div className="grid gap-3 text-sm text-slate-700 sm:grid-cols-3">
+          <div className="space-y-2 text-sm text-slate-700 sm:hidden">
+            <div className="rounded-xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm">
+              <span className="font-semibold text-slate-900">Saved:</span> Your assessment progress stays attached to your account.
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm">
+              <span className="font-semibold text-slate-900">Delivered:</span> Your finished report lands in your inbox when it is ready.
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm">
+              <span className="font-semibold text-slate-900">Personalized:</span> Your recommendations and next steps are tailored to you.
+            </div>
+          </div>
+          <div className="hidden gap-3 text-sm text-slate-700 sm:grid sm:grid-cols-3">
             <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Saved</div>
               <div className="mt-2 font-medium text-slate-900">Your assessment progress stays attached to your account.</div>
