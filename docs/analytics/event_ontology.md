@@ -98,6 +98,9 @@ Owner: growth / product engineering
 - `project_module_step_updated`
 - `project_module_step_update_failed`
 - `project_tool_launcher_clicked`
+- `project_tool_output_generated`
+- `project_tool_output_failed`
+- `project_tool_output_copied`
 - `project_progress_note_saved`
 - `project_progress_note_failed`
 - `project_proof_link_saved`
@@ -131,11 +134,13 @@ Owner: growth / product engineering
   - `artifact_count_after`
   - `has_public_profile`
   - `step_key`
-  - `step_status`
-  - `completed_step_count_after`
-  - `tool_key`
-  - `tool_kind`
-  - `connected`
+- `step_status`
+- `completed_step_count_after`
+- `tool_key`
+- `tool_kind`
+- `connected`
+- `proof_requirement_key`
+- `action_key`
 
 ### Lifecycle Email
 

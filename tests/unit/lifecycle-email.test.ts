@@ -161,4 +161,38 @@ describe("lifecycle email helpers", () => {
     expect(email.text).toContain(trackedPublicProfile);
     expect(email.text).toContain("utm_source=lifecycle_email");
   });
+
+  test("email copy tightens when checklist is complete but proof is missing", () => {
+    const email = buildLifecycleEmail({
+      key: "day_2_follow_up",
+      baseUrl: "https://www.myaiskilltutor.com",
+      learnerName: "Miguel",
+      learnerHandle: "miguel",
+      careerPathName: "Sales",
+      dashboardUrl: "https://www.myaiskilltutor.com/dashboard/projects/",
+      publicProfileUrl: "https://www.myaiskilltutor.com/u/miguel",
+      assessment: {
+        score: 0.68,
+        answers: [{ questionId: "ai_comfort", value: 4 }],
+        recommendedCareerPathIds: ["sales-revops"],
+        startedAt: "2026-03-02T12:00:00.000Z",
+        submittedAt: "2026-03-02T12:05:00.000Z",
+      },
+      moduleCta: {
+        title: "Sales RevOps Starter Build",
+        href: "https://www.myaiskilltutor.com/dashboard/projects/#pack-workbench",
+        buttonLabel: "Attach Proof For Sales RevOps Starter Build",
+        helperText: "You finished all 3 steps. Attach the first proof link or file now.",
+        stage: "ready_for_proof",
+        currentStepTitle: "Save the output in a format you could show to a sales or RevOps lead.",
+        completedStepCount: 3,
+        totalStepCount: 3,
+        artifactCount: 0,
+      },
+    });
+
+    expect(email.text).toContain("attach the first proof link or file");
+    expect(email.text).toContain("All 3 steps are complete.");
+    expect(email.text).toContain("Attach Proof For Sales RevOps Starter Build");
+  });
 });

@@ -1409,14 +1409,24 @@ async function moduleCtaForUser(userId: string, careerPathId: string | null) {
   const fallbackTitle = await firstModuleForUser(userId);
   const modules = CAREER_PATHS.find((entry) => entry.id === careerPathId)?.modules ?? [fallbackTitle];
   const supabase = supabaseAdmin();
-  const { data } = await supabase
-    .from("user_skill_evidence")
-    .select("skill_name,status")
-    .eq("learner_profile_id", userId)
-    .in("skill_name", modules);
+  const [{ data: skillRows }, { data: latestProject }] = await Promise.all([
+    supabase
+      .from("user_skill_evidence")
+      .select("skill_name,status")
+      .eq("learner_profile_id", userId)
+      .in("skill_name", modules),
+    supabase
+      .from("projects")
+      .select("id,slug,title,state,updated_at")
+      .eq("learner_profile_id", userId)
+      .neq("state", "archived")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   const skillStatusByName = new Map<string, string>();
-  for (const row of data ?? []) {
+  for (const row of skillRows ?? []) {
     skillStatusByName.set(String(row.skill_name), String(row.status));
   }
 
@@ -1426,17 +1436,87 @@ async function moduleCtaForUser(userId: string, careerPathId: string | null) {
       const status = skillStatusByName.get(module);
       return status !== "built" && status !== "verified";
     }) ?? null;
-  const title = inProgress ?? nextModule ?? modules[0] ?? fallbackTitle;
-  const status = skillStatusByName.get(title);
+  const fallbackModuleTitle = inProgress ?? nextModule ?? modules[0] ?? fallbackTitle;
+  const fallbackStatus = skillStatusByName.get(fallbackModuleTitle);
+
+  let title = latestProject?.title?.trim() || fallbackModuleTitle;
+  let href = latestProject
+    ? `${appBaseUrl()}/dashboard/projects/#pack-workbench`
+    : `${appBaseUrl()}/dashboard/?module=${encodeURIComponent(fallbackModuleTitle)}`;
+  let buttonLabel = fallbackStatus === "in_progress" ? `Continue ${title}` : `Start ${title}`;
+  let helperText =
+    fallbackStatus === "in_progress"
+      ? "Keep building from the module you already started."
+      : "This is the clearest next module in your current path.";
+  let stage: "not_started" | "in_progress" | "ready_for_proof" | "proof_attached" = fallbackStatus === "in_progress"
+    ? "in_progress"
+    : "not_started";
+  let currentStepTitle: string | null = null;
+  let completedStepCount = 0;
+  let totalStepCount = 0;
+  let artifactCount = 0;
+
+  if (latestProject?.id) {
+    const [{ data: stepRows }, { count: proofCount }] = await Promise.all([
+      supabase
+        .from("project_module_steps")
+        .select("title,status,order_index")
+        .eq("project_id", latestProject.id)
+        .order("order_index", { ascending: true }),
+      supabase
+        .from("project_artifacts")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", latestProject.id),
+    ]);
+
+    artifactCount = Number(proofCount ?? 0);
+    totalStepCount = (stepRows ?? []).length;
+    completedStepCount = (stepRows ?? []).filter((row) => row.status === "completed").length;
+    currentStepTitle =
+      (stepRows ?? []).find((row) => row.status === "in_progress")?.title
+      ?? (stepRows ?? []).find((row) => row.status !== "completed")?.title
+      ?? null;
+
+    if (totalStepCount > 0) {
+      if (completedStepCount >= totalStepCount) {
+        stage = artifactCount > 0 ? "proof_attached" : "ready_for_proof";
+      } else if ((stepRows ?? []).some((row) => row.status !== "not_started")) {
+        stage = "in_progress";
+      } else {
+        stage = "not_started";
+      }
+
+      if (stage === "ready_for_proof") {
+        buttonLabel = `Attach Proof For ${title}`;
+        helperText = `You finished all ${totalStepCount} steps. Attach the first proof link or file now.`;
+      } else if (stage === "proof_attached") {
+        buttonLabel = `Review Proof For ${title}`;
+        helperText = `All ${totalStepCount} steps are complete and ${artifactCount} proof item${artifactCount === 1 ? "" : "s"} are attached. Tighten the proof story next.`;
+      } else if (stage === "in_progress") {
+        buttonLabel = `Continue ${title}`;
+        helperText = currentStepTitle
+          ? `${completedStepCount}/${totalStepCount} steps are complete. Keep moving on ${currentStepTitle}.`
+          : `${completedStepCount}/${totalStepCount} steps are complete.`;
+      } else {
+        buttonLabel = `Start ${title}`;
+        helperText = currentStepTitle
+          ? `Start with ${currentStepTitle}. The workbench already has the checklist ready.`
+          : "Open the workbench and start the first checklist step.";
+      }
+    }
+  }
 
   return {
     title,
-    href: `${appBaseUrl()}/dashboard/?module=${encodeURIComponent(title)}`,
-    buttonLabel: status === "in_progress" ? `Continue ${title}` : `Start ${title}`,
-    helperText:
-      status === "in_progress"
-        ? "Keep building from the module you already started."
-        : "This is the clearest next module in your current path.",
+    href,
+    buttonLabel,
+    helperText,
+    stage,
+    projectTitle: latestProject?.title ?? null,
+    currentStepTitle,
+    completedStepCount,
+    totalStepCount,
+    artifactCount,
   };
 }
 

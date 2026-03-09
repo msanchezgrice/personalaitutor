@@ -101,6 +101,6 @@ create policy learner_email_events_owner_select on public.learner_email_events
       select 1
       from public.learner_profiles lp
       where lp.id = learner_profile_id
-        and lp.auth_user_id = auth.uid()::uuid
+        and lp.auth_user_id = auth.uid()::text
     )
   );

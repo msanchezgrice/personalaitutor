@@ -5,6 +5,7 @@ import { forcedFailCode, getUserId } from "@/lib/api";
 
 const schema = z.object({
   kind: z.enum(["pptx", "pdf", "resume_docx", "resume_pdf"]),
+  stepKey: z.string().max(120).optional().nullable(),
 });
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -31,11 +32,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   if (project.userId !== profile.id) {
     return jsonError("FORBIDDEN", "Project access denied", 403);
   }
+  if (parsed.data.stepKey && !project.moduleSteps.some((step) => step.stepKey === parsed.data.stepKey)) {
+    return jsonError("STEP_NOT_FOUND", "Module step was not found", 404);
+  }
 
   const result = await runtimeRequestArtifactGeneration({
     projectId: id,
     userId,
     kind: parsed.data.kind,
+    stepKey: parsed.data.stepKey,
     forceFailCode: forcedFailCode(req),
   });
 

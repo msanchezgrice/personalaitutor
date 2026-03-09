@@ -101,6 +101,13 @@ export type ArtifactKind =
   | "proof_link"
   | "proof_upload";
 
+export type ProjectArtifact = {
+  kind: ArtifactKind | string;
+  url: string;
+  createdAt: string;
+  metadata?: Record<string, unknown>;
+};
+
 export type ProjectModuleStepStatus = "not_started" | "in_progress" | "completed";
 
 export type ProjectModuleStep = {
@@ -132,7 +139,7 @@ export type Project = {
   title: string;
   description: string;
   state: "idea" | "planned" | "building" | "built" | "showcased" | "archived";
-  artifacts: Array<{ kind: ArtifactKind | string; url: string; createdAt: string }>;
+  artifacts: ProjectArtifact[];
   moduleSteps: ProjectModuleStep[];
   buildLog: BuildLogEntry[];
   createdAt: string;

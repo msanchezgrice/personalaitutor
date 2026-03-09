@@ -1,6 +1,22 @@
 import { getCareerPath } from "./matrix";
 import type { OAuthConnection } from "./types";
-import type { GoalType } from "./types";
+import type { ArtifactKind, GoalType } from "./types";
+
+export type RecommendedModuleToolActionKind =
+  | "jira_ticket"
+  | "linear_ticket"
+  | "notion_brief"
+  | "slack_update"
+  | "gmail_draft"
+  | "hubspot_note"
+  | "github_summary"
+  | "social_drafts";
+
+export type RecommendedModuleToolAction = {
+  actionKey: RecommendedModuleToolActionKind;
+  label: string;
+  description: string;
+};
 
 export type RecommendedModuleToolLaunch = {
   key: string;
@@ -12,6 +28,18 @@ export type RecommendedModuleToolLaunch = {
   platform?: OAuthConnection["platform"] | null;
   opensInNewTab?: boolean;
   verificationHint: string;
+  apiAction?: RecommendedModuleToolAction | null;
+};
+
+export type RecommendedModuleStepDefinition = {
+  title: string;
+  whyThisStep: string;
+  proofRequirement: {
+    key: string;
+    label: string;
+    description: string;
+    acceptedKinds: ArtifactKind[];
+  };
 };
 
 export type RecommendedModuleGuide = {
@@ -21,6 +49,7 @@ export type RecommendedModuleGuide = {
   whyThisModule: string;
   expectedOutput: string;
   proofChecklist: string[];
+  stepDefinitions: RecommendedModuleStepDefinition[];
   steps: string[];
   toolFocus: string[];
   toolLaunches: RecommendedModuleToolLaunch[];
@@ -468,6 +497,101 @@ function firstGoalLabel(goal?: GoalType | null) {
   return GOAL_LABELS[goal] ?? "ship one concrete proof step";
 }
 
+function toolActionForLaunch(tool: RecommendedModuleToolLaunch): RecommendedModuleToolAction | null {
+  switch (tool.key) {
+    case "jira":
+      return {
+        actionKey: "jira_ticket",
+        label: "Generate ticket draft",
+        description: "Create a ready-to-paste Jira issue from the current pack and step context.",
+      };
+    case "linear":
+      return {
+        actionKey: "linear_ticket",
+        label: "Generate Linear issue",
+        description: "Create a concise Linear-ready issue with scope, outcome, and verification notes.",
+      };
+    case "notion":
+      return {
+        actionKey: "notion_brief",
+        label: "Generate brief",
+        description: "Draft a Notion-ready doc or operating brief from the pack context.",
+      };
+    case "slack":
+      return {
+        actionKey: "slack_update",
+        label: "Generate Slack update",
+        description: "Draft a team update you can paste into Slack after each meaningful step.",
+      };
+    case "gmail":
+      return {
+        actionKey: "gmail_draft",
+        label: "Generate email draft",
+        description: "Create a polished email draft tied to the workflow you are shipping.",
+      };
+    case "hubspot":
+      return {
+        actionKey: "hubspot_note",
+        label: "Generate CRM note",
+        description: "Draft a HubSpot-ready note or sequence input from the pack work.",
+      };
+    case "github":
+      return {
+        actionKey: "github_summary",
+        label: "Generate GitHub summary",
+        description: "Create a README, PR summary, or issue note grounded in the current build.",
+      };
+    case "linkedin":
+    case "linkedin-profile":
+      return {
+        actionKey: "social_drafts",
+        label: "Generate social drafts",
+        description: "Create role-specific LinkedIn and X drafts from the current pack work.",
+      };
+    default:
+      return null;
+  }
+}
+
+function stepDefinitionForTitle(title: string, index: number, moduleTitle: string): RecommendedModuleStepDefinition {
+  if (index === 0) {
+    return {
+      title,
+      whyThisStep: `This step anchors ${moduleTitle} to a real workflow so the rest of the pack stays specific instead of generic.`,
+      proofRequirement: {
+        key: "starting-context",
+        label: "Starting context",
+        description: "Attach the live ticket, document, queue, dashboard, or screenshot that shows where this module starts.",
+        acceptedKinds: ["proof_link", "proof_upload"],
+      },
+    };
+  }
+
+  if (index === 1) {
+    return {
+      title,
+      whyThisStep: `This step captures the working draft so you can prove the AI-assisted output existed before the final polish.`,
+      proofRequirement: {
+        key: "working-draft",
+        label: "Working draft",
+        description: "Attach the draft output, intermediate artifact, or screenshot that shows the work moving from idea into execution.",
+        acceptedKinds: ["proof_link", "proof_upload", "pdf", "pptx"],
+      },
+    };
+  }
+
+  return {
+    title,
+    whyThisStep: `This final step turns ${moduleTitle} into visible proof that another person can inspect quickly.`,
+    proofRequirement: {
+      key: "visible-proof",
+      label: "Visible proof",
+      description: "Attach the final artifact, public link, or exported file that shows the shipped outcome from this pack.",
+      acceptedKinds: ["website", "pdf", "pptx", "proof_link", "proof_upload"],
+    },
+  };
+}
+
 export function buildRecommendedModuleGuide(input: {
   careerPathId?: string | null;
   moduleTitle: string;
@@ -483,6 +607,33 @@ export function buildRecommendedModuleGuide(input: {
   const goalLabel = firstGoalLabel(input.primaryGoal ?? null);
 
   if (!template) {
+    const steps = [
+      `Start ${moduleTitle} on one real workflow from your week.`,
+      "Produce the smallest useful output first.",
+      "Package the result as visible proof instead of leaving it private.",
+    ];
+    const toolLaunches: RecommendedModuleToolLaunch[] = [
+      {
+        key: "chatgpt",
+        label: "ChatGPT",
+        description: "Use an external copilot if you need a quick first draft outside the tutor.",
+        href: "https://chatgpt.com/",
+        ctaLabel: "Open ChatGPT",
+        kind: "external",
+        opensInNewTab: true,
+        verificationHint: "Bring the useful output back here as proof.",
+      },
+      {
+        key: "claude",
+        label: "Claude",
+        description: "Use Claude when the work needs structured writing, analysis, or synthesis.",
+        href: "https://claude.ai/",
+        ctaLabel: "Open Claude",
+        kind: "external",
+        opensInNewTab: true,
+        verificationHint: "Attach the output or summary that moved the work forward.",
+      },
+    ];
     return {
       careerPathId,
       careerPathName,
@@ -494,37 +645,14 @@ export function buildRecommendedModuleGuide(input: {
         "Show the AI-assisted output.",
         "Summarize what changed and why it matters.",
       ],
-      steps: [
-        `Start ${moduleTitle} on one real workflow from your week.`,
-        "Produce the smallest useful output first.",
-        "Package the result as visible proof instead of leaving it private.",
-      ],
+      stepDefinitions: steps.map((step, index) => stepDefinitionForTitle(step, index, moduleTitle)),
+      steps,
       toolFocus: [],
-      toolLaunches: [
-        {
-          key: "chatgpt",
-          label: "ChatGPT",
-          description: "Use an external copilot if you need a quick first draft outside the tutor.",
-          href: "https://chatgpt.com/",
-          ctaLabel: "Open ChatGPT",
-          kind: "external",
-          opensInNewTab: true,
-          verificationHint: "Bring the useful output back here as proof.",
-        },
-        {
-          key: "claude",
-          label: "Claude",
-          description: "Use Claude when the work needs structured writing, analysis, or synthesis.",
-          href: "https://claude.ai/",
-          ctaLabel: "Open Claude",
-          kind: "external",
-          opensInNewTab: true,
-          verificationHint: "Attach the output or summary that moved the work forward.",
-        },
-      ],
+      toolLaunches: toolLaunches.map((tool) => ({ ...tool, apiAction: toolActionForLaunch(tool) })),
     };
   }
 
+  const steps = template.steps.map((step) => step.replaceAll("{module}", moduleTitle));
   return {
     careerPathId,
     careerPathName,
@@ -532,8 +660,12 @@ export function buildRecommendedModuleGuide(input: {
     whyThisModule: `${template.why} For ${roleLabel}, the goal is to ${goalLabel}.`,
     expectedOutput: template.expectedOutput,
     proofChecklist: template.proofChecklist,
-    steps: template.steps.map((step) => step.replaceAll("{module}", moduleTitle)),
+    stepDefinitions: steps.map((step, index) => stepDefinitionForTitle(step, index, moduleTitle)),
+    steps,
     toolFocus: careerPath?.tools.slice(0, 4) ?? [],
-    toolLaunches: template.toolLaunches,
+    toolLaunches: template.toolLaunches.map((tool) => ({
+      ...tool,
+      apiAction: toolActionForLaunch(tool),
+    })),
   };
 }

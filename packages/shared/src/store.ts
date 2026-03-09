@@ -1009,6 +1009,7 @@ export function recordProjectArtifact(input: {
     kind: input.kind,
     url: input.url,
     createdAt: nowIso(),
+    metadata: input.metadata ?? {},
   });
   project.state = project.artifacts.length >= verificationPolicy.builtMinArtifacts ? "built" : "building";
   project.updatedAt = nowIso();

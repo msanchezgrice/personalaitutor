@@ -4,6 +4,7 @@ import {
   CAREER_PATHS,
   MODULE_TRACKS,
   type AcquisitionAttribution,
+  buildRecommendedModuleGuide,
   buildDashboardGamification,
   addProjectChatMessage as memAddProjectChatMessage,
   connectOAuth as memConnectOAuth,
@@ -52,8 +53,11 @@ import {
   type OAuthConnection,
   type OnboardingSession,
   type Project,
+  type ProjectModuleStep,
   type ProjectModuleStepStatus,
   type PublishMode,
+  type RecommendedModuleGuide,
+  type RecommendedModuleToolActionKind,
   type SocialDraft,
   type SocialPlatform,
   type TalentCard,
@@ -736,7 +740,7 @@ async function getProjectArtifacts(projectId: string) {
   const supabase = getSupabaseAdmin();
   const { data } = await supabase
     .from("project_artifacts")
-    .select("kind,url,created_at")
+    .select("kind,url,created_at,metadata")
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
   return data ?? [];
@@ -802,7 +806,12 @@ async function projectFromRow(row: {
     title: row.title,
     description: row.description,
     state: row.state,
-    artifacts: artifacts.map((entry) => ({ kind: entry.kind, url: entry.url, createdAt: entry.created_at })),
+    artifacts: artifacts.map((entry) => ({
+      kind: entry.kind,
+      url: entry.url,
+      createdAt: entry.created_at,
+      metadata: entry.metadata ?? {},
+    })),
     moduleSteps,
     buildLog,
     createdAt: row.created_at,
@@ -2262,6 +2271,7 @@ export async function runtimeRequestArtifactGeneration(input: {
   projectId: string;
   userId: string;
   kind: "website" | "pptx" | "pdf" | "resume_docx" | "resume_pdf";
+  stepKey?: string | null;
   forceFailCode?: string;
 }) {
   if (mode() === "memory") return memRequestArtifactGeneration(input);
@@ -2269,6 +2279,7 @@ export async function runtimeRequestArtifactGeneration(input: {
   const project = await runtimeFindProjectById(input.projectId);
   const profile = await runtimeFindUserById(input.userId);
   if (!project || !profile || project.userId !== profile.id) return null;
+  const step = input.stepKey ? project.moduleSteps.find((entry) => entry.stepKey === input.stepKey) ?? null : null;
 
   const supabase = getSupabaseAdmin();
 
@@ -2319,13 +2330,23 @@ export async function runtimeRequestArtifactGeneration(input: {
     project_id: project.id,
     kind: input.kind,
     url: artifactUrl,
+    metadata: {
+      source: "generated_artifact",
+      generator: input.kind === "website" ? "website" : "artifact",
+      stepKey: step?.stepKey ?? null,
+      stepTitle: step?.title ?? null,
+    },
   });
 
   await appendBuildLog({
     projectId: project.id,
     userId: profile.id,
     level: "success",
-    message: `Artifact generated: ${input.kind}`,
+    message: `Artifact generated${step ? ` for ${step.title}` : ""}: ${input.kind}`,
+    metadata: {
+      stepKey: step?.stepKey ?? null,
+      stepTitle: step?.title ?? null,
+    },
   });
 
   await supabase.from("projects").update({ state: "built", updated_at: new Date().toISOString() }).eq("id", project.id);
@@ -2384,6 +2405,7 @@ export async function runtimeRecordProjectArtifact(input: {
     project_id: project.id,
     kind: input.kind,
     url: input.url,
+    metadata: input.metadata ?? {},
   });
 
   await appendBuildLog({
@@ -2422,6 +2444,313 @@ export async function runtimeRecordProjectArtifact(input: {
   await touchProfileTokenUsage(profile.id, Math.max(0, Number(input.awardTokens ?? 180)));
 
   return runtimeFindProjectById(project.id);
+}
+
+type ProjectToolActionOutput = {
+  toolKey: string;
+  actionKey: RecommendedModuleToolActionKind;
+  title: string;
+  content: string;
+  copyLabel: string;
+  format: "markdown" | "text";
+  openUrl?: string | null;
+  openLabel?: string | null;
+};
+
+type ProjectToolActionConfig = {
+  title: string;
+  copyLabel: string;
+  format: "markdown" | "text";
+  instructions: string[];
+};
+
+const PROJECT_TOOL_ACTIONS: Record<Exclude<RecommendedModuleToolActionKind, "social_drafts">, ProjectToolActionConfig> = {
+  jira_ticket: {
+    title: "Jira ticket draft",
+    copyLabel: "Copy Jira ticket",
+    format: "markdown",
+    instructions: [
+      "Write a ready-to-paste Jira issue.",
+      "Include sections for Summary, Background, Proposed AI workflow, Acceptance criteria, and Proof to attach.",
+      "Keep it concrete and scoped tightly enough to ship in one focused pass.",
+    ],
+  },
+  linear_ticket: {
+    title: "Linear issue draft",
+    copyLabel: "Copy Linear issue",
+    format: "markdown",
+    instructions: [
+      "Write a concise Linear issue.",
+      "Include Problem, Proposed change, Success check, and Proof to attach.",
+      "Keep the tone crisp and operator-friendly.",
+    ],
+  },
+  notion_brief: {
+    title: "Notion brief",
+    copyLabel: "Copy brief",
+    format: "markdown",
+    instructions: [
+      "Write a Notion-ready brief in markdown.",
+      "Include Context, Workflow, AI approach, Deliverable, Risks, and Proof to capture.",
+      "Make it readable by a teammate who did not attend the conversation.",
+    ],
+  },
+  slack_update: {
+    title: "Slack update",
+    copyLabel: "Copy Slack update",
+    format: "text",
+    instructions: [
+      "Write a short Slack update.",
+      "Keep it under 8 lines.",
+      "Include what changed, what is ready for review, and the clearest next ask.",
+    ],
+  },
+  gmail_draft: {
+    title: "Email draft",
+    copyLabel: "Copy email draft",
+    format: "text",
+    instructions: [
+      "Write a ready-to-send email.",
+      "Start with a 'Subject:' line, then a blank line, then the body.",
+      "Keep the tone direct, specific, and professional.",
+    ],
+  },
+  hubspot_note: {
+    title: "CRM note",
+    copyLabel: "Copy CRM note",
+    format: "text",
+    instructions: [
+      "Write a HubSpot-ready CRM note or sequence input.",
+      "Include current context, recommended action, and the next follow-up step.",
+      "Keep it concise enough to paste into a rep workflow immediately.",
+    ],
+  },
+  github_summary: {
+    title: "GitHub summary",
+    copyLabel: "Copy GitHub summary",
+    format: "markdown",
+    instructions: [
+      "Write a GitHub-ready summary.",
+      "Include Overview, What changed, Verification, and Next step.",
+      "Assume another engineer will read it in a pull request or README context.",
+    ],
+  },
+};
+
+function findProjectCurrentStep(project: Project) {
+  return project.moduleSteps.find((step) => step.status === "in_progress")
+    ?? project.moduleSteps.find((step) => step.status !== "completed")
+    ?? project.moduleSteps.at(-1)
+    ?? null;
+}
+
+function projectArtifactSummary(project: Project) {
+  return project.artifacts
+    .slice()
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 3)
+    .map((artifact) => {
+      const stepKey = typeof artifact.metadata?.stepKey === "string" ? artifact.metadata.stepKey : null;
+      return `${artifact.kind}: ${artifact.url}${stepKey ? ` (step ${stepKey})` : ""}`;
+    })
+    .join(" | ");
+}
+
+function projectBuildLogSummary(project: Project) {
+  return project.buildLog
+    .slice(-4)
+    .map((entry) => `${entry.level}: ${entry.message}`)
+    .join(" | ");
+}
+
+function stepDefinitionForProjectStep(guide: RecommendedModuleGuide, step: ProjectModuleStep | null) {
+  if (!step) return null;
+  return guide.stepDefinitions[Math.max(0, step.orderIndex - 1)] ?? null;
+}
+
+export async function runtimeGenerateProjectToolAction(input: {
+  projectId: string;
+  userId: string;
+  toolKey: string;
+  moduleTitle: string;
+  careerPathId?: string | null;
+  stepKey?: string | null;
+}) {
+  const project = await runtimeFindProjectById(input.projectId);
+  const profile = await runtimeFindUserById(input.userId);
+  if (!project || !profile || project.userId !== profile.id) {
+    return { ok: false as const, errorCode: "FORBIDDEN", output: null };
+  }
+
+  const guide = buildRecommendedModuleGuide({
+    careerPathId: input.careerPathId ?? profile.careerPathId,
+    moduleTitle: input.moduleTitle,
+    jobTitle: profile.headline,
+    primaryGoal: profile.goals?.[0] ?? null,
+  });
+  const tool = guide.toolLaunches.find((entry) => entry.key === input.toolKey) ?? null;
+  if (!tool?.apiAction) {
+    return { ok: false as const, errorCode: "TOOL_ACTION_UNAVAILABLE", output: null };
+  }
+
+  const selectedStep = input.stepKey
+    ? project.moduleSteps.find((step) => step.stepKey === input.stepKey) ?? findProjectCurrentStep(project)
+    : findProjectCurrentStep(project);
+  const stepDefinition = stepDefinitionForProjectStep(guide, selectedStep);
+  const completedStepCount = project.moduleSteps.filter((step) => step.status === "completed").length;
+  const totalStepCount = project.moduleSteps.length;
+
+  if (tool.apiAction.actionKey === "social_drafts") {
+    const ideas = await runtimeGenerateSocialIdeas({
+      userId: profile.id,
+      projectId: project.id,
+    });
+    if (!ideas.ok || !ideas.ideas) {
+      return { ok: false as const, errorCode: ideas.errorCode, output: null };
+    }
+    const content = [
+      "LinkedIn draft",
+      ideas.ideas.linkedin,
+      "",
+      "X draft",
+      ideas.ideas.x,
+    ].join("\n");
+
+    if (mode() !== "memory") {
+      await appendBuildLog({
+        projectId: project.id,
+        userId: profile.id,
+        level: "info",
+        message: `Generated ${tool.label} social drafts from project context.`,
+        metadata: {
+          toolKey: tool.key,
+          actionKey: tool.apiAction.actionKey,
+          stepKey: selectedStep?.stepKey ?? null,
+          source: "tool_action_api",
+        },
+      });
+      await touchProfileTokenUsage(profile.id, 70);
+    }
+
+    return {
+      ok: true as const,
+      output: {
+        toolKey: tool.key,
+        actionKey: tool.apiAction.actionKey,
+        title: tool.apiAction.label,
+        content,
+        copyLabel: "Copy drafts",
+        format: "text" as const,
+        openUrl: "/dashboard/social/",
+        openLabel: "Open Social Drafts",
+      },
+    };
+  }
+
+  const actionConfig = PROJECT_TOOL_ACTIONS[tool.apiAction.actionKey as Exclude<RecommendedModuleToolActionKind, "social_drafts">];
+  if (!actionConfig) {
+    return { ok: false as const, errorCode: "TOOL_ACTION_UNAVAILABLE", output: null };
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) {
+    return { ok: false as const, errorCode: "OPENAI_CONFIG_MISSING", output: null };
+  }
+
+  const prompt = [
+    `You are ${BRAND_NAME}, generating a tool-ready draft for ${tool.label}.`,
+    `Requested output: ${actionConfig.title}`,
+    ...actionConfig.instructions,
+    "Return only the final draft. Do not wrap it in code fences. Do not add commentary before or after the draft.",
+    `Learner role: ${profile.headline || "AI Builder"}`,
+    `Career path: ${guide.careerPathName}`,
+    `Module title: ${guide.moduleTitle}`,
+    `Why this module: ${guide.whyThisModule}`,
+    `Expected output: ${guide.expectedOutput}`,
+    `Project title: ${project.title}`,
+    `Project description: ${project.description}`,
+    `Project state: ${project.state}`,
+    `Checklist progress: ${completedStepCount}/${totalStepCount}`,
+    selectedStep ? `Current step: ${selectedStep.title}` : "Current step: none selected",
+    stepDefinition ? `Why this step: ${stepDefinition.whyThisStep}` : "Why this step: none",
+    stepDefinition
+      ? `Proof requirement: ${stepDefinition.proofRequirement.label} - ${stepDefinition.proofRequirement.description}`
+      : "Proof requirement: none",
+    project.artifacts.length
+      ? `Recent proof artifacts: ${projectArtifactSummary(project)}`
+      : "Recent proof artifacts: none yet",
+    project.buildLog.length
+      ? `Recent build log: ${projectBuildLogSummary(project)}`
+      : "Recent build log: none yet",
+  ].join("\n");
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
+        input: prompt,
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(`OPENAI_TOOL_ACTION_FAILED:${response.status}:${detail.slice(0, 200)}`);
+    }
+
+    const payload = (await response.json()) as {
+      output_text?: string;
+      output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
+    };
+    const content = extractOpenAiOutputText(payload);
+    if (!content) {
+      throw new Error("OPENAI_TOOL_ACTION_EMPTY");
+    }
+
+    if (mode() !== "memory") {
+      await appendBuildLog({
+        projectId: project.id,
+        userId: profile.id,
+        level: "info",
+        message: `${actionConfig.title} generated for ${selectedStep?.title ?? guide.moduleTitle}.`,
+        metadata: {
+          toolKey: tool.key,
+          actionKey: tool.apiAction.actionKey,
+          stepKey: selectedStep?.stepKey ?? null,
+          source: "tool_action_api",
+        },
+      });
+      await touchProfileTokenUsage(profile.id, 90);
+    }
+
+    return {
+      ok: true as const,
+      output: {
+        toolKey: tool.key,
+        actionKey: tool.apiAction.actionKey,
+        title: actionConfig.title,
+        content,
+        copyLabel: actionConfig.copyLabel,
+        format: actionConfig.format,
+        openUrl: tool.href,
+        openLabel: `Open ${tool.label}`,
+      },
+    };
+  } catch (error) {
+    return {
+      ok: false as const,
+      errorCode:
+        error instanceof Error && error.message.startsWith("OPENAI_TOOL_ACTION_FAILED")
+          ? "OPENAI_TOOL_ACTION_FAILED"
+          : "OPENAI_TOOL_ACTION_UNAVAILABLE",
+      output: null,
+    };
+  }
 }
 
 export async function runtimeListProjectEvents(projectId: string) {

@@ -106,7 +106,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     const form = await req.formData();
     const note = String(form.get("note") ?? "").trim();
+    const stepKey = String(form.get("stepKey") ?? "").trim();
     const file = form.get("file");
+    const step = stepKey ? project.moduleSteps.find((entry) => entry.stepKey === stepKey) ?? null : null;
+    if (stepKey && !step) {
+      return jsonError("STEP_NOT_FOUND", "Module step was not found", 404);
+    }
 
     if (!(file instanceof File)) {
       return jsonError("FILE_REQUIRED", "Proof file is required", 400);
@@ -162,8 +167,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       kind: "proof_upload",
       url: publicUrl,
       logMessage: note
-        ? `Proof file uploaded: ${fileName}. ${summarizeNote(note)}`
-        : `Proof file uploaded: ${fileName}`,
+        ? `Proof file uploaded${step ? ` for ${step.title}` : ""}: ${fileName}. ${summarizeNote(note)}`
+        : `Proof file uploaded${step ? ` for ${step.title}` : ""}: ${fileName}`,
       metadata: {
         source: "proof_upload",
         bucket,
@@ -171,6 +176,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         storageMode: isMemoryStorage ? "memory" : "supabase",
         originalFileName: file.name,
         note: note || null,
+        stepKey: step?.stepKey ?? null,
+        stepTitle: step?.title ?? null,
       },
       awardTokens: 180,
     });
@@ -186,6 +193,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         url: publicUrl,
         filename: fileName,
         bytes: file.size,
+        stepKey: step?.stepKey ?? null,
       },
     });
   } catch (error) {

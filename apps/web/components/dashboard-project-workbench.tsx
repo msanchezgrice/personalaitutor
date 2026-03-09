@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { captureAnalyticsEvent } from "@/lib/analytics";
-import type { OAuthConnection, ProjectModuleStep, RecommendedModuleGuide } from "@aitutor/shared";
+import type { OAuthConnection, ProjectArtifact, ProjectModuleStep, RecommendedModuleGuide } from "@aitutor/shared";
 
 type DashboardProjectWorkbenchProps = {
   guide: RecommendedModuleGuide;
@@ -10,13 +10,33 @@ type DashboardProjectWorkbenchProps = {
   projectTitle: string;
   projectState: string;
   artifactCount: number;
-  recentArtifacts: Array<{ kind: string; url: string; createdAt: string }>;
+  recentArtifacts: ProjectArtifact[];
   initialSteps: ProjectModuleStep[];
   oauthConnections: OAuthConnection[];
   publicProfileUrl: string | null;
 };
 
-type QueueState = "website" | "pdf" | "pptx" | "progress_note" | "proof_link" | "proof_upload" | "step_update" | null;
+type QueueState =
+  | "website"
+  | "pdf"
+  | "pptx"
+  | "progress_note"
+  | "proof_link"
+  | "proof_upload"
+  | "step_update"
+  | "tool_action"
+  | null;
+
+type ToolOutput = {
+  toolKey: string;
+  actionKey: string;
+  title: string;
+  content: string;
+  copyLabel: string;
+  format: "markdown" | "text";
+  openUrl?: string | null;
+  openLabel?: string | null;
+};
 
 function artifactLabel(kind: string) {
   switch (kind) {
@@ -32,6 +52,23 @@ function artifactLabel(kind: string) {
       return "Uploaded proof";
     default:
       return "Proof artifact";
+  }
+}
+
+function acceptedKindLabel(kind: string) {
+  switch (kind) {
+    case "proof_link":
+      return "Link";
+    case "proof_upload":
+      return "File upload";
+    case "website":
+      return "Website";
+    case "pdf":
+      return "PDF";
+    case "pptx":
+      return "Deck";
+    default:
+      return kind;
   }
 }
 
@@ -64,6 +101,13 @@ function oauthConnectHref(platform: OAuthConnection["platform"]) {
   return "/api/auth/linkedin/start?redirect=1&redirectPath=/dashboard/projects/";
 }
 
+function deriveInitialStepKey(steps: ProjectModuleStep[]) {
+  return steps.find((step) => step.status === "in_progress")?.stepKey
+    ?? steps.find((step) => step.status !== "completed")?.stepKey
+    ?? steps[0]?.stepKey
+    ?? null;
+}
+
 export function DashboardProjectWorkbench({
   guide,
   projectId,
@@ -88,12 +132,41 @@ export function DashboardProjectWorkbench({
   const [artifactCountValue, setArtifactCountValue] = useState(artifactCount);
   const [moduleSteps, setModuleSteps] = useState<ProjectModuleStep[]>(initialSteps);
   const [stepBusyKey, setStepBusyKey] = useState<string | null>(null);
-  const [recentArtifactItems, setRecentArtifactItems] = useState(
-    [...recentArtifacts].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3),
+  const [artifactItems, setArtifactItems] = useState<ProjectArtifact[]>(
+    [...recentArtifacts].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
   );
+  const [selectedStepKey, setSelectedStepKey] = useState<string | null>(deriveInitialStepKey(initialSteps));
+  const [toolBusyKey, setToolBusyKey] = useState<string | null>(null);
+  const [toolOutput, setToolOutput] = useState<ToolOutput | null>(null);
+  const [toolCopyStatus, setToolCopyStatus] = useState<string | null>(null);
+
   const oauthByPlatform = new Map(oauthConnections.map((connection) => [connection.platform, connection]));
   const completedStepCount = moduleSteps.filter((step) => step.status === "completed").length;
   const totalStepCount = moduleSteps.length;
+  const effectiveSelectedStepKey = moduleSteps.some((step) => step.stepKey === selectedStepKey)
+    ? selectedStepKey
+    : deriveInitialStepKey(moduleSteps);
+  const selectedStep = effectiveSelectedStepKey
+    ? moduleSteps.find((step) => step.stepKey === effectiveSelectedStepKey) ?? null
+    : null;
+  const selectedStepDefinition = selectedStep ? guide.stepDefinitions[Math.max(0, selectedStep.orderIndex - 1)] ?? null : null;
+  const selectedStepArtifacts = selectedStep
+    ? artifactItems.filter((artifact) => artifact.metadata?.stepKey === selectedStep.stepKey)
+    : artifactItems;
+  const recentArtifactItems = artifactItems.slice(0, 3);
+
+  function artifactsForStep(stepKey: string) {
+    return artifactItems.filter((artifact) => artifact.metadata?.stepKey === stepKey);
+  }
+
+  function jumpToProof(stepKey: string) {
+    setSelectedStepKey(stepKey);
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        document.getElementById("step-proof-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }
 
   async function updateStep(stepKey: string, nextStatus: ProjectModuleStep["status"]) {
     if (!projectId) return;
@@ -119,6 +192,11 @@ export function DashboardProjectWorkbench({
         throw new Error(payload.error?.message ?? "Unable to update module step");
       }
       setModuleSteps(payload.moduleSteps);
+      if (nextStatus === "completed" && stepKey === effectiveSelectedStepKey) {
+        setSelectedStepKey(deriveInitialStepKey(payload.moduleSteps));
+      } else {
+        setSelectedStepKey(stepKey);
+      }
       captureAnalyticsEvent("project_module_step_updated", {
         project_id: projectId,
         module_title: guide.moduleTitle,
@@ -162,21 +240,31 @@ export function DashboardProjectWorkbench({
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: kind === "website" ? JSON.stringify({}) : JSON.stringify({ kind }),
+          body: JSON.stringify({
+            ...(kind === "website" ? {} : { kind }),
+            stepKey: selectedStep?.stepKey ?? null,
+          }),
         },
       );
       const payload = (await response.json().catch(() => ({}))) as {
         ok?: boolean;
         error?: { message?: string };
+        project?: { artifacts?: ProjectArtifact[] };
       };
       if (!response.ok || !payload.ok) {
         throw new Error(payload.error?.message ?? "Unable to queue artifact generation");
+      }
+      if (Array.isArray(payload.project?.artifacts)) {
+        const nextArtifacts = [...payload.project.artifacts].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        setArtifactItems(nextArtifacts);
+        setArtifactCountValue(nextArtifacts.length);
       }
       captureAnalyticsEvent("project_artifact_generation_requested", {
         project_id: projectId,
         module_title: guide.moduleTitle,
         career_path_id: guide.careerPathId,
         artifact_kind: kind,
+        step_key: selectedStep?.stepKey ?? null,
       });
       setStatus(
         kind === "website"
@@ -189,6 +277,7 @@ export function DashboardProjectWorkbench({
         module_title: guide.moduleTitle,
         career_path_id: guide.careerPathId,
         artifact_kind: kind,
+        step_key: selectedStep?.stepKey ?? null,
       });
       setError(workbenchError instanceof Error ? workbenchError.message : "Unable to queue artifact generation.");
     } finally {
@@ -206,7 +295,7 @@ export function DashboardProjectWorkbench({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          message: `Proof update for ${guide.moduleTitle}: ${proofNote.trim()}`,
+          message: `Proof update for ${guide.moduleTitle}${selectedStep ? ` / ${selectedStep.title}` : ""}: ${proofNote.trim()}`,
         }),
       });
       const payload = (await response.json().catch(() => ({}))) as {
@@ -221,13 +310,17 @@ export function DashboardProjectWorkbench({
         project_id: projectId,
         module_title: guide.moduleTitle,
         career_path_id: guide.careerPathId,
+        step_key: selectedStep?.stepKey ?? null,
       });
-      setStatus("Progress note saved. Chat Tutor now has the latest proof context for this pack.");
+      setStatus(selectedStep
+        ? `Progress note saved for ${selectedStep.title}. Chat Tutor now has the latest proof context for this pack.`
+        : "Progress note saved. Chat Tutor now has the latest proof context for this pack.");
     } catch (workbenchError) {
       captureAnalyticsEvent("project_progress_note_failed", {
         project_id: projectId,
         module_title: guide.moduleTitle,
         career_path_id: guide.careerPathId,
+        step_key: selectedStep?.stepKey ?? null,
       });
       setError(workbenchError instanceof Error ? workbenchError.message : "Unable to save progress note.");
     } finally {
@@ -248,25 +341,28 @@ export function DashboardProjectWorkbench({
           url: proofLink.trim(),
           label: proofLinkLabel.trim() || null,
           note: proofLinkNote.trim() || null,
+          stepKey: selectedStep?.stepKey ?? null,
         }),
       });
       const payload = (await response.json().catch(() => ({}))) as {
         ok?: boolean;
         error?: { message?: string };
-        artifact?: { kind?: string; url?: string };
+        artifact?: { kind?: string; url?: string; stepKey?: string | null };
       };
       if (!response.ok || !payload.ok) {
         throw new Error(payload.error?.message ?? "Unable to save proof link");
       }
-      setArtifactCountValue((current) => current + 1);
-      setRecentArtifactItems((current) => [
-        {
-          kind: payload.artifact?.kind ?? "proof_link",
-          url: payload.artifact?.url ?? proofLink.trim(),
-          createdAt: new Date().toISOString(),
+      const nextArtifact: ProjectArtifact = {
+        kind: payload.artifact?.kind ?? "proof_link",
+        url: payload.artifact?.url ?? proofLink.trim(),
+        createdAt: new Date().toISOString(),
+        metadata: {
+          stepKey: payload.artifact?.stepKey ?? selectedStep?.stepKey ?? null,
+          stepTitle: selectedStep?.title ?? null,
         },
-        ...current,
-      ].slice(0, 3));
+      };
+      setArtifactItems((current) => [nextArtifact, ...current]);
+      setArtifactCountValue((current) => current + 1);
       setProofLink("");
       setProofLinkLabel("");
       setProofLinkNote("");
@@ -276,13 +372,18 @@ export function DashboardProjectWorkbench({
         career_path_id: guide.careerPathId,
         artifact_count_after: artifactCountValue + 1,
         has_public_profile: Boolean(publicProfileUrl),
+        step_key: selectedStep?.stepKey ?? null,
+        proof_requirement_key: selectedStepDefinition?.proofRequirement.key ?? null,
       });
-      setStatus("Proof link saved. This module now has a visible artifact attached to it.");
+      setStatus(selectedStep
+        ? `Proof link saved for ${selectedStep.title}. This step now has visible proof attached to it.`
+        : "Proof link saved. This module now has a visible artifact attached to it.");
     } catch (workbenchError) {
       captureAnalyticsEvent("project_proof_link_failed", {
         project_id: projectId,
         module_title: guide.moduleTitle,
         career_path_id: guide.careerPathId,
+        step_key: selectedStep?.stepKey ?? null,
       });
       setError(workbenchError instanceof Error ? workbenchError.message : "Unable to save proof link.");
     } finally {
@@ -299,6 +400,9 @@ export function DashboardProjectWorkbench({
       const form = new FormData();
       form.append("file", proofFile);
       form.append("note", proofUploadNote.trim());
+      if (selectedStep?.stepKey) {
+        form.append("stepKey", selectedStep.stepKey);
+      }
 
       const response = await fetch(`/api/projects/${projectId}/proof-upload`, {
         method: "POST",
@@ -307,20 +411,22 @@ export function DashboardProjectWorkbench({
       const payload = (await response.json().catch(() => ({}))) as {
         ok?: boolean;
         error?: { message?: string };
-        artifact?: { kind?: string; url?: string };
+        artifact?: { kind?: string; url?: string; stepKey?: string | null };
       };
       if (!response.ok || !payload.ok) {
         throw new Error(payload.error?.message ?? "Unable to upload proof file");
       }
-      setArtifactCountValue((current) => current + 1);
-      setRecentArtifactItems((current) => [
-        {
-          kind: payload.artifact?.kind ?? "proof_upload",
-          url: payload.artifact?.url ?? "#",
-          createdAt: new Date().toISOString(),
+      const nextArtifact: ProjectArtifact = {
+        kind: payload.artifact?.kind ?? "proof_upload",
+        url: payload.artifact?.url ?? "#",
+        createdAt: new Date().toISOString(),
+        metadata: {
+          stepKey: payload.artifact?.stepKey ?? selectedStep?.stepKey ?? null,
+          stepTitle: selectedStep?.title ?? null,
         },
-        ...current,
-      ].slice(0, 3));
+      };
+      setArtifactItems((current) => [nextArtifact, ...current]);
+      setArtifactCountValue((current) => current + 1);
       setProofFile(null);
       setProofFileInputKey((current) => current + 1);
       setProofUploadNote("");
@@ -330,17 +436,90 @@ export function DashboardProjectWorkbench({
         career_path_id: guide.careerPathId,
         artifact_count_after: artifactCountValue + 1,
         has_public_profile: Boolean(publicProfileUrl),
+        step_key: selectedStep?.stepKey ?? null,
+        proof_requirement_key: selectedStepDefinition?.proofRequirement.key ?? null,
       });
-      setStatus("Proof file uploaded. The workbench now has a saved artifact for this pack.");
+      setStatus(selectedStep
+        ? `Proof file uploaded for ${selectedStep.title}. This step now has saved evidence attached.`
+        : "Proof file uploaded. The workbench now has a saved artifact for this pack.");
     } catch (workbenchError) {
       captureAnalyticsEvent("project_proof_file_upload_failed", {
         project_id: projectId,
         module_title: guide.moduleTitle,
         career_path_id: guide.careerPathId,
+        step_key: selectedStep?.stepKey ?? null,
       });
       setError(workbenchError instanceof Error ? workbenchError.message : "Unable to upload proof file.");
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function generateToolOutput(toolKey: string) {
+    if (!projectId) return;
+    setBusy("tool_action");
+    setToolBusyKey(toolKey);
+    setToolCopyStatus(null);
+    setError(null);
+    setStatus(null);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/tool-actions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          toolKey,
+          moduleTitle: guide.moduleTitle,
+          careerPathId: guide.careerPathId,
+          stepKey: selectedStep?.stepKey ?? null,
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: { message?: string };
+        output?: ToolOutput;
+      };
+      if (!response.ok || !payload.ok || !payload.output) {
+        throw new Error(payload.error?.message ?? "Unable to generate tool output");
+      }
+      setToolOutput(payload.output);
+      captureAnalyticsEvent("project_tool_output_generated", {
+        project_id: projectId,
+        module_title: guide.moduleTitle,
+        career_path_id: guide.careerPathId,
+        tool_key: toolKey,
+        action_key: payload.output.actionKey,
+        step_key: selectedStep?.stepKey ?? null,
+      });
+      setStatus(`${payload.output.title} is ready. Copy it or open the target tool.`);
+    } catch (toolError) {
+      captureAnalyticsEvent("project_tool_output_failed", {
+        project_id: projectId,
+        module_title: guide.moduleTitle,
+        career_path_id: guide.careerPathId,
+        tool_key: toolKey,
+        step_key: selectedStep?.stepKey ?? null,
+      });
+      setError(toolError instanceof Error ? toolError.message : "Unable to generate tool output.");
+    } finally {
+      setBusy(null);
+      setToolBusyKey(null);
+    }
+  }
+
+  async function copyToolOutput() {
+    if (!toolOutput?.content || typeof navigator === "undefined" || !navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(toolOutput.content);
+      setToolCopyStatus(`${toolOutput.copyLabel} complete.`);
+      captureAnalyticsEvent("project_tool_output_copied", {
+        project_id: projectId,
+        module_title: guide.moduleTitle,
+        career_path_id: guide.careerPathId,
+        tool_key: toolOutput.toolKey,
+        action_key: toolOutput.actionKey,
+      });
+    } catch {
+      setToolCopyStatus("Copy failed. Select and copy the draft manually.");
     }
   }
 
@@ -404,70 +583,117 @@ export function DashboardProjectWorkbench({
               ></div>
             </div>
             <ol className="mt-4 space-y-3">
-              {moduleSteps.map((step) => (
-                <li key={step.stepKey} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-[11px] font-semibold text-emerald-300">
-                          {step.orderIndex}
-                        </span>
-                        <span className="text-sm leading-6 text-gray-200">{step.title}</span>
-                      </div>
-                      {step.completedAt ? (
-                        <div className="mt-2 text-[11px] text-gray-500">
-                          Completed {new Date(step.completedAt).toLocaleString()}
+              {moduleSteps.map((step) => {
+                const stepDefinition = guide.stepDefinitions[Math.max(0, step.orderIndex - 1)] ?? null;
+                const stepArtifacts = artifactsForStep(step.stepKey);
+                const latestStepArtifact = stepArtifacts[0] ?? null;
+                const isSelected = step.stepKey === effectiveSelectedStepKey;
+                return (
+                  <li
+                    key={step.stepKey}
+                    className={`rounded-2xl border p-4 ${isSelected ? "border-emerald-500/30 bg-emerald-500/5" : "border-white/10 bg-white/5"}`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-[11px] font-semibold text-emerald-300">
+                            {step.orderIndex}
+                          </span>
+                          <span className="text-sm leading-6 text-gray-200">{step.title}</span>
                         </div>
-                      ) : null}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${stepStatusClasses(step.status)}`}>
-                        {stepStatusLabel(step.status)}
-                      </span>
-                      {step.status === "not_started" ? (
+                        {step.completedAt ? (
+                          <div className="mt-2 text-[11px] text-gray-500">
+                            Completed {new Date(step.completedAt).toLocaleString()}
+                          </div>
+                        ) : null}
+                        {stepDefinition ? (
+                          <div className="mt-3 ml-9 space-y-3">
+                            <p className="text-xs leading-5 text-gray-400">{stepDefinition.whyThisStep}</p>
+                            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-300/80">Proof required</div>
+                              <div className="mt-2 text-sm text-white">{stepDefinition.proofRequirement.label}</div>
+                              <p className="mt-1 text-xs leading-5 text-gray-400">{stepDefinition.proofRequirement.description}</p>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {stepDefinition.proofRequirement.acceptedKinds.map((kind) => (
+                                  <span
+                                    key={`${step.stepKey}-${kind}`}
+                                    className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-[10px] uppercase tracking-wide text-violet-200"
+                                  >
+                                    {acceptedKindLabel(kind)}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
+                              <span>{stepArtifacts.length} proof attached</span>
+                              {latestStepArtifact ? (
+                                <a href={latestStepArtifact.url} target="_blank" rel="noreferrer" className="truncate text-emerald-300 hover:text-emerald-200">
+                                  Latest: {artifactLabel(latestStepArtifact.kind)}
+                                </a>
+                              ) : (
+                                <span>No proof attached yet</span>
+                              )}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
                           className="btn btn-secondary px-3 py-1.5 text-xs"
-                          onClick={() => updateStep(step.stepKey, "in_progress")}
-                          disabled={!projectId || busy !== null}
+                          onClick={() => jumpToProof(step.stepKey)}
+                          disabled={!projectId}
                         >
-                          {busy === "step_update" && stepBusyKey === step.stepKey ? "Saving..." : "Start"}
+                          Attach Proof
                         </button>
-                      ) : null}
-                      {step.status === "in_progress" ? (
-                        <>
-                          <button
-                            type="button"
-                            className="btn btn-primary px-3 py-1.5 text-xs"
-                            onClick={() => updateStep(step.stepKey, "completed")}
-                            disabled={!projectId || busy !== null}
-                          >
-                            {busy === "step_update" && stepBusyKey === step.stepKey ? "Saving..." : "Mark Done"}
-                          </button>
+                        <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${stepStatusClasses(step.status)}`}>
+                          {stepStatusLabel(step.status)}
+                        </span>
+                        {step.status === "not_started" ? (
                           <button
                             type="button"
                             className="btn btn-secondary px-3 py-1.5 text-xs"
-                            onClick={() => updateStep(step.stepKey, "not_started")}
+                            onClick={() => updateStep(step.stepKey, "in_progress")}
                             disabled={!projectId || busy !== null}
                           >
-                            Reset
+                            {busy === "step_update" && stepBusyKey === step.stepKey ? "Saving..." : "Start"}
                           </button>
-                        </>
-                      ) : null}
-                      {step.status === "completed" ? (
-                        <button
-                          type="button"
-                          className="btn btn-secondary px-3 py-1.5 text-xs"
-                          onClick={() => updateStep(step.stepKey, "in_progress")}
-                          disabled={!projectId || busy !== null}
-                        >
-                          {busy === "step_update" && stepBusyKey === step.stepKey ? "Saving..." : "Reopen"}
-                        </button>
-                      ) : null}
+                        ) : null}
+                        {step.status === "in_progress" ? (
+                          <>
+                            <button
+                              type="button"
+                              className="btn btn-primary px-3 py-1.5 text-xs"
+                              onClick={() => updateStep(step.stepKey, "completed")}
+                              disabled={!projectId || busy !== null}
+                            >
+                              {busy === "step_update" && stepBusyKey === step.stepKey ? "Saving..." : "Mark Done"}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-secondary px-3 py-1.5 text-xs"
+                              onClick={() => updateStep(step.stepKey, "not_started")}
+                              disabled={!projectId || busy !== null}
+                            >
+                              Reset
+                            </button>
+                          </>
+                        ) : null}
+                        {step.status === "completed" ? (
+                          <button
+                            type="button"
+                            className="btn btn-secondary px-3 py-1.5 text-xs"
+                            onClick={() => updateStep(step.stepKey, "in_progress")}
+                            disabled={!projectId || busy !== null}
+                          >
+                            {busy === "step_update" && stepBusyKey === step.stepKey ? "Saving..." : "Reopen"}
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ol>
           </div>
           <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
@@ -490,7 +716,7 @@ export function DashboardProjectWorkbench({
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300/80">Tool launchers</div>
               <p className="mt-2 text-sm text-gray-400">
-                Open the real tools that fit this pack. Connect first where we already support it, otherwise launch into the external workspace.
+                Open the real tools that fit this pack. Where we support API-backed help, generate a ready-to-paste draft from the current step before you leave.
               </p>
             </div>
             <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-gray-300">
@@ -504,20 +730,11 @@ export function DashboardProjectWorkbench({
               const destination = tool.kind === "oauth" && !connected && tool.platform
                 ? oauthConnectHref(tool.platform)
                 : tool.href;
-              const ctaLabel = tool.kind === "oauth" && !connected ? tool.ctaLabel : `Open ${tool.label}`;
+              const openLabel = tool.kind === "oauth" && !connected ? tool.ctaLabel : `Open ${tool.label}`;
               return (
-                <a
+                <div
                   key={tool.key}
-                  href={destination}
-                  target={tool.opensInNewTab ? "_blank" : undefined}
-                  rel={tool.opensInNewTab ? "noreferrer" : undefined}
                   className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition"
-                  data-analytics-event="project_tool_launcher_clicked"
-                  data-analytics-location="projects_workbench"
-                  data-analytics-tool_key={tool.key}
-                  data-analytics-tool_kind={tool.kind}
-                  data-analytics-connected={connected}
-                  data-analytics-destination={destination}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -535,14 +752,65 @@ export function DashboardProjectWorkbench({
                     </span>
                   </div>
                   <div className="mt-4 text-xs leading-5 text-gray-500">{tool.verificationHint}</div>
-                  <div className="mt-4 flex items-center justify-between gap-3 text-sm font-medium text-white">
-                    <span>{ctaLabel}</span>
-                    <i className="fa-solid fa-arrow-up-right-from-square text-gray-500"></i>
+                  <div className="mt-4 grid gap-2">
+                    <a
+                      href={destination}
+                      target={tool.opensInNewTab ? "_blank" : undefined}
+                      rel={tool.opensInNewTab ? "noreferrer" : undefined}
+                      className="btn btn-secondary w-full justify-center text-xs"
+                      data-analytics-event="project_tool_launcher_clicked"
+                      data-analytics-location="projects_workbench"
+                      data-analytics-tool_key={tool.key}
+                      data-analytics-tool_kind={tool.kind}
+                      data-analytics-connected={connected}
+                      data-analytics-destination={destination}
+                    >
+                      {openLabel}
+                    </a>
+                    {tool.apiAction ? (
+                      <button
+                        type="button"
+                        className="btn btn-primary w-full justify-center text-xs"
+                        onClick={() => generateToolOutput(tool.key)}
+                        disabled={!projectId || busy !== null}
+                      >
+                        {busy === "tool_action" && toolBusyKey === tool.key ? "Generating..." : tool.apiAction.label}
+                      </button>
+                    ) : null}
                   </div>
-                </a>
+                </div>
               );
             })}
           </div>
+          {toolOutput ? (
+            <div className="mt-5 rounded-2xl border border-sky-500/20 bg-sky-500/5 p-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300/80">Generated tool draft</div>
+                  <h3 className="mt-2 text-lg font-medium text-white">{toolOutput.title}</h3>
+                  {selectedStep ? (
+                    <p className="mt-2 text-sm text-gray-400">Built for {selectedStep.title}.</p>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" className="btn btn-secondary text-xs px-3 py-1.5" onClick={() => void copyToolOutput()}>
+                    {toolOutput.copyLabel}
+                  </button>
+                  {toolOutput.openUrl ? (
+                    <a href={toolOutput.openUrl} className="btn btn-primary text-xs px-3 py-1.5" target="_blank" rel="noreferrer">
+                      {toolOutput.openLabel || "Open tool"}
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+              <pre className="mt-4 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/30 p-4 text-sm leading-6 text-gray-200">
+                {toolOutput.content}
+              </pre>
+              {toolCopyStatus ? (
+                <div className="mt-3 text-xs text-sky-200">{toolCopyStatus}</div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -615,6 +883,11 @@ export function DashboardProjectWorkbench({
           <p className="mt-2 text-sm text-gray-400">
             Save one concrete build note so your project log and Chat Tutor context stay current.
           </p>
+          {selectedStep ? (
+            <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-gray-300">
+              Logging against <span className="text-white">{selectedStep.title}</span>
+            </div>
+          ) : null}
           <textarea
             value={proofNote}
             onChange={(event) => setProofNote(event.target.value)}
@@ -633,11 +906,46 @@ export function DashboardProjectWorkbench({
           </button>
         </div>
 
-        <div className="glass p-6 rounded-2xl border border-white/10 space-y-4">
+        <div id="step-proof-panel" className="glass p-6 rounded-2xl border border-white/10 space-y-4">
           <div className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300/80">Submit proof</div>
           <p className="text-sm text-gray-400">
-            Paste a live proof link or upload a screenshot, PDF, or text note from the workflow you just built.
+            Choose the step you are proving, then attach a live link or file from that part of the workflow.
           </p>
+
+          {moduleSteps.length ? (
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
+              <div className="text-sm font-medium text-white">Step proof target</div>
+              <select
+                value={effectiveSelectedStepKey ?? ""}
+                onChange={(event) => setSelectedStepKey(event.target.value || null)}
+                className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-500/40"
+              >
+                {moduleSteps.map((step) => (
+                  <option key={step.stepKey} value={step.stepKey}>
+                    Step {step.orderIndex}: {step.title} ({stepStatusLabel(step.status)})
+                  </option>
+                ))}
+              </select>
+              {selectedStepDefinition ? (
+                <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-300/80">
+                    {selectedStepDefinition.proofRequirement.label}
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-gray-300">{selectedStepDefinition.proofRequirement.description}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {selectedStepDefinition.proofRequirement.acceptedKinds.map((kind) => (
+                      <span
+                        key={`${selectedStepDefinition.proofRequirement.key}-${kind}`}
+                        className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-[10px] uppercase tracking-wide text-violet-200"
+                      >
+                        {acceptedKindLabel(kind)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
             <div className="text-sm font-medium text-white">Proof link</div>
@@ -667,7 +975,7 @@ export function DashboardProjectWorkbench({
               disabled={!projectId || !proofLink.trim() || busy !== null}
             >
               <i className="fa-solid fa-link mr-2"></i>
-              {busy === "proof_link" ? "Saving Link..." : "Save Proof Link"}
+              {busy === "proof_link" ? "Saving Link..." : selectedStep ? `Save Proof Link For Step ${selectedStep.orderIndex}` : "Save Proof Link"}
             </button>
           </div>
 
@@ -694,7 +1002,7 @@ export function DashboardProjectWorkbench({
               disabled={!projectId || !proofFile || busy !== null}
             >
               <i className="fa-solid fa-upload mr-2"></i>
-              {busy === "proof_upload" ? "Uploading Proof..." : "Upload Proof File"}
+              {busy === "proof_upload" ? "Uploading Proof..." : selectedStep ? `Upload Proof For Step ${selectedStep.orderIndex}` : "Upload Proof File"}
             </button>
             {proofFile ? (
               <div className="text-xs text-gray-400">
@@ -706,12 +1014,19 @@ export function DashboardProjectWorkbench({
 
         <div className="glass p-6 rounded-2xl border border-white/10">
           <div className="flex items-center justify-between gap-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300/80">Recent proof</div>
-            <span className="text-[11px] text-gray-400">{artifactCountValue} total</span>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300/80">
+                {selectedStep ? `Proof for step ${selectedStep.orderIndex}` : "Recent proof"}
+              </div>
+              {selectedStep ? (
+                <p className="mt-2 text-sm text-gray-400">{selectedStep.title}</p>
+              ) : null}
+            </div>
+            <span className="text-[11px] text-gray-400">{selectedStepArtifacts.length} for this step</span>
           </div>
-          {recentArtifactItems.length ? (
+          {selectedStepArtifacts.length ? (
             <div className="mt-4 space-y-3">
-              {recentArtifactItems.map((artifact) => (
+              {selectedStepArtifacts.slice(0, 4).map((artifact) => (
                 <a
                   key={`${artifact.kind}:${artifact.url}:${artifact.createdAt}`}
                   href={artifact.url}
@@ -733,9 +1048,14 @@ export function DashboardProjectWorkbench({
             </div>
           ) : (
             <p className="mt-4 text-sm text-gray-400">
-              No proof is attached yet. Save a link, upload a file, or generate a public artifact from this pack.
+              No proof is attached to this step yet. Save a link, upload a file, or generate a public artifact for this exact step.
             </p>
           )}
+          {selectedStep && recentArtifactItems.length > 0 ? (
+            <div className="mt-4 text-xs text-gray-500">
+              {artifactCountValue} total proof items are still attached across the full pack.
+            </div>
+          ) : null}
         </div>
 
         <div className="glass p-6 rounded-2xl border border-white/10">
@@ -760,12 +1080,11 @@ export function DashboardProjectWorkbench({
               <a
                 href="/dashboard/profile/"
                 className="btn btn-secondary w-full justify-center text-sm"
-                data-analytics-event="dashboard_nav_clicked"
+                data-analytics-event="public_profile_clicked"
                 data-analytics-location="projects_workbench"
-                data-analytics-tab="profile"
                 data-analytics-destination="/dashboard/profile/"
               >
-                <i className="fa-solid fa-user mr-2"></i> Open Profile Settings
+                <i className="fa-solid fa-user mr-2"></i> Go To Profile Settings
               </a>
             )}
           </div>

@@ -7,6 +7,7 @@ const schema = z.object({
   url: z.string().url(),
   label: z.string().max(120).optional().nullable(),
   note: z.string().max(1000).optional().nullable(),
+  stepKey: z.string().max(120).optional().nullable(),
 });
 
 function summarizeNote(value: string | null | undefined) {
@@ -40,6 +41,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   if (project.userId !== profile.id) {
     return jsonError("FORBIDDEN", "Project access denied", 403);
   }
+  const step = parsed.data.stepKey
+    ? project.moduleSteps.find((entry) => entry.stepKey === parsed.data.stepKey) ?? null
+    : null;
+  if (parsed.data.stepKey && !step) {
+    return jsonError("STEP_NOT_FOUND", "Module step was not found", 404);
+  }
 
   const label = parsed.data.label?.trim() || "Manual proof link";
   const note = parsed.data.note?.trim() || "";
@@ -49,12 +56,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     kind: "proof_link",
     url: parsed.data.url,
     logMessage: note
-      ? `Proof link added: ${label}. ${summarizeNote(note)}`
-      : `Proof link added: ${label}`,
+      ? `Proof link added${step ? ` for ${step.title}` : ""}: ${label}. ${summarizeNote(note)}`
+      : `Proof link added${step ? ` for ${step.title}` : ""}: ${label}`,
     metadata: {
       source: "proof_link",
       label,
       note: note || null,
+      stepKey: step?.stepKey ?? null,
+      stepTitle: step?.title ?? null,
     },
     awardTokens: 140,
   });
@@ -69,6 +78,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       kind: "proof_link",
       url: parsed.data.url,
       label,
+      stepKey: step?.stepKey ?? null,
     },
   });
 }

@@ -30,6 +30,12 @@ export type LifecycleEmailModuleCta = {
   href: string;
   buttonLabel: string;
   helperText: string;
+  stage?: "not_started" | "in_progress" | "ready_for_proof" | "proof_attached";
+  projectTitle?: string | null;
+  currentStepTitle?: string | null;
+  completedStepCount?: number;
+  totalStepCount?: number;
+  artifactCount?: number;
 };
 
 export type LifecycleEmailNewsItem = {
@@ -229,6 +235,36 @@ function buildFallbackSocialDrafts(input: {
   ];
 }
 
+function moduleProgressSummary(moduleCta: LifecycleEmailModuleCta) {
+  const completed = Math.max(0, Number(moduleCta.completedStepCount ?? 0));
+  const total = Math.max(0, Number(moduleCta.totalStepCount ?? 0));
+  if (!total) return null;
+  if (moduleCta.stage === "ready_for_proof") {
+    return `All ${total} steps are complete. The next move is attaching visible proof.`;
+  }
+  if (moduleCta.stage === "proof_attached") {
+    return `${completed}/${total} steps are complete and proof is already attached. Tighten the story and publish it.`;
+  }
+  const currentStep = moduleCta.currentStepTitle?.trim();
+  if (currentStep) {
+    return `${completed}/${total} steps are complete. The current checkpoint is ${currentStep}.`;
+  }
+  return `${completed}/${total} steps are complete.`;
+}
+
+function moduleNextActionLine(moduleCta: LifecycleEmailModuleCta) {
+  if (moduleCta.stage === "ready_for_proof") {
+    return `Open ${moduleCta.title}, attach the first proof link or file, and make the work visible.`;
+  }
+  if (moduleCta.stage === "proof_attached") {
+    return `Open ${moduleCta.title}, tighten the proof story, and reuse it publicly.`;
+  }
+  if (moduleCta.currentStepTitle?.trim()) {
+    return `Open ${moduleCta.title} and focus on ${moduleCta.currentStepTitle}.`;
+  }
+  return `Open ${moduleCta.title}, complete one checkpoint, and turn it into a concrete artifact or build log update today.`;
+}
+
 function composeIntro(input: LifecycleEmailContext, state: AssessmentState) {
   switch (input.key) {
     case "welcome":
@@ -304,6 +340,7 @@ function buildCards(input: LifecycleEmailContext, state: AssessmentState) {
               ? `Your assessment is already complete. Move straight into ${input.moduleCta.title}.`
               : "Finish the assessment first so the tutor can turn your current role signal into a specific module path and project direction.",
             input.moduleCta.helperText,
+            moduleProgressSummary(input.moduleCta) ?? "The first visible checkpoint should happen inside the module, not in private notes.",
           ],
           cta: {
             label: input.moduleCta.buttonLabel,
@@ -335,7 +372,8 @@ function buildCards(input: LifecycleEmailContext, state: AssessmentState) {
           {
             title: "Do this next",
             paragraphs: [
-              `Open ${input.moduleCta.title}, complete one checkpoint, and turn it into a concrete artifact or build log update today.`,
+              moduleNextActionLine(input.moduleCta),
+              input.moduleCta.helperText,
             ],
             cta: {
               label: input.moduleCta.buttonLabel,
@@ -372,11 +410,14 @@ function buildCards(input: LifecycleEmailContext, state: AssessmentState) {
             title: "Turn the quiz into shipped proof",
             paragraphs: [
               `Day two is about translation: use ${input.moduleCta.title} to produce one visible output, not just more planning.`,
+              moduleProgressSummary(input.moduleCta) ?? input.moduleCta.helperText,
             ],
             items: [
-              `Continue ${input.moduleCta.title}.`,
+              moduleNextActionLine(input.moduleCta),
               "Document what changed before and after AI support.",
-              "Publish the result to your dashboard and public profile.",
+              input.moduleCta.stage === "proof_attached"
+                ? "Reuse the finished proof in your dashboard, profile, or public updates."
+                : "Publish the result to your dashboard and public profile.",
             ],
             cta: {
               label: input.moduleCta.buttonLabel,
@@ -419,11 +460,14 @@ function buildCards(input: LifecycleEmailContext, state: AssessmentState) {
               input.project?.title
                 ? `The clearest next move is to keep pushing ${input.project.title} and connect it back to the quiz signals that made it the right build.`
                 : `If you have not started a project yet, use ${input.moduleCta.title} to create the first visible work sample now.`,
+              moduleProgressSummary(input.moduleCta) ?? input.moduleCta.helperText,
             ],
             items: [
               "State the workflow you improved.",
               "Show what AI changed in the output or speed.",
-              "Capture the result in your build log or profile.",
+              input.moduleCta.stage === "ready_for_proof"
+                ? "Attach the proof so the completed checklist turns into visible evidence."
+                : "Capture the result in your build log or profile.",
             ],
             cta: {
               label: input.moduleCta.buttonLabel,
@@ -468,6 +512,7 @@ function buildCards(input: LifecycleEmailContext, state: AssessmentState) {
               ? `Your current build is ${input.project.title}. Keep pushing it until the output is public and inspectable.`
               : `Your clearest next module is ${input.moduleCta.title}. Use it to produce the first visible work sample this week.`,
             input.moduleCta.helperText,
+            moduleProgressSummary(input.moduleCta) ?? "No checklist progress was available at send time.",
           ],
           items: [
             recommendedPaths.length

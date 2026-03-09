@@ -1,8 +1,18 @@
 import { jsonError, jsonOk, runtimeFindProjectById, runtimeFindUserById, runtimeRequestArtifactGeneration } from "@/lib/runtime";
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { forcedFailCode, getUserId } from "@/lib/api";
 
+const schema = z.object({
+  stepKey: z.string().max(120).optional().nullable(),
+});
+
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  if (!parsed.success) {
+    return jsonError("INVALID_BODY", "Invalid website request", 400, { issues: parsed.error.issues });
+  }
+
   const { id } = await context.params;
   const userId = getUserId(req);
   if (!userId) {
@@ -21,11 +31,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   if (project.userId !== profile.id) {
     return jsonError("FORBIDDEN", "Project access denied", 403);
   }
+  if (parsed.data.stepKey && !project.moduleSteps.some((step) => step.stepKey === parsed.data.stepKey)) {
+    return jsonError("STEP_NOT_FOUND", "Module step was not found", 404);
+  }
 
   const result = await runtimeRequestArtifactGeneration({
     projectId: id,
     userId,
     kind: "website",
+    stepKey: parsed.data.stepKey,
     forceFailCode: forcedFailCode(req),
   });
 
