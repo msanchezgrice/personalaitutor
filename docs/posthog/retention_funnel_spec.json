@@ -1,0 +1,59 @@
+{
+  "name": "Retention Funnel - Lifecycle Email To Return Activity",
+  "version": "2026-03-08",
+  "owner": "growth-pm",
+  "events": [
+    "email_sent",
+    "email_delivered",
+    "email_opened",
+    "email_clicked",
+    "email_bounced",
+    "email_complained",
+    "email_unsubscribed",
+    "dashboard_welcome_viewed",
+    "dashboard_tab_viewed",
+    "chat_message_sent",
+    "projects_cta_clicked"
+  ],
+  "dimensions": {
+    "cohort_source": "coalesce(nullIf(lower(properties['cohort_source']), ''), nullIf(lower(properties['first_utm_source']), ''), nullIf(lower(properties['cohort_paid_source']), ''), 'unknown')",
+    "return_source": "if(lower(coalesce(properties['utm_medium'], '')) = 'email', coalesce(nullIf(lower(properties['utm_source']), ''), 'email'), coalesce(nullIf(lower(properties['utm_source']), ''), nullIf(lower(properties['paid_source']), ''), 'unknown'))",
+    "campaign_key": "coalesce(nullIf(lower(properties['lifecycle_campaign_key']), ''), nullIf(lower(properties['email_campaign']), ''), nullIf(lower(properties['utm_campaign']), ''), 'unknown')"
+  },
+  "panels": [
+    {
+      "id": "weekly-email-stage-by-cohort-source",
+      "title": "Weekly lifecycle email stages by cohort source",
+      "type": "table",
+      "hogql": "SELECT toStartOfWeek(timestamp) AS week_start, coalesce(nullIf(lower(properties['cohort_source']), ''), nullIf(lower(properties['first_utm_source']), ''), nullIf(lower(properties['cohort_paid_source']), ''), 'unknown') AS cohort_source, event, uniq(distinct_id) AS users FROM events WHERE event IN ('email_sent','email_delivered','email_opened','email_clicked') AND timestamp >= now() - INTERVAL 12 WEEK GROUP BY week_start, cohort_source, event ORDER BY week_start ASC, cohort_source ASC, event ASC"
+    },
+    {
+      "id": "campaign-open-click-rates-by-source",
+      "title": "Lifecycle email open and click rates by campaign and source",
+      "type": "table",
+      "hogql": "WITH sent AS (SELECT coalesce(nullIf(lower(properties['lifecycle_campaign_key']), ''), nullIf(lower(properties['email_campaign']), ''), nullIf(lower(properties['utm_campaign']), ''), 'unknown') AS campaign_key, coalesce(nullIf(lower(properties['cohort_source']), ''), nullIf(lower(properties['first_utm_source']), ''), nullIf(lower(properties['cohort_paid_source']), ''), 'unknown') AS cohort_source, uniq(distinct_id) AS users_sent FROM events WHERE event = 'email_sent' AND timestamp >= now() - INTERVAL 30 DAY GROUP BY campaign_key, cohort_source), opened AS (SELECT coalesce(nullIf(lower(properties['lifecycle_campaign_key']), ''), nullIf(lower(properties['email_campaign']), ''), nullIf(lower(properties['utm_campaign']), ''), 'unknown') AS campaign_key, coalesce(nullIf(lower(properties['cohort_source']), ''), nullIf(lower(properties['first_utm_source']), ''), nullIf(lower(properties['cohort_paid_source']), ''), 'unknown') AS cohort_source, uniq(distinct_id) AS users_opened FROM events WHERE event = 'email_opened' AND timestamp >= now() - INTERVAL 30 DAY GROUP BY campaign_key, cohort_source), clicked AS (SELECT coalesce(nullIf(lower(properties['lifecycle_campaign_key']), ''), nullIf(lower(properties['email_campaign']), ''), nullIf(lower(properties['utm_campaign']), ''), 'unknown') AS campaign_key, coalesce(nullIf(lower(properties['cohort_source']), ''), nullIf(lower(properties['first_utm_source']), ''), nullIf(lower(properties['cohort_paid_source']), ''), 'unknown') AS cohort_source, uniq(distinct_id) AS users_clicked FROM events WHERE event = 'email_clicked' AND timestamp >= now() - INTERVAL 30 DAY GROUP BY campaign_key, cohort_source) SELECT coalesce(sent.campaign_key, opened.campaign_key, clicked.campaign_key) AS campaign_key, coalesce(sent.cohort_source, opened.cohort_source, clicked.cohort_source) AS cohort_source, coalesce(sent.users_sent, 0) AS users_sent, coalesce(opened.users_opened, 0) AS users_opened, coalesce(clicked.users_clicked, 0) AS users_clicked, if(coalesce(sent.users_sent, 0) = 0, 0, round(100.0 * coalesce(opened.users_opened, 0) / sent.users_sent, 2)) AS open_rate_percent, if(coalesce(sent.users_sent, 0) = 0, 0, round(100.0 * coalesce(clicked.users_clicked, 0) / sent.users_sent, 2)) AS click_rate_percent FROM sent FULL OUTER JOIN opened ON sent.campaign_key = opened.campaign_key AND sent.cohort_source = opened.cohort_source FULL OUTER JOIN clicked ON coalesce(sent.campaign_key, opened.campaign_key) = clicked.campaign_key AND coalesce(sent.cohort_source, opened.cohort_source) = clicked.cohort_source ORDER BY campaign_key ASC, click_rate_percent DESC, open_rate_percent DESC"
+    },
+    {
+      "id": "day-one-next-steps-by-source",
+      "title": "Day 1 next steps email performance by source",
+      "type": "table",
+      "hogql": "WITH sent AS (SELECT coalesce(nullIf(lower(properties['cohort_source']), ''), nullIf(lower(properties['first_utm_source']), ''), nullIf(lower(properties['cohort_paid_source']), ''), 'unknown') AS cohort_source, uniq(distinct_id) AS users_sent FROM events WHERE event = 'email_sent' AND coalesce(nullIf(lower(properties['lifecycle_campaign_key']), ''), nullIf(lower(properties['email_campaign']), ''), nullIf(lower(properties['utm_campaign']), ''), 'unknown') = 'day_1_next_steps' AND timestamp >= now() - INTERVAL 30 DAY GROUP BY cohort_source), opened AS (SELECT coalesce(nullIf(lower(properties['cohort_source']), ''), nullIf(lower(properties['first_utm_source']), ''), nullIf(lower(properties['cohort_paid_source']), ''), 'unknown') AS cohort_source, uniq(distinct_id) AS users_opened FROM events WHERE event = 'email_opened' AND coalesce(nullIf(lower(properties['lifecycle_campaign_key']), ''), nullIf(lower(properties['email_campaign']), ''), nullIf(lower(properties['utm_campaign']), ''), 'unknown') = 'day_1_next_steps' AND timestamp >= now() - INTERVAL 30 DAY GROUP BY cohort_source), clicked AS (SELECT coalesce(nullIf(lower(properties['cohort_source']), ''), nullIf(lower(properties['first_utm_source']), ''), nullIf(lower(properties['cohort_paid_source']), ''), 'unknown') AS cohort_source, uniq(distinct_id) AS users_clicked FROM events WHERE event = 'email_clicked' AND coalesce(nullIf(lower(properties['lifecycle_campaign_key']), ''), nullIf(lower(properties['email_campaign']), ''), nullIf(lower(properties['utm_campaign']), ''), 'unknown') = 'day_1_next_steps' AND timestamp >= now() - INTERVAL 30 DAY GROUP BY cohort_source) SELECT coalesce(sent.cohort_source, opened.cohort_source, clicked.cohort_source) AS cohort_source, coalesce(sent.users_sent, 0) AS users_sent, coalesce(opened.users_opened, 0) AS users_opened, coalesce(clicked.users_clicked, 0) AS users_clicked, if(coalesce(sent.users_sent, 0) = 0, 0, round(100.0 * coalesce(opened.users_opened, 0) / sent.users_sent, 2)) AS open_rate_percent, if(coalesce(sent.users_sent, 0) = 0, 0, round(100.0 * coalesce(clicked.users_clicked, 0) / sent.users_sent, 2)) AS click_rate_percent FROM sent FULL OUTER JOIN opened ON sent.cohort_source = opened.cohort_source FULL OUTER JOIN clicked ON coalesce(sent.cohort_source, opened.cohort_source) = clicked.cohort_source ORDER BY click_rate_percent DESC, open_rate_percent DESC"
+    },
+    {
+      "id": "email-click-to-return-by-source",
+      "title": "Email click to return activity within 7 days by source",
+      "type": "table",
+      "hogql": "WITH clicked AS (SELECT distinct_id, coalesce(nullIf(lower(properties['cohort_source']), ''), nullIf(lower(properties['first_utm_source']), ''), nullIf(lower(properties['cohort_paid_source']), ''), 'unknown') AS cohort_source, min(timestamp) AS clicked_at FROM events WHERE event = 'email_clicked' AND timestamp >= now() - INTERVAL 30 DAY GROUP BY distinct_id, cohort_source), returned AS (SELECT clicked.distinct_id AS distinct_id, clicked.cohort_source AS cohort_source, min(events.timestamp) AS returned_at FROM clicked INNER JOIN events ON events.distinct_id = clicked.distinct_id AND events.timestamp >= clicked.clicked_at AND events.timestamp <= clicked.clicked_at + INTERVAL 7 DAY AND events.event IN ('dashboard_welcome_viewed','dashboard_tab_viewed','chat_message_sent','projects_cta_clicked') AND lower(coalesce(events.properties['utm_source'], '')) = 'lifecycle_email' GROUP BY clicked.distinct_id, clicked.cohort_source) SELECT clicked.cohort_source, count() AS clicked_users, countIf(returned.returned_at IS NOT NULL) AS returned_users, if(count() = 0, 0, round(100.0 * countIf(returned.returned_at IS NOT NULL) / count(), 2)) AS return_rate_percent FROM clicked LEFT JOIN returned ON clicked.distinct_id = returned.distinct_id AND clicked.cohort_source = returned.cohort_source GROUP BY clicked.cohort_source ORDER BY return_rate_percent DESC"
+    },
+    {
+      "id": "email-return-core-actions-by-source",
+      "title": "Core actions from lifecycle email traffic by acquisition source",
+      "type": "table",
+      "hogql": "SELECT coalesce(nullIf(lower(properties['first_utm_source']), ''), nullIf(lower(properties['cohort_source']), ''), nullIf(lower(properties['cohort_paid_source']), ''), 'unknown') AS cohort_source, event, uniq(distinct_id) AS users, count() AS events FROM events WHERE event IN ('dashboard_welcome_viewed','dashboard_tab_viewed','chat_message_sent','projects_cta_clicked') AND lower(coalesce(properties['utm_source'], '')) = 'lifecycle_email' AND timestamp >= now() - INTERVAL 30 DAY GROUP BY cohort_source, event ORDER BY cohort_source ASC, users DESC, events DESC"
+    }
+  ],
+  "filters": {
+    "default_time_window": "Last 30 days",
+    "exclude_internal": true
+  }
+}

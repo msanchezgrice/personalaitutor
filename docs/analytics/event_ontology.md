@@ -88,6 +88,29 @@ Owner: growth / product engineering
 - `project_public_link_copied`
 - `project_public_link_copy_failed`
 
+### Lifecycle Email
+
+- `email_sent`
+- `email_delivered`
+- `email_opened`
+- `email_clicked`
+- `email_bounced`
+- `email_complained`
+- `email_unsubscribed`
+- Shared lifecycle email properties:
+  - `lifecycle_delivery_id`
+  - `lifecycle_campaign_key`
+  - `email_provider`
+  - `provider_message_id`
+  - `cohort_source`
+  - `cohort_medium`
+  - `cohort_campaign`
+  - `cohort_paid_source`
+  - `utm_source=lifecycle_email`
+  - `utm_medium=email`
+  - `utm_campaign=<campaign_key>`
+  - `utm_content=<cta_name>` for click events / tracked links
+
 ### AI News
 
 - `dashboard_ai_news_story_clicked`

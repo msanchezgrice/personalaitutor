@@ -60,7 +60,9 @@ export type LifecycleEmailContext = {
   careerPathName?: string | null;
   goals?: string[];
   dashboardUrl?: string;
+  dashboardTrackingUrl?: string;
   publicProfileUrl?: string;
+  publicProfileTrackingUrl?: string;
   assessment?: LifecycleEmailAssessment | null;
   moduleCta: LifecycleEmailModuleCta;
   project?: LifecycleEmailProject | null;
@@ -250,7 +252,9 @@ function composeIntro(input: LifecycleEmailContext, state: AssessmentState) {
 
 function buildCards(input: LifecycleEmailContext, state: AssessmentState) {
   const dashboardUrl = input.dashboardUrl ?? `${normalizeBaseUrl(input.baseUrl)}/dashboard/`;
+  const dashboardTrackingUrl = input.dashboardTrackingUrl ?? dashboardUrl;
   const publicProfileUrl = input.publicProfileUrl ?? `${normalizeBaseUrl(input.baseUrl)}/u/${input.learnerHandle}`;
+  const publicProfileTrackingUrl = input.publicProfileTrackingUrl ?? publicProfileUrl;
   const answerFeedback = summarizeAssessmentAnswers(input.assessment?.answers ?? []);
   const recommendedPaths = recommendedCareerPathNames(input.assessment?.recommendedCareerPathIds ?? []);
   const goals = (input.goals ?? []).map((goal) => goal.replace(/_/g, " "));
@@ -305,10 +309,10 @@ function buildCards(input: LifecycleEmailContext, state: AssessmentState) {
             label: input.moduleCta.buttonLabel,
             url: input.moduleCta.href,
           },
-        },
+          },
         {
           title: "Your workspace links",
-          items: [`Dashboard: ${dashboardUrl}`, `Public profile: ${publicProfileUrl}`],
+          items: [`Dashboard: ${dashboardTrackingUrl}`, `Public profile: ${publicProfileTrackingUrl}`],
         },
       ] satisfies LifecycleEmailCard[];
     case "day_1_next_steps":
@@ -357,7 +361,7 @@ function buildCards(input: LifecycleEmailContext, state: AssessmentState) {
           ],
           cta: {
             label: "Finish Assessment",
-            url: dashboardUrl,
+            url: dashboardTrackingUrl,
           },
         },
       ] satisfies LifecycleEmailCard[];
@@ -402,7 +406,7 @@ function buildCards(input: LifecycleEmailContext, state: AssessmentState) {
           ],
           cta: {
             label: "Complete Quiz",
-            url: dashboardUrl,
+            url: dashboardTrackingUrl,
           },
         },
       ] satisfies LifecycleEmailCard[];
@@ -451,7 +455,7 @@ function buildCards(input: LifecycleEmailContext, state: AssessmentState) {
           ],
           cta: {
             label: "Finish Assessment",
-            url: dashboardUrl,
+            url: dashboardTrackingUrl,
           },
         },
       ] satisfies LifecycleEmailCard[];
@@ -662,10 +666,12 @@ export function buildLifecycleEmail(input: LifecycleEmailContext): LifecycleEmai
   const intro = composeIntro(input, state);
   const cards = buildCards(input, state);
   const dashboardUrl = input.dashboardUrl ?? `${normalizeBaseUrl(input.baseUrl)}/dashboard/`;
+  const dashboardTrackingUrl = input.dashboardTrackingUrl ?? dashboardUrl;
   const publicProfileUrl = input.publicProfileUrl ?? `${normalizeBaseUrl(input.baseUrl)}/u/${input.learnerHandle}`;
+  const publicProfileTrackingUrl = input.publicProfileTrackingUrl ?? publicProfileUrl;
   const footerLinks = [
-    { label: "Dashboard", url: dashboardUrl },
-    { label: "Public profile", url: publicProfileUrl },
+    { label: "Dashboard", url: dashboardTrackingUrl },
+    { label: "Public profile", url: publicProfileTrackingUrl },
   ];
 
   return {

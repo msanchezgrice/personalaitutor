@@ -3,7 +3,11 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   CAREER_PATHS,
   EMAIL_PRODUCT_NAME,
+  LIFECYCLE_EMAIL_UTM_MEDIUM,
+  LIFECYCLE_EMAIL_UTM_SOURCE,
+  appendLifecycleEmailTracking,
   buildLifecycleEmail,
+  capturePosthogServerEvent,
   resolveLifecycleEmailKey,
   type LifecycleEmailAssessment,
   type LifecycleEmailKey,
@@ -23,6 +27,15 @@ type ClaimedJob = {
   attempts: number;
   max_attempts: number;
 };
+
+type LifecycleEmailEventType =
+  | "sent"
+  | "delivered"
+  | "opened"
+  | "clicked"
+  | "bounced"
+  | "complained"
+  | "unsubscribed";
 
 const workerId = process.env.WORKER_ID ?? `worker_${Math.random().toString(36).slice(2, 8)}`;
 const claimLimit = Number(process.env.CLAIM_LIMIT ?? "5");
@@ -58,6 +71,14 @@ function appBaseUrl() {
   if (explicit?.trim()) return normalizeSiteUrl(explicit);
   if (process.env.VERCEL_URL?.trim()) return normalizeSiteUrl(process.env.VERCEL_URL);
   return defaultBaseUrl;
+}
+
+function posthogCaptureHost() {
+  return (process.env.NEXT_PUBLIC_POSTHOG_HOST?.trim() || "https://us.i.posthog.com").replace(/\/+$/, "");
+}
+
+function posthogProjectApiKey() {
+  return process.env.POSTHOG_PROJECT_API_KEY?.trim() || process.env.NEXT_PUBLIC_POSTHOG_KEY?.trim() || "";
 }
 
 function splitEnvList(raw: string | undefined) {
@@ -173,7 +194,11 @@ async function sendResendEmail(input: { to: string; subject: string; html: strin
       };
     }
 
-    return { ok: true as const };
+    const payload = (await response.json().catch(() => null)) as { id?: unknown } | null;
+    return {
+      ok: true as const,
+      messageId: typeof payload?.id === "string" && payload.id.trim() ? payload.id.trim() : null,
+    };
   } catch (error) {
     return {
       ok: false as const,
@@ -361,11 +386,13 @@ async function incrementTokens(userId: string, delta: number) {
 
 type LifecycleProfileRow = {
   id: string;
+  external_user_id: string | null;
   handle: string;
   full_name: string;
   contact_email: string | null;
   career_path_id: string | null;
   goals: string[] | null;
+  acquisition: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   welcome_email_sent_at: string | null;
@@ -377,6 +404,8 @@ type LifecycleDeliveryRow = {
   status: string;
   recipient_email: string;
   subject: string;
+  provider: string | null;
+  provider_message_id: string | null;
   payload: Record<string, unknown> | null;
   sent_at: string | null;
 };
@@ -539,6 +568,196 @@ function dailySignupAttribution(input: {
     landingPath: stringValue(last?.landingPath) || stringValue(first?.landingPath) || "unknown",
     referrer: stringValue(last?.referrer) || stringValue(first?.referrer) || "unknown",
   };
+}
+
+function normalizePaidSourceFromAttribution(input: {
+  source: string | null;
+  gclid?: string | null;
+  msclkid?: string | null;
+}) {
+  const source = (input.source ?? "").toLowerCase();
+  if (source.includes("linkedin")) return "linkedin";
+  if (source === "x" || source.includes("twitter")) return "x";
+  if (
+    source === "fb" ||
+    source === "ig" ||
+    source === "an" ||
+    source.includes("facebook") ||
+    source.includes("instagram") ||
+    source.includes("meta")
+  ) {
+    return "facebook";
+  }
+  if (input.gclid || source.includes("google")) return "google";
+  if (input.msclkid || source.includes("bing")) return "bing";
+  return "unknown";
+}
+
+function lifecycleCohortAttribution(profile: LifecycleProfileRow) {
+  const acquisition = objectRecord(profile.acquisition);
+  const last = objectRecord(acquisition?.last);
+  const first = objectRecord(acquisition?.first);
+  const source = (stringValue(last?.utmSource) || stringValue(first?.utmSource) || "unknown").toLowerCase();
+  const medium = (stringValue(last?.utmMedium) || stringValue(first?.utmMedium) || "unknown").toLowerCase();
+  const campaign = (stringValue(last?.utmCampaign) || stringValue(first?.utmCampaign) || "unknown").toLowerCase();
+  return {
+    cohortSource: source,
+    cohortMedium: medium,
+    cohortCampaign: campaign,
+    cohortPaidSource: normalizePaidSourceFromAttribution({
+      source,
+      gclid: stringValue(last?.gclid) || stringValue(first?.gclid),
+      msclkid: stringValue(last?.msclkid) || stringValue(first?.msclkid),
+    }),
+  };
+}
+
+function lifecycleDistinctId(profile: LifecycleProfileRow, recipientEmail: string) {
+  return stringValue(profile.external_user_id) || stringValue(recipientEmail) || profile.id;
+}
+
+function lifecycleEmailEventName(eventType: LifecycleEmailEventType) {
+  switch (eventType) {
+    case "sent":
+      return "email_sent";
+    case "delivered":
+      return "email_delivered";
+    case "opened":
+      return "email_opened";
+    case "clicked":
+      return "email_clicked";
+    case "bounced":
+      return "email_bounced";
+    case "complained":
+      return "email_complained";
+    case "unsubscribed":
+      return "email_unsubscribed";
+  }
+}
+
+async function insertLifecycleEmailEvent(input: {
+  deliveryId: string;
+  userId: string;
+  externalUserId?: string | null;
+  recipientEmail: string;
+  campaignKey: LifecycleEmailKey;
+  provider: string;
+  providerMessageId?: string | null;
+  providerEventId: string;
+  eventType: LifecycleEmailEventType;
+  eventAt: string;
+  emailSource: string;
+  emailMedium: string;
+  emailCampaign: string;
+  emailContent?: string | null;
+  cohortSource: string;
+  cohortMedium: string;
+  cohortCampaign: string;
+  cohortPaidSource: string;
+  linkUrl?: string | null;
+  linkHost?: string | null;
+  linkPath?: string | null;
+  payload?: Record<string, unknown>;
+}) {
+  const supabase = supabaseAdmin();
+  const { error } = await supabase.from("learner_email_events").insert({
+    id: randomUUID(),
+    delivery_id: input.deliveryId,
+    learner_profile_id: input.userId,
+    external_user_id: input.externalUserId ?? null,
+    provider: input.provider,
+    provider_message_id: input.providerMessageId ?? null,
+    provider_event_id: input.providerEventId,
+    campaign_key: input.campaignKey,
+    event_type: input.eventType,
+    event_at: input.eventAt,
+    email_source: input.emailSource,
+    email_medium: input.emailMedium,
+    email_campaign: input.emailCampaign,
+    email_content: input.emailContent ?? null,
+    cohort_source: input.cohortSource,
+    cohort_medium: input.cohortMedium,
+    cohort_campaign: input.cohortCampaign,
+    cohort_paid_source: input.cohortPaidSource,
+    link_url: input.linkUrl ?? null,
+    link_host: input.linkHost ?? null,
+    link_path: input.linkPath ?? null,
+    payload: input.payload ?? {},
+    updated_at: nowIso(),
+  });
+
+  if (error) {
+    if (error.code === "23505") return false;
+    throw error;
+  }
+
+  return true;
+}
+
+async function captureLifecycleEmailEventToPosthog(input: {
+  distinctId: string;
+  recipientEmail: string;
+  userId: string;
+  campaignKey: LifecycleEmailKey;
+  deliveryId: string;
+  eventType: LifecycleEmailEventType;
+  eventAt: string;
+  provider: string;
+  providerMessageId?: string | null;
+  emailSource: string;
+  emailMedium: string;
+  emailCampaign: string;
+  emailContent?: string | null;
+  cohortSource: string;
+  cohortMedium: string;
+  cohortCampaign: string;
+  cohortPaidSource: string;
+  linkUrl?: string | null;
+  linkHost?: string | null;
+  linkPath?: string | null;
+  payload?: Record<string, unknown>;
+}) {
+  const apiKey = posthogProjectApiKey();
+  if (!apiKey) return false;
+
+  const result = await capturePosthogServerEvent({
+    apiKey,
+    host: posthogCaptureHost(),
+    event: lifecycleEmailEventName(input.eventType),
+    distinctId: input.distinctId,
+    timestamp: input.eventAt,
+    properties: {
+      app: "email",
+      channel: "email",
+      event_source: input.eventType === "sent" ? "worker" : "resend_webhook",
+      learner_profile_id: input.userId,
+      recipient_email: input.recipientEmail,
+      lifecycle_delivery_id: input.deliveryId,
+      lifecycle_campaign_key: input.campaignKey,
+      email_provider: input.provider,
+      provider_message_id: input.providerMessageId ?? null,
+      utm_source: input.emailSource,
+      utm_medium: input.emailMedium,
+      utm_campaign: input.emailCampaign,
+      utm_content: input.emailContent ?? null,
+      cohort_source: input.cohortSource,
+      cohort_medium: input.cohortMedium,
+      cohort_campaign: input.cohortCampaign,
+      cohort_paid_source: input.cohortPaidSource,
+      link_url: input.linkUrl ?? null,
+      link_host: input.linkHost ?? null,
+      link_path: input.linkPath ?? null,
+      ...(input.payload ?? {}),
+    },
+  });
+
+  if (!result.ok) {
+    console.error(
+      `[worker] posthog lifecycle event failed event=${lifecycleEmailEventName(input.eventType)} user=${input.userId} reason=${result.reason ?? result.status ?? "unknown"}`,
+    );
+  }
+
+  return result.ok;
 }
 
 function emptyDailySignupChatSummary(): DailySignupDigestChatSummary {
@@ -1127,49 +1346,57 @@ async function lifecycleDeliveriesForUser(userId: string) {
   const supabase = supabaseAdmin();
   const { data } = await supabase
     .from("learner_email_deliveries")
-    .select("id,campaign_key,status,recipient_email,subject,payload,sent_at")
+    .select("id,campaign_key,status,recipient_email,subject,provider,provider_message_id,payload,sent_at")
     .eq("learner_profile_id", userId);
 
   return (data ?? []) as LifecycleDeliveryRow[];
 }
 
 async function upsertLifecycleDelivery(input: {
+  deliveryId: string;
   userId: string;
+  externalUserId?: string | null;
   campaignKey: LifecycleEmailKey;
   status: "sent" | "failed";
   recipientEmail: string;
   subject: string;
+  provider: string;
+  providerMessageId?: string | null;
+  emailSource: string;
+  emailMedium: string;
+  emailCampaign: string;
+  cohortSource: string;
+  cohortMedium: string;
+  cohortCampaign: string;
+  cohortPaidSource: string;
   payload?: Record<string, unknown>;
   sentAt?: string | null;
 }) {
   const supabase = supabaseAdmin();
-  const { data: existing } = await supabase
-    .from("learner_email_deliveries")
-    .select("id")
-    .eq("learner_profile_id", input.userId)
-    .eq("campaign_key", input.campaignKey)
-    .maybeSingle();
-
   const row = {
+    id: input.deliveryId,
     learner_profile_id: input.userId,
+    external_user_id: input.externalUserId ?? null,
     campaign_key: input.campaignKey,
     status: input.status,
     recipient_email: input.recipientEmail,
     subject: input.subject,
+    provider: input.provider,
+    provider_message_id: input.providerMessageId ?? null,
+    email_source: input.emailSource,
+    email_medium: input.emailMedium,
+    email_campaign: input.emailCampaign,
+    cohort_source: input.cohortSource,
+    cohort_medium: input.cohortMedium,
+    cohort_campaign: input.cohortCampaign,
+    cohort_paid_source: input.cohortPaidSource,
     payload: input.payload ?? {},
     sent_at: input.sentAt ?? null,
     updated_at: nowIso(),
   };
 
-  if (existing?.id) {
-    await supabase.from("learner_email_deliveries").update(row).eq("id", existing.id);
-    return;
-  }
-
-  await supabase.from("learner_email_deliveries").insert({
-    id: randomUUID(),
-    ...row,
-  });
+  const { error } = await supabase.from("learner_email_deliveries").upsert(row, { onConflict: "id" });
+  if (error) throw error;
 }
 
 async function moduleCtaForUser(userId: string, careerPathId: string | null) {
@@ -1241,23 +1468,50 @@ async function maybeSendLifecycleEmailForProfile(profile: LifecycleProfileRow) {
   if (!nextKey) return false;
   if (nextKey !== "welcome" && !onboarding) return false;
 
-  const dashboardUrl = `${appBaseUrl()}/dashboard/?welcome=1`;
-  const publicProfileUrl = `${appBaseUrl()}/u/${profile.handle}`;
+  const baseUrl = appBaseUrl();
+  const existingDelivery = deliveries.find((delivery) => delivery.campaign_key === nextKey) ?? null;
+  const deliveryId = existingDelivery?.id ?? randomUUID();
+  const provider = "resend";
+  const emailSource = LIFECYCLE_EMAIL_UTM_SOURCE;
+  const emailMedium = LIFECYCLE_EMAIL_UTM_MEDIUM;
+  const emailCampaign = nextKey;
+  const { cohortSource, cohortMedium, cohortCampaign, cohortPaidSource } = lifecycleCohortAttribution(profile);
+  const trackedLink = (url: string, cta: string) =>
+    appendLifecycleEmailTracking({
+      url,
+      campaignKey: nextKey,
+      deliveryId,
+      cta,
+    });
+  const dashboardUrl = `${baseUrl}/dashboard/?welcome=1`;
+  const dashboardTrackingUrl = trackedLink(dashboardUrl, "dashboard");
+  const publicProfileUrl = `${baseUrl}/u/${profile.handle}`;
+  const publicProfileTrackingUrl = trackedLink(publicProfileUrl, "public_profile");
   const careerPathName = CAREER_PATHS.find((entry) => entry.id === profile.career_path_id)?.name ?? null;
+  const trackedModuleCta = {
+    ...moduleCta,
+    href: trackedLink(moduleCta.href, "module_cta"),
+  };
+  const trackedNewsItems = newsItems.map((item, index) => ({
+    ...item,
+    url: trackedLink(item.url, `news_${index + 1}`),
+  }));
   const template = buildLifecycleEmail({
     key: nextKey,
-    baseUrl: appBaseUrl(),
+    baseUrl,
     learnerName: profile.full_name,
     learnerHandle: profile.handle,
     careerPathName,
     goals: Array.isArray(profile.goals) ? profile.goals.filter((entry): entry is string => typeof entry === "string") : [],
     dashboardUrl,
+    dashboardTrackingUrl,
     publicProfileUrl,
+    publicProfileTrackingUrl,
     assessment,
-    moduleCta,
+    moduleCta: trackedModuleCta,
     project,
     socialDrafts,
-    newsItems,
+    newsItems: trackedNewsItems,
   });
 
   const delivered = await sendResendEmail({
@@ -1269,12 +1523,24 @@ async function maybeSendLifecycleEmailForProfile(profile: LifecycleProfileRow) {
 
   if (!delivered.ok) {
     await upsertLifecycleDelivery({
+      deliveryId,
       userId: profile.id,
+      externalUserId: profile.external_user_id,
       campaignKey: nextKey,
       status: "failed",
       recipientEmail,
       subject: template.subject,
+      provider,
+      providerMessageId: existingDelivery?.provider_message_id ?? null,
+      emailSource,
+      emailMedium,
+      emailCampaign,
+      cohortSource,
+      cohortMedium,
+      cohortCampaign,
+      cohortPaidSource,
       payload: {
+        deliveryId,
         errorCode: delivered.errorCode,
         detail: "detail" in delivered ? delivered.detail ?? null : null,
       },
@@ -1284,17 +1550,80 @@ async function maybeSendLifecycleEmailForProfile(profile: LifecycleProfileRow) {
     return false;
   }
 
+  const sentAt = nowIso();
   await upsertLifecycleDelivery({
+    deliveryId,
     userId: profile.id,
+    externalUserId: profile.external_user_id,
     campaignKey: nextKey,
     status: "sent",
     recipientEmail,
     subject: template.subject,
+    provider,
+    providerMessageId: delivered.messageId ?? existingDelivery?.provider_message_id ?? null,
+    emailSource,
+    emailMedium,
+    emailCampaign,
+    cohortSource,
+    cohortMedium,
+    cohortCampaign,
+    cohortPaidSource,
     payload: {
       previewText: template.previewText,
+      deliveryId,
+      providerMessageId: delivered.messageId ?? null,
     },
-    sentAt: nowIso(),
+    sentAt,
   });
+
+  const sentInserted = await insertLifecycleEmailEvent({
+    deliveryId,
+    userId: profile.id,
+    externalUserId: profile.external_user_id,
+    recipientEmail,
+    campaignKey: nextKey,
+    provider,
+    providerMessageId: delivered.messageId ?? existingDelivery?.provider_message_id ?? null,
+    providerEventId: `${provider}:sent:${deliveryId}`,
+    eventType: "sent",
+    eventAt: sentAt,
+    emailSource,
+    emailMedium,
+    emailCampaign,
+    cohortSource,
+    cohortMedium,
+    cohortCampaign,
+    cohortPaidSource,
+    payload: {
+      subject: template.subject,
+      previewText: template.previewText,
+    },
+  });
+
+  if (sentInserted) {
+    await captureLifecycleEmailEventToPosthog({
+      distinctId: lifecycleDistinctId(profile, recipientEmail),
+      recipientEmail,
+      userId: profile.id,
+      campaignKey: nextKey,
+      deliveryId,
+      eventType: "sent",
+      eventAt: sentAt,
+      provider,
+      providerMessageId: delivered.messageId ?? existingDelivery?.provider_message_id ?? null,
+      emailSource,
+      emailMedium,
+      emailCampaign,
+      cohortSource,
+      cohortMedium,
+      cohortCampaign,
+      cohortPaidSource,
+      payload: {
+        subject: template.subject,
+        previewText: template.previewText,
+      },
+    });
+  }
 
   if (nextKey === "welcome" && !profile.welcome_email_sent_at) {
     await supabaseAdmin()
@@ -1321,7 +1650,7 @@ async function sendDueLifecycleEmails() {
   const supabase = supabaseAdmin();
   const { data: profiles } = await supabase
     .from("learner_profiles")
-    .select("id,handle,full_name,contact_email,career_path_id,goals,created_at,updated_at,welcome_email_sent_at")
+    .select("id,external_user_id,handle,full_name,contact_email,career_path_id,goals,acquisition,created_at,updated_at,welcome_email_sent_at")
     .not("contact_email", "is", null)
     .order("updated_at", { ascending: false })
     .limit(120);

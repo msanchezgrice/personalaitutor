@@ -12,7 +12,8 @@ This maps the actual persisted storage path for signup, onboarding, assessment, 
 | Onboarding situation | `situation`, `goals` | `onboarding_sessions.situation`, `onboarding_sessions.goals` | `learner_profiles.goals` | Included on `onboarding_*` events |
 | Career import | `careerPathId`, `careerCategoryLabel`, `jobTitle`, `yearsExperience`, `companySize`, `dailyWorkSummary`, `keySkills`, `aiComfort`, `linkedinUrl`, `resumeFilename` | `onboarding_sessions.career_path_id`, `linkedin_url`, `resume_filename`, plus mirrored `acquisition.intakeProfile` fields | `learner_profiles.career_path_id`, `headline`, `bio`, `tools`, `social_links.linkedin` | Structured subset on `onboarding_*` events |
 | Assessment | Question answers array (`questionId`, `value`) | `assessment_attempts.answers`, `assessment_attempts.score`, `assessment_attempts.recommended_career_path_ids` | `learner_profiles.career_path_id` is updated to top recommendation | Derived answer props on `onboarding_assessment_complete` and `onboarding_completed` |
-| Welcome email | Delivery marker | `learner_profiles.welcome_email_sent_at` | N/A | Not copied into PostHog |
+| Lifecycle email delivery | Send-level fact row, provider message id, cohort source snapshot | `learner_email_deliveries` | `learner_profiles.welcome_email_sent_at` for the first welcome send | Copied into PostHog as `email_sent` with `cohort_*` + email `utm_*` props |
+| Lifecycle email engagement | Open / click / bounce / unsubscribe webhook facts | `learner_email_events` | Tracked links append `email_delivery_id`, `email_campaign_key`, `email_cta`, and email `utm_*` params | Copied into PostHog as `email_delivered`, `email_opened`, `email_clicked`, `email_bounced`, `email_complained`, `email_unsubscribed` |
 | Early chat | Raw user message text | `build_log_entries.message` with `User message: ...`; `agent_jobs.payload.message` for `project.chat` jobs | Project and job event history | PostHog receives only `chat_message_sent` plus metadata like `message_length` |
 
 ## Important behavior notes
@@ -24,6 +25,7 @@ This maps the actual persisted storage path for signup, onboarding, assessment, 
   - LinkedIn URL / resume file details
   - raw chat text
 - PostHog is for structured funnel analysis. Supabase is the source of truth for raw user-provided answers.
+- Lifecycle email return visits should now be attributable in browser events via `utm_source=lifecycle_email`, `utm_medium=email`, `utm_campaign=<campaign_key>`, and `utm_content=<cta_name>`.
 
 ## Where to inspect it
 

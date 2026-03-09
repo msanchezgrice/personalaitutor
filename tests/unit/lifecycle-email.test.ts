@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { buildLifecycleEmail, resolveLifecycleEmailKey } from "../../packages/shared/src/lifecycle-email";
+import {
+  appendLifecycleEmailTracking,
+  buildLifecycleEmail,
+  readLifecycleEmailTracking,
+  resolveLifecycleEmailKey,
+} from "../../packages/shared/src";
 
 describe("lifecycle email helpers", () => {
   test("welcome is always first when it has not been sent", () => {
@@ -96,5 +101,64 @@ describe("lifecycle email helpers", () => {
     expect(email.html).toContain("Draft social posts");
     expect(email.html).toContain("Model eval gates are getting stricter");
     expect(email.text).toContain("LinkedIn draft");
+  });
+
+  test("tracked email URLs preserve attribution params", () => {
+    const tracked = appendLifecycleEmailTracking({
+      url: "https://www.myaiskilltutor.com/dashboard/?welcome=1",
+      campaignKey: "day_1_next_steps",
+      deliveryId: "delivery_123",
+      cta: "dashboard",
+    });
+
+    const parsed = readLifecycleEmailTracking(tracked);
+    expect(parsed.utmSource).toBe("lifecycle_email");
+    expect(parsed.utmMedium).toBe("email");
+    expect(parsed.utmCampaign).toBe("day_1_next_steps");
+    expect(parsed.utmContent).toBe("dashboard");
+    expect(parsed.emailDeliveryId).toBe("delivery_123");
+    expect(parsed.linkPath).toBe("/dashboard/");
+  });
+
+  test("week one digest keeps social draft links clean while footer links stay tracked", () => {
+    const cleanPublicProfile = "https://www.myaiskilltutor.com/u/miguel";
+    const trackedPublicProfile = appendLifecycleEmailTracking({
+      url: cleanPublicProfile,
+      campaignKey: "week_1_digest",
+      deliveryId: "delivery_week1",
+      cta: "public_profile",
+    });
+
+    const email = buildLifecycleEmail({
+      key: "week_1_digest",
+      baseUrl: "https://www.myaiskilltutor.com",
+      learnerName: "Miguel",
+      learnerHandle: "miguel",
+      careerPathName: "Software Engineering",
+      dashboardUrl: "https://www.myaiskilltutor.com/dashboard/",
+      dashboardTrackingUrl: appendLifecycleEmailTracking({
+        url: "https://www.myaiskilltutor.com/dashboard/",
+        campaignKey: "week_1_digest",
+        deliveryId: "delivery_week1",
+        cta: "dashboard",
+      }),
+      publicProfileUrl: cleanPublicProfile,
+      publicProfileTrackingUrl: trackedPublicProfile,
+      moduleCta: {
+        title: "System Architecture",
+        href: appendLifecycleEmailTracking({
+          url: "https://www.myaiskilltutor.com/dashboard/?module=System%20Architecture",
+          campaignKey: "week_1_digest",
+          deliveryId: "delivery_week1",
+          cta: "module_cta",
+        }),
+        buttonLabel: "Continue System Architecture",
+        helperText: "Keep building from the module you already started.",
+      },
+    });
+
+    expect(email.text).toContain(cleanPublicProfile);
+    expect(email.text).toContain(trackedPublicProfile);
+    expect(email.text).toContain("utm_source=lifecycle_email");
   });
 });

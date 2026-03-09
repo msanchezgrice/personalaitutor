@@ -36,8 +36,10 @@ This document lists every environment variable required or recommended for `myai
 |---|---|---|---|---|
 | `OPENAI_API_KEY` | Yes for real AI generation | Agent/content generation paths | `sk-...` | OpenAI dashboard -> API keys |
 | `RESEND_API_KEY` | Yes for real emails | Daily updates + fail-state alerts | `re_...` | Resend dashboard -> API keys |
+| `RESEND_WEBHOOK_SECRET` | Recommended for email engagement tracking | Resend webhook signature verification (`/api/email/resend/webhook`) | `whsec_...` | Resend dashboard -> Webhooks -> Signing secret |
 | `NEXT_PUBLIC_POSTHOG_KEY` | Recommended | Browser analytics bootstrap (`app/layout.tsx`) | `phc_...` project key | PostHog project settings -> Project API Key |
 | `NEXT_PUBLIC_POSTHOG_HOST` | Recommended | Browser analytics host | e.g. `https://us.i.posthog.com` | PostHog region host |
+| `POSTHOG_PROJECT_API_KEY` | Optional override | Server-side PostHog capture for worker + email webhooks | `phc_...` project key | PostHog project settings -> Project API Key |
 | `NEXT_PUBLIC_FB_PIXEL_ID` | Recommended | Meta Pixel browser tracking (`app/layout.tsx` + `lib/fb-pixel.ts`) | Numeric pixel id (e.g. `1245045833736130`) | Meta Events Manager -> Data Sources -> Pixel ID |
 | `META_PIXEL_ID` | Recommended for CAPI relay | Meta server-side conversion relay (`/api/analytics/conversion`) | Numeric pixel id | Meta Events Manager -> Pixel ID |
 | `META_CONVERSIONS_ACCESS_TOKEN` | Recommended for CAPI relay | Meta server-side conversion relay (`/api/analytics/conversion`) | Token string | Meta Events Manager -> Conversions API |
