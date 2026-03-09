@@ -4,6 +4,7 @@ import {
   CAREER_PATHS,
   MODULE_TRACKS,
   type AcquisitionAttribution,
+  buildDashboardGamification,
   addProjectChatMessage as memAddProjectChatMessage,
   connectOAuth as memConnectOAuth,
   createDailyUpdate as memCreateDailyUpdate,
@@ -276,18 +277,6 @@ function safeHandle(input: string) {
     .slice(0, 40);
 }
 
-function parseSkillTools(input?: string | null) {
-  if (!input || !input.trim()) return [];
-  return Array.from(
-    new Set(
-      input
-        .split(/[,\n]/)
-        .map((entry) => entry.trim())
-        .filter(Boolean),
-    ),
-  ).slice(0, 20);
-}
-
 function parseAcquisition(input: unknown): AcquisitionAttribution | undefined {
   if (!input || typeof input !== "object") return undefined;
   const parsed = mergeAttribution(undefined, input as AcquisitionAttribution);
@@ -314,7 +303,10 @@ const ONBOARDING_SITUATIONS = new Set([
 
 const ONBOARDING_CAREER_CATEGORIES = new Set([
   "product-manager",
+  "sales",
   "customer-service",
+  "operations",
+  "hr",
   "designer",
   "marketing",
   "accounting",
@@ -1101,8 +1093,6 @@ export async function runtimeUpdateOnboardingCareerImport(input: {
   jobTitle?: string;
   yearsExperience?: "0-1" | "1-3" | "3-5" | "5-10" | "10+";
   companySize?: "startup" | "small" | "medium" | "large" | null;
-  dailyWorkSummary?: string;
-  keySkills?: string | null;
   aiComfort?: number;
   linkedinUrl?: string | null;
   resumeFilename?: string | null;
@@ -1127,8 +1117,6 @@ export async function runtimeUpdateOnboardingCareerImport(input: {
           jobTitle: input.jobTitle,
           yearsExperience: input.yearsExperience,
           companySize: input.companySize ?? null,
-          dailyWorkSummary: input.dailyWorkSummary,
-          keySkills: input.keySkills,
           aiComfort: input.aiComfort,
           linkedinUrl: input.linkedinUrl ?? null,
           resumeFilename: input.resumeFilename ?? null,
@@ -1145,8 +1133,6 @@ export async function runtimeUpdateOnboardingCareerImport(input: {
     const existingLinks = existingProfile.social_links ?? {};
     const linkedinUrl =
       typeof input.linkedinUrl === "string" && input.linkedinUrl.trim().length ? input.linkedinUrl.trim() : null;
-    const parsedTools = parseSkillTools(input.keySkills);
-    const mergedTools = Array.from(new Set([...(existingProfile.tools ?? []), ...parsedTools])).slice(0, 24);
 
     const nextLinks = {
       ...existingLinks,
@@ -1168,12 +1154,6 @@ export async function runtimeUpdateOnboardingCareerImport(input: {
     const resolvedHeadline = input.jobTitle?.trim() || input.careerCategoryLabel?.trim();
     if (resolvedHeadline) {
       profilePatch.headline = resolvedHeadline.slice(0, 140);
-    }
-    if (input.dailyWorkSummary?.trim()) {
-      profilePatch.bio = input.dailyWorkSummary.trim().slice(0, 600);
-    }
-    if (mergedTools.length) {
-      profilePatch.tools = mergedTools;
     }
     if (linkedinUrl || Object.keys(existingLinks).length) {
       profilePatch.social_links = nextLinks;
@@ -1568,9 +1548,9 @@ export async function runtimeSubmitAssessment(input: {
   const goalHintsByPath: Record<string, string[]> = {
     build_business: ["product-management", "marketing-seo", "sales-revops"],
     upskill_current_job: [primaryPath, "operations", "software-engineering"],
-    find_new_role: ["sales-revops", "customer-support", "product-management"],
+    find_new_role: ["sales-revops", "customer-support", "human-resources"],
     showcase_for_job: ["software-engineering", "quality-assurance", "product-management"],
-    learn_foundations: ["operations", "product-management", "software-engineering"],
+    learn_foundations: ["operations", "human-resources", "product-management"],
     ship_ai_projects: ["software-engineering", "product-management", "customer-support"],
   };
 
@@ -1593,11 +1573,11 @@ export async function runtimeSubmitAssessment(input: {
 
   if (recommended.size < 3) {
     if (aiComfort <= 2) {
-      ["operations", "product-management", "customer-support"].forEach(pushPath);
+      ["operations", "customer-support", "human-resources"].forEach(pushPath);
     } else if (aiComfort >= 4) {
       ["software-engineering", "quality-assurance", "sales-revops"].forEach(pushPath);
     } else {
-      ["product-management", "marketing-seo", "operations"].forEach(pushPath);
+      ["product-management", "marketing-seo", "human-resources"].forEach(pushPath);
     }
   }
 
@@ -2214,19 +2194,46 @@ export async function runtimeGetDashboardSummary(
 
   const supabase = getSupabaseAdmin();
 
-  const { data: jobs } = await supabase
-    .from("agent_jobs")
-    .select("id,type,status,attempts,max_attempts,payload,created_at,updated_at,lease_until,last_error_code,project_id,learner_profile_id")
-    .eq("learner_profile_id", profile.id)
-    .in("status", ["queued", "claimed", "running"])
-    .order("created_at", { ascending: false });
-
-  const { data: events } = await supabase
-    .from("agent_job_events")
-    .select("id,job_id,learner_profile_id,project_id,event_type,message,created_at,payload")
-    .eq("learner_profile_id", profile.id)
-    .order("created_at", { ascending: false })
-    .limit(20);
+  const [
+    { data: jobs },
+    { data: events },
+    { data: onboarding },
+    { data: latestAssessment },
+    { data: socialDrafts },
+  ] = await Promise.all([
+    supabase
+      .from("agent_jobs")
+      .select("id,type,status,attempts,max_attempts,payload,created_at,updated_at,lease_until,last_error_code,project_id,learner_profile_id")
+      .eq("learner_profile_id", profile.id)
+      .in("status", ["queued", "claimed", "running"])
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("agent_job_events")
+      .select("id,job_id,learner_profile_id,project_id,event_type,message,created_at,payload")
+      .eq("learner_profile_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("onboarding_sessions")
+      .select("id,created_at")
+      .eq("learner_profile_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("assessment_attempts")
+      .select("id,started_at,submitted_at,updated_at")
+      .eq("learner_profile_id", profile.id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("social_drafts")
+      .select("id,status,created_at,updated_at")
+      .eq("learner_profile_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(30),
+  ]);
 
   const filteredEvents = (events ?? []).filter((event) => {
     const message = String(event.message ?? "").toLowerCase();
@@ -2241,6 +2248,36 @@ export async function runtimeGetDashboardSummary(
   });
 
   const daily = await getLatestDailyUpdate(profile.id);
+  const latestEvents = filteredEvents.map((event) => ({
+    id: event.id,
+    jobId: event.job_id,
+    userId: event.learner_profile_id,
+    projectId: event.project_id,
+    type: event.event_type,
+    message: event.message,
+    createdAt: event.created_at,
+    payload: event.payload ?? {},
+  }));
+  const socialRows = Array.isArray(socialDrafts) ? socialDrafts : [];
+  const firstSocialDraft = socialRows
+    .slice()
+    .sort((a, b) => Date.parse(String(a.created_at)) - Date.parse(String(b.created_at)))[0];
+  const firstPublishedSocialDraft = socialRows
+    .filter((row) => String(row.status || "").toLowerCase() === "published")
+    .sort((a, b) => Date.parse(String(a.updated_at || a.created_at)) - Date.parse(String(b.updated_at || b.created_at)))[0];
+  const gamification = buildDashboardGamification({
+    user: profile,
+    projects,
+    latestEvents,
+    hasOnboardingSession: Boolean(onboarding?.id),
+    onboardingStartedAt: onboarding?.created_at ?? null,
+    hasCompletedAssessment: Boolean(latestAssessment?.submitted_at),
+    assessmentSubmittedAt: latestAssessment?.submitted_at ?? null,
+    hasSocialDraft: socialRows.length > 0,
+    socialDraftCreatedAt: firstSocialDraft?.created_at ?? null,
+    hasPublishedSocialDraft: Boolean(firstPublishedSocialDraft?.id),
+    socialDraftPublishedAt: firstPublishedSocialDraft?.updated_at ?? firstPublishedSocialDraft?.created_at ?? null,
+  });
 
   return {
     user: profile,
@@ -2259,18 +2296,10 @@ export async function runtimeGetDashboardSummary(
       leaseUntil: job.lease_until,
       lastErrorCode: job.last_error_code,
     })),
-    latestEvents: filteredEvents.map((event) => ({
-      id: event.id,
-      jobId: event.job_id,
-      userId: event.learner_profile_id,
-      projectId: event.project_id,
-      type: event.event_type,
-      message: event.message,
-      createdAt: event.created_at,
-      payload: event.payload ?? {},
-    })),
+    latestEvents,
     moduleRecommendations: MODULE_TRACKS.filter((track) => track.careerPathId === profile.careerPathId),
     dailyUpdate: daily,
+    gamification,
   };
 }
 

@@ -10,6 +10,13 @@ function summarize(value: string | null | undefined, fallback: string, maxChars 
   return `${base.slice(0, Math.max(0, maxChars - 3)).trim()}...`;
 }
 
+function sanitizeDashboardCopy(value: string | null | undefined) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return "";
+  if (normalized.toLowerCase().includes("memory.refresh")) return "";
+  return normalized;
+}
+
 export default async function DashboardPage() {
   const state = await getDashboardServerState();
   const user = state.user;
@@ -17,7 +24,11 @@ export default async function DashboardPage() {
   const activeProject = state.activeProject;
   const completedProject = state.completedProject;
   const topRecommendation = summary?.moduleRecommendations?.[0] ?? null;
+  const gamification = summary?.gamification ?? null;
+  const unlockedAchievements = gamification?.achievements.filter((achievement) => achievement.unlocked).slice(0, 3) ?? [];
+  const unlockedBadges = gamification?.badges.filter((badge) => badge.unlocked).slice(0, 4) ?? [];
   const hasVerifiedSkills = Boolean(user?.skills?.some((skill) => skill.status === "verified"));
+  const hasBuiltOrVerifiedSkills = Boolean(user?.skills?.some((skill) => skill.status === "built" || skill.status === "verified"));
   const activeCard = activeProject || (topRecommendation
     ? {
         title: topRecommendation.title,
@@ -27,9 +38,9 @@ export default async function DashboardPage() {
         title: "Introduction to LLMs",
         description: "Start this module to build LLM fundamentals and ship your first practical artifact.",
       });
-  const latestEventMessage = summary?.latestEvents?.[0]?.message;
+  const latestEventMessage = sanitizeDashboardCopy(summary?.latestEvents?.[0]?.message);
   const todayUpdateText = summarize(
-    summary?.dailyUpdate?.summary || latestEventMessage,
+    sanitizeDashboardCopy(summary?.dailyUpdate?.summary) || latestEventMessage,
     "You are set up for focused progress today. Pick one concrete task and ship it.",
   );
   const continuationText = summarize(
@@ -37,11 +48,14 @@ export default async function DashboardPage() {
     "Start with your first recommended pack and ask Chat Tutor for help when you get blocked.",
     200,
   );
-  const skills = user?.skills?.length
-    ? user.skills.slice(0, 3).map((skill) => ({
+  const skills = user?.skills?.length && hasBuiltOrVerifiedSkills
+    ? user.skills
+      .filter((skill) => skill.status === "verified" || skill.status === "built")
+      .slice(0, 3)
+      .map((skill) => ({
         label: skill.skill,
         accent: skill.status === "verified",
-        suffix: skill.status === "verified" ? "" : ` (${Math.round((skill.score || 0) * 100)}%)`,
+        suffix: skill.status === "verified" ? " (Verified)" : " (Built)",
       }))
     : (summary?.moduleRecommendations?.slice(0, 3).map((track, index) => ({
         label: track.title,
@@ -63,10 +77,10 @@ export default async function DashboardPage() {
           headline: user?.headline ?? "AI Builder",
           avatarUrl: user?.avatarUrl ?? state.seed?.avatarUrl ?? null,
           publicProfileUrl: state.publicProfileUrl,
-          levelLabel: "Level 1",
-          levelSubtitle: "Starter Builder",
-          levelProgressPct: 20,
-          levelProgressText: "Start building to level up",
+          levelLabel: state.sidebarLevel.label,
+          levelSubtitle: state.sidebarLevel.subtitle,
+          levelProgressPct: state.sidebarLevel.progressPct,
+          levelProgressText: state.sidebarLevel.progressText,
         }}
       >
         <div data-dashboard-home-content="1" className="p-10 max-w-6xl mx-auto w-full pb-24">
@@ -152,7 +166,7 @@ export default async function DashboardPage() {
                     data-dashboard-home-card="1"
                     className="glass p-5 rounded-xl hover:bg-white/5 border border-emerald-500/30 bg-emerald-500/5 transition group cursor-pointer block relative overflow-hidden"
                     data-analytics-event="dashboard_home_cta_clicked"
-                    data-analytics-cta="open_latest_proof"
+                    data-analytics-cta={completedProject ? "open_latest_proof" : "open_recommended_pack"}
                     data-analytics-location="proof_card"
                     data-analytics-destination="/dashboard/projects/"
                   >
@@ -161,21 +175,21 @@ export default async function DashboardPage() {
                         <i className="fa-solid fa-award"></i>
                       </div>
                       <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded">
-                        {completedProject ? "Completed" : "Syncing"}
+                        {completedProject ? "Completed" : "Start here"}
                       </span>
                     </div>
                     <h3 className="font-medium text-white mb-1 relative z-10">
-                      {completedProject?.title || "Latest proof artifact"}
+                      {completedProject?.title || topRecommendation?.title || "Starter AI Pack"}
                     </h3>
                     <p className="text-xs text-gray-400 mb-4 line-clamp-2 relative z-10">
                       {summarize(
-                        completedProject?.description,
-                        "Completed work appears here after the dashboard sync finishes.",
+                        completedProject?.description || topRecommendation?.summary,
+                        "Start your recommended pack first. Completed proof will appear after your first shipped outcome.",
                         120,
                       )}
                     </p>
                     <div className="text-xs text-emerald-400 flex items-center gap-1 font-medium mt-auto relative z-10">
-                      <i className="fa-solid fa-award"></i> {completedProject ? "Proof published" : "Proof syncing"}
+                      <i className="fa-solid fa-award"></i> {completedProject ? "Proof published" : "Recommended pack ready"}
                     </div>
                   </a>
                 </div>
@@ -204,6 +218,74 @@ export default async function DashboardPage() {
                     <span className="text-xs text-gray-500">
                       <i className="fa-solid fa-compass mr-1"></i> Keep building to verify your first skill
                     </span>
+                  </div>
+                </div>
+              </section>
+
+              <section data-dashboard-home-section="gamification">
+                <h2 className="text-lg font-[Outfit] font-medium text-white mb-4 flex items-center gap-2">
+                  <i className="fa-solid fa-award text-amber-400"></i> Progress And Unlocks
+                </h2>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="glass p-5 rounded-xl border border-amber-500/20 bg-amber-500/5">
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-amber-300/80">Current level</p>
+                        <h3 className="text-white font-medium mt-1">{gamification?.levelLabel ?? state.sidebarLevel.label}</h3>
+                        <p className="text-xs text-gray-400 mt-1">{gamification?.levelSubtitle ?? state.sidebarLevel.subtitle}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs uppercase tracking-[0.2em] text-gray-500">XP</p>
+                        <p className="text-xl font-[Outfit] text-white">{gamification?.xpTotal ?? state.sidebarLevel.xpTotal}</p>
+                      </div>
+                    </div>
+                    <div className="w-full bg-black/40 h-1.5 rounded-full">
+                      <div
+                        className="bg-gradient-to-r from-amber-400 to-emerald-400 h-full rounded-full"
+                        style={{ width: `${gamification?.levelProgressPct ?? state.sidebarLevel.progressPct}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-3">
+                      {(gamification?.primaryTrackName ?? "Current track")} track. {gamification?.levelProgressText ?? state.sidebarLevel.progressText}
+                    </p>
+                  </div>
+
+                  <div className="glass p-5 rounded-xl border border-white/10">
+                    <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80 mb-3">Unlocked badges</p>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {unlockedBadges.length ? unlockedBadges.map((badge) => (
+                        <span
+                          key={badge.key}
+                          className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300"
+                        >
+                          <i className="fa-solid fa-shield"></i> {badge.title}
+                        </span>
+                      )) : (
+                        <span className="text-xs text-gray-400">
+                          Finish the assessment and start your first pack to unlock your first badge.
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      {(unlockedAchievements.length ? unlockedAchievements : gamification?.achievements.slice(0, 2) ?? []).map((achievement) => (
+                        <div
+                          key={achievement.key}
+                          className={
+                            achievement.unlocked
+                              ? "rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2"
+                              : "rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                          }
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <span className={achievement.unlocked ? "text-sm text-white" : "text-sm text-gray-300"}>{achievement.title}</span>
+                            <span className={achievement.unlocked ? "text-[11px] text-amber-300" : "text-[11px] text-gray-500"}>
+                              +{achievement.xp} XP
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">{achievement.description}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </section>

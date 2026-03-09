@@ -1,5 +1,7 @@
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
+import { DashboardProjectWorkbench } from "@/components/dashboard-project-workbench";
 import { getDashboardServerState } from "@/app/dashboard/_lib";
+import { buildRecommendedModuleGuide, getCareerPath } from "@aitutor/shared";
 
 function summarize(value: string | null | undefined, fallback: string, maxChars = 160) {
   const cleaned = String(value || "").replace(/\s+/g, " ").trim();
@@ -11,8 +13,17 @@ function summarize(value: string | null | undefined, fallback: string, maxChars 
 export default async function DashboardProjectsPage() {
   const state = await getDashboardServerState();
   const user = state.user;
+  const summary = state.summary;
   const activeProject = state.activeProject;
   const completedProject = state.completedProject;
+  const primaryCareerPath = getCareerPath(user?.careerPathId ?? summary?.gamification.primaryTrackId ?? "");
+  const recommendedModuleTitle = summary?.moduleRecommendations?.[0]?.title ?? primaryCareerPath?.modules[0] ?? "Starter AI Pack";
+  const guide = buildRecommendedModuleGuide({
+    careerPathId: user?.careerPathId ?? summary?.gamification.primaryTrackId ?? null,
+    moduleTitle: recommendedModuleTitle,
+    jobTitle: user?.headline ?? null,
+    primaryGoal: user?.goals?.[0] ?? null,
+  });
   return (
     <DashboardShell
       activeTab="projects"
@@ -29,10 +40,10 @@ export default async function DashboardProjectsPage() {
         headline: user?.headline ?? "AI Builder",
         avatarUrl: user?.avatarUrl ?? state.seed?.avatarUrl ?? null,
         publicProfileUrl: state.publicProfileUrl,
-        levelLabel: "Level 1",
-        levelSubtitle: "Starter Builder",
-        levelProgressPct: 20,
-        levelProgressText: "Start building to level up",
+        levelLabel: state.sidebarLevel.label,
+        levelSubtitle: state.sidebarLevel.subtitle,
+        levelProgressPct: state.sidebarLevel.progressPct,
+        levelProgressText: state.sidebarLevel.progressText,
       }}
       decor={<div className="absolute top-0 right-1/4 w-[500px] h-[300px] bg-amber-500/10 blur-[120px] pointer-events-none"></div>}
       hideHeaderActionsOnMobile
@@ -67,12 +78,12 @@ export default async function DashboardProjectsPage() {
             Active Builds
           </h2>
           <a
-            href="/dashboard/chat/"
+            href="#pack-workbench"
             className="glass-panel p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border border-amber-500/30 overflow-hidden relative cursor-pointer hover:bg-white/5 transition"
             data-analytics-event="projects_cta_clicked"
-            data-analytics-cta="open_active_build"
+            data-analytics-cta="open_module_workbench"
             data-analytics-location="active_build"
-            data-analytics-destination="/dashboard/chat/"
+            data-analytics-destination="#pack-workbench"
           >
             <div className="absolute right-0 top-0 w-64 h-full bg-gradient-to-l from-amber-500/5 to-transparent pointer-events-none"></div>
             <div className="flex items-start gap-4 md:gap-6 relative z-10 w-full">
@@ -81,13 +92,13 @@ export default async function DashboardProjectsPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-col sm:flex-row gap-2 sm:items-center mb-1">
-                  <h3 className="text-xl font-medium text-white">{activeProject?.title || "Starter AI Build"}</h3>
+                  <h3 className="text-xl font-medium text-white">{activeProject?.title || guide.moduleTitle}</h3>
                   <span className="text-[10px] bg-amber-500/20 text-amber-500 font-bold uppercase px-2 py-0.5 rounded border border-amber-500/30">
                     {activeProject ? "Active" : "Planned"}
                   </span>
                 </div>
                 <p className="text-sm text-gray-400 max-w-xl">
-                  {summarize(activeProject?.description, "Your starter build is ready for the next tutor-guided step.")}
+                  {summarize(activeProject?.description, guide.whyThisModule)}
                 </p>
                 <div className="mt-4 md:hidden">
                   <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-amber-400 mb-2">
@@ -114,6 +125,15 @@ export default async function DashboardProjectsPage() {
             </div>
           </a>
         </section>
+
+        <DashboardProjectWorkbench
+          guide={guide}
+          projectId={activeProject?.id ?? null}
+          projectTitle={activeProject?.title || `${guide.careerPathName} Starter Build`}
+          projectState={activeProject?.state || "planned"}
+          artifactCount={activeProject?.artifacts.length ?? 0}
+          publicProfileUrl={state.publicProfileUrl}
+        />
 
         <section>
           <h2 className="text-lg font-[Outfit] font-medium text-white mb-6 uppercase tracking-wider text-sm text-gray-400 border-b border-white/10 pb-2">
@@ -169,12 +189,12 @@ export default async function DashboardProjectsPage() {
                   </>
                 ) : (
                   <a
-                    href="/dashboard/chat/"
+                    href="#pack-workbench"
                     className="btn btn-primary text-xs px-3 py-2 flex-1 text-center"
                     data-analytics-event="projects_cta_clicked"
                     data-analytics-cta="start_recommended_pack"
                     data-analytics-location="recommended_pack_card"
-                    data-analytics-destination="/dashboard/chat/"
+                    data-analytics-destination="#pack-workbench"
                   >
                     <i className="fa-solid fa-play mr-1"></i> Click to Start
                   </a>

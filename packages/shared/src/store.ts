@@ -5,6 +5,7 @@ import {
   getModuleTracksForCareerPath,
   MODULE_TRACKS,
 } from "./matrix";
+import { buildDashboardGamification } from "./gamification";
 import type {
   AcquisitionAttribution,
   AgentJob,
@@ -1172,14 +1173,44 @@ export function latestDailyUpdate(userId: string) {
 export function getDashboardSummary(userId: string): DashboardSummary | null {
   const user = findUserById(userId);
   if (!user) return null;
+  const projects = listProjectsByUser(userId);
+  const latestEvents = listUserEvents(userId).slice(-20);
+  const onboardingRows = state.onboardingSessions.filter((entry) => entry.userId === userId);
+  const assessments = state.assessments
+    .filter((entry) => entry.userId === userId)
+    .sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
+  const socialDrafts = state.socialDrafts.filter((entry) => entry.userId === userId);
+  const latestAssessment = assessments[0] ?? null;
+  const firstOnboarding = onboardingRows
+    .slice()
+    .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))[0] ?? null;
 
   return {
     user,
-    projects: listProjectsByUser(userId),
+    projects,
     pendingJobs: state.jobs.filter((job) => job.userId === userId && ["queued", "claimed", "running"].includes(job.status)),
-    latestEvents: listUserEvents(userId).slice(-20),
+    latestEvents,
     moduleRecommendations: getModuleTracksForCareerPath(user.careerPathId),
     dailyUpdate: latestDailyUpdate(userId),
+    gamification: buildDashboardGamification({
+      user,
+      projects,
+      latestEvents,
+      hasOnboardingSession: onboardingRows.length > 0,
+      onboardingStartedAt: firstOnboarding?.createdAt ?? null,
+      hasCompletedAssessment: Boolean(latestAssessment?.submittedAt),
+      assessmentSubmittedAt: latestAssessment?.submittedAt ?? null,
+      hasSocialDraft: socialDrafts.length > 0,
+      socialDraftCreatedAt:
+        socialDrafts
+          .slice()
+          .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))[0]?.createdAt ?? null,
+      hasPublishedSocialDraft: socialDrafts.some((entry) => entry.status === "published"),
+      socialDraftPublishedAt:
+        socialDrafts
+          .filter((entry) => entry.status === "published")
+          .sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt))[0]?.updatedAt ?? null,
+    }),
   };
 }
 

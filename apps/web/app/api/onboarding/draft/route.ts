@@ -18,7 +18,10 @@ const goalEnum = z.enum([
 
 const careerCategoryEnum = z.enum([
   "product-manager",
+  "sales",
   "customer-service",
+  "operations",
+  "hr",
   "designer",
   "marketing",
   "accounting",
@@ -41,8 +44,6 @@ const draftSchema = z
       .enum(["employed", "unemployed", "student", "founder", "freelancer", "career_switcher"])
       .optional()
       .nullable(),
-    dailyWorkSummary: z.string().max(4000).optional().nullable(),
-    keySkills: z.string().max(2000).optional().nullable(),
     linkedinUrl: z.string().max(1000).optional().nullable(),
     selectedGoals: z.array(goalEnum).optional(),
     aiComfort: z.number().int().min(1).max(5).optional().nullable(),

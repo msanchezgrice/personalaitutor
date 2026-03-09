@@ -27,10 +27,10 @@ export default async function DashboardProfilePage() {
         headline: displayHeadline,
         avatarUrl,
         publicProfileUrl: publicProfileUrl ?? null,
-        levelLabel: "Level 1",
-        levelSubtitle: "Starter Builder",
-        levelProgressPct: 20,
-        levelProgressText: "Start building to level up",
+        levelLabel: state.sidebarLevel.label,
+        levelSubtitle: state.sidebarLevel.subtitle,
+        levelProgressPct: state.sidebarLevel.progressPct,
+        levelProgressText: state.sidebarLevel.progressText,
       }}
     >
       <div className="p-10 max-w-3xl mx-auto w-full pb-24 space-y-8">

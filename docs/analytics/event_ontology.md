@@ -79,6 +79,12 @@ Owner: growth / product engineering
 - `assessment_summary_cta_clicked`
 - `onboarding_continue_to_dashboard`
 - `onboarding_assessment_funnel_step`
+- `career_track_selected`
+- Shared onboarding properties:
+  - `career_path_id`
+  - `selected_goals`
+  - `selected_goals_count`
+  - `situation`
 
 ### Dashboard Usage
 
@@ -87,6 +93,25 @@ Owner: growth / product engineering
 - `project_public_link_copy_clicked`
 - `project_public_link_copied`
 - `project_public_link_copy_failed`
+- `xp_total_changed`
+- `xp_level_unlocked`
+- `achievement_unlocked`
+- `badge_unlocked`
+- `career_track_changed`
+- Shared gamification properties:
+  - `location`
+  - `xp_total`
+  - `previous_xp_total`
+  - `xp_delta`
+  - `level`
+  - `level_label`
+  - `career_path_id`
+  - `previous_career_path_id`
+  - `primary_track_name`
+  - `achievement_key`
+  - `achievement_title`
+  - `badge_key`
+  - `badge_title`
 
 ### Lifecycle Email
 

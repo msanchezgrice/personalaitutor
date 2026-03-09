@@ -268,6 +268,38 @@ export type DailyUpdate = {
   failureCode: string | null;
 };
 
+export type DashboardAchievement = {
+  key: string;
+  title: string;
+  description: string;
+  xp: number;
+  unlocked: boolean;
+  unlockedAt: string | null;
+};
+
+export type DashboardBadge = {
+  key: string;
+  title: string;
+  description: string;
+  unlocked: boolean;
+  unlockedAt: string | null;
+};
+
+export type DashboardGamification = {
+  xpTotal: number;
+  level: number;
+  levelLabel: string;
+  levelSubtitle: string;
+  levelProgressPct: number;
+  levelProgressText: string;
+  nextLevel: number | null;
+  xpToNextLevel: number | null;
+  primaryTrackId: string;
+  primaryTrackName: string;
+  achievements: DashboardAchievement[];
+  badges: DashboardBadge[];
+};
+
 export type DashboardSummary = {
   user: UserProfile;
   projects: Project[];
@@ -275,4 +307,5 @@ export type DashboardSummary = {
   latestEvents: AgentJobEvent[];
   moduleRecommendations: ModuleTrack[];
   dailyUpdate: DailyUpdate | null;
+  gamification: DashboardGamification;
 };

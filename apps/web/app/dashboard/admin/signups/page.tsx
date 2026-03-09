@@ -217,8 +217,6 @@ export default async function DashboardAdminSignupsPage({
             const goalList = stringArray(intake.selectedGoals);
             const rawFullName = stringValue(intake.fullName);
             const rawJobTitle = stringValue(intake.jobTitle);
-            const rawDailyWorkSummary = stringValue(intake.dailyWorkSummary);
-            const rawKeySkills = stringValue(intake.keySkills);
             const rawCareerCategory = stringValue(intake.careerCategoryLabel) || stringValue(intake.careerCategory) || stringValue(intake.customCareerCategory);
             const assessmentEntries = assessmentAnswerEntries(record.assessment?.answers);
 
@@ -420,16 +418,6 @@ export default async function DashboardAdminSignupsPage({
                           <dd className="text-white">{goalList.length ? goalList.join(", ") : (record.onboarding?.goals.length ? record.onboarding.goals.join(", ") : "Not set")}</dd>
                         </div>
                       </dl>
-                      <div className="mt-4 space-y-4">
-                        <div>
-                          <div className="text-gray-500">Daily work summary</div>
-                          <div className="mt-1 whitespace-pre-wrap rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-sm text-slate-100">{rawDailyWorkSummary || "Not set"}</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-500">Key skills</div>
-                          <div className="mt-1 whitespace-pre-wrap rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-sm text-slate-100">{rawKeySkills || "Not set"}</div>
-                        </div>
-                      </div>
                     </div>
                   </section>
 

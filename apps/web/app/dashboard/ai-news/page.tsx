@@ -18,10 +18,10 @@ export default async function DashboardAiNewsPage() {
         headline: user?.headline ?? "AI Builder",
         avatarUrl: user?.avatarUrl ?? state.seed?.avatarUrl ?? null,
         publicProfileUrl: state.publicProfileUrl,
-        levelLabel: "Level 1",
-        levelSubtitle: "Starter Builder",
-        levelProgressPct: 20,
-        levelProgressText: "Start building to level up",
+        levelLabel: state.sidebarLevel.label,
+        levelSubtitle: state.sidebarLevel.subtitle,
+        levelProgressPct: state.sidebarLevel.progressPct,
+        levelProgressText: state.sidebarLevel.progressText,
       }}
       decor={<div className="absolute top-0 right-1/4 w-[400px] h-[300px] bg-sky-500/10 blur-[120px] pointer-events-none"></div>}
     >

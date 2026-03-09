@@ -20,10 +20,10 @@ export default async function DashboardChatPage() {
         headline: user?.headline ?? "AI Builder",
         avatarUrl: user?.avatarUrl ?? state.seed?.avatarUrl ?? null,
         publicProfileUrl: state.publicProfileUrl,
-        levelLabel: "Level 1",
-        levelSubtitle: "Starter Builder",
-        levelProgressPct: 20,
-        levelProgressText: "Start building to level up",
+        levelLabel: state.sidebarLevel.label,
+        levelSubtitle: state.sidebarLevel.subtitle,
+        levelProgressPct: state.sidebarLevel.progressPct,
+        levelProgressText: state.sidebarLevel.progressText,
       }}
       decor={
         <>

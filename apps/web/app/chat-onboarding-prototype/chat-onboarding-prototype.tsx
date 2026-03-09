@@ -111,8 +111,6 @@ const TRACKED_NOTE_KEYS: Array<keyof OnboardingNotes> = [
   "yearsExperience",
   "companySize",
   "situation",
-  "dailyWorkSummary",
-  "keySkills",
   "selectedGoals",
   "aiComfort",
   "linkedinUrl",
@@ -128,8 +126,6 @@ const NOTE_FIELD_LABELS: Record<keyof OnboardingNotes, string> = {
   yearsExperience: "Experience",
   companySize: "Company size",
   situation: "Situation",
-  dailyWorkSummary: "Day-to-day work",
-  keySkills: "Tools and skills",
   selectedGoals: "Goals",
   aiComfort: "AI comfort",
   linkedinUrl: "LinkedIn",
@@ -192,11 +188,6 @@ function normalizeToolUpdate(raw: string): RealtimeOnboardingUpdate {
         parsed.situation === "career_switcher"
           ? parsed.situation
           : undefined,
-      dailyWorkSummary:
-        typeof parsed.dailyWorkSummary === "string" ? parsed.dailyWorkSummary : undefined,
-      keySkills: Array.isArray(parsed.keySkills)
-        ? parsed.keySkills.filter((entry): entry is string => typeof entry === "string")
-        : undefined,
       selectedGoals: Array.isArray(parsed.selectedGoals)
         ? parsed.selectedGoals.filter(
             (entry): entry is OnboardingNotes["selectedGoals"][number] =>
@@ -221,8 +212,6 @@ function normalizeToolUpdate(raw: string): RealtimeOnboardingUpdate {
               entry === "careerPathId" ||
               entry === "yearsExperience" ||
               entry === "situation" ||
-              entry === "dailyWorkSummary" ||
-              entry === "keySkills" ||
               entry === "selectedGoals" ||
               entry === "aiComfort",
           )
@@ -231,17 +220,6 @@ function normalizeToolUpdate(raw: string): RealtimeOnboardingUpdate {
   } catch {
     return {};
   }
-}
-
-function parseDelimitedList(value: string, maxItems = 12) {
-  return Array.from(
-    new Set(
-      value
-        .split(/[\n,]/)
-        .map((entry) => entry.trim())
-        .filter(Boolean),
-    ),
-  ).slice(0, maxItems);
 }
 
 function getChangedNoteFields(previous: OnboardingNotes, next: OnboardingNotes): Array<keyof OnboardingNotes> {
@@ -1067,30 +1045,6 @@ export function ChatOnboardingPrototype() {
             />
           </label>
 
-          <label className={`${styles.fieldCard} ${styles.fieldCardWide}`}>
-            <span className={styles.fieldLabel}>Day-to-day work</span>
-            <textarea
-              className={styles.fieldTextarea}
-              name="dailyWorkSummary"
-              value={notes.dailyWorkSummary}
-              onChange={(event) => updateNoteField("dailyWorkSummary", event.target.value)}
-              placeholder="Captured from the learner's spoken workflow"
-              rows={4}
-            />
-          </label>
-
-          <label className={`${styles.fieldCard} ${styles.fieldCardWide}`}>
-            <span className={styles.fieldLabel}>Tools and skills</span>
-            <textarea
-              className={styles.fieldTextarea}
-              name="keySkills"
-              value={notes.keySkills.join(", ")}
-              onChange={(event) => updateNoteField("keySkills", parseDelimitedList(event.target.value))}
-              placeholder="Comma-separated tools, systems, or skills"
-              rows={3}
-            />
-          </label>
-
           <div className={`${styles.fieldCard} ${styles.fieldCardWide}`}>
             <span className={styles.fieldLabel}>Goals</span>
             <div className={styles.goalChecklist}>
@@ -1190,8 +1144,6 @@ export function ChatOnboardingPrototype() {
         jobTitle: currentNotes.jobTitle,
         yearsExperience: currentNotes.yearsExperience,
         companySize: currentNotes.companySize || null,
-        dailyWorkSummary: currentNotes.dailyWorkSummary,
-        keySkills: currentNotes.keySkills.join(", "),
         aiComfort: currentNotes.aiComfort ?? 3,
         linkedinUrl: currentNotes.linkedinUrl || null,
         resumeFilename: currentNotes.resumeFilename || null,

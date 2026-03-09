@@ -1048,8 +1048,6 @@ async function sendDailySignupDigest() {
             stringValue(intake.customCareerCategory) ||
             "Not set";
           const jobTitle = stringValue(intake.jobTitle) || "Not set";
-          const dailyWorkSummary = trimText(stringValue(intake.dailyWorkSummary), 320) || "Not provided";
-          const keySkills = trimText(stringValue(intake.keySkills), 220) || "Not provided";
           const answerSummary = assessmentAnswerSummary(record.assessment?.answers);
           const recommendedPaths = (record.assessment?.recommended_career_path_ids ?? [])
             .map((entry) => careerPathName(entry))
@@ -1090,8 +1088,6 @@ async function sendDailySignupDigest() {
                 <div><strong>Experience:</strong> ${escapeHtml(experience)} | <strong>Company size:</strong> ${escapeHtml(companySize)} | <strong>AI comfort:</strong> ${escapeHtml(aiComfort)}</div>
                 <div><strong>Assessment:</strong> ${escapeHtml(assessmentScoreLabel(record.assessment?.score))} ${answerSummary ? `| <strong>Answers:</strong> ${escapeHtml(answerSummary)}` : ""}</div>
                 <div><strong>Recommended:</strong> ${escapeHtml(recommendedPaths || "Not available")}</div>
-                <div><strong>Key skills:</strong> ${escapeHtml(keySkills)}</div>
-                <div><strong>Daily work summary:</strong> ${escapeHtml(dailyWorkSummary)}</div>
                 <div><strong>Last chat:</strong> ${escapeHtml(record.chat.lastUserMessage || "No chat yet")}</div>
                 <div><strong>Links:</strong> ${links || "No extra links available"}</div>
               </div>
@@ -1164,8 +1160,6 @@ async function sendDailySignupDigest() {
         `  campaign: ${record.attribution.campaign} | content: ${record.attribution.content} | landing: ${record.attribution.landingPath}`,
         `  title: ${stringValue(intake.jobTitle) || "Not set"} | category: ${stringValue(intake.careerCategoryLabel) || stringValue(intake.careerCategory) || stringValue(intake.customCareerCategory) || "Not set"} | goals: ${goals || "Not set"}`,
         `  answers: ${answerSummary}`,
-        `  key skills: ${trimText(stringValue(intake.keySkills), 200) || "Not provided"}`,
-        `  daily work: ${trimText(stringValue(intake.dailyWorkSummary), 240) || "Not provided"}`,
         `  last chat: ${record.chat.lastUserMessage || "No chat yet"}`,
         "",
       ]

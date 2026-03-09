@@ -9,6 +9,14 @@ export type DashboardServerState = {
   user: UserProfile | null;
   activeProject: Project | null;
   completedProject: Project | null;
+  sidebarLevel: {
+    level: number;
+    label: string;
+    subtitle: string;
+    progressPct: number;
+    progressText: string;
+    xpTotal: number;
+  };
   publicProfileUrl: string | null;
   greeting: string;
   isAdmin: boolean;
@@ -31,6 +39,14 @@ export async function getDashboardServerState(): Promise<DashboardServerState> {
       user: null,
       activeProject: null,
       completedProject: null,
+      sidebarLevel: {
+        level: 1,
+        label: "Level 1",
+        subtitle: "Starter Builder",
+        progressPct: 20,
+        progressText: "Start building to level up",
+        xpTotal: 0,
+      },
       publicProfileUrl: null,
       greeting: `${greetingForServerTime()}, there 👋`,
       isAdmin: false,
@@ -53,10 +69,10 @@ export async function getDashboardServerState(): Promise<DashboardServerState> {
     null;
   const completedProject =
     projects.find((project) => project.state === "built" || project.state === "showcased") ??
-    projects[1] ??
     null;
   const displayName = user?.name?.trim() || seed.name?.trim() || "Learner";
   const firstName = displayName.split(" ")[0] || displayName;
+  const gamification = summary?.gamification;
 
   return {
     seed,
@@ -64,6 +80,14 @@ export async function getDashboardServerState(): Promise<DashboardServerState> {
     user,
     activeProject,
     completedProject,
+    sidebarLevel: {
+      level: gamification?.level ?? 1,
+      label: gamification?.levelLabel ?? "Level 1",
+      subtitle: gamification?.levelSubtitle ?? "Starter Builder",
+      progressPct: gamification?.levelProgressPct ?? 20,
+      progressText: gamification?.levelProgressText ?? "Start building to level up",
+      xpTotal: gamification?.xpTotal ?? 0,
+    },
     publicProfileUrl: user?.published && user?.handle ? `/u/${user.handle}/` : null,
     greeting: `${greetingForServerTime()}, ${firstName} 👋`,
     isAdmin: isAdminEmail(seed.email),

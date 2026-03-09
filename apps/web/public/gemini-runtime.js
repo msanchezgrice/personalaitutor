@@ -13,6 +13,7 @@
   var DASHBOARD_SUMMARY_CACHE_PREFIX = "ai_tutor_dashboard_summary_v2:";
   var DASHBOARD_SNAPSHOT_CACHE_PREFIX = "ai_tutor_dashboard_snapshot_v2:";
   var AUTH_SESSION_CACHE_PREFIX = "ai_tutor_auth_session_v1:";
+  var GAMIFICATION_CACHE_PREFIX = "ai_tutor_gamification_v1:";
   var SOCIAL_DRAFTS_CACHE_PREFIX = "ai_tutor_social_drafts_v1:";
   var CHAT_HISTORY_CACHE_PREFIX = "ai_tutor_chat_history_v1:";
   var ATTRIBUTION_STORAGE_KEY = "ai_tutor_attribution_v1";
@@ -191,7 +192,7 @@
       handle: null,
       sessionId: null,
       projectId: null,
-      careerPathId: "product-management",
+      careerPathId: null,
       avatarUrl: null,
       email: null,
       published: false,
@@ -209,6 +210,16 @@
 
   if (typeof window !== "undefined") {
     window.__AITUTOR_LAST_HYDRATED_PATH = null;
+  }
+
+  function resolvedCareerPathId(fallback) {
+    if (ctx && typeof ctx.careerPathId === "string" && ctx.careerPathId.trim()) {
+      return ctx.careerPathId.trim();
+    }
+    if (typeof fallback === "string" && fallback.trim()) {
+      return fallback.trim();
+    }
+    return null;
   }
 
   function posthogClient() {
@@ -617,6 +628,142 @@
     writeSessionObject(key, { ts: Date.now(), summary: summary });
   }
 
+  function gamificationCacheKey() {
+    var scope = cacheScope();
+    if (!scope) return null;
+    return GAMIFICATION_CACHE_PREFIX + scope;
+  }
+
+  function readGamificationSnapshot() {
+    var key = gamificationCacheKey();
+    if (!key) return null;
+    return readLocalObject(key) || readSessionObject(key);
+  }
+
+  function writeGamificationSnapshot(snapshot) {
+    var key = gamificationCacheKey();
+    if (!key || !snapshot) return;
+    writeSessionObject(key, snapshot);
+    writeLocalObject(key, snapshot);
+  }
+
+  function unlockedKeys(items) {
+    if (!Array.isArray(items)) return [];
+    return items
+      .filter(function (item) {
+        return item && item.unlocked && typeof item.key === "string" && item.key;
+      })
+      .map(function (item) {
+        return String(item.key);
+      })
+      .sort();
+  }
+
+  function readGamificationSummary(summary) {
+    var gamification = summary && summary.gamification ? summary.gamification : null;
+    if (!gamification) return null;
+    return {
+      xpTotal: Number(gamification.xpTotal || 0),
+      level: Math.max(1, Number(gamification.level || 1)),
+      levelLabel: gamification.levelLabel ? String(gamification.levelLabel) : "Level 1",
+      primaryTrackId: gamification.primaryTrackId ? String(gamification.primaryTrackId) : resolvedCareerPathId(null),
+      primaryTrackName: gamification.primaryTrackName ? String(gamification.primaryTrackName) : null,
+      achievementKeys: unlockedKeys(gamification.achievements),
+      badgeKeys: unlockedKeys(gamification.badges),
+    };
+  }
+
+  function findUnlockedItem(items, key) {
+    if (!Array.isArray(items)) return null;
+    for (var index = 0; index < items.length; index += 1) {
+      var item = items[index];
+      if (item && item.unlocked && item.key === key) return item;
+    }
+    return null;
+  }
+
+  function trackGamificationDelta(summary, location) {
+    var current = readGamificationSummary(summary);
+    if (!current) return;
+
+    var previous = readGamificationSnapshot();
+    if (previous) {
+      var previousXp = Number(previous.xpTotal || 0);
+      var previousLevel = Math.max(1, Number(previous.level || 1));
+      var trackId = current.primaryTrackId || null;
+      var trackName = current.primaryTrackName || null;
+
+      if (current.xpTotal !== previousXp) {
+        captureEvent("xp_total_changed", {
+          location: location || currentPath,
+          xp_total: current.xpTotal,
+          previous_xp_total: previousXp,
+          xp_delta: current.xpTotal - previousXp,
+          level: current.level,
+          level_label: current.levelLabel,
+          career_path_id: trackId,
+          primary_track_name: trackName,
+        });
+      }
+
+      if (current.level > previousLevel) {
+        for (var level = previousLevel + 1; level <= current.level; level += 1) {
+          captureEvent("xp_level_unlocked", {
+            location: location || currentPath,
+            level: level,
+            level_label: level === current.level ? current.levelLabel : "Level " + level,
+            xp_total: current.xpTotal,
+            career_path_id: trackId,
+            primary_track_name: trackName,
+          });
+        }
+      }
+
+      current.achievementKeys.forEach(function (achievementKey) {
+        if (Array.isArray(previous.achievementKeys) && previous.achievementKeys.indexOf(achievementKey) !== -1) return;
+        var achievement = findUnlockedItem(summary.gamification && summary.gamification.achievements, achievementKey);
+        captureEvent("achievement_unlocked", {
+          location: location || currentPath,
+          achievement_key: achievementKey,
+          achievement_title: achievement && achievement.title ? achievement.title : achievementKey,
+          xp_total: current.xpTotal,
+          level: current.level,
+          level_label: current.levelLabel,
+          career_path_id: trackId,
+          primary_track_name: trackName,
+        });
+      });
+
+      current.badgeKeys.forEach(function (badgeKey) {
+        if (Array.isArray(previous.badgeKeys) && previous.badgeKeys.indexOf(badgeKey) !== -1) return;
+        var badge = findUnlockedItem(summary.gamification && summary.gamification.badges, badgeKey);
+        captureEvent("badge_unlocked", {
+          location: location || currentPath,
+          badge_key: badgeKey,
+          badge_title: badge && badge.title ? badge.title : badgeKey,
+          xp_total: current.xpTotal,
+          level: current.level,
+          level_label: current.levelLabel,
+          career_path_id: trackId,
+          primary_track_name: trackName,
+        });
+      });
+
+      if (current.primaryTrackId && current.primaryTrackId !== previous.primaryTrackId) {
+        captureEvent("career_track_changed", {
+          location: location || currentPath,
+          career_path_id: current.primaryTrackId,
+          previous_career_path_id: previous.primaryTrackId || null,
+          primary_track_name: current.primaryTrackName || null,
+          xp_total: current.xpTotal,
+          level: current.level,
+        });
+      }
+    }
+
+    writeGamificationSnapshot(current);
+  }
+
   function dashboardSnapshotCacheKey(pathname) {
     var scope = cacheScope();
     if (!scope) return null;
@@ -980,9 +1127,14 @@
       Array.prototype.forEach.call(
         document.querySelectorAll("[data-public-profile-link='1'], a[href='/u/alex-chen-ai/'], a[href='/u/test-user-0001/'], a[href='/u/alex-chen-ai'], a[href='/u/test-user-0001']"),
         function (node) {
-          node.setAttribute("href", "/u/" + ctx.handle + "/");
-          node.removeAttribute("aria-disabled");
-          node.classList.remove("opacity-50", "pointer-events-none");
+          setPublicProfileLinkState(node, "/u/" + ctx.handle + "/", true);
+        },
+      );
+    } else {
+      Array.prototype.forEach.call(
+        document.querySelectorAll("[data-public-profile-link='1'], a[href='/u/alex-chen-ai/'], a[href='/u/test-user-0001/'], a[href='/u/alex-chen-ai'], a[href='/u/test-user-0001']"),
+        function (node) {
+          setPublicProfileLinkState(node, null, false);
         },
       );
     }
@@ -1022,7 +1174,7 @@
         greetingNode.textContent = greetingForLocalTime() + ", " + firstName + " 👋";
       }
     }
-    updateSidebarLevelCard();
+    updateSidebarLevelCard(readDashboardSummaryCache());
     renameSocialNavLabels();
   }
 
@@ -1044,6 +1196,21 @@
   function setHref(node, value) {
     if (!node || !value) return;
     node.setAttribute("href", value);
+  }
+
+  function setPublicProfileLinkState(node, url, enabled) {
+    if (!node) return;
+    if (enabled && url) {
+      node.setAttribute("href", url);
+      node.setAttribute("data-analytics-destination", url);
+      node.removeAttribute("aria-disabled");
+      node.classList.remove("opacity-50", "pointer-events-none");
+      return;
+    }
+    node.setAttribute("href", "#");
+    node.setAttribute("data-analytics-destination", "/dashboard/profile/");
+    node.setAttribute("aria-disabled", "true");
+    node.classList.add("opacity-50", "pointer-events-none");
   }
 
   function renameSocialNavLabels() {
@@ -1307,6 +1474,7 @@
         ctx.handle = data.summary.user.handle;
         ctx.headline = headlineForUser(data.summary.user);
         ctx.published = Boolean(data.summary.user.published);
+        if (data.summary.user.careerPathId) ctx.careerPathId = data.summary.user.careerPathId;
         if (data.summary.user.avatarUrl) ctx.avatarUrl = data.summary.user.avatarUrl;
         primeDashboardDailyData(data.summary);
       }
@@ -1426,6 +1594,7 @@
         if (data.auth && data.auth.avatarUrl) ctx.avatarUrl = data.auth.avatarUrl;
         if (data.summary.user && data.summary.user.id) ctx.profileUserId = data.summary.user.id;
         if (data.summary.user && data.summary.user.handle) ctx.handle = data.summary.user.handle;
+        if (data.summary.user && data.summary.user.careerPathId) ctx.careerPathId = data.summary.user.careerPathId;
         if (data.summary.user) ctx.published = Boolean(data.summary.user.published);
         saveCtx(ctx);
         identifyPosthogUser();
@@ -1468,6 +1637,7 @@
         if (data.auth.email) ctx.email = data.auth.email;
         if (data.summary && data.summary.user && data.summary.user.id) ctx.profileUserId = data.summary.user.id;
         if (data.summary && data.summary.user && data.summary.user.handle) ctx.handle = data.summary.user.handle;
+        if (data.summary && data.summary.user && data.summary.user.careerPathId) ctx.careerPathId = data.summary.user.careerPathId;
         if (data.summary && data.summary.user) ctx.published = Boolean(data.summary.user.published);
         saveCtx(ctx);
         identifyPosthogUser();
@@ -1587,24 +1757,21 @@
     return salutationForHour(now.getHours());
   }
 
-  function computeLearnerLevel(user) {
-    if (!user || !Array.isArray(user.skills) || !user.skills.length) return 1;
-    var verified = user.skills.filter(function (skill) {
-      return skill && skill.status === "verified";
-    }).length;
-    return Math.max(1, Math.min(3, verified + 1));
-  }
-
   function updateSidebarLevelCard(summary) {
     if (!isDashboardPath) return;
-    var level = 1;
-    if (summary && summary.user) {
-      level = computeLearnerLevel(summary.user);
-    }
-    var levelLabel = "Level " + level;
-    var subtitle = level === 1 ? "Starter Builder" : level === 2 ? "Active Builder" : "Verified Builder";
-    var progressWidth = level === 1 ? "20%" : level === 2 ? "60%" : "100%";
-    var progressText = level >= 3 ? "Max level reached" : "Keep shipping to reach Level " + (level + 1);
+    var gamification = summary && summary.gamification ? summary.gamification : null;
+    var levelLabel = gamification && gamification.levelLabel ? String(gamification.levelLabel) : "Level 1";
+    var subtitle = gamification && gamification.levelSubtitle ? String(gamification.levelSubtitle) : "Starter Builder";
+    var progressWidth = String(
+      Math.max(
+        0,
+        Math.min(100, Math.round(gamification && typeof gamification.levelProgressPct === "number" ? gamification.levelProgressPct : 20)),
+      ),
+    ) + "%";
+    var progressText =
+      gamification && gamification.levelProgressText
+        ? String(gamification.levelProgressText)
+        : "Keep shipping to reach Level 2";
 
     var levelNode = document.querySelector("[data-sidebar-level-label='1']") ||
       Array.prototype.find.call(document.querySelectorAll("aside *"), function (node) {
@@ -1638,6 +1805,7 @@
     ctx.name = resolvedName;
     ctx.headline = headlineForUser(user);
     ctx.published = Boolean(user.published);
+    if (user.careerPathId) ctx.careerPathId = user.careerPathId;
     if (user.avatarUrl) ctx.avatarUrl = user.avatarUrl;
     saveCtx(ctx);
     maybeWarmHomeNews(user.id ? String(user.id) : (ctx.profileUserId || ctx.userId));
@@ -1661,9 +1829,7 @@
 
     var publicProfileLinks = document.querySelectorAll("[data-public-profile-link='1'], a[href='/u/alex-chen-ai/'], a[href='/u/test-user-0001/'], a[href='/u/alex-chen-ai'], a[href='/u/test-user-0001']");
     Array.prototype.forEach.call(publicProfileLinks, function (link) {
-      setHref(link, "/u/" + user.handle + "/");
-      link.removeAttribute("aria-disabled");
-      link.classList.remove("opacity-50", "pointer-events-none");
+      setPublicProfileLinkState(link, user.handle ? "/u/" + user.handle + "/" : null, Boolean(user.published));
     });
 
     var greeting = document.querySelector("[data-dashboard-greeting='1']") ||
@@ -1690,6 +1856,7 @@
 
     if (isDashboardPath) {
       renameSocialNavLabels();
+      trackGamificationDelta(summary, currentPath);
       updateSidebarLevelCard(summary);
       var staleSidebarSignOut = document.getElementById("dashboard-sidebar-settings");
       if (staleSidebarSignOut) staleSidebarSignOut.remove();
@@ -1835,7 +2002,7 @@
     var data = await postJson("/api/onboarding/start", {
       name: ctx.name,
       handleBase: baseHandle,
-      careerPathId: ctx.careerPathId || "product-management",
+      careerPathId: resolvedCareerPathId(null),
       avatarUrl: ctx.avatarUrl || null,
       acquisition: readAttributionEnvelope() || undefined,
     });
@@ -1857,12 +2024,12 @@
     identifyPosthogUser();
     captureEvent("onboarding_session_initialized", {
       session_id: data.session.id,
-      career_path_id: ctx.careerPathId || "product-management",
+      career_path_id: resolvedCareerPathId(null),
       source: "onboarding_start",
     });
     trackFunnelStep("onboarding_session_initialized", {
       session_id: data.session.id,
-      career_path_id: ctx.careerPathId || "product-management",
+      career_path_id: resolvedCareerPathId(null),
       source: "onboarding_start",
     });
 
@@ -3999,12 +4166,12 @@
     captureEvent("onboarding_viewed", {
       entry_point: signUpIntent ? "clerk_sign_up" : "direct",
       has_existing_session: Boolean(ctx.sessionId),
-      career_path_id: ctx.careerPathId || "product-management",
+      career_path_id: resolvedCareerPathId(null),
     });
     trackFunnelStep("onboarding_viewed", {
       entry_point: signUpIntent ? "clerk_sign_up" : "direct",
       has_existing_session: Boolean(ctx.sessionId),
-      career_path_id: ctx.careerPathId || "product-management",
+      career_path_id: resolvedCareerPathId(null),
     });
 
     function applySelectedScore() {
@@ -4056,13 +4223,14 @@
         if (!careerPathSelect) return;
         careerPathSelect.innerHTML = "";
         if (!options.length) {
-          options = [{ id: ctx.careerPathId || "product-management", name: "Product Management" }];
+          var fallbackCareerPathId = resolvedCareerPathId(null);
+          options = fallbackCareerPathId ? [{ id: fallbackCareerPathId, name: "Selected Track" }] : [];
         }
         options.forEach(function (option) {
           var item = document.createElement("option");
           item.value = option.id;
           item.textContent = option.name;
-          if (option.id === (ctx.careerPathId || "product-management")) item.selected = true;
+          if (option.id === resolvedCareerPathId(null)) item.selected = true;
           careerPathSelect.appendChild(item);
         });
 
@@ -4073,6 +4241,18 @@
       .catch(function (err) {
         toast(err instanceof Error ? err.message : "Unable to initialize onboarding", true);
       });
+
+    if (careerPathSelect) {
+      careerPathSelect.addEventListener("change", function () {
+        var nextCareerPathId = careerPathSelect.value ? careerPathSelect.value : null;
+        ctx.careerPathId = nextCareerPathId;
+        saveCtx(ctx);
+        captureEvent("career_track_selected", {
+          location: "onboarding",
+          career_path_id: nextCareerPathId,
+        });
+      });
+    }
 
     if (beginButton) {
       beginButton.addEventListener("click", async function () {
@@ -4090,7 +4270,11 @@
             toast("Select at least one goal.", true);
             return;
           }
-          var selectedCareerPath = careerPathSelect && careerPathSelect.value ? careerPathSelect.value : "product-management";
+          var selectedCareerPath = careerPathSelect && careerPathSelect.value ? careerPathSelect.value : resolvedCareerPathId(null);
+          if (!selectedCareerPath) {
+            toast("Choose the track that best matches your role.", true);
+            return;
+          }
           captureEvent("onboarding_start_assessment_clicked", {
             selected_goals_count: goals.length,
             selected_goals: goals,
@@ -4191,12 +4375,12 @@
     captureEvent("assessment_viewed", {
       has_existing_session: Boolean(ctx.sessionId),
       entry_point: ctx && ctx.sessionId ? "onboarding" : "direct",
-      career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+      career_path_id: resolvedCareerPathId(null),
     });
     trackFunnelStep("assessment_viewed", {
       has_existing_session: Boolean(ctx.sessionId),
       entry_point: ctx && ctx.sessionId ? "onboarding" : "direct",
-      career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+      career_path_id: resolvedCareerPathId(null),
     });
 
     var assessmentCard = document.querySelector(".glass-panel");
@@ -4214,11 +4398,11 @@
         event.preventDefault();
         captureEvent("assessment_continue_clicked", {
           source: "assessment_page",
-          career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+          career_path_id: resolvedCareerPathId(null),
         });
         trackFunnelStep("assessment_continue_clicked", {
           source: "assessment_page",
-          career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+          career_path_id: resolvedCareerPathId(null),
         });
         try {
           var session = await ensureSession();
@@ -4229,12 +4413,12 @@
           captureEvent("assessment_started", {
             session_id: session.id,
             assessment_id: start.assessment.id,
-            career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+            career_path_id: resolvedCareerPathId(null),
           });
           trackFunnelStep("assessment_started", {
             session_id: session.id,
             assessment_id: start.assessment.id,
-            career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+            career_path_id: resolvedCareerPathId(null),
           });
           var checked = document.querySelector('input[name="goal"]:checked');
           var selectedValue = 3;
@@ -4261,14 +4445,14 @@
             assessment_id: start.assessment.id,
             primary_goal: selectedGoal,
             primary_goal_value: selectedValue,
-            career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+            career_path_id: resolvedCareerPathId(null),
           });
           trackFunnelStep("assessment_submitted", {
             session_id: session.id,
             assessment_id: start.assessment.id,
             primary_goal: selectedGoal,
             primary_goal_value: selectedValue,
-            career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+            career_path_id: resolvedCareerPathId(null),
           });
 
           var validGoalSet = {
@@ -4300,7 +4484,7 @@
             selected_goals: selectedGoals,
             primary_goal: selectedGoal,
             primary_goal_value: selectedValue,
-            career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+            career_path_id: resolvedCareerPathId(null),
           });
           trackFunnelStep("assessment_completed", {
             session_id: session.id,
@@ -4310,19 +4494,19 @@
             situation: selectedSituation,
             primary_goal: selectedGoal,
             primary_goal_value: selectedValue,
-            career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+            career_path_id: resolvedCareerPathId(null),
           });
           captureEvent("assessment_dashboard_redirected", {
             session_id: session.id,
             assessment_id: start.assessment.id,
             situation: selectedSituation,
-            career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+            career_path_id: resolvedCareerPathId(null),
           });
           trackFunnelStep("assessment_dashboard_redirected", {
             session_id: session.id,
             assessment_id: start.assessment.id,
             situation: selectedSituation,
-            career_path_id: ctx && ctx.careerPathId ? ctx.careerPathId : "product-management",
+            career_path_id: resolvedCareerPathId(null),
           });
 
           toast("Assessment submitted.", false);

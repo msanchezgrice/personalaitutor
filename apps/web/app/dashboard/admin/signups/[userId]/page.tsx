@@ -93,8 +93,6 @@ export default async function DashboardAdminSignupDetailPage({
     ? detail.onboarding.intakeProfile as Record<string, unknown>
     : {};
   const linkedInUrl = safeExternalUrl(stringValue(intake.linkedinUrl) || detail.onboarding?.linkedinUrl || detail.profile.socialLinks.linkedin || null);
-  const rawDailyWorkSummary = stringValue(intake.dailyWorkSummary);
-  const rawKeySkills = stringValue(intake.keySkills);
   const goalList = stringArray(intake.selectedGoals);
   const rawCareerCategory = stringValue(intake.careerCategoryLabel) || stringValue(intake.careerCategory) || stringValue(intake.customCareerCategory);
   const recommendedPaths = (detail.assessment?.recommendedCareerPathIds ?? [])
@@ -264,14 +262,6 @@ export default async function DashboardAdminSignupDetailPage({
                 <div className="md:col-span-2">
                   <dt className="text-gray-500">All selected goals</dt>
                   <dd className="text-white">{goalList.length ? goalList.join(", ") : (detail.onboarding?.goals.length ? detail.onboarding.goals.join(", ") : "Not set")}</dd>
-                </div>
-                <div className="md:col-span-2">
-                  <dt className="text-gray-500">Daily work summary</dt>
-                  <dd className="mt-1 whitespace-pre-wrap rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-slate-100">{rawDailyWorkSummary || "Not set"}</dd>
-                </div>
-                <div className="md:col-span-2">
-                  <dt className="text-gray-500">Key skills</dt>
-                  <dd className="mt-1 whitespace-pre-wrap rounded-xl border border-white/10 bg-[#0b0d13] p-4 text-slate-100">{rawKeySkills || "Not set"}</dd>
                 </div>
               </dl>
             </div>

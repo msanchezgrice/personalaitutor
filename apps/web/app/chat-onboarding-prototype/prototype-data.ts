@@ -11,8 +11,6 @@ export type RequiredNoteField =
   | "careerPathId"
   | "yearsExperience"
   | "situation"
-  | "dailyWorkSummary"
-  | "keySkills"
   | "selectedGoals"
   | "aiComfort";
 
@@ -25,8 +23,6 @@ export type OnboardingNotes = {
   yearsExperience: YearsExperience | "";
   companySize: CompanySize | "";
   situation: SituationStatus | "";
-  dailyWorkSummary: string;
-  keySkills: string[];
   selectedGoals: GoalType[];
   aiComfort: number | null;
   linkedinUrl: string;
@@ -103,8 +99,6 @@ export const REQUIRED_NOTE_FIELDS: RequiredNoteField[] = [
   "careerPathId",
   "yearsExperience",
   "situation",
-  "dailyWorkSummary",
-  "keySkills",
   "selectedGoals",
   "aiComfort",
 ];
@@ -115,8 +109,6 @@ export const REQUIRED_NOTE_LABELS: Record<RequiredNoteField, string> = {
   careerPathId: "Learning track",
   yearsExperience: "Experience",
   situation: "Situation",
-  dailyWorkSummary: "Work summary",
-  keySkills: "Tools and skills",
   selectedGoals: "Goals",
   aiComfort: "AI comfort",
 };
@@ -141,14 +133,6 @@ export const REQUIRED_NOTE_PROMPTS: Record<RequiredNoteField, { title: string; d
   situation: {
     title: "Understand the current situation",
     detail: "Confirm whether they are employed, a founder, a student, or in transition.",
-  },
-  dailyWorkSummary: {
-    title: "Capture the real workflow",
-    detail: "Pull out the day-to-day work so the first project feels grounded in reality.",
-  },
-  keySkills: {
-    title: "List the working stack",
-    detail: "Ask which tools, systems, and skills they already use so the plan compounds rather than resets.",
   },
   selectedGoals: {
     title: "Pin the learning goals",
@@ -181,12 +165,10 @@ You must collect these fields before you wrap:
 5. yearsExperience using one of: 0-1, 1-3, 3-5, 5-10, 10+
 6. companySize if known using one of: startup, small, medium, large
 7. situation using one of: employed, unemployed, student, founder, freelancer, career_switcher
-8. dailyWorkSummary describing the user's day-to-day work
-9. keySkills as a short list of tools, systems, or skills
-10. selectedGoals using one or more of: build_business, upskill_current_job, find_new_role, showcase_for_job, learn_foundations, ship_ai_projects
-11. aiComfort as an integer from 1 to 5
-12. linkedinUrl if the user wants to share it
-13. resumeFilename if the user mentions a resume they want to upload later
+8. selectedGoals using one or more of: build_business, upskill_current_job, find_new_role, showcase_for_job, learn_foundations, ship_ai_projects
+9. aiComfort as an integer from 1 to 5
+10. linkedinUrl if the user wants to share it
+11. resumeFilename if the user mentions a resume they want to upload later
 
 Mapping guidance:
 - Product roles usually map to product-management.
@@ -237,12 +219,6 @@ export const REALTIME_ONBOARDING_TOOL = {
         type: "string",
         enum: ["employed", "unemployed", "student", "founder", "freelancer", "career_switcher"],
       },
-      dailyWorkSummary: { type: "string" },
-      keySkills: {
-        type: "array",
-        items: { type: "string" },
-        maxItems: 12,
-      },
       selectedGoals: {
         type: "array",
         items: {
@@ -281,23 +257,11 @@ export function createEmptyNotes(): OnboardingNotes {
     yearsExperience: "",
     companySize: "",
     situation: "",
-    dailyWorkSummary: "",
-    keySkills: [],
     selectedGoals: [],
     aiComfort: null,
     linkedinUrl: "",
     resumeFilename: "",
   };
-}
-
-function uniqueStrings(input: string[]) {
-  return Array.from(
-    new Set(
-      input
-        .map((value) => value.trim())
-        .filter(Boolean),
-    ),
-  );
 }
 
 export function mergeOnboardingNotes(current: OnboardingNotes, update: RealtimeOnboardingUpdate): OnboardingNotes {
@@ -310,8 +274,6 @@ export function mergeOnboardingNotes(current: OnboardingNotes, update: RealtimeO
     yearsExperience: update.yearsExperience || current.yearsExperience,
     companySize: update.companySize || current.companySize,
     situation: update.situation || current.situation,
-    dailyWorkSummary: update.dailyWorkSummary?.trim() || current.dailyWorkSummary,
-    keySkills: Array.isArray(update.keySkills) && update.keySkills.length ? uniqueStrings(update.keySkills) : current.keySkills,
     selectedGoals: Array.isArray(update.selectedGoals) && update.selectedGoals.length ? Array.from(new Set(update.selectedGoals)) : current.selectedGoals,
     aiComfort: typeof update.aiComfort === "number" ? Math.max(1, Math.min(5, Math.round(update.aiComfort))) : current.aiComfort,
     linkedinUrl: update.linkedinUrl?.trim() || current.linkedinUrl,
@@ -322,7 +284,6 @@ export function mergeOnboardingNotes(current: OnboardingNotes, update: RealtimeO
 export function getMissingRequiredFields(notes: OnboardingNotes): RequiredNoteField[] {
   return REQUIRED_NOTE_FIELDS.filter((field) => {
     if (field === "selectedGoals") return notes.selectedGoals.length === 0;
-    if (field === "keySkills") return notes.keySkills.length === 0;
     if (field === "aiComfort") return typeof notes.aiComfort !== "number";
     return !String(notes[field] ?? "").trim();
   });
@@ -362,7 +323,13 @@ export function buildAssessmentAnswers(notes: OnboardingNotes) {
     },
     {
       questionId: "daily_work_complexity",
-      value: Math.min(5, Math.max(1, Math.ceil(notes.dailyWorkSummary.trim().length / 70))),
+      value: Math.min(
+        5,
+        Math.max(
+          1,
+          (notes.yearsExperience ? experienceScoreByBand[notes.yearsExperience] : 2) + ((notes.aiComfort ?? 3) >= 4 ? 1 : 0),
+        ),
+      ),
     },
     {
       questionId: "linkedin_context",
@@ -408,7 +375,7 @@ export function buildLearningPlan(input: {
 
   const supportingPaths = recommendedPaths.slice(1, 3);
   const focusModules = primaryPath.modules.slice(0, 3);
-  const toolStack = Array.from(new Set([...primaryPath.tools.slice(0, 4), ...input.notes.keySkills.slice(0, 4)])).slice(0, 6);
+  const toolStack = primaryPath.tools.slice(0, 6);
   const proofArtifacts = [
     "A public workflow walkthrough with screenshots",
     "One portfolio-ready case study tied to a real job outcome",

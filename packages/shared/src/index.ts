@@ -1,5 +1,7 @@
 export * from "./types";
 export * from "./matrix";
+export * from "./gamification";
+export * from "./module-playbooks";
 export * from "./lifecycle-email";
 export * from "./email-tracking";
 export * from "./posthog";

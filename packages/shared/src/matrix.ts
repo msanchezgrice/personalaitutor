@@ -58,6 +58,14 @@ export const CAREER_PATHS: CareerPath[] = [
     roles: ["Operations Manager", "BizOps Lead", "Process Analyst"],
   },
   {
+    id: "human-resources",
+    name: "Human Resources",
+    coreSkillDomain: "People Ops Automation",
+    modules: ["Screening Workflow Automation", "Interview Signal Summaries", "Policy Assistant Copilot"],
+    tools: ["Greenhouse", "Lever", "Notion AI", "OpenAI API"],
+    roles: ["HR Manager", "People Ops Lead", "Talent Partner"],
+  },
+  {
     id: "software-engineering",
     name: "Software Engineering",
     coreSkillDomain: "Full-Stack Execution",

@@ -95,8 +95,6 @@ type OnboardingDraft = {
   yearsExperience: (typeof yearsExperienceOptions)[number]["value"];
   companySize: string;
   situation: SituationStatus;
-  dailyWorkSummary: string;
-  keySkills: string;
   linkedinUrl: string;
   selectedGoals: GoalType[];
   aiComfort: number;
@@ -128,13 +126,16 @@ const analysisSteps = [
 
 const careerCategoryOptions = [
   { value: "product-manager", label: "Product Manager", path: "product-management" },
+  { value: "sales", label: "Sales", path: "sales-revops" },
   { value: "customer-service", label: "Customer Service", path: "customer-support" },
+  { value: "operations", label: "Operations", path: "operations" },
+  { value: "hr", label: "Human Resources", path: "human-resources" },
   { value: "designer", label: "Designer", path: "branding-design" },
   { value: "marketing", label: "Marketing", path: "marketing-seo" },
   { value: "accounting", label: "Accounting", path: "operations" },
   { value: "legal", label: "Legal", path: "operations" },
   { value: "software-engineering", label: "Software Engineering", path: "software-engineering" },
-  { value: "other", label: "Other", path: "product-management" },
+  { value: "other", label: "Other", path: "operations" },
 ] as const;
 
 const careerQuestionContent: Record<
@@ -154,6 +155,14 @@ const careerQuestionContent: Record<
     skillsPlaceholder:
       "e.g., Jira, Confluence, Product Analytics, User Research, Roadmapping, Agile/Scrum, SQL, Stakeholder Management...",
   },
+  sales: {
+    subtitle: "Specialized analysis for pipeline workflows, outreach systems, and revenue execution",
+    jobTitlePlaceholder: "e.g., Sales Manager, Account Executive, RevOps Lead",
+    workSummaryPlaceholder:
+      "Describe your sales workflow, lead flow, qualification process, forecasting cadence, and repetitive tasks your team runs each week...",
+    skillsPlaceholder:
+      "e.g., HubSpot, Salesforce, Outreach, Apollo, Pipeline Reporting, Discovery Calls...",
+  },
   "customer-service": {
     subtitle: "Specialized analysis for support workflows, customer response quality, and ticket operations",
     jobTitlePlaceholder: "e.g., Customer Support Manager, Support Lead, Customer Success Manager",
@@ -161,6 +170,22 @@ const careerQuestionContent: Record<
       "Describe your support workflow, ticket volume, escalation handling, and the recurring customer issues your team solves...",
     skillsPlaceholder:
       "e.g., Zendesk, Intercom, Knowledge Base Ops, Escalation Management, Customer Communication...",
+  },
+  operations: {
+    subtitle: "Specialized analysis for process optimization, handoffs, and workflow automation",
+    jobTitlePlaceholder: "e.g., Operations Manager, BizOps Lead, Program Manager",
+    workSummaryPlaceholder:
+      "Describe recurring operational workflows, handoffs, reporting loops, and where manual work slows your team down...",
+    skillsPlaceholder:
+      "e.g., Airtable, Notion, Zapier, Make, Process Documentation, KPI Tracking...",
+  },
+  hr: {
+    subtitle: "Specialized analysis for hiring operations, people workflows, and HR process execution",
+    jobTitlePlaceholder: "e.g., HR Manager, People Ops Partner, Talent Acquisition Lead",
+    workSummaryPlaceholder:
+      "Describe hiring and people workflows like screening, interview loops, policy rollouts, and employee support requests...",
+    skillsPlaceholder:
+      "e.g., Greenhouse, Lever, ATS Operations, Interview Coordination, Policy Workflows...",
   },
   designer: {
     subtitle: "Specialized analysis for design workflow, creative tooling, and review cycles",
@@ -237,6 +262,30 @@ const assessmentTemplates: Record<(typeof careerCategoryOptions)[number]["value"
       "Ship a public project card showing before/after cycle-time impact",
     ],
   },
+  sales: {
+    title: "Sales Assessment",
+    description:
+      "Analysis of AI automation impact on prospecting, pipeline workflow, and revenue execution.",
+    riskAreas: [
+      { label: "Outbound message drafting and sequence personalization", level: "High" },
+      { label: "CRM updates, pipeline hygiene, and status tracking", level: "High" },
+      { label: "Discovery strategy and complex deal navigation", level: "Low" },
+    ],
+    recommendedActions: [
+      "Use AI to speed top-of-funnel tasks while you own deal strategy and relationship quality",
+      "Tighten qualification frameworks and objection handling playbooks",
+      "Publish proof tied to booked meetings, conversion lift, or cycle-time wins",
+    ],
+    aiToolAnalysis:
+      "AI can compress prospecting and CRM work, but trust-building and high-stakes deal judgment remain human-led.",
+    careerStrategies:
+      "Position yourself as the seller who combines AI operating speed with stronger close quality and predictable pipeline execution.",
+    actionPlan: [
+      "Automate one repetitive pipeline workflow and track time saved",
+      "Build an AI-assisted outbound sequence with clear quality checks",
+      "Publish one proof card tied to pipeline or meeting lift",
+    ],
+  },
   "customer-service": {
     title: "Customer Service Assessment",
     description:
@@ -259,6 +308,54 @@ const assessmentTemplates: Record<(typeof careerCategoryOptions)[number]["value"
       "Automate one repetitive support flow and measure time saved",
       "Create a human-review checklist for AI-generated customer responses",
       "Publish one proof card showing improved CSAT or faster resolution time",
+    ],
+  },
+  operations: {
+    title: "Operations Assessment",
+    description:
+      "Analysis of AI automation impact on operational handoffs, process quality, and reporting execution.",
+    riskAreas: [
+      { label: "Manual status updates, recurring reports, and data consolidation", level: "High" },
+      { label: "Cross-team handoff orchestration and workflow routing", level: "Medium" },
+      { label: "Exception handling, prioritization, and process redesign", level: "Low" },
+    ],
+    recommendedActions: [
+      "Automate repetitive reporting while keeping human ownership of critical exceptions",
+      "Design cleaner operating playbooks for cross-functional handoffs",
+      "Publish proof tied to cycle-time reduction or error-rate improvement",
+    ],
+    aiToolAnalysis:
+      "AI accelerates status generation and workflow automation, while operational judgment and exception triage remain high-leverage human work.",
+    careerStrategies:
+      "Become the operator who can turn messy handoffs into reliable AI-assisted systems with measurable throughput gains.",
+    actionPlan: [
+      "Automate one weekly operations report end to end",
+      "Create a checklist for exception and escalation handling",
+      "Publish one proof card with time or quality improvement metrics",
+    ],
+  },
+  hr: {
+    title: "Human Resources Assessment",
+    description:
+      "Analysis of AI automation impact on hiring operations, people workflows, and HR service delivery.",
+    riskAreas: [
+      { label: "Job description drafting and first-pass candidate screening", level: "High" },
+      { label: "Interview coordination and policy FAQ responses", level: "Medium" },
+      { label: "Candidate experience, manager coaching, and employee trust", level: "Low" },
+    ],
+    recommendedActions: [
+      "Use AI to reduce admin load while preserving human accountability in people decisions",
+      "Strengthen interview rubric quality and decision transparency",
+      "Publish proof tied to hiring speed, quality, or people-ops efficiency gains",
+    ],
+    aiToolAnalysis:
+      "AI can streamline hiring admin and policy support, but relationship trust and decision quality remain human-critical.",
+    careerStrategies:
+      "Position yourself as a people operator who uses AI for throughput while improving hiring quality and employee experience.",
+    actionPlan: [
+      "Automate one interview or screening coordination workflow",
+      "Create a human-review rubric for AI-assisted candidate summaries",
+      "Publish one proof card showing measurable hiring or people-ops improvement",
     ],
   },
   designer: {
@@ -544,8 +641,6 @@ export function OnboardingIntake() {
   const [yearsExperience, setYearsExperience] = useState<(typeof yearsExperienceOptions)[number]["value"]>("1-3");
   const [companySize, setCompanySize] = useState("");
   const [situation, setSituation] = useState<SituationStatus>("employed");
-  const [dailyWorkSummary, setDailyWorkSummary] = useState("");
-  const [keySkills, setKeySkills] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
   const [selectedGoals, setSelectedGoals] = useState<GoalType[]>(["upskill_current_job"]);
   const [aiComfort, setAiComfort] = useState<number>(3);
@@ -679,8 +774,6 @@ export function OnboardingIntake() {
       yearsExperience,
       companySize: companySize || null,
       situation,
-      dailyWorkSummary,
-      keySkills,
       linkedinUrl: linkedinUrl.trim() ? linkedinUrl.trim() : null,
       selectedGoals,
       aiComfort,
@@ -693,10 +786,8 @@ export function OnboardingIntake() {
       careerCategory,
       companySize,
       customCareerCategory,
-      dailyWorkSummary,
       fullName,
       jobTitle,
-      keySkills,
       linkedinUrl,
       resumeFile,
       selectedCareer.path,
@@ -792,8 +883,6 @@ export function OnboardingIntake() {
       if (draft.yearsExperience) setYearsExperience(draft.yearsExperience);
       if (typeof draft.companySize === "string") setCompanySize(draft.companySize);
       if (draft.situation) setSituation(draft.situation);
-      if (typeof draft.dailyWorkSummary === "string") setDailyWorkSummary(draft.dailyWorkSummary);
-      if (typeof draft.keySkills === "string") setKeySkills(draft.keySkills);
       if (typeof draft.linkedinUrl === "string") setLinkedinUrl(draft.linkedinUrl);
       if (Array.isArray(draft.selectedGoals) && draft.selectedGoals.length) setSelectedGoals(draft.selectedGoals);
       if (typeof draft.aiComfort === "number") setAiComfort(draft.aiComfort);
@@ -825,8 +914,6 @@ export function OnboardingIntake() {
       yearsExperience,
       companySize,
       situation,
-      dailyWorkSummary,
-      keySkills,
       linkedinUrl,
       selectedGoals,
       aiComfort,
@@ -846,8 +933,6 @@ export function OnboardingIntake() {
     yearsExperience,
     companySize,
     situation,
-    dailyWorkSummary,
-    keySkills,
     linkedinUrl,
     selectedGoals,
     aiComfort,
