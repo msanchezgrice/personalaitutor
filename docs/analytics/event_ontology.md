@@ -93,6 +93,15 @@ Owner: growth / product engineering
 - `project_public_link_copy_clicked`
 - `project_public_link_copied`
 - `project_public_link_copy_failed`
+- `project_artifact_generation_requested`
+- `project_artifact_generation_failed`
+- `project_progress_note_saved`
+- `project_progress_note_failed`
+- `project_proof_link_saved`
+- `project_proof_link_failed`
+- `project_proof_file_uploaded`
+- `project_proof_file_upload_failed`
+- `project_artifact_opened`
 - `xp_total_changed`
 - `xp_level_unlocked`
 - `achievement_unlocked`
@@ -112,6 +121,12 @@ Owner: growth / product engineering
   - `achievement_title`
   - `badge_key`
   - `badge_title`
+- Shared project proof properties:
+  - `project_id`
+  - `module_title`
+  - `artifact_kind`
+  - `artifact_count_after`
+  - `has_public_profile`
 
 ### Lifecycle Email
 

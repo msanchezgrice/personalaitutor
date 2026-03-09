@@ -849,6 +849,61 @@ export function requestArtifactGeneration(input: {
   return { job, result, project: findProjectById(input.projectId) };
 }
 
+export function recordProjectArtifact(input: {
+  projectId: string;
+  userId: string;
+  kind: string;
+  url: string;
+  logMessage: string;
+  metadata?: Record<string, unknown>;
+  awardTokens?: number;
+}) {
+  const project = findProjectById(input.projectId);
+  const user = ensureUserExists(input.userId);
+  if (!project || !user || project.userId !== user.id) return null;
+
+  project.artifacts.push({
+    kind: input.kind,
+    url: input.url,
+    createdAt: nowIso(),
+  });
+  project.state = project.artifacts.length >= verificationPolicy.builtMinArtifacts ? "built" : "building";
+  project.updatedAt = nowIso();
+
+  addBuildLogEntry({
+    projectId: project.id,
+    userId: user.id,
+    level: "success",
+    message: input.logMessage,
+    metadata: input.metadata,
+  });
+
+  const career = getCareerPath(user.careerPathId);
+  if (career) {
+    const targetSkill = career.modules[0] ?? "Applied AI";
+    updateSkill(user, targetSkill, "built", verificationPolicy.projectMinScore + 0.1, 1);
+
+    state.verificationEvents.push({
+      id: id("ver"),
+      userId: user.id,
+      projectId: project.id,
+      skill: targetSkill,
+      eventType: "artifact_generated",
+      details: {
+        kind: input.kind,
+        artifactUrl: input.url,
+        source: input.metadata?.source ?? "manual_submission",
+      },
+      createdAt: nowIso(),
+    });
+  }
+
+  user.tokensUsed += Math.max(0, Number(input.awardTokens ?? 180));
+  touchProfile(user);
+
+  return findProjectById(project.id);
+}
+
 export function updateProfile(userId: string, patch: Partial<UserProfile>) {
   const user = findUserById(userId);
   if (!user) return null;

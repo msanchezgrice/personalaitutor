@@ -132,6 +132,7 @@ export default async function DashboardProjectsPage() {
           projectTitle={activeProject?.title || `${guide.careerPathName} Starter Build`}
           projectState={activeProject?.state || "planned"}
           artifactCount={activeProject?.artifacts.length ?? 0}
+          recentArtifacts={activeProject?.artifacts ?? []}
           publicProfileUrl={state.publicProfileUrl}
         />
 

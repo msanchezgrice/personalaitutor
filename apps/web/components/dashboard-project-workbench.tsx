@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { captureAnalyticsEvent } from "@/lib/analytics";
 import type { RecommendedModuleGuide } from "@aitutor/shared";
 
 type DashboardProjectWorkbenchProps = {
@@ -9,10 +10,28 @@ type DashboardProjectWorkbenchProps = {
   projectTitle: string;
   projectState: string;
   artifactCount: number;
+  recentArtifacts: Array<{ kind: string; url: string; createdAt: string }>;
   publicProfileUrl: string | null;
 };
 
-type QueueState = "website" | "pdf" | "pptx" | "note" | null;
+type QueueState = "website" | "pdf" | "pptx" | "progress_note" | "proof_link" | "proof_upload" | null;
+
+function artifactLabel(kind: string) {
+  switch (kind) {
+    case "website":
+      return "Website proof";
+    case "pdf":
+      return "PDF proof";
+    case "pptx":
+      return "Deck proof";
+    case "proof_link":
+      return "Proof link";
+    case "proof_upload":
+      return "Uploaded proof";
+    default:
+      return "Proof artifact";
+  }
+}
 
 export function DashboardProjectWorkbench({
   guide,
@@ -20,12 +39,23 @@ export function DashboardProjectWorkbench({
   projectTitle,
   projectState,
   artifactCount,
+  recentArtifacts,
   publicProfileUrl,
 }: DashboardProjectWorkbenchProps) {
   const [busy, setBusy] = useState<QueueState>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [proofNote, setProofNote] = useState("");
+  const [proofLink, setProofLink] = useState("");
+  const [proofLinkLabel, setProofLinkLabel] = useState("");
+  const [proofLinkNote, setProofLinkNote] = useState("");
+  const [proofUploadNote, setProofUploadNote] = useState("");
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofFileInputKey, setProofFileInputKey] = useState(0);
+  const [artifactCountValue, setArtifactCountValue] = useState(artifactCount);
+  const [recentArtifactItems, setRecentArtifactItems] = useState(
+    [...recentArtifacts].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3),
+  );
 
   async function queueArtifact(kind: "website" | "pdf" | "pptx") {
     if (!projectId) return;
@@ -50,12 +80,24 @@ export function DashboardProjectWorkbench({
       if (!response.ok || !payload.ok) {
         throw new Error(payload.error?.message ?? "Unable to queue artifact generation");
       }
+      captureAnalyticsEvent("project_artifact_generation_requested", {
+        project_id: projectId,
+        module_title: guide.moduleTitle,
+        career_path_id: guide.careerPathId,
+        artifact_kind: kind,
+      });
       setStatus(
         kind === "website"
           ? "Website generation queued. The published proof card will update after the worker finishes."
           : `${kind.toUpperCase()} generation queued. Check back here after the worker finishes.`,
       );
     } catch (workbenchError) {
+      captureAnalyticsEvent("project_artifact_generation_failed", {
+        project_id: projectId,
+        module_title: guide.moduleTitle,
+        career_path_id: guide.careerPathId,
+        artifact_kind: kind,
+      });
       setError(workbenchError instanceof Error ? workbenchError.message : "Unable to queue artifact generation.");
     } finally {
       setBusy(null);
@@ -64,7 +106,7 @@ export function DashboardProjectWorkbench({
 
   async function saveProofNote() {
     if (!projectId || !proofNote.trim()) return;
-    setBusy("note");
+    setBusy("progress_note");
     setError(null);
     setStatus(null);
     try {
@@ -83,9 +125,128 @@ export function DashboardProjectWorkbench({
         throw new Error(payload.error?.message ?? "Unable to save progress note");
       }
       setProofNote("");
+      captureAnalyticsEvent("project_progress_note_saved", {
+        project_id: projectId,
+        module_title: guide.moduleTitle,
+        career_path_id: guide.careerPathId,
+      });
       setStatus("Progress note saved. Chat Tutor now has the latest proof context for this pack.");
     } catch (workbenchError) {
+      captureAnalyticsEvent("project_progress_note_failed", {
+        project_id: projectId,
+        module_title: guide.moduleTitle,
+        career_path_id: guide.careerPathId,
+      });
       setError(workbenchError instanceof Error ? workbenchError.message : "Unable to save progress note.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function submitProofLink() {
+    if (!projectId || !proofLink.trim()) return;
+    setBusy("proof_link");
+    setError(null);
+    setStatus(null);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/proof-link`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          url: proofLink.trim(),
+          label: proofLinkLabel.trim() || null,
+          note: proofLinkNote.trim() || null,
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: { message?: string };
+        artifact?: { kind?: string; url?: string };
+      };
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error?.message ?? "Unable to save proof link");
+      }
+      setArtifactCountValue((current) => current + 1);
+      setRecentArtifactItems((current) => [
+        {
+          kind: payload.artifact?.kind ?? "proof_link",
+          url: payload.artifact?.url ?? proofLink.trim(),
+          createdAt: new Date().toISOString(),
+        },
+        ...current,
+      ].slice(0, 3));
+      setProofLink("");
+      setProofLinkLabel("");
+      setProofLinkNote("");
+      captureAnalyticsEvent("project_proof_link_saved", {
+        project_id: projectId,
+        module_title: guide.moduleTitle,
+        career_path_id: guide.careerPathId,
+        artifact_count_after: artifactCountValue + 1,
+        has_public_profile: Boolean(publicProfileUrl),
+      });
+      setStatus("Proof link saved. This module now has a visible artifact attached to it.");
+    } catch (workbenchError) {
+      captureAnalyticsEvent("project_proof_link_failed", {
+        project_id: projectId,
+        module_title: guide.moduleTitle,
+        career_path_id: guide.careerPathId,
+      });
+      setError(workbenchError instanceof Error ? workbenchError.message : "Unable to save proof link.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function uploadProofFile() {
+    if (!projectId || !proofFile) return;
+    setBusy("proof_upload");
+    setError(null);
+    setStatus(null);
+    try {
+      const form = new FormData();
+      form.append("file", proofFile);
+      form.append("note", proofUploadNote.trim());
+
+      const response = await fetch(`/api/projects/${projectId}/proof-upload`, {
+        method: "POST",
+        body: form,
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: { message?: string };
+        artifact?: { kind?: string; url?: string };
+      };
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error?.message ?? "Unable to upload proof file");
+      }
+      setArtifactCountValue((current) => current + 1);
+      setRecentArtifactItems((current) => [
+        {
+          kind: payload.artifact?.kind ?? "proof_upload",
+          url: payload.artifact?.url ?? "#",
+          createdAt: new Date().toISOString(),
+        },
+        ...current,
+      ].slice(0, 3));
+      setProofFile(null);
+      setProofFileInputKey((current) => current + 1);
+      setProofUploadNote("");
+      captureAnalyticsEvent("project_proof_file_uploaded", {
+        project_id: projectId,
+        module_title: guide.moduleTitle,
+        career_path_id: guide.careerPathId,
+        artifact_count_after: artifactCountValue + 1,
+        has_public_profile: Boolean(publicProfileUrl),
+      });
+      setStatus("Proof file uploaded. The workbench now has a saved artifact for this pack.");
+    } catch (workbenchError) {
+      captureAnalyticsEvent("project_proof_file_upload_failed", {
+        project_id: projectId,
+        module_title: guide.moduleTitle,
+        career_path_id: guide.careerPathId,
+      });
+      setError(workbenchError instanceof Error ? workbenchError.message : "Unable to upload proof file.");
     } finally {
       setBusy(null);
     }
@@ -175,7 +336,7 @@ export function DashboardProjectWorkbench({
               <h3 className="mt-2 text-lg font-medium text-white">Turn this pack into visible proof</h3>
             </div>
             <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-gray-300">
-              {artifactCount} artifacts
+              {artifactCountValue} artifacts
             </span>
           </div>
 
@@ -250,8 +411,113 @@ export function DashboardProjectWorkbench({
             disabled={!projectId || !proofNote.trim() || busy !== null}
           >
             <i className="fa-solid fa-pen-to-square mr-2"></i>
-            {busy === "note" ? "Saving..." : "Save Progress Note"}
+            {busy === "progress_note" ? "Saving..." : "Save Progress Note"}
           </button>
+        </div>
+
+        <div className="glass p-6 rounded-2xl border border-white/10 space-y-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300/80">Submit proof</div>
+          <p className="text-sm text-gray-400">
+            Paste a live proof link or upload a screenshot, PDF, or text note from the workflow you just built.
+          </p>
+
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
+            <div className="text-sm font-medium text-white">Proof link</div>
+            <input
+              value={proofLink}
+              onChange={(event) => setProofLink(event.target.value)}
+              placeholder="https://..."
+              className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-500/40"
+            />
+            <input
+              value={proofLinkLabel}
+              onChange={(event) => setProofLinkLabel(event.target.value)}
+              placeholder="Optional label, for example: Live workflow demo"
+              className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-500/40"
+            />
+            <textarea
+              value={proofLinkNote}
+              onChange={(event) => setProofLinkNote(event.target.value)}
+              rows={3}
+              placeholder="Optional note explaining what this link proves."
+              className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-500/40"
+            />
+            <button
+              type="button"
+              className="btn btn-secondary w-full justify-center text-sm"
+              onClick={submitProofLink}
+              disabled={!projectId || !proofLink.trim() || busy !== null}
+            >
+              <i className="fa-solid fa-link mr-2"></i>
+              {busy === "proof_link" ? "Saving Link..." : "Save Proof Link"}
+            </button>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
+            <div className="text-sm font-medium text-white">Proof file</div>
+            <input
+              key={proofFileInputKey}
+              type="file"
+              accept=".png,.jpg,.jpeg,.webp,.pdf,.txt"
+              onChange={(event) => setProofFile(event.target.files?.[0] ?? null)}
+              className="block w-full text-sm text-gray-300 file:mr-4 file:rounded-xl file:border-0 file:bg-emerald-500/20 file:px-4 file:py-2 file:text-sm file:font-medium file:text-emerald-200 hover:file:bg-emerald-500/30"
+            />
+            <textarea
+              value={proofUploadNote}
+              onChange={(event) => setProofUploadNote(event.target.value)}
+              rows={3}
+              placeholder="Optional note describing what this screenshot or file proves."
+              className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-500/40"
+            />
+            <button
+              type="button"
+              className="btn btn-secondary w-full justify-center text-sm"
+              onClick={uploadProofFile}
+              disabled={!projectId || !proofFile || busy !== null}
+            >
+              <i className="fa-solid fa-upload mr-2"></i>
+              {busy === "proof_upload" ? "Uploading Proof..." : "Upload Proof File"}
+            </button>
+            {proofFile ? (
+              <div className="text-xs text-gray-400">
+                Selected: {proofFile.name}
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="glass p-6 rounded-2xl border border-white/10">
+          <div className="flex items-center justify-between gap-4">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300/80">Recent proof</div>
+            <span className="text-[11px] text-gray-400">{artifactCountValue} total</span>
+          </div>
+          {recentArtifactItems.length ? (
+            <div className="mt-4 space-y-3">
+              {recentArtifactItems.map((artifact) => (
+                <a
+                  key={`${artifact.kind}:${artifact.url}:${artifact.createdAt}`}
+                  href={artifact.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 hover:bg-white/5 transition"
+                  data-analytics-event="project_artifact_opened"
+                  data-analytics-location="projects_workbench"
+                  data-analytics-artifact-kind={artifact.kind}
+                  data-analytics-destination={artifact.url}
+                >
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-white">{artifactLabel(artifact.kind)}</div>
+                    <div className="mt-1 truncate text-xs text-gray-400">{artifact.url}</div>
+                  </div>
+                  <i className="fa-solid fa-arrow-up-right-from-square text-gray-500"></i>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-gray-400">
+              No proof is attached yet. Save a link, upload a file, or generate a public artifact from this pack.
+            </p>
+          )}
         </div>
 
         <div className="glass p-6 rounded-2xl border border-white/10">

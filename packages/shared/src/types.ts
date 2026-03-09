@@ -92,7 +92,14 @@ export type UserProfile = {
   updatedAt: string;
 };
 
-export type ArtifactKind = "website" | "pptx" | "pdf" | "resume_docx" | "resume_pdf";
+export type ArtifactKind =
+  | "website"
+  | "pptx"
+  | "pdf"
+  | "resume_docx"
+  | "resume_pdf"
+  | "proof_link"
+  | "proof_upload";
 
 export type BuildLogEntry = {
   id: string;

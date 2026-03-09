@@ -33,6 +33,7 @@ import {
   publishProfile as memPublishProfile,
   publishSocialDraft as memPublishSocialDraft,
   refreshRelevantNews as memRefreshRelevantNews,
+  recordProjectArtifact as memRecordProjectArtifact,
   requestArtifactGeneration as memRequestArtifactGeneration,
   startAssessment as memStartAssessment,
   submitAssessment as memSubmitAssessment,
@@ -2111,6 +2112,58 @@ export async function runtimeRequestArtifactGeneration(input: {
     result: { ok: true, job: { id: jobId, lastErrorCode: null } },
     project: await runtimeFindProjectById(project.id),
   };
+}
+
+export async function runtimeRecordProjectArtifact(input: {
+  projectId: string;
+  userId: string;
+  kind: string;
+  url: string;
+  logMessage: string;
+  metadata?: Record<string, unknown>;
+  awardTokens?: number;
+}) {
+  if (mode() === "memory") {
+    return memRecordProjectArtifact(input);
+  }
+
+  const project = await runtimeFindProjectById(input.projectId);
+  const profile = await runtimeFindUserById(input.userId);
+  if (!project || !profile || project.userId !== profile.id) return null;
+
+  const supabase = getSupabaseAdmin();
+
+  await supabase.from("project_artifacts").insert({
+    id: randomUUID(),
+    project_id: project.id,
+    kind: input.kind,
+    url: input.url,
+  });
+
+  await appendBuildLog({
+    projectId: project.id,
+    userId: profile.id,
+    level: "success",
+    message: input.logMessage,
+    metadata: input.metadata,
+  });
+
+  await supabase
+    .from("projects")
+    .update({ state: "built", updated_at: new Date().toISOString() })
+    .eq("id", project.id);
+
+  await upsertSkill({
+    userId: profile.id,
+    skill: CAREER_PATHS.find((path) => path.id === profile.careerPathId)?.modules[0] ?? "Applied AI",
+    status: "built",
+    score: Math.max(getVerificationPolicy().projectMinScore + 0.1, 0.5),
+    evidenceDelta: 1,
+  });
+
+  await touchProfileTokenUsage(profile.id, Math.max(0, Number(input.awardTokens ?? 180)));
+
+  return runtimeFindProjectById(project.id);
 }
 
 export async function runtimeListProjectEvents(projectId: string) {

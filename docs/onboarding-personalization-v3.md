@@ -269,10 +269,10 @@ Implemented:
 - dashboard summary gamification object
 - dynamic sidebar level card
 - home dashboard progress, achievements, and badge section
-- projects tab module workbench with why-this-module copy, build steps, proof checklist, and artifact generation actions
+- projects tab module workbench with why-this-module copy, build steps, proof checklist, artifact generation actions, proof-link submission, proof-file upload, and recent-proof visibility
 - public profile gating until explicit publish
 - onboarding and assessment analytics without PM hardcoding
-- unlock analytics for XP, levels, achievements, badges, and track changes
+- unlock analytics for XP, levels, achievements, badges, track changes, and proof actions
 - lifecycle email structure already aligned to the next-move format
 
 Still open for content expansion:
