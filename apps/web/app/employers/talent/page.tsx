@@ -103,6 +103,7 @@ export default async function TalentPage({
     }),
     Promise.resolve(getEmployerFacets()),
   ]);
+  const skillFilters = (facets.skills?.length ? facets.skills : facets.modules).slice(0, 8);
 
   return (
     <main data-gemini-shell="1" className="gemini-light-shell talent-pool-shell relative min-h-screen flex flex-col">
@@ -207,56 +208,85 @@ export default async function TalentPage({
         </section>
 
         {rows.length ? (
-          <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {rows.map((candidate) => (
-              <a
-                key={candidate.handle}
-                href={`/u/${candidate.handle}/`}
-                className="glass group rounded-2xl border border-white/10 p-6 transition hover:bg-white/5 hover:border-emerald-500/40"
-              >
-                <div className="mb-5 flex items-start justify-between gap-4">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <img src={candidate.avatarUrl || "/assets/avatar.png"} alt={candidate.name} className="h-16 w-16 rounded-full border border-white/20 object-cover" />
-                    <div className="min-w-0">
-                      <div className="truncate text-xl font-medium text-white transition group-hover:text-emerald-400">{candidate.name}</div>
-                      <div className="truncate text-sm text-emerald-400">{candidate.role}</div>
-                      <div className="mt-1 text-xs text-gray-500">{candidate.careerType}</div>
-                    </div>
-                  </div>
-                  <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusTone(candidate.status)}`}>
-                    {statusLabel(candidate.status)}
-                  </span>
-                </div>
-
-                <div className="mb-4 rounded-2xl border border-white/10 bg-black/30 p-4">
-                  <div className="mb-2 flex items-center justify-between gap-3 text-xs text-gray-500">
-                    <span>Evidence score</span>
-                    <span>{candidate.evidenceScore}%</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                    <div className={`h-full rounded-full bg-gradient-to-r ${scoreTone(candidate.evidenceScore)}`} style={{ width: `${Math.max(8, candidate.evidenceScore)}%` }}></div>
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Top skills</div>
-                  <div className="flex flex-wrap gap-2">
-                    {candidate.topSkills.slice(0, 3).map((entry) => (
-                      <span key={entry} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-gray-300">{entry}</span>
+          <section className="grid gap-8 xl:grid-cols-[280px,1fr]">
+            <aside className="space-y-6">
+              <section className="glass rounded-2xl p-6">
+                <div className="mb-6">
+                  <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Filter by Skill</div>
+                  <div className="space-y-2">
+                    {skillFilters.map((entry, index) => (
+                      <label key={entry} className="flex items-center gap-3 text-sm text-gray-300 hover:text-white cursor-pointer group">
+                        <input
+                          id={`skill-filter-${index}`}
+                          type="checkbox"
+                          defaultChecked={skill === entry}
+                          className="rounded border-gray-600 bg-black/40 text-emerald-500 focus:ring-emerald-500"
+                        />
+                        <span className="group-hover:underline">{entry}</span>
+                      </label>
                     ))}
                   </div>
                 </div>
-
-                <div className="mb-5">
-                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Tools</div>
-                  <div className="text-sm text-gray-400">{candidate.topTools.slice(0, 3).join(" • ")}</div>
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-gray-400">
+                  Use the form above for exact role and tool filters. These quick filters mirror the most common skill signals employers scan first.
                 </div>
+              </section>
+            </aside>
 
-                <div className="inline-flex items-center gap-2 text-sm font-medium text-emerald-400">
-                  View public proof profile <span aria-hidden>→</span>
-                </div>
-              </a>
-            ))}
+            <div>
+              <h2 className="mb-4 text-xl font-[Outfit] text-white">Talent cards</h2>
+              <section className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {rows.map((candidate) => (
+                  <Link
+                    key={candidate.handle}
+                    href={`/employers/talent/${candidate.handle}`}
+                    className="glass group rounded-2xl border border-white/10 p-6 transition hover:bg-white/5 hover:border-emerald-500/40"
+                  >
+                    <div className="mb-5 flex items-start justify-between gap-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <img src={candidate.avatarUrl || "/assets/avatar.png"} alt={candidate.name} className="h-16 w-16 rounded-full border border-white/20 object-cover" />
+                        <div className="min-w-0">
+                          <div className="truncate text-xl font-medium text-white transition group-hover:text-emerald-400">{candidate.name}</div>
+                          <div className="truncate text-sm text-emerald-400">{candidate.role}</div>
+                          <div className="mt-1 text-xs text-gray-500">{candidate.careerType}</div>
+                        </div>
+                      </div>
+                      <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusTone(candidate.status)}`}>
+                        {statusLabel(candidate.status)}
+                      </span>
+                    </div>
+
+                    <div className="mb-4 rounded-2xl border border-white/10 bg-black/30 p-4">
+                      <div className="mb-2 flex items-center justify-between gap-3 text-xs text-gray-500">
+                        <span>Evidence score</span>
+                        <span>{candidate.evidenceScore}%</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                        <div className={`h-full rounded-full bg-gradient-to-r ${scoreTone(candidate.evidenceScore)}`} style={{ width: `${Math.max(8, candidate.evidenceScore)}%` }}></div>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Top skills</div>
+                      <div className="flex flex-wrap gap-2">
+                        {candidate.topSkills.slice(0, 3).map((entry) => (
+                          <span key={entry} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-gray-300">{entry}</span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mb-5">
+                      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Tools</div>
+                      <div className="text-sm text-gray-400">{candidate.topTools.slice(0, 3).join(" • ")}</div>
+                    </div>
+
+                    <div className="inline-flex items-center gap-2 text-sm font-medium text-emerald-400">
+                      View talent detail <span aria-hidden>→</span>
+                    </div>
+                  </Link>
+                ))}
+              </section>
+            </div>
           </section>
         ) : (
           <section className="glass rounded-2xl p-10 text-center text-gray-400">

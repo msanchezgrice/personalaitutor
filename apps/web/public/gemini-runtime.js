@@ -3156,6 +3156,11 @@
       };
     }
 
+    function timeValue(input) {
+      var ts = Date.parse(String(input || ""));
+      return Number.isFinite(ts) ? ts : 0;
+    }
+
     function toUserAction(event) {
       var message = String(event && event.message || "").trim();
       if (!message) return null;
@@ -3168,6 +3173,21 @@
 
       if (lower.indexOf("onboarding session") !== -1 && lower.indexOf("started") !== -1) {
         return { title: "Signed up and started onboarding", detail: null, kind: "start" };
+      }
+      if (lower.indexOf("assessment") !== -1 && lower.indexOf("submitted") !== -1) {
+        return { title: "Completed your assessment", detail: null, kind: "success" };
+      }
+      if (lower.indexOf("profile") !== -1 && lower.indexOf("published") !== -1) {
+        return { title: "Published your public profile", detail: null, kind: "success" };
+      }
+      if (lower.indexOf("project created") !== -1) {
+        return { title: "Started a project pack", detail: null, kind: "start" };
+      }
+      if (lower.indexOf("project completed") !== -1) {
+        return { title: "Completed a project pack", detail: null, kind: "success" };
+      }
+      if (lower.indexOf("proof attached") !== -1) {
+        return { title: "Attached proof to a project", detail: null, kind: "success" };
       }
       if (lower.indexOf("project.generate_website queued") !== -1 || lower.indexOf("project.generate_artifact queued") !== -1) {
         return { title: "Started a project pack", detail: null, kind: "start" };
@@ -3187,28 +3207,145 @@
       return null;
     }
 
-    var actions = updates
-      .map(function (event) {
-        var action = toUserAction(event);
-        if (!action) return null;
+    function toProjectLogAction(project, entry) {
+      var message = String(entry && entry.message || "").trim();
+      if (!message) return null;
+      var lower = message.toLowerCase();
+      if (lower.indexOf("project ") === 0 && lower.indexOf(" created.") !== -1) {
+        return { title: "Started " + project.title, detail: null, kind: "start" };
+      }
+      if (lower.indexOf("module started:") === 0) {
         return {
-          id: event.id,
+          title: "Started " + project.title,
+          detail: message.replace(/^Module started:\s*/i, ""),
+          kind: "start",
+        };
+      }
+      if (lower.indexOf("step completed:") === 0) {
+        return {
+          title: "Completed a step in " + project.title,
+          detail: message.replace(/^Step completed:\s*/i, ""),
+          kind: "success",
+        };
+      }
+      if (lower.indexOf("module checklist completed") !== -1) {
+        return {
+          title: "Completed " + project.title,
+          detail: "Checklist complete. Add proof or publish it when ready.",
+          kind: "success",
+        };
+      }
+      if (
+        lower.indexOf("proof link added") !== -1 ||
+        lower.indexOf("proof upload saved") !== -1 ||
+        lower.indexOf("artifact generated") !== -1 ||
+        lower.indexOf("website artifact generated") !== -1
+      ) {
+        return {
+          title: "Attached proof to " + project.title,
+          detail: null,
+          kind: "success",
+        };
+      }
+      if (lower.indexOf("reply generated") !== -1) {
+        return {
+          title: "Used Chat Tutor on " + project.title,
+          detail: null,
+          kind: "success",
+        };
+      }
+      return null;
+    }
+
+    var actions = [];
+    updates.forEach(function (event) {
+      var action = toUserAction(event);
+      if (!action) return;
+      actions.push({
+        id: event.id,
+        title: action.title,
+        detail: action.detail,
+        kind: action.kind,
+        createdAt: event.createdAt,
+      });
+    });
+
+    (Array.isArray(summary.projects) ? summary.projects : []).forEach(function (project) {
+      var buildLog = Array.isArray(project.buildLog) ? project.buildLog : [];
+      buildLog.forEach(function (entry) {
+        var action = toProjectLogAction(project, entry);
+        if (!action) return;
+        actions.push({
+          id: entry.id,
           title: action.title,
           detail: action.detail,
           kind: action.kind,
-          createdAt: event.createdAt,
-        };
-      })
-      .filter(function (entry) {
-        return Boolean(entry);
+          createdAt: entry.createdAt,
+        });
       });
 
-    var dedupedActions = [];
-    actions.forEach(function (entry) {
-      var last = dedupedActions[dedupedActions.length - 1];
-      if (last && last.title === entry.title && String(last.detail || "") === String(entry.detail || "")) {
-        return;
+      var projectCreatedAt = timeValue(project.createdAt);
+      var projectUpdatedAt = timeValue(project.updatedAt);
+      var finishedQuickly =
+        (project.state === "built" || project.state === "showcased") &&
+        projectCreatedAt > 0 &&
+        projectUpdatedAt > 0 &&
+        Math.abs(projectUpdatedAt - projectCreatedAt) < 300000;
+
+      if (!finishedQuickly && projectCreatedAt > 0) {
+        actions.push({
+          id: "project-created-" + project.id,
+          title: "Started " + project.title,
+          detail: null,
+          kind: "start",
+          createdAt: project.createdAt,
+        });
       }
+      if ((project.state === "built" || project.state === "showcased") && projectUpdatedAt > 0) {
+        actions.push({
+          id: "project-completed-" + project.id,
+          title: "Completed " + project.title,
+          detail: null,
+          kind: "success",
+          createdAt: project.updatedAt,
+        });
+      }
+    });
+
+    var gamification = summary.gamification && typeof summary.gamification === "object" ? summary.gamification : {};
+    (Array.isArray(gamification.achievements) ? gamification.achievements : [])
+      .filter(function (achievement) { return achievement && achievement.unlocked && achievement.unlockedAt; })
+      .forEach(function (achievement) {
+        actions.push({
+          id: "achievement-" + achievement.key,
+          title: "Achievement unlocked: " + achievement.title,
+          detail: achievement.description || null,
+          kind: "success",
+          createdAt: achievement.unlockedAt,
+        });
+      });
+    (Array.isArray(gamification.badges) ? gamification.badges : [])
+      .filter(function (badge) { return badge && badge.unlocked && badge.unlockedAt; })
+      .forEach(function (badge) {
+        actions.push({
+          id: "badge-" + badge.key,
+          title: "Badge unlocked: " + badge.title,
+          detail: badge.description || null,
+          kind: "success",
+          createdAt: badge.unlockedAt,
+        });
+      });
+
+    actions.sort(function (left, right) {
+      return timeValue(right.createdAt) - timeValue(left.createdAt);
+    });
+
+    var dedupedActions = [];
+    var seenActionKeys = new Set();
+    actions.forEach(function (entry) {
+      var actionKey = [entry.title, String(entry.detail || ""), relativeTimeLabel(entry.createdAt)].join("|");
+      if (seenActionKeys.has(actionKey)) return;
+      seenActionKeys.add(actionKey);
       dedupedActions.push(entry);
     });
 
@@ -3925,7 +4062,7 @@
     var candidateRole = String(candidate.role || "AI Builder");
     var candidateAvatar = sanitizeImageUrl(candidate.avatarUrl) || "/assets/avatar.png";
     var card = document.createElement("a");
-    card.setAttribute("href", "/u/" + candidateHandle + "/");
+    card.setAttribute("href", "/employers/talent/" + candidateHandle);
     card.className = "glass p-6 rounded-2xl hover:bg-white/5 transition border border-white/10 hover:border-emerald-500/40 group relative cursor-pointer";
 
     var top = document.createElement("div");
@@ -4573,8 +4710,9 @@
     }
 
     if (currentPath === "/employers/talent") {
-      await hydrateEmployerTalentPage();
+      captureEvent("employer_talent_viewed", { source: "page_load" });
       captureEvent("app_route_hydrate_completed", { path: currentPath });
+      return;
     }
   }
 

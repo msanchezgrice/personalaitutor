@@ -17,7 +17,17 @@ function sanitizeDashboardCopy(value: string | null | undefined) {
   return normalized;
 }
 
-export default async function DashboardPage() {
+function readQueryParam(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
   const state = await getDashboardServerState();
   const user = state.user;
   const summary = state.summary;
@@ -45,7 +55,7 @@ export default async function DashboardPage() {
   );
   const continuationText = summarize(
     activeProject?.buildLog?.at(-1)?.message,
-    "Start with your first recommended pack and ask Chat Tutor for help when you get blocked.",
+    "Open your module workbench, finish the checklist in order, and use Chat Tutor when you get blocked.",
     200,
   );
   const skills = user?.skills?.length && hasBuiltOrVerifiedSkills
@@ -62,6 +72,8 @@ export default async function DashboardPage() {
         accent: index === 0,
         suffix: index === 0 ? " (Start here)" : " (Next)",
       })) ?? []);
+  const hasAnyStartedStep = Boolean(summary?.projects.some((project) => project.moduleSteps.some((step) => step.status !== "not_started")));
+  const shouldShowFtue = readQueryParam(params.welcome) === "1" || !hasAnyStartedStep;
   return (
     <>
       <Suspense fallback={null}>
@@ -103,17 +115,71 @@ export default async function DashboardPage() {
               </div>
             </div>
             <a
-              href="/dashboard/chat/"
+              href="/dashboard/projects/#pack-workbench"
               data-dashboard-home-hero-cta="1"
               className="btn btn-primary whitespace-nowrap relative z-10"
               data-analytics-event="dashboard_home_cta_clicked"
-              data-analytics-cta="continue_chat"
+              data-analytics-cta="open_module_workbench"
               data-analytics-location="hero"
-              data-analytics-destination="/dashboard/chat/"
+              data-analytics-destination="/dashboard/projects/#pack-workbench"
             >
               Start Recommended Work
             </a>
           </div>
+
+          {shouldShowFtue ? (
+            <section className="glass-panel p-6 rounded-2xl mb-8 border border-white/10">
+              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300/80">How this works</div>
+                  <h2 className="mt-2 text-xl font-[Outfit] text-white">Your first week has one job: turn answers into visible proof.</h2>
+                  <p className="mt-2 max-w-3xl text-sm text-gray-400">
+                    Start in Projects, use Chat Tutor when you need help, check Activity to see what has been recorded, and publish your profile only when you are ready.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-4 md:grid-cols-4">
+                {[
+                  {
+                    href: "/dashboard/projects/#pack-workbench",
+                    title: "1. Projects",
+                    copy: "Complete the checklist and attach proof to the matching step.",
+                    icon: "fa-folder-open",
+                  },
+                  {
+                    href: "/dashboard/chat/",
+                    title: "2. Chat Tutor",
+                    copy: "Ask for help when a step is unclear or you need a tighter draft.",
+                    icon: "fa-comments",
+                  },
+                  {
+                    href: "/dashboard/updates/",
+                    title: "3. Activity",
+                    copy: "See badge unlocks, project progress, and shipped milestones in one feed.",
+                    icon: "fa-clock-rotate-left",
+                  },
+                  {
+                    href: "/dashboard/profile/",
+                    title: "4. Profile",
+                    copy: "Launch your public profile only after you have proof you want employers to see.",
+                    icon: "fa-user",
+                  },
+                ].map((entry) => (
+                  <a
+                    key={entry.title}
+                    href={entry.href}
+                    className="rounded-2xl border border-white/10 bg-black/20 p-4 transition hover:bg-white/5"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-300">
+                      <i className={`fa-solid ${entry.icon}`}></i>
+                    </div>
+                    <div className="mt-4 text-sm font-medium text-white">{entry.title}</div>
+                    <p className="mt-2 text-xs leading-5 text-gray-400">{entry.copy}</p>
+                  </a>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <div data-dashboard-home-grid="1" className="grid lg:grid-cols-3 gap-8">
             <div data-dashboard-home-primary="1" className="lg:col-span-2 space-y-8">

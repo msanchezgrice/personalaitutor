@@ -171,11 +171,11 @@ export default async function DashboardProjectsPage() {
                 </div>
               </div>
               <h3 className="text-lg font-medium text-white mb-2 relative z-10">
-                {completedProject?.title || activeProject?.title || "Starter AI Pack"}
+                {completedProject?.title || guide.moduleTitle}
               </h3>
               <p className="text-sm text-gray-400 mb-6 flex-grow relative z-10">
                 {summarize(
-                  completedProject?.description || activeProject?.description,
+                  completedProject?.description || guide.whyThisModule,
                   "Start this recommended pack first. Completed projects will appear here after your first shipped outcome.",
                 )}
               </p>

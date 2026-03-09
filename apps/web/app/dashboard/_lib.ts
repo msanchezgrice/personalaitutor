@@ -65,7 +65,6 @@ export async function getDashboardServerState(): Promise<DashboardServerState> {
   const projects = summary?.projects ?? [];
   const activeProject =
     projects.find((project) => project.state === "building" || project.state === "planned" || project.state === "idea") ??
-    projects[0] ??
     null;
   const completedProject =
     projects.find((project) => project.state === "built" || project.state === "showcased") ??

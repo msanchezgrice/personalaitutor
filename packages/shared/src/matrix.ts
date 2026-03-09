@@ -101,10 +101,12 @@ function uniqueValues(values: string[]) {
 }
 
 export function getEmployerFilterFacets() {
+  const modules = uniqueValues(CAREER_PATHS.flatMap((path) => path.modules));
   return {
     careerPaths: CAREER_PATHS.map((path) => ({ id: path.id, name: path.name })),
     roles: uniqueValues(CAREER_PATHS.flatMap((path) => path.roles)),
-    modules: uniqueValues(CAREER_PATHS.flatMap((path) => path.modules)),
+    modules,
+    skills: modules,
     tools: uniqueValues(CAREER_PATHS.flatMap((path) => path.tools)),
     skillDomains: uniqueValues(CAREER_PATHS.map((path) => path.coreSkillDomain)),
   };

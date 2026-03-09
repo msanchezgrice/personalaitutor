@@ -164,9 +164,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
               </span>
             </Link>
             <div className="flex gap-4">
-              <Link href="/employers/talent" className="btn btn-secondary py-2 px-4 shadow-none">
-                Browse Talent Pool
-              </Link>
               <Link href="/dashboard/profile" className="btn btn-primary py-2 px-4 shadow-[0_4px_14px_0_var(--primary-glow)]">
                 Dashboard
               </Link>

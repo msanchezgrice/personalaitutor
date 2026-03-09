@@ -876,14 +876,16 @@ async function createJob(input: {
     max_attempts: 3,
   });
 
-  await insertJobEvent({
-    jobId,
-    userId: input.userId,
-    projectId: input.projectId,
-    type: "job.queued",
-    message: `${input.type} queued`,
-    payload: input.payload,
-  });
+  if ((input.status ?? "queued") === "queued") {
+    await insertJobEvent({
+      jobId,
+      userId: input.userId,
+      projectId: input.projectId,
+      type: "job.queued",
+      message: `${input.type} queued`,
+      payload: input.payload,
+    });
+  }
 
   return jobId;
 }
@@ -1783,7 +1785,26 @@ export async function runtimePublishProfile(userId: string) {
     .update({ published: true, updated_at: new Date().toISOString() })
     .eq("id", profile.id);
 
-  return runtimeFindUserById(profile.id);
+  const publishedProfile = await runtimeFindUserById(profile.id);
+  if (publishedProfile?.published) {
+    const jobId = await createJob({
+      userId: profile.id,
+      projectId: null,
+      type: "profile.publish",
+      payload: { handle: publishedProfile.handle },
+      status: "completed",
+    });
+    await insertJobEvent({
+      jobId,
+      userId: profile.id,
+      projectId: null,
+      type: "profile.published",
+      message: `Profile ${publishedProfile.handle} published`,
+      payload: { handle: publishedProfile.handle },
+    });
+  }
+
+  return publishedProfile;
 }
 
 export async function runtimeCreateProject(input: {
@@ -1836,6 +1857,22 @@ export async function runtimeCreateProject(input: {
     userId: profile.id,
     level: "info",
     message: `Project ${data.title} created.`,
+  });
+
+  const jobId = await createJob({
+    userId: profile.id,
+    projectId: data.id,
+    type: "project.create",
+    payload: { title: data.title },
+    status: "completed",
+  });
+  await insertJobEvent({
+    jobId,
+    userId: profile.id,
+    projectId: data.id,
+    type: "project.created",
+    message: `Project ${data.title} created`,
+    payload: { title: data.title },
   });
 
   return projectFromRow(data);
@@ -2028,6 +2065,21 @@ export async function runtimeUpdateProjectModuleStep(input: {
       message: `Module started: ${targetStep.title}`,
       metadata: { stepKey: input.stepKey, status: input.status },
     });
+    const jobId = await createJob({
+      userId: profile.id,
+      projectId: updatedProject.id,
+      type: "project.module_started",
+      payload: { stepKey: input.stepKey, stepTitle: targetStep.title },
+      status: "completed",
+    });
+    await insertJobEvent({
+      jobId,
+      userId: profile.id,
+      projectId: updatedProject.id,
+      type: "project.module_started",
+      message: `Module started: ${targetStep.title}`,
+      payload: { stepKey: input.stepKey, stepTitle: targetStep.title },
+    });
   }
 
   if (!wasCompleted && input.status === "completed") {
@@ -2037,6 +2089,21 @@ export async function runtimeUpdateProjectModuleStep(input: {
       level: "success",
       message: `Step completed: ${targetStep.title}`,
       metadata: { stepKey: input.stepKey, status: input.status },
+    });
+    const jobId = await createJob({
+      userId: profile.id,
+      projectId: updatedProject.id,
+      type: "project.step_completed",
+      payload: { stepKey: input.stepKey, stepTitle: targetStep.title },
+      status: "completed",
+    });
+    await insertJobEvent({
+      jobId,
+      userId: profile.id,
+      projectId: updatedProject.id,
+      type: "project.step_completed",
+      message: `Step completed: ${targetStep.title}`,
+      payload: { stepKey: input.stepKey, stepTitle: targetStep.title },
     });
   } else if (wasCompleted && input.status !== "completed") {
     await appendBuildLog({
@@ -2071,6 +2138,21 @@ export async function runtimeUpdateProjectModuleStep(input: {
       level: "success",
       message: `Module checklist completed for ${updatedProject.title}.`,
       metadata: { completedStepCount: nextSteps.length },
+    });
+    const jobId = await createJob({
+      userId: profile.id,
+      projectId: updatedProject.id,
+      type: "project.completed",
+      payload: { completedStepCount: nextSteps.length },
+      status: "completed",
+    });
+    await insertJobEvent({
+      jobId,
+      userId: profile.id,
+      projectId: updatedProject.id,
+      type: "project.completed",
+      message: `Project ${updatedProject.title} completed`,
+      payload: { completedStepCount: nextSteps.length },
     });
   }
 
@@ -2397,6 +2479,7 @@ export async function runtimeRecordProjectArtifact(input: {
   const project = await runtimeFindProjectById(input.projectId);
   const profile = await runtimeFindUserById(input.userId);
   if (!project || !profile || project.userId !== profile.id) return null;
+  const wasCompleted = project.state === "built" || project.state === "showcased";
 
   const supabase = getSupabaseAdmin();
 
@@ -2442,6 +2525,53 @@ export async function runtimeRecordProjectArtifact(input: {
   });
 
   await touchProfileTokenUsage(profile.id, Math.max(0, Number(input.awardTokens ?? 180)));
+
+  const artifactJobId = await createJob({
+    userId: profile.id,
+    projectId: project.id,
+    type: "project.proof_attached",
+    payload: {
+      kind: input.kind,
+      url: input.url,
+      source: input.metadata?.source ?? "manual_submission",
+      stepKey: typeof input.metadata?.stepKey === "string" ? input.metadata.stepKey : null,
+    },
+    status: "completed",
+  });
+  await insertJobEvent({
+    jobId: artifactJobId,
+    userId: profile.id,
+    projectId: project.id,
+    type: "project.proof_attached",
+    message: `Proof attached for ${project.title}`,
+    payload: {
+      kind: input.kind,
+      url: input.url,
+      source: input.metadata?.source ?? "manual_submission",
+      stepKey: typeof input.metadata?.stepKey === "string" ? input.metadata.stepKey : null,
+    },
+  });
+  if (!wasCompleted) {
+    const completedJobId = await createJob({
+      userId: profile.id,
+      projectId: project.id,
+      type: "project.completed",
+      payload: {
+        source: input.metadata?.source ?? "manual_submission",
+      },
+      status: "completed",
+    });
+    await insertJobEvent({
+      jobId: completedJobId,
+      userId: profile.id,
+      projectId: project.id,
+      type: "project.completed",
+      message: `Project ${project.title} completed`,
+      payload: {
+        source: input.metadata?.source ?? "manual_submission",
+      },
+    });
+  }
 
   return runtimeFindProjectById(project.id);
 }
@@ -5014,13 +5144,16 @@ export async function runtimeListTalent(filters?: RuntimeTalentFilters) {
       };
     });
 
+  const fallbackSynthetic = !includeSynthetic && !real.length ? listTalent(queryFilters) : [];
   const mergedByHandle = new Map<string, TalentCard>();
   if (includeSynthetic) {
     for (const candidate of synthetic) mergedByHandle.set(candidate.handle, candidate);
+  } else if (!real.length) {
+    for (const candidate of fallbackSynthetic) mergedByHandle.set(candidate.handle, candidate);
   }
   for (const candidate of real) mergedByHandle.set(candidate.handle, candidate);
 
-  const all = includeSynthetic ? [...mergedByHandle.values()] : real;
+  const all = includeSynthetic || !real.length ? [...mergedByHandle.values()] : real;
   const query = queryFilters.q?.toLowerCase().trim();
 
   return all.filter((candidate) => {
@@ -5065,6 +5198,11 @@ export async function runtimeGetTalentByHandle(handle: string) {
       topTools: profile.tools.length ? profile.tools.slice(0, 3) : [BRAND_NAME],
       evidenceScore: Math.max(0, Math.min(100, evidenceScore)),
     } as TalentCard;
+  }
+
+  const syntheticCandidate = getTalentByHandle(handle);
+  if (syntheticCandidate) {
+    return syntheticCandidate;
   }
 
   if (includeSyntheticTalent()) {
