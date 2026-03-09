@@ -16,6 +16,7 @@ import {
   stringValue,
   stringifyJson,
 } from "./view-helpers";
+import { SignupAuditRefreshControls } from "./refresh-controls";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -30,6 +31,12 @@ function clampNumber(input: string, fallback: number, min: number, max: number) 
   const parsed = Number.parseInt(input, 10);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(min, Math.min(max, parsed));
+}
+
+function windowLabel(days: number) {
+  if (days === 1) return "Last 24 hours";
+  if (days === 2) return "Last 48 hours";
+  return `Last ${days} days`;
 }
 
 function displaySource(record: SignupAuditRecord) {
@@ -61,9 +68,10 @@ export default async function DashboardAdminSignupsPage({
     notFound();
   }
 
-  const days = clampNumber(readParam(params.days), 7, 1, 90);
+  const days = clampNumber(readParam(params.days), 1, 1, 90);
   const limit = clampNumber(readParam(params.limit), 50, 1, 200);
   const q = readParam(params.q).trim();
+  const refreshedAt = new Date().toISOString();
   const catalog = getCatalogData();
   const careerPathNames = new Map(catalog.careerPaths.map((entry) => [entry.id, entry.name]));
   const records = await runtimeListSignupAuditRecords({
@@ -113,14 +121,17 @@ export default async function DashboardAdminSignupsPage({
         levelProgressText: "Access granted",
       }}
       headerActions={(
-        <a
-          href="https://us.posthog.com/project/330799/dashboard"
-          target="_blank"
-          rel="noreferrer"
-          className="btn btn-secondary text-xs px-4 py-2"
-        >
-          <i className="fa-solid fa-arrow-up-right-from-square mr-2"></i>Open PostHog
-        </a>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <SignupAuditRefreshControls initialRefreshedAt={refreshedAt} />
+          <a
+            href="https://us.posthog.com/project/330799/dashboard"
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-secondary text-xs px-4 py-2"
+          >
+            <i className="fa-solid fa-arrow-up-right-from-square mr-2"></i>Open PostHog
+          </a>
+        </div>
       )}
       hideHeaderActionsOnMobile
       decor={<div className="absolute top-0 right-1/4 w-[420px] h-[260px] bg-emerald-500/10 blur-[120px] pointer-events-none"></div>}
@@ -130,7 +141,7 @@ export default async function DashboardAdminSignupsPage({
           <div className="glass rounded-2xl border border-emerald-500/20 p-5">
             <div className="text-xs uppercase tracking-[0.18em] text-emerald-400">Real signups</div>
             <div className="mt-3 text-4xl font-[Outfit] text-white">{records.length}</div>
-            <div className="mt-2 text-sm text-gray-400">Last {days} day{days === 1 ? "" : "s"}</div>
+            <div className="mt-2 text-sm text-gray-400">{windowLabel(days)}</div>
           </div>
           <div className="glass rounded-2xl border border-sky-500/20 p-5">
             <div className="text-xs uppercase tracking-[0.18em] text-sky-400">Onboarding started</div>
@@ -168,6 +179,7 @@ export default async function DashboardAdminSignupsPage({
                 defaultValue={String(days)}
                 className="w-full rounded-full border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               >
+                <option value="1">Last 24 hours</option>
                 <option value="2">Last 48 hours</option>
                 <option value="7">Last 7 days</option>
                 <option value="30">Last 30 days</option>
@@ -192,6 +204,14 @@ export default async function DashboardAdminSignupsPage({
               <Link href="/dashboard/admin/signups" className="btn btn-secondary px-6 py-3">Clear</Link>
             </div>
           </form>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="text-gray-400">
+              Live server query. Last refreshed {formatDateTime(refreshedAt)}.
+            </div>
+            <div className="text-gray-500">
+              Default view: last 24 hours.
+            </div>
+          </div>
           <div className="mt-5 flex flex-wrap gap-2 text-xs">
             {sourceBreakdown.length ? sourceBreakdown.map(([source, count]) => (
               <span key={source} className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-gray-300">
