@@ -26,6 +26,7 @@ import {
   getVerificationPolicy,
   jsonError,
   jsonOk,
+  listOAuthConnections as memListOAuthConnections,
   listProjectEvents as memListProjectEvents,
   listProjectsByUser as memListProjectsByUser,
   listTalent,
@@ -37,7 +38,9 @@ import {
   requestArtifactGeneration as memRequestArtifactGeneration,
   startAssessment as memStartAssessment,
   submitAssessment as memSubmitAssessment,
+  syncProjectModuleSteps as memSyncProjectModuleSteps,
   updateOnboardingCareerImport as memUpdateOnboardingCareerImport,
+  updateProjectModuleStep as memUpdateProjectModuleStep,
   updateOnboardingSituation as memUpdateOnboardingSituation,
   updateProfile as memUpdateProfile,
   upsertUserProfile as memUpsertUserProfile,
@@ -46,8 +49,10 @@ import {
   type DailyUpdate,
   type DashboardSummary,
   type NewsInsight,
+  type OAuthConnection,
   type OnboardingSession,
   type Project,
+  type ProjectModuleStepStatus,
   type PublishMode,
   type SocialDraft,
   type SocialPlatform,
@@ -737,6 +742,27 @@ async function getProjectArtifacts(projectId: string) {
   return data ?? [];
 }
 
+async function getProjectModuleSteps(projectId: string) {
+  const supabase = getSupabaseAdmin();
+  const { data } = await supabase
+    .from("project_module_steps")
+    .select("id,project_id,learner_profile_id,step_key,title,order_index,status,completed_at,updated_at")
+    .eq("project_id", projectId)
+    .order("order_index", { ascending: true });
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    projectId: row.project_id,
+    userId: row.learner_profile_id,
+    stepKey: row.step_key,
+    title: row.title,
+    orderIndex: Number(row.order_index ?? 0),
+    status: row.status as ProjectModuleStepStatus,
+    completedAt: row.completed_at ?? null,
+    updatedAt: row.updated_at,
+  }));
+}
+
 async function getBuildLog(projectId: string) {
   const supabase = getSupabaseAdmin();
   const { data } = await supabase
@@ -767,6 +793,7 @@ async function projectFromRow(row: {
   updated_at: string;
 }): Promise<Project> {
   const artifacts = await getProjectArtifacts(row.id);
+  const moduleSteps = await getProjectModuleSteps(row.id);
   const buildLog = await getBuildLog(row.id);
   return {
     id: row.id,
@@ -776,6 +803,7 @@ async function projectFromRow(row: {
     description: row.description,
     state: row.state,
     artifacts: artifacts.map((entry) => ({ kind: entry.kind, url: entry.url, createdAt: entry.created_at })),
+    moduleSteps,
     buildLog,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -866,6 +894,24 @@ async function appendBuildLog(input: {
     message: input.message,
     level: input.level,
     metadata: input.metadata ?? {},
+  });
+}
+
+async function insertVerificationEvent(input: {
+  userId: string;
+  projectId: string | null;
+  skill: string;
+  eventType: "module_started" | "module_completed" | "artifact_generated" | "verification_passed" | "verification_revoked";
+  details?: Record<string, unknown>;
+}) {
+  const supabase = getSupabaseAdmin();
+  await supabase.from("verification_events").insert({
+    id: randomUUID(),
+    learner_profile_id: input.userId,
+    project_id: input.projectId,
+    event_type: input.eventType,
+    skill_name: input.skill,
+    details: input.details ?? {},
   });
 }
 
@@ -998,13 +1044,6 @@ export async function runtimeCreateOnboardingSession(input: {
     projectId: null,
     type: "onboarding.started",
     message: `Onboarding session ${sessionId} started`,
-  });
-
-  await maybeSendWelcomeEmail({
-    profileId: profile.id,
-    email: input.email ?? null,
-    name: profile.name,
-    handle: profile.handle,
   });
 
   return {
@@ -1822,6 +1861,213 @@ export async function runtimeListProjectsByUser(userId: string) {
   return getProjectsByUserFromDb(userId);
 }
 
+export async function runtimeListOAuthConnections(userId: string): Promise<OAuthConnection[]> {
+  if (mode() === "memory") return memListOAuthConnections(userId);
+  const supabase = getSupabaseAdmin();
+  const profile = await runtimeFindUserById(userId);
+  if (!profile) return [];
+
+  const { data } = await supabase
+    .from("oauth_connections")
+    .select("learner_profile_id,platform,connected,account_label,connected_at,last_error_code")
+    .eq("learner_profile_id", profile.id);
+
+  const rows = data ?? [];
+  const byPlatform = new Map<string, OAuthConnection>();
+  for (const row of rows) {
+    byPlatform.set(row.platform, {
+      userId: row.learner_profile_id,
+      platform: row.platform as OAuthConnection["platform"],
+      connected: Boolean(row.connected),
+      accountLabel: row.account_label ?? null,
+      connectedAt: row.connected_at ?? null,
+      lastErrorCode: row.last_error_code ?? null,
+    });
+  }
+
+  for (const platform of ["linkedin_profile", "linkedin", "x"] as const) {
+    if (!byPlatform.has(platform)) {
+      byPlatform.set(platform, {
+        userId: profile.id,
+        platform,
+        connected: false,
+        accountLabel: null,
+        connectedAt: null,
+        lastErrorCode: null,
+      });
+    }
+  }
+
+  return Array.from(byPlatform.values());
+}
+
+function projectModuleStepKey(title: string, index: number) {
+  const base = safeHandle(title).slice(0, 48) || `step-${index + 1}`;
+  return `step-${index + 1}-${base}`;
+}
+
+export async function runtimeSyncProjectModuleSteps(input: {
+  projectId: string;
+  userId: string;
+  steps: string[];
+}) {
+  if (mode() === "memory") return memSyncProjectModuleSteps(input);
+
+  const project = await runtimeFindProjectById(input.projectId);
+  const profile = await runtimeFindUserById(input.userId);
+  if (!project || !profile || project.userId !== profile.id) return null;
+
+  const supabase = getSupabaseAdmin();
+  const existing = await getProjectModuleSteps(project.id);
+  const existingByKey = new Map(existing.map((step) => [step.stepKey, step]));
+  const normalizedSteps = input.steps.map((title, index) => {
+    const stepKey = projectModuleStepKey(title, index);
+    const current = existingByKey.get(stepKey);
+    return {
+      id: current?.id ?? randomUUID(),
+      project_id: project.id,
+      learner_profile_id: profile.id,
+      step_key: stepKey,
+      title,
+      order_index: index + 1,
+      status: current?.status ?? "not_started",
+      completed_at: current?.completedAt ?? null,
+      updated_at: new Date().toISOString(),
+    };
+  });
+
+  if (normalizedSteps.length) {
+    await supabase.from("project_module_steps").upsert(normalizedSteps, { onConflict: "project_id,step_key" });
+  }
+
+  const nextKeys = new Set(normalizedSteps.map((step) => step.step_key));
+  const staleIds = existing.filter((step) => !nextKeys.has(step.stepKey)).map((step) => step.id);
+  if (staleIds.length) {
+    await supabase.from("project_module_steps").delete().in("id", staleIds);
+  }
+
+  return runtimeFindProjectById(project.id);
+}
+
+export async function runtimeUpdateProjectModuleStep(input: {
+  projectId: string;
+  userId: string;
+  stepKey: string;
+  status: ProjectModuleStepStatus;
+}) {
+  if (mode() === "memory") return memUpdateProjectModuleStep(input);
+
+  const project = await runtimeFindProjectById(input.projectId);
+  const profile = await runtimeFindUserById(input.userId);
+  if (!project || !profile || project.userId !== profile.id) return null;
+
+  const targetStep = project.moduleSteps.find((step) => step.stepKey === input.stepKey);
+  if (!targetStep) return null;
+
+  const beforeAnyStarted = project.moduleSteps.some((step) => step.status !== "not_started");
+  const beforeAllCompleted = project.moduleSteps.length > 0 && project.moduleSteps.every((step) => step.status === "completed");
+  const wasCompleted = targetStep.status === "completed";
+  const now = new Date().toISOString();
+  const supabase = getSupabaseAdmin();
+
+  await supabase
+    .from("project_module_steps")
+    .update({
+      status: input.status,
+      completed_at: input.status === "completed" ? now : null,
+      updated_at: now,
+    })
+    .eq("project_id", project.id)
+    .eq("step_key", input.stepKey);
+
+  const updatedProject = await runtimeFindProjectById(project.id);
+  if (!updatedProject) return null;
+  const nextSteps = updatedProject.moduleSteps;
+  const anyStarted = nextSteps.some((step) => step.status !== "not_started");
+  const allCompleted = nextSteps.length > 0 && nextSteps.every((step) => step.status === "completed");
+  const targetSkill = CAREER_PATHS.find((path) => path.id === profile.careerPathId)?.modules[0] ?? "Applied AI";
+
+  if (anyStarted && (updatedProject.state === "planned" || updatedProject.state === "idea")) {
+    await supabase
+      .from("projects")
+      .update({ state: "building", updated_at: now })
+      .eq("id", updatedProject.id);
+  }
+
+  if (!beforeAnyStarted && anyStarted) {
+    await upsertSkill({
+      userId: profile.id,
+      skill: targetSkill,
+      status: "in_progress",
+      score: Math.max(getVerificationPolicy().moduleMinScore * 0.5, 0.2),
+      evidenceDelta: 0,
+    });
+    await insertVerificationEvent({
+      userId: profile.id,
+      projectId: updatedProject.id,
+      skill: targetSkill,
+      eventType: "module_started",
+      details: {
+        stepKey: input.stepKey,
+        stepTitle: targetStep.title,
+      },
+    });
+    await appendBuildLog({
+      projectId: updatedProject.id,
+      userId: profile.id,
+      level: "info",
+      message: `Module started: ${targetStep.title}`,
+      metadata: { stepKey: input.stepKey, status: input.status },
+    });
+  }
+
+  if (!wasCompleted && input.status === "completed") {
+    await appendBuildLog({
+      projectId: updatedProject.id,
+      userId: profile.id,
+      level: "success",
+      message: `Step completed: ${targetStep.title}`,
+      metadata: { stepKey: input.stepKey, status: input.status },
+    });
+  } else if (wasCompleted && input.status !== "completed") {
+    await appendBuildLog({
+      projectId: updatedProject.id,
+      userId: profile.id,
+      level: "warn",
+      message: `Step reopened: ${targetStep.title}`,
+      metadata: { stepKey: input.stepKey, status: input.status },
+    });
+  }
+
+  if (!beforeAllCompleted && allCompleted) {
+    await upsertSkill({
+      userId: profile.id,
+      skill: targetSkill,
+      status: "built",
+      score: Math.max(getVerificationPolicy().moduleMinScore + 0.05, 0.45),
+      evidenceDelta: 1,
+    });
+    await insertVerificationEvent({
+      userId: profile.id,
+      projectId: updatedProject.id,
+      skill: targetSkill,
+      eventType: "module_completed",
+      details: {
+        completedStepCount: nextSteps.length,
+      },
+    });
+    await appendBuildLog({
+      projectId: updatedProject.id,
+      userId: profile.id,
+      level: "success",
+      message: `Module checklist completed for ${updatedProject.title}.`,
+      metadata: { completedStepCount: nextSteps.length },
+    });
+  }
+
+  return runtimeFindProjectById(project.id);
+}
+
 async function generateTutorReply(input: {
   profile: UserProfile;
   project: Project;
@@ -2161,6 +2407,18 @@ export async function runtimeRecordProjectArtifact(input: {
     evidenceDelta: 1,
   });
 
+  await insertVerificationEvent({
+    userId: profile.id,
+    projectId: project.id,
+    skill: CAREER_PATHS.find((path) => path.id === profile.careerPathId)?.modules[0] ?? "Applied AI",
+    eventType: "artifact_generated",
+    details: {
+      kind: input.kind,
+      artifactUrl: input.url,
+      source: input.metadata?.source ?? "manual_submission",
+    },
+  });
+
   await touchProfileTokenUsage(profile.id, Math.max(0, Number(input.awardTokens ?? 180)));
 
   return runtimeFindProjectById(project.id);
@@ -2210,13 +2468,6 @@ export async function runtimeGetDashboardSummary(
     });
   }
   if (!profile) return null;
-
-  await maybeSendWelcomeEmail({
-    profileId: profile.id,
-    email: seed?.email ?? null,
-    name: profile.name,
-    handle: profile.handle,
-  });
 
   // Avoid swapping frequently-changing provider avatar URLs on every request,
   // which can cause visual flicker on dashboard refresh/navigation.

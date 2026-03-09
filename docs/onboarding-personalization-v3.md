@@ -269,15 +269,16 @@ Implemented:
 - dashboard summary gamification object
 - dynamic sidebar level card
 - home dashboard progress, achievements, and badge section
-- projects tab module workbench with why-this-module copy, build steps, proof checklist, artifact generation actions, proof-link submission, proof-file upload, and recent-proof visibility
+- projects tab module workbench with why-this-module copy, persisted build-step completion, proof checklist, artifact generation actions, proof-link submission, proof-file upload, recent-proof visibility, and role-specific tool launchers
 - public profile gating until explicit publish
 - onboarding and assessment analytics without PM hardcoding
-- unlock analytics for XP, levels, achievements, badges, track changes, and proof actions
+- unlock analytics for XP, levels, achievements, badges, track changes, proof actions, step progression, and tool-launch behavior
 - lifecycle email structure already aligned to the next-move format
+- lifecycle worker now respects `welcome_email_sent_at` as an already-sent welcome and supports a per-run send cap to reduce blast radius
 
 Still open for content expansion:
 
 - richer module bodies per track
 - deeper proof templates per module
 - more integrations beyond current LinkedIn/X/supporting tool flows
-- deeper per-step verification UI beyond the current starter workbench
+- direct API-based tool actions beyond current launcher + connection model

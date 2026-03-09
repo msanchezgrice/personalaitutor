@@ -106,6 +106,7 @@ export function exampleProjects(): Project[] {
       artifacts: [
         { kind: "website", url: "/api/og/project/alex-chen-ai/customer-support-copilot", createdAt: now },
       ],
+      moduleSteps: [],
       buildLog: [
         {
           id: "example-log-1",
@@ -138,6 +139,7 @@ export function exampleProjects(): Project[] {
         "A lightweight lead collection workflow that maps local businesses into a structured CSV for outreach and qualification.",
       state: "built",
       artifacts: [],
+      moduleSteps: [],
       buildLog: [
         {
           id: "example-log-3",

@@ -27,6 +27,8 @@ import type {
   SocialDraft,
   SocialPlatform,
   TalentCard,
+  ProjectModuleStep,
+  ProjectModuleStepStatus,
   UserProfile,
   UserSkill,
   VerificationEvent,
@@ -79,6 +81,7 @@ const defaultProject: Project = {
   description: "Synthetic customer support copilot prototype with artifact outputs.",
   state: "building",
   artifacts: [{ kind: "website", url: "/u/test-user-0001/projects/project-alpha-001", createdAt: nowIso() }],
+  moduleSteps: [],
   buildLog: [],
   createdAt: nowIso(),
   updatedAt: nowIso(),
@@ -570,6 +573,7 @@ export function createProject(input: {
     description: input.description,
     state: "planned",
     artifacts: [],
+    moduleSteps: [],
     buildLog: [],
     createdAt: nowIso(),
     updatedAt: nowIso(),
@@ -847,6 +851,145 @@ export function requestArtifactGeneration(input: {
 
   const result = processJob(job.id, { forceFailCode: input.forceFailCode });
   return { job, result, project: findProjectById(input.projectId) };
+}
+
+function moduleStepKey(title: string, index: number) {
+  const base = safeHandle(title).slice(0, 48) || `step-${index + 1}`;
+  return `step-${index + 1}-${base}`;
+}
+
+function targetModuleSkill(user: UserProfile) {
+  return getCareerPath(user.careerPathId)?.modules[0] ?? "Applied AI";
+}
+
+export function syncProjectModuleSteps(input: {
+  projectId: string;
+  userId: string;
+  steps: string[];
+}) {
+  const project = findProjectById(input.projectId);
+  const user = ensureUserExists(input.userId);
+  if (!project || !user || project.userId !== user.id) return null;
+
+  const existingByKey = new Map(project.moduleSteps.map((step) => [step.stepKey, step]));
+  project.moduleSteps = input.steps.map((title, index) => {
+    const stepKey = moduleStepKey(title, index);
+    const existing = existingByKey.get(stepKey);
+    return existing
+      ? {
+          ...existing,
+          title,
+          orderIndex: index + 1,
+        }
+      : {
+          id: id("mst"),
+          projectId: project.id,
+          userId: user.id,
+          stepKey,
+          title,
+          orderIndex: index + 1,
+          status: "not_started",
+          completedAt: null,
+          updatedAt: nowIso(),
+        };
+  });
+  return findProjectById(project.id);
+}
+
+export function updateProjectModuleStep(input: {
+  projectId: string;
+  userId: string;
+  stepKey: string;
+  status: ProjectModuleStepStatus;
+}) {
+  const project = findProjectById(input.projectId);
+  const user = ensureUserExists(input.userId);
+  if (!project || !user || project.userId !== user.id) return null;
+
+  const step = project.moduleSteps.find((entry) => entry.stepKey === input.stepKey);
+  if (!step) return null;
+
+  const beforeAnyStarted = project.moduleSteps.some((entry) => entry.status !== "not_started");
+  const beforeAllCompleted = project.moduleSteps.length > 0 && project.moduleSteps.every((entry) => entry.status === "completed");
+  const wasCompleted = step.status === "completed";
+
+  step.status = input.status;
+  step.completedAt = input.status === "completed" ? nowIso() : null;
+  step.updatedAt = nowIso();
+  project.updatedAt = nowIso();
+
+  const anyStarted = project.moduleSteps.some((entry) => entry.status !== "not_started");
+  const allCompleted = project.moduleSteps.length > 0 && project.moduleSteps.every((entry) => entry.status === "completed");
+
+  if (anyStarted && (project.state === "planned" || project.state === "idea")) {
+    project.state = "building";
+  }
+
+  if (!beforeAnyStarted && anyStarted) {
+    updateSkill(user, targetModuleSkill(user), "in_progress", Math.max(verificationPolicy.moduleMinScore * 0.5, 0.2), 0);
+    state.verificationEvents.push({
+      id: id("ver"),
+      userId: user.id,
+      projectId: project.id,
+      skill: targetModuleSkill(user),
+      eventType: "module_started",
+      details: {
+        stepKey: step.stepKey,
+        stepTitle: step.title,
+      },
+      createdAt: nowIso(),
+    });
+    addBuildLogEntry({
+      projectId: project.id,
+      userId: user.id,
+      level: "info",
+      message: `Module started: ${step.title}`,
+      metadata: { stepKey: step.stepKey, status: input.status },
+    });
+  }
+
+  if (!wasCompleted && input.status === "completed") {
+    addBuildLogEntry({
+      projectId: project.id,
+      userId: user.id,
+      level: "success",
+      message: `Step completed: ${step.title}`,
+      metadata: { stepKey: step.stepKey, status: input.status },
+    });
+  } else if (wasCompleted && input.status !== "completed") {
+    addBuildLogEntry({
+      projectId: project.id,
+      userId: user.id,
+      level: "warn",
+      message: `Step reopened: ${step.title}`,
+      metadata: { stepKey: step.stepKey, status: input.status },
+    });
+  }
+
+  if (!beforeAllCompleted && allCompleted) {
+    updateSkill(user, targetModuleSkill(user), "built", verificationPolicy.moduleMinScore + 0.05, 1);
+    state.verificationEvents.push({
+      id: id("ver"),
+      userId: user.id,
+      projectId: project.id,
+      skill: targetModuleSkill(user),
+      eventType: "module_completed",
+      details: {
+        completedStepCount: project.moduleSteps.length,
+      },
+      createdAt: nowIso(),
+    });
+    addBuildLogEntry({
+      projectId: project.id,
+      userId: user.id,
+      level: "success",
+      message: `Module checklist completed for ${project.title}.`,
+      metadata: { completedStepCount: project.moduleSteps.length },
+    });
+  }
+
+  touchProfile(user);
+  return findProjectById(project.id);
 }
 
 export function recordProjectArtifact(input: {

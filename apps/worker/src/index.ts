@@ -51,6 +51,18 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function lifecycleProfileScanLimit() {
+  const parsed = Number(process.env.LIFECYCLE_EMAIL_PROFILE_SCAN_LIMIT ?? "120");
+  if (!Number.isFinite(parsed)) return 120;
+  return Math.max(1, Math.min(500, Math.floor(parsed)));
+}
+
+function lifecycleMaxSendsPerRun() {
+  const parsed = Number(process.env.LIFECYCLE_EMAIL_MAX_SENDS_PER_RUN ?? "25");
+  if (!Number.isFinite(parsed)) return 25;
+  return Math.max(1, Math.min(200, Math.floor(parsed)));
+}
+
 function normalizeSiteUrl(input: string) {
   const trimmed = input.trim();
   if (!trimmed) return defaultBaseUrl;
@@ -1454,6 +1466,9 @@ async function maybeSendLifecycleEmailForProfile(profile: LifecycleProfileRow) {
         "week_1_digest",
       ] as const).includes(key as LifecycleEmailKey),
     );
+  if (profile.welcome_email_sent_at && !sentKeys.includes("welcome")) {
+    sentKeys.push("welcome");
+  }
 
   const nextKey = resolveLifecycleEmailKey({
     anchorIso: onboarding?.created_at ?? profile.created_at,
@@ -1647,15 +1662,17 @@ async function sendDueLifecycleEmails() {
     .select("id,external_user_id,handle,full_name,contact_email,career_path_id,goals,acquisition,created_at,updated_at,welcome_email_sent_at")
     .not("contact_email", "is", null)
     .order("updated_at", { ascending: false })
-    .limit(120);
+    .limit(lifecycleProfileScanLimit());
 
+  const maxSends = lifecycleMaxSendsPerRun();
   let sentCount = 0;
   for (const profile of (profiles ?? []) as LifecycleProfileRow[]) {
+    if (sentCount >= maxSends) break;
     const sent = await maybeSendLifecycleEmailForProfile(profile);
     if (sent) sentCount += 1;
   }
 
-  console.log(`[worker] lifecycle emails sent: ${sentCount}`);
+  console.log(`[worker] lifecycle emails sent: ${sentCount} (max ${maxSends})`);
 }
 
 async function processArtifactJob(job: ClaimedJob) {

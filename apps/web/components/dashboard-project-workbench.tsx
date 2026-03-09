@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { captureAnalyticsEvent } from "@/lib/analytics";
-import type { RecommendedModuleGuide } from "@aitutor/shared";
+import type { OAuthConnection, ProjectModuleStep, RecommendedModuleGuide } from "@aitutor/shared";
 
 type DashboardProjectWorkbenchProps = {
   guide: RecommendedModuleGuide;
@@ -11,10 +11,12 @@ type DashboardProjectWorkbenchProps = {
   projectState: string;
   artifactCount: number;
   recentArtifacts: Array<{ kind: string; url: string; createdAt: string }>;
+  initialSteps: ProjectModuleStep[];
+  oauthConnections: OAuthConnection[];
   publicProfileUrl: string | null;
 };
 
-type QueueState = "website" | "pdf" | "pptx" | "progress_note" | "proof_link" | "proof_upload" | null;
+type QueueState = "website" | "pdf" | "pptx" | "progress_note" | "proof_link" | "proof_upload" | "step_update" | null;
 
 function artifactLabel(kind: string) {
   switch (kind) {
@@ -33,6 +35,35 @@ function artifactLabel(kind: string) {
   }
 }
 
+function stepStatusLabel(status: ProjectModuleStep["status"]) {
+  switch (status) {
+    case "completed":
+      return "Done";
+    case "in_progress":
+      return "In progress";
+    default:
+      return "Not started";
+  }
+}
+
+function stepStatusClasses(status: ProjectModuleStep["status"]) {
+  switch (status) {
+    case "completed":
+      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+    case "in_progress":
+      return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+    default:
+      return "border-white/10 bg-white/5 text-gray-300";
+  }
+}
+
+function oauthConnectHref(platform: OAuthConnection["platform"]) {
+  if (platform === "x") {
+    return "/api/auth/x/start?redirect=1";
+  }
+  return "/api/auth/linkedin/start?redirect=1&redirectPath=/dashboard/projects/";
+}
+
 export function DashboardProjectWorkbench({
   guide,
   projectId,
@@ -40,6 +71,8 @@ export function DashboardProjectWorkbench({
   projectState,
   artifactCount,
   recentArtifacts,
+  initialSteps,
+  oauthConnections,
   publicProfileUrl,
 }: DashboardProjectWorkbenchProps) {
   const [busy, setBusy] = useState<QueueState>(null);
@@ -53,9 +86,68 @@ export function DashboardProjectWorkbench({
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofFileInputKey, setProofFileInputKey] = useState(0);
   const [artifactCountValue, setArtifactCountValue] = useState(artifactCount);
+  const [moduleSteps, setModuleSteps] = useState<ProjectModuleStep[]>(initialSteps);
+  const [stepBusyKey, setStepBusyKey] = useState<string | null>(null);
   const [recentArtifactItems, setRecentArtifactItems] = useState(
     [...recentArtifacts].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3),
   );
+  const oauthByPlatform = new Map(oauthConnections.map((connection) => [connection.platform, connection]));
+  const completedStepCount = moduleSteps.filter((step) => step.status === "completed").length;
+  const totalStepCount = moduleSteps.length;
+
+  async function updateStep(stepKey: string, nextStatus: ProjectModuleStep["status"]) {
+    if (!projectId) return;
+    setBusy("step_update");
+    setStepBusyKey(stepKey);
+    setError(null);
+    setStatus(null);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/module-steps`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          stepKey,
+          status: nextStatus,
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: { message?: string };
+        moduleSteps?: ProjectModuleStep[];
+      };
+      if (!response.ok || !payload.ok || !Array.isArray(payload.moduleSteps)) {
+        throw new Error(payload.error?.message ?? "Unable to update module step");
+      }
+      setModuleSteps(payload.moduleSteps);
+      captureAnalyticsEvent("project_module_step_updated", {
+        project_id: projectId,
+        module_title: guide.moduleTitle,
+        career_path_id: guide.careerPathId,
+        step_key: stepKey,
+        step_status: nextStatus,
+        completed_step_count_after: payload.moduleSteps.filter((step) => step.status === "completed").length,
+      });
+      setStatus(
+        nextStatus === "completed"
+          ? "Step completed. The module checklist is saved to your project."
+          : nextStatus === "in_progress"
+            ? "Step marked in progress."
+            : "Step reopened.",
+      );
+    } catch (stepError) {
+      captureAnalyticsEvent("project_module_step_update_failed", {
+        project_id: projectId,
+        module_title: guide.moduleTitle,
+        career_path_id: guide.careerPathId,
+        step_key: stepKey,
+        step_status: nextStatus,
+      });
+      setError(stepError instanceof Error ? stepError.message : "Unable to update module step.");
+    } finally {
+      setBusy(null);
+      setStepBusyKey(null);
+    }
+  }
 
   async function queueArtifact(kind: "website" | "pdf" | "pptx") {
     if (!projectId) return;
@@ -301,13 +393,79 @@ export function DashboardProjectWorkbench({
         <div className="grid md:grid-cols-2 gap-4">
           <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Build steps</div>
+            <div className="mt-4 flex items-center justify-between gap-4 text-xs text-gray-400">
+              <span>{completedStepCount} of {totalStepCount} complete</span>
+              <span>{totalStepCount ? Math.round((completedStepCount / totalStepCount) * 100) : 0}%</span>
+            </div>
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/5">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500"
+                style={{ width: `${totalStepCount ? Math.round((completedStepCount / totalStepCount) * 100) : 0}%` }}
+              ></div>
+            </div>
             <ol className="mt-4 space-y-3">
-              {guide.steps.map((step, index) => (
-                <li key={step} className="flex gap-3">
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-[11px] font-semibold text-emerald-300">
-                    {index + 1}
-                  </span>
-                  <span className="text-sm leading-6 text-gray-300">{step}</span>
+              {moduleSteps.map((step) => (
+                <li key={step.stepKey} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-[11px] font-semibold text-emerald-300">
+                          {step.orderIndex}
+                        </span>
+                        <span className="text-sm leading-6 text-gray-200">{step.title}</span>
+                      </div>
+                      {step.completedAt ? (
+                        <div className="mt-2 text-[11px] text-gray-500">
+                          Completed {new Date(step.completedAt).toLocaleString()}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${stepStatusClasses(step.status)}`}>
+                        {stepStatusLabel(step.status)}
+                      </span>
+                      {step.status === "not_started" ? (
+                        <button
+                          type="button"
+                          className="btn btn-secondary px-3 py-1.5 text-xs"
+                          onClick={() => updateStep(step.stepKey, "in_progress")}
+                          disabled={!projectId || busy !== null}
+                        >
+                          {busy === "step_update" && stepBusyKey === step.stepKey ? "Saving..." : "Start"}
+                        </button>
+                      ) : null}
+                      {step.status === "in_progress" ? (
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn-primary px-3 py-1.5 text-xs"
+                            onClick={() => updateStep(step.stepKey, "completed")}
+                            disabled={!projectId || busy !== null}
+                          >
+                            {busy === "step_update" && stepBusyKey === step.stepKey ? "Saving..." : "Mark Done"}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary px-3 py-1.5 text-xs"
+                            onClick={() => updateStep(step.stepKey, "not_started")}
+                            disabled={!projectId || busy !== null}
+                          >
+                            Reset
+                          </button>
+                        </>
+                      ) : null}
+                      {step.status === "completed" ? (
+                        <button
+                          type="button"
+                          className="btn btn-secondary px-3 py-1.5 text-xs"
+                          onClick={() => updateStep(step.stepKey, "in_progress")}
+                          disabled={!projectId || busy !== null}
+                        >
+                          {busy === "step_update" && stepBusyKey === step.stepKey ? "Saving..." : "Reopen"}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
                 </li>
               ))}
             </ol>
@@ -324,6 +482,66 @@ export function DashboardProjectWorkbench({
                 </li>
               ))}
             </ul>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300/80">Tool launchers</div>
+              <p className="mt-2 text-sm text-gray-400">
+                Open the real tools that fit this pack. Connect first where we already support it, otherwise launch into the external workspace.
+              </p>
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-gray-300">
+              {guide.toolLaunches.length} launchers
+            </span>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {guide.toolLaunches.map((tool) => {
+              const connection = tool.platform ? oauthByPlatform.get(tool.platform) ?? null : null;
+              const connected = Boolean(connection?.connected);
+              const destination = tool.kind === "oauth" && !connected && tool.platform
+                ? oauthConnectHref(tool.platform)
+                : tool.href;
+              const ctaLabel = tool.kind === "oauth" && !connected ? tool.ctaLabel : `Open ${tool.label}`;
+              return (
+                <a
+                  key={tool.key}
+                  href={destination}
+                  target={tool.opensInNewTab ? "_blank" : undefined}
+                  rel={tool.opensInNewTab ? "noreferrer" : undefined}
+                  className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition"
+                  data-analytics-event="project_tool_launcher_clicked"
+                  data-analytics-location="projects_workbench"
+                  data-analytics-tool_key={tool.key}
+                  data-analytics-tool_kind={tool.kind}
+                  data-analytics-connected={connected}
+                  data-analytics-destination={destination}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-white">{tool.label}</div>
+                      <div className="mt-2 text-sm leading-6 text-gray-400">{tool.description}</div>
+                    </div>
+                    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                      tool.kind === "oauth"
+                        ? connected
+                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                          : "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                        : "border-sky-500/20 bg-sky-500/10 text-sky-200"
+                    }`}>
+                      {tool.kind === "oauth" ? (connected ? "Connected" : "Connect") : "Ready"}
+                    </span>
+                  </div>
+                  <div className="mt-4 text-xs leading-5 text-gray-500">{tool.verificationHint}</div>
+                  <div className="mt-4 flex items-center justify-between gap-3 text-sm font-medium text-white">
+                    <span>{ctaLabel}</span>
+                    <i className="fa-solid fa-arrow-up-right-from-square text-gray-500"></i>
+                  </div>
+                </a>
+              );
+            })}
           </div>
         </div>
       </div>

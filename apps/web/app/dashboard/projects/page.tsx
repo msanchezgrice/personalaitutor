@@ -1,6 +1,7 @@
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
 import { DashboardProjectWorkbench } from "@/components/dashboard-project-workbench";
 import { getDashboardServerState } from "@/app/dashboard/_lib";
+import { runtimeListOAuthConnections, runtimeSyncProjectModuleSteps } from "@/lib/runtime";
 import { buildRecommendedModuleGuide, getCareerPath } from "@aitutor/shared";
 
 function summarize(value: string | null | undefined, fallback: string, maxChars = 160) {
@@ -24,6 +25,15 @@ export default async function DashboardProjectsPage() {
     jobTitle: user?.headline ?? null,
     primaryGoal: user?.goals?.[0] ?? null,
   });
+  const syncedActiveProject =
+    activeProject && user
+      ? await runtimeSyncProjectModuleSteps({
+          projectId: activeProject.id,
+          userId: user.id,
+          steps: guide.steps,
+        })
+      : activeProject;
+  const oauthConnections = user ? await runtimeListOAuthConnections(user.id) : [];
   return (
     <DashboardShell
       activeTab="projects"
@@ -128,11 +138,13 @@ export default async function DashboardProjectsPage() {
 
         <DashboardProjectWorkbench
           guide={guide}
-          projectId={activeProject?.id ?? null}
-          projectTitle={activeProject?.title || `${guide.careerPathName} Starter Build`}
-          projectState={activeProject?.state || "planned"}
-          artifactCount={activeProject?.artifacts.length ?? 0}
-          recentArtifacts={activeProject?.artifacts ?? []}
+          projectId={syncedActiveProject?.id ?? null}
+          projectTitle={syncedActiveProject?.title || `${guide.careerPathName} Starter Build`}
+          projectState={syncedActiveProject?.state || "planned"}
+          artifactCount={syncedActiveProject?.artifacts.length ?? 0}
+          recentArtifacts={syncedActiveProject?.artifacts ?? []}
+          initialSteps={syncedActiveProject?.moduleSteps ?? []}
+          oauthConnections={oauthConnections}
           publicProfileUrl={state.publicProfileUrl}
         />
 
