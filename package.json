@@ -8,6 +8,8 @@
     "test": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test",
+    "test:e2e:auth": "playwright test --config playwright.auth.config.ts",
+    "test:e2e:live:auth": "playwright test --config playwright.live.auth.config.ts",
     "build": "pnpm -r --if-present build",
     "seed:talent": "node scripts/seed_talent_roster.mjs",
     "verify:design": "bash scripts/verify_design_conformance.sh",
@@ -20,6 +22,7 @@
     "verify:all": "pnpm checklist:env && pnpm lint && pnpm typecheck && pnpm test && pnpm test:integration && pnpm test:e2e && pnpm build && pnpm verify:migrations && pnpm verify:deploy"
   },
   "devDependencies": {
+    "@clerk/testing": "^2.0.2",
     "@playwright/test": "^1.52.0",
     "@types/node": "^22.15.29",
     "eslint": "^9.23.0",

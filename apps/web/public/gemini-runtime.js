@@ -2225,7 +2225,7 @@
       }
       if (bannerCta) {
         bannerCta.textContent = "Start Recommended Work";
-        setHref(bannerCta, "/dashboard/chat/");
+        setHref(bannerCta, "/dashboard/projects/#pack-workbench");
       }
     }
 

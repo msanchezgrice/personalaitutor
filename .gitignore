@@ -6,6 +6,7 @@ build
 coverage
 playwright-report
 test-results
+playwright/.clerk
 .playwright-mcp
 .tmp
 *.tsbuildinfo
