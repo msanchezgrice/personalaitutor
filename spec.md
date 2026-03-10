@@ -204,6 +204,7 @@ Requirements:
 7. `pnpm build`
 8. `pnpm verify:migrations`
 9. `pnpm verify:deploy`
+10. `pnpm verify:post-push` after production pushes
 
 ### 11.3 Design grep checks
 1. no `hero.png` references in production app surfaces,
@@ -215,7 +216,9 @@ Requirements:
 2. Run Playwright hard-gate suite.
 3. Run full CLI verification sequence.
 4. Generate env checklist output (`docs/launch_checklist.json`).
-5. Block launch on any failed gate.
+5. Push to `main` for production deployment.
+6. Run `pnpm verify:post-push` to validate the signed-in production dashboard after deployment propagation.
+7. Block launch on any failed gate.
 
 ## 13. Data Policy for Mockups and Local Validation
 1. believable fake identity data is limited to landing and employer portal.

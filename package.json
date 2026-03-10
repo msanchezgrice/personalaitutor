@@ -15,6 +15,7 @@
     "verify:design": "bash scripts/verify_design_conformance.sh",
     "verify:migrations": "bash scripts/verify_migrations.sh",
     "verify:deploy": "bash scripts/verify_deploy_builds.sh",
+    "verify:post-push": "bash scripts/verify_post_push_live.sh",
     "checklist:env": "bash scripts/generate_launch_checklist.sh",
     "posthog:dashboard:spec": "bash scripts/posthog/dashboard_spec_cli.sh",
     "posthog:weekly:report": "bash scripts/posthog/weekly_optimization_report_cli.sh",
