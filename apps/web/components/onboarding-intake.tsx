@@ -102,6 +102,16 @@ type OnboardingDraft = {
   ts: number;
 };
 
+type OnboardingReportSnapshot = OnboardingDraft & {
+  sessionId: string;
+  sessionUserId: string | null;
+  sessionToken: string | null;
+  assessmentScore: number;
+  recommendedPaths: string[];
+  nextRedirectHref: string;
+  nextRedirectLabel: string;
+};
+
 type RiskSeverity = "Low" | "Medium" | "High";
 type RiskBand = "Low" | "Moderate" | "High";
 
@@ -546,6 +556,7 @@ const aiComfortOptions = [
 
 const ONBOARDING_BOOTSTRAP_KEY = "ai_tutor_onboarding_bootstrap_v1";
 const ONBOARDING_DRAFT_KEY = "ai_tutor_onboarding_draft_v1";
+const ONBOARDING_REPORT_SNAPSHOT_KEY = "ai_tutor_onboarding_report_snapshot_v1";
 
 function getRiskBand(score: number): RiskBand {
   if (score >= 70) return "High";
@@ -823,12 +834,53 @@ export function OnboardingIntake() {
 
     const params = new URLSearchParams(window.location.search);
     const maybeSessionId = params.get("sessionId");
+    const wantsReportView = params.get("view") === "report";
     let boot: { sessionId?: string; sessionUserId?: string; sessionToken?: string } | null = null;
+    let reportSnapshot: OnboardingReportSnapshot | null = null;
     try {
       const raw = window.sessionStorage.getItem(ONBOARDING_BOOTSTRAP_KEY);
       boot = raw ? (JSON.parse(raw) as { sessionId?: string; sessionUserId?: string; sessionToken?: string }) : null;
     } catch {
       boot = null;
+    }
+
+    if (wantsReportView) {
+      try {
+        const raw = window.sessionStorage.getItem(ONBOARDING_REPORT_SNAPSHOT_KEY);
+        reportSnapshot = raw ? (JSON.parse(raw) as OnboardingReportSnapshot) : null;
+      } catch {
+        reportSnapshot = null;
+      }
+    }
+
+    if (
+      wantsReportView
+      && reportSnapshot
+      && (!maybeSessionId || reportSnapshot.sessionId === maybeSessionId)
+    ) {
+      setSessionId(reportSnapshot.sessionId);
+      setSessionUserId(reportSnapshot.sessionUserId);
+      setSessionToken(reportSnapshot.sessionToken);
+      setFullName(reportSnapshot.fullName);
+      setCareerCategory(reportSnapshot.careerCategory);
+      setCustomCareerCategory(reportSnapshot.customCareerCategory);
+      setJobTitle(reportSnapshot.jobTitle);
+      setYearsExperience(reportSnapshot.yearsExperience);
+      setCompanySize(reportSnapshot.companySize);
+      setSituation(reportSnapshot.situation);
+      setLinkedinUrl(reportSnapshot.linkedinUrl);
+      setSelectedGoals(reportSnapshot.selectedGoals.length ? reportSnapshot.selectedGoals : ["upskill_current_job"]);
+      setAiComfort(reportSnapshot.aiComfort);
+      setUploadedResumeName(reportSnapshot.uploadedResumeName);
+      setAssessmentScore(reportSnapshot.assessmentScore);
+      setRecommendedPaths(reportSnapshot.recommendedPaths);
+      setNextRedirectHref(reportSnapshot.nextRedirectHref);
+      setNextRedirectLabel(reportSnapshot.nextRedirectLabel || "Open Dashboard");
+      onboardingCompleteFired.current = true;
+      setStep(5);
+      return () => {
+        document.documentElement.removeAttribute("data-onboarding-react");
+      };
     }
 
     if (maybeSessionId) {
@@ -1306,6 +1358,8 @@ export function OnboardingIntake() {
 
       const score = completed.assessment?.score ?? 0;
       const recommended = completed.assessment?.recommendedCareerPathIds ?? [];
+      const redirectPath = `/dashboard/?welcome=1&onboardingSessionId=${encodeURIComponent(session.id)}`;
+      const redirectLabel = completed.signedIn ? "Open Dashboard" : "Create Account to Continue";
       setAssessmentScore(score);
       setRecommendedPaths(recommended);
       if (!quizCompleteFired.current) {
@@ -1318,6 +1372,34 @@ export function OnboardingIntake() {
           recommendedPaths: recommended,
         });
       }
+      try {
+        window.sessionStorage.setItem(
+          ONBOARDING_REPORT_SNAPSHOT_KEY,
+          JSON.stringify({
+            fullName,
+            careerCategory,
+            customCareerCategory,
+            jobTitle,
+            yearsExperience,
+            companySize,
+            situation,
+            linkedinUrl,
+            selectedGoals,
+            aiComfort,
+            uploadedResumeName: uploadedResumeName ?? resumeFile?.name ?? null,
+            ts: Date.now(),
+            sessionId: session.id,
+            sessionUserId: session.userId,
+            sessionToken: session.token,
+            assessmentScore: score,
+            recommendedPaths: recommended,
+            nextRedirectHref: redirectPath,
+            nextRedirectLabel: redirectLabel,
+          } satisfies OnboardingReportSnapshot),
+        );
+      } catch {
+        // Ignore storage failures.
+      }
       setStep(5);
       try {
         window.localStorage.removeItem(ONBOARDING_DRAFT_KEY);
@@ -1326,8 +1408,8 @@ export function OnboardingIntake() {
       }
 
       if (completed.signedIn) {
-        setNextRedirectHref(`/dashboard/?welcome=1&onboardingSessionId=${encodeURIComponent(session.id)}`);
-        setNextRedirectLabel("Open Dashboard");
+        setNextRedirectHref(redirectPath);
+        setNextRedirectLabel(redirectLabel);
         return;
       }
 
@@ -1340,9 +1422,8 @@ export function OnboardingIntake() {
         // Ignore storage failures.
       }
 
-      const redirectPath = `/dashboard/?welcome=1&onboardingSessionId=${encodeURIComponent(session.id)}`;
       setNextRedirectHref(redirectPath);
-      setNextRedirectLabel("Create Account to Continue");
+      setNextRedirectLabel(redirectLabel);
     } catch (err) {
       trackPosthog("onboarding_analysis_failed", {
         session_id: sessionId,

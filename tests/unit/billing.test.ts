@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   billingAccessAllowed,
   buildBillingGateRedirect,
+  buildOnboardingReportReturnUrl,
   buildBillingSubscriptionRecord,
   buildCheckoutUrls,
   buildStripeCheckoutSessionParams,
@@ -58,6 +59,12 @@ describe("billing helpers", () => {
       successUrl: "https://example.com/dashboard?billing=success&session_id={CHECKOUT_SESSION_ID}&return_to=%2Fdashboard%2Fchat",
       cancelUrl: "https://example.com/dashboard?billing=canceled&return_to=%2Fdashboard%2Fchat",
     });
+  });
+
+  test("builds a deterministic onboarding report return url", () => {
+    expect(buildOnboardingReportReturnUrl("session_123")).toBe("/onboarding?view=report&sessionId=session_123");
+    expect(buildOnboardingReportReturnUrl("")).toBe("/onboarding?view=report");
+    expect(buildOnboardingReportReturnUrl(undefined)).toBe("/onboarding?view=report");
   });
 
   test("builds stripe checkout params for a 7 day trial subscription", () => {

@@ -1,176 +1,34 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
 import { captureAnalyticsEvent } from "@/lib/analytics";
 
 export function DashboardSettingsMenu({
-  operatorToolsHref = null,
-  billingPortalEnabled = false,
+  signedIn = false,
 }: {
-  operatorToolsHref?: string | null;
-  billingPortalEnabled?: boolean;
+  signedIn?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
-  const [billingPending, setBillingPending] = useState(false);
-  const rootRef = useRef<HTMLDivElement | null>(null);
+  const href = signedIn ? "/sign-out" : "/sign-in?redirect_url=/dashboard/";
+  const label = signedIn ? "Sign Out" : "Sign In";
+  const icon = signedIn ? "fa-right-from-bracket" : "fa-right-to-bracket";
 
-  useEffect(() => {
-    if (!open) return;
-
-    function handleClick(event: MouseEvent) {
-      const target = event.target as Node | null;
-      if (!rootRef.current || !target) return;
-      if (!rootRef.current.contains(target)) {
-        setOpen(false);
-      }
-    }
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClick);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [open]);
-
-  function toggleMenu() {
-    const nextOpen = !open;
-    setOpen(nextOpen);
-    captureAnalyticsEvent("dashboard_settings_toggled", {
-      is_open: nextOpen,
-      location: "header",
-    });
-  }
-
-  function handleProfileClick() {
-    setOpen(false);
-    captureAnalyticsEvent("dashboard_settings_item_clicked", {
-      item: "profile_settings",
-      destination: "/dashboard/profile",
-      location: "header",
-    });
-  }
-
-  function handleOperatorToolsClick() {
-    setOpen(false);
-    captureAnalyticsEvent("dashboard_settings_item_clicked", {
-      item: "operator_tools",
-      destination: operatorToolsHref,
-      location: "header",
-    });
-  }
-
-  async function handleManageBillingClick() {
-    try {
-      setBillingPending(true);
-      setOpen(false);
-      captureAnalyticsEvent("dashboard_settings_item_clicked", {
-        item: "manage_billing",
-        destination: "/api/billing/portal",
-        location: "header",
-      });
-
-      const response = await fetch("/api/billing/portal", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          returnTo: "/dashboard/profile",
-        }),
-      });
-      const payload = await response.json().catch(() => null);
-      const url = payload?.url;
-      if (!response.ok || typeof url !== "string" || !url) {
-        throw new Error(payload?.error?.message || "Unable to open billing portal");
-      }
-
-      window.location.assign(url);
-    } catch (error) {
-      console.error("[billing] portal redirect failed", error);
-      setBillingPending(false);
-    }
-  }
-
-  function handleSignOutClick() {
-    setOpen(false);
-    captureAnalyticsEvent("auth_sign_out_clicked", {
+  function handleClick() {
+    captureAnalyticsEvent(signedIn ? "auth_sign_out_clicked" : "auth_sign_in_clicked", {
       auth_provider: "clerk",
-      source: "dashboard_settings_menu",
+      source: "dashboard_header_auth_action",
     });
-    window.setTimeout(() => {
-      window.location.assign("/sign-out");
-    }, 75);
   }
 
   return (
-    <div id="dashboard-settings-menu" ref={rootRef} className="relative">
-      <button
-        type="button"
-        className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-xl border border-white/15 bg-black/30 px-3 text-xs text-gray-200 hover:bg-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.25)]"
-        data-settings-toggle="1"
-        aria-expanded={open ? "true" : "false"}
-        aria-haspopup="menu"
-        aria-label="Open settings menu"
-        onClick={toggleMenu}
-      >
-        <i className="fa-solid fa-gear"></i>
-        <span className="hidden md:inline">Settings</span>
-      </button>
-      <div
-        className={
-          (open ? "block" : "hidden") +
-          " absolute right-0 top-full mt-2 min-w-[190px] rounded-xl border border-white/15 bg-[#0f111a]/95 backdrop-blur-xl shadow-2xl p-1 z-40"
-        }
-        data-settings-panel="1"
-        role="menu"
-      >
-        <Link
-          href="/dashboard/profile"
-          className="block px-3 py-2 text-sm text-gray-100 rounded-lg hover:bg-white/10"
-          role="menuitem"
-          onClick={handleProfileClick}
-        >
-          <i className="fa-regular fa-user mr-2"></i>Profile Settings
-        </Link>
-        {billingPortalEnabled ? (
-          <button
-            type="button"
-            className="w-full text-left px-3 py-2 text-sm text-sky-200 rounded-lg hover:bg-sky-500/20"
-            role="menuitem"
-            disabled={billingPending}
-            onClick={handleManageBillingClick}
-          >
-            <i className="fa-regular fa-credit-card mr-2"></i>{billingPending ? "Opening Billing..." : "Manage Billing"}
-          </button>
-        ) : null}
-        {operatorToolsHref ? (
-          <a
-            href={operatorToolsHref}
-            className="block px-3 py-2 text-sm text-emerald-300 rounded-lg hover:bg-emerald-500/20"
-            role="menuitem"
-            onClick={handleOperatorToolsClick}
-          >
-            <i className="fa-solid fa-chart-line mr-2"></i>Operator Tools
-          </a>
-        ) : null}
-        <button
-          type="button"
-          className="w-full text-left px-3 py-2 text-sm text-red-300 rounded-lg hover:bg-red-500/20"
-          data-sign-out="1"
-          role="menuitem"
-          onClick={handleSignOutClick}
-        >
-          <i className="fa-solid fa-right-from-bracket mr-2"></i>Sign Out
-        </button>
-      </div>
-    </div>
+    <a
+      href={href}
+      className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-xl border border-white/15 bg-black/30 px-3 text-xs font-medium text-gray-100 hover:bg-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.25)]"
+      data-settings-toggle="1"
+      data-auth-action={signedIn ? "sign-out" : "sign-in"}
+      aria-label={label}
+      onClick={handleClick}
+    >
+      <i className={`fa-solid ${icon}`}></i>
+      <span className="hidden md:inline">{label}</span>
+    </a>
   );
 }

@@ -13,5 +13,8 @@ describe("billing gate overlay", () => {
     expect(source).toContain("Start 7-Day Free Trial");
     expect(source).toContain("Back to My Report");
     expect(source).toContain("Auto-renews at $49.99/month unless canceled before trial end.");
+    expect(source).toContain("fixed inset-0");
+    expect(source).toContain("returnToReport");
+    expect(source).toContain("window.location.assign(returnToReport)");
   });
 });

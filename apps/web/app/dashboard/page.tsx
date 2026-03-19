@@ -4,7 +4,7 @@ import { DashboardShell } from "@/components/dashboard-runtime-shell";
 import { BillingGateOverlay } from "@/components/billing-gate-overlay";
 import { FbCompleteRegistrationOnDashboard } from "@/components/fb-complete-registration-on-dashboard";
 import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
-import { sanitizeDashboardReturnTo } from "@/lib/billing";
+import { buildOnboardingReportReturnUrl, sanitizeDashboardReturnTo } from "@/lib/billing";
 
 function summarize(value: string | null | undefined, fallback: string, maxChars = 180) {
   const cleaned = String(value || "").replace(/\s+/g, " ").trim();
@@ -34,6 +34,7 @@ export default async function DashboardPage({
   const billingIntent = readQueryParam(params.billing);
   const checkoutSessionId = readQueryParam(params.session_id);
   const returnTo = sanitizeDashboardReturnTo(readQueryParam(params.return_to));
+  const returnToReport = buildOnboardingReportReturnUrl(readQueryParam(params.onboardingSessionId));
   const state = await getDashboardServerState({
     checkoutSessionId: billingIntent === "success" ? checkoutSessionId : null,
   });
@@ -99,6 +100,8 @@ export default async function DashboardPage({
         operatorToolsHref={state.operatorToolsUrl}
         billingPortalEnabled={Boolean(state.billing.subscription)}
         runtimeBootstrap={buildDashboardRuntimeBootstrap(state)}
+        locked={!state.billing.accessAllowed}
+        lockOverlay={!state.billing.accessAllowed ? <BillingGateOverlay returnTo={returnTo} returnToReport={returnToReport} /> : null}
         initialUser={{
           name: user?.name ?? state.seed?.name ?? "Learner",
           headline: user?.headline ?? "AI Builder",
@@ -111,10 +114,7 @@ export default async function DashboardPage({
         }}
       >
         <div className="relative p-10 max-w-6xl mx-auto w-full pb-24">
-          <div
-            data-dashboard-home-content="1"
-            className={state.billing.accessAllowed ? "" : "pointer-events-none select-none opacity-40 blur-[3px]"}
-          >
+          <div data-dashboard-home-content="1">
           <div
             data-dashboard-home-hero="1"
             className="glass-panel p-6 rounded-2xl mb-8 flex flex-col md:flex-row items-center justify-between gap-6 border border-emerald-500/30 overflow-hidden relative"
@@ -467,7 +467,6 @@ export default async function DashboardPage({
             </div>
           </div>
           </div>
-          {!state.billing.accessAllowed ? <BillingGateOverlay returnTo={returnTo} /> : null}
         </div>
       </DashboardShell>
     </>

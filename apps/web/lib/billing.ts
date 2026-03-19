@@ -29,6 +29,15 @@ export function buildBillingGateRedirect(pathnameWithSearch: string) {
   return `/dashboard?billing=required&return_to=${encodeURIComponent(sanitizeDashboardReturnTo(pathnameWithSearch))}`;
 }
 
+export function buildOnboardingReportReturnUrl(sessionId?: string | null) {
+  const params = new URLSearchParams({ view: "report" });
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (normalizedSessionId) {
+    params.set("sessionId", normalizedSessionId);
+  }
+  return `/onboarding?${params.toString()}`;
+}
+
 export function shouldRedirectBlockedDashboardPath(pathname: string, status: string | null | undefined) {
   if (billingAccessAllowed(status)) return false;
   return pathname !== "/dashboard";
