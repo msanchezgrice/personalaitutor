@@ -37,6 +37,11 @@ This document lists every environment variable required or recommended for `myai
 | `OPENAI_API_KEY` | Yes for real AI generation | Agent/content generation paths | `sk-...` | OpenAI dashboard -> API keys |
 | `RESEND_API_KEY` | Yes for real emails | Daily updates + fail-state alerts | `re_...` | Resend dashboard -> API keys |
 | `RESEND_WEBHOOK_SECRET` | Recommended for email engagement tracking | Resend webhook signature verification (`/api/email/resend/webhook`) | `whsec_...` | Resend dashboard -> Webhooks -> Signing secret |
+| `APP_BASE_URL` | Recommended | Canonical app URL + Stripe return URLs (`lib/site.ts`, billing checkout/portal) | `https://www.myaiskilltutor.com` | Set manually to canonical app origin |
+| `NEXT_PUBLIC_APP_URL` | Optional fallback | Site URL fallback in browser/server helpers | `https://www.myaiskilltutor.com` | Set manually if not using `APP_BASE_URL` |
+| `STRIPE_SECRET_KEY` | Yes for billing | Stripe Checkout, Customer Portal, webhook verification | `sk_live_...` or `sk_test_...` | Stripe dashboard -> Developers -> API keys |
+| `STRIPE_PRICE_ID` | Yes for billing | Subscription Checkout session line item | `price_...` | Stripe dashboard -> Product catalog -> recurring monthly price |
+| `STRIPE_WEBHOOK_SECRET` | Yes for billing webhooks | `/api/billing/webhook` signature verification | `whsec_...` | Stripe dashboard -> Developers -> Webhooks -> Signing secret |
 | `NEXT_PUBLIC_POSTHOG_KEY` | Recommended | Browser analytics bootstrap (`app/layout.tsx`) | `phc_...` project key | PostHog project settings -> Project API Key |
 | `NEXT_PUBLIC_POSTHOG_HOST` | Recommended | Browser analytics host | e.g. `https://us.i.posthog.com` | PostHog region host |
 | `POSTHOG_PROJECT_API_KEY` | Optional override | Server-side PostHog capture for worker + email webhooks | `phc_...` project key | PostHog project settings -> Project API Key |

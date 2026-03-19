@@ -1,6 +1,6 @@
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
 import { DashboardProjectWorkbench } from "@/components/dashboard-project-workbench";
-import { getDashboardServerState } from "@/app/dashboard/_lib";
+import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
 import { runtimeListOAuthConnections, runtimeSyncProjectModuleSteps } from "@/lib/runtime";
 import { buildRecommendedModuleGuide, getCareerPath } from "@aitutor/shared";
 
@@ -45,6 +45,8 @@ export default async function DashboardProjectsPage() {
       )}
       headerSubtitle="Manage your active builds and public proof artifacts."
       operatorToolsHref={state.operatorToolsUrl}
+      billingPortalEnabled={Boolean(state.billing.subscription)}
+      runtimeBootstrap={buildDashboardRuntimeBootstrap(state)}
       initialUser={{
         name: user?.name ?? state.seed?.name ?? "Learner",
         headline: user?.headline ?? "AI Builder",

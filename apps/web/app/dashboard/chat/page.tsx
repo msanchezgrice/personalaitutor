@@ -1,5 +1,5 @@
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
-import { getDashboardServerState } from "@/app/dashboard/_lib";
+import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
 
 export default async function DashboardChatPage() {
   const state = await getDashboardServerState();
@@ -15,6 +15,8 @@ export default async function DashboardChatPage() {
       headerSubtitle={activeProject?.title ? `${activeProject.title} • Active Build` : "Active build"}
       hideHeaderActionsOnMobile
       operatorToolsHref={state.operatorToolsUrl}
+      billingPortalEnabled={Boolean(state.billing.subscription)}
+      runtimeBootstrap={buildDashboardRuntimeBootstrap(state)}
       initialUser={{
         name: user?.name ?? state.seed?.name ?? "Learner",
         headline: user?.headline ?? "AI Builder",

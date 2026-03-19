@@ -13,6 +13,7 @@ import type {
   AgentJobStatus,
   ArtifactKind,
   AssessmentAttempt,
+  BillingSubscription,
   BuildLogEntry,
   DailyUpdate,
   DashboardSummary,
@@ -121,6 +122,7 @@ const state = {
   projects: [defaultProject] as Project[],
   onboardingSessions: [] as OnboardingSession[],
   assessments: [] as AssessmentAttempt[],
+  billingSubscriptions: [] as BillingSubscription[],
   jobs: [] as AgentJob[],
   jobEvents: [] as AgentJobEvent[],
   verificationEvents: [] as VerificationEvent[],
@@ -141,6 +143,7 @@ export function resetStateForTests() {
   state.projects = [structuredClone(defaultProject)];
   state.onboardingSessions = [];
   state.assessments = [];
+  state.billingSubscriptions = [];
   state.jobs = [];
   state.jobEvents = [];
   state.verificationEvents = [];
@@ -219,6 +222,70 @@ export function listOAuthConnections(userId: string) {
   ensureOAuthConnection(userId, "linkedin");
   ensureOAuthConnection(userId, "x");
   return state.oauthConnections.filter((entry) => entry.userId === userId);
+}
+
+export function getBillingSubscription(userId: string) {
+  return state.billingSubscriptions.find((entry) => entry.userId === userId) ?? null;
+}
+
+export function upsertBillingSubscription(input: {
+  userId: string;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string;
+  stripePriceId: string;
+  status: BillingSubscription["status"];
+  trialEndsAt: string | null;
+  currentPeriodEndsAt: string | null;
+  cancelAtPeriodEnd: boolean;
+  lastWebhookEventId?: string | null;
+  lastWebhookReceivedAt?: string | null;
+}) {
+  const user = findUserById(input.userId);
+  if (!user) {
+    throw new Error(`USER_NOT_FOUND:${input.userId}`);
+  }
+
+  const existing = state.billingSubscriptions.find((entry) => entry.userId === input.userId);
+  const now = nowIso();
+  const next: BillingSubscription = existing
+    ? {
+        ...existing,
+        stripeCustomerId: input.stripeCustomerId,
+        stripeSubscriptionId: input.stripeSubscriptionId,
+        stripePriceId: input.stripePriceId,
+        status: input.status,
+        trialEndsAt: input.trialEndsAt,
+        currentPeriodEndsAt: input.currentPeriodEndsAt,
+        cancelAtPeriodEnd: input.cancelAtPeriodEnd,
+        lastWebhookEventId: input.lastWebhookEventId ?? existing.lastWebhookEventId ?? null,
+        lastWebhookReceivedAt: input.lastWebhookReceivedAt ?? existing.lastWebhookReceivedAt ?? null,
+        updatedAt: now,
+      }
+    : {
+        userId: input.userId,
+        stripeCustomerId: input.stripeCustomerId,
+        stripeSubscriptionId: input.stripeSubscriptionId,
+        stripePriceId: input.stripePriceId,
+        status: input.status,
+        trialEndsAt: input.trialEndsAt,
+        currentPeriodEndsAt: input.currentPeriodEndsAt,
+        cancelAtPeriodEnd: input.cancelAtPeriodEnd,
+        lastWebhookEventId: input.lastWebhookEventId ?? null,
+        lastWebhookReceivedAt: input.lastWebhookReceivedAt ?? null,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+  if (existing) {
+    const index = state.billingSubscriptions.findIndex((entry) => entry.userId === input.userId);
+    state.billingSubscriptions[index] = next;
+  } else {
+    state.billingSubscriptions.push(next);
+  }
+
+  user.stripeCustomerId = input.stripeCustomerId;
+  touchProfile(user);
+  return next;
 }
 
 export function connectOAuth(userId: string, platform: OAuthConnection["platform"], accountLabel: string) {

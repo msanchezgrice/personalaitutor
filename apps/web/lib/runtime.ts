@@ -14,6 +14,7 @@ import {
   createProject as memCreateProject,
   createSocialDrafts as memCreateSocialDrafts,
   findOnboardingSession as memFindOnboardingSession,
+  getBillingSubscription as memGetBillingSubscription,
   findProjectById as memFindProjectById,
   findProjectBySlug as memFindProjectBySlug,
   findUserByHandle as memFindUserByHandle,
@@ -45,7 +46,9 @@ import {
   updateOnboardingSituation as memUpdateOnboardingSituation,
   updateProfile as memUpdateProfile,
   upsertUserProfile as memUpsertUserProfile,
+  upsertBillingSubscription as memUpsertBillingSubscription,
   type AssessmentAttempt,
+  type BillingSubscription,
   type BuildLogEntry,
   type DailyUpdate,
   type DashboardSummary,
@@ -132,9 +135,47 @@ type SignupAuditProfileRow = {
   social_links: Record<string, string> | null;
   acquisition?: Record<string, unknown> | null;
   contact_email: string | null;
+  stripe_customer_id: string | null;
   created_at: string;
   updated_at: string;
   welcome_email_sent_at: string | null;
+};
+
+type ProfileRow = {
+  id: string;
+  handle: string;
+  full_name: string;
+  headline: string;
+  bio: string;
+  career_path_id: string | null;
+  published: boolean;
+  tokens_used: number;
+  goals: string[] | null;
+  tools: string[] | null;
+  social_links: Record<string, string> | null;
+  acquisition?: Record<string, unknown> | null;
+  contact_email?: string | null;
+  stripe_customer_id?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+const PROFILE_SELECT_FIELDS =
+  "id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,contact_email,stripe_customer_id,created_at,updated_at";
+
+type BillingSubscriptionRow = {
+  learner_profile_id: string;
+  stripe_subscription_id: string;
+  stripe_customer_id: string | null;
+  stripe_price_id: string;
+  status: string;
+  trial_ends_at: string | null;
+  current_period_ends_at: string | null;
+  cancel_at_period_end: boolean;
+  last_webhook_event_id: string | null;
+  last_webhook_received_at: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 function mode(): PersistenceMode {
@@ -492,31 +533,15 @@ function skillStatusRank(status: string) {
   }
 }
 
-function profileFromRow(
-  row: {
-    id: string;
-    handle: string;
-    full_name: string;
-    headline: string;
-    bio: string;
-    career_path_id: string | null;
-    published: boolean;
-    tokens_used: number;
-    goals: string[] | null;
-    tools: string[] | null;
-    social_links: Record<string, string> | null;
-    acquisition?: Record<string, unknown> | null;
-    created_at: string;
-    updated_at: string;
-  },
-  skills: UserProfile["skills"],
-): UserProfile {
+function profileFromRow(row: ProfileRow, skills: UserProfile["skills"]): UserProfile {
   const links = row.social_links ?? {};
   return {
     id: row.id,
     handle: row.handle,
     name: row.full_name,
     avatarUrl: typeof links.avatar === "string" ? links.avatar : null,
+    contactEmail: row.contact_email ?? null,
+    stripeCustomerId: row.stripe_customer_id ?? null,
     headline: row.headline,
     bio: row.bio,
     careerPathId: row.career_path_id ?? CAREER_PATHS[0].id,
@@ -551,7 +576,7 @@ async function getProfileRowById(userId: string) {
   const normalizedUserId = normalizeUserId(userId);
   const { data, error } = await supabase
     .from("learner_profiles")
-    .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,contact_email,created_at,updated_at")
+    .select(PROFILE_SELECT_FIELDS)
     .eq("id", normalizedUserId)
     .single();
 
@@ -562,7 +587,7 @@ async function getProfileRowById(userId: string) {
   if (!isUuid(userId)) {
     const { data: byExternal } = await supabase
       .from("learner_profiles")
-      .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,contact_email,created_at,updated_at")
+      .select(PROFILE_SELECT_FIELDS)
       .eq("external_user_id", userId)
       .maybeSingle();
     if (byExternal) return byExternal;
@@ -580,6 +605,37 @@ async function getSkillsForProfile(profileId: string) {
     .order("updated_at", { ascending: false });
 
   return toSkillRows(data ?? []);
+}
+
+function billingSubscriptionFromRow(row: BillingSubscriptionRow): BillingSubscription {
+  return {
+    userId: row.learner_profile_id,
+    stripeCustomerId: row.stripe_customer_id,
+    stripeSubscriptionId: row.stripe_subscription_id,
+    stripePriceId: row.stripe_price_id,
+    status: row.status as BillingSubscription["status"],
+    trialEndsAt: row.trial_ends_at,
+    currentPeriodEndsAt: row.current_period_ends_at,
+    cancelAtPeriodEnd: row.cancel_at_period_end,
+    lastWebhookEventId: row.last_webhook_event_id,
+    lastWebhookReceivedAt: row.last_webhook_received_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+async function getBillingSubscriptionRowByUserId(userId: string) {
+  const supabase = getSupabaseAdmin();
+  const normalizedUserId = normalizeUserId(userId);
+  const { data } = await supabase
+    .from("billing_subscriptions")
+    .select(
+      "learner_profile_id,stripe_subscription_id,stripe_customer_id,stripe_price_id,status,trial_ends_at,current_period_ends_at,cancel_at_period_end,last_webhook_event_id,last_webhook_received_at,created_at,updated_at",
+    )
+    .eq("learner_profile_id", normalizedUserId)
+    .maybeSingle();
+
+  return (data as BillingSubscriptionRow | null) ?? null;
 }
 
 async function getOrCreateProfile(input: {
@@ -685,8 +741,7 @@ async function getOrCreateProfile(input: {
     suffix += 1;
   }
 
-  const selectFields =
-    "id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,contact_email,created_at,updated_at";
+  const selectFields = PROFILE_SELECT_FIELDS;
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const insert = {
@@ -734,6 +789,52 @@ async function getOrCreateProfile(input: {
   }
 
   throw new Error("PROFILE_CREATE_FAILED:HANDLE_CONFLICT_RETRY_EXHAUSTED");
+}
+
+export async function runtimeGetOrCreateProfile(input: {
+  userId?: string;
+  name?: string;
+  email?: string | null;
+  avatarUrl?: string | null;
+  handleBase?: string;
+  careerPathId?: string;
+  acquisition?: AcquisitionAttribution;
+}) {
+  if (mode() === "memory") {
+    const userId = input.userId ?? DEFAULT_USER_ID;
+    const existing = memFindUserById(userId);
+    const inferredName =
+      input.name?.trim() ||
+      input.handleBase?.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) ||
+      existing?.name ||
+      "New Learner";
+    const nextHandle = safeHandle(input.handleBase ?? existing?.handle ?? input.name ?? userId) || existing?.handle || "learner";
+    const mergedLinks = {
+      ...(existing?.socialLinks ?? {}),
+      website: existing?.socialLinks.website ?? `${appBaseUrl()}/u/${nextHandle}`,
+    };
+
+    return memUpsertUserProfile({
+      id: userId,
+      handle: existing?.handle ?? nextHandle,
+      name: inferredName,
+      avatarUrl: input.avatarUrl ?? existing?.avatarUrl ?? null,
+      contactEmail: input.email?.trim().toLowerCase() || existing?.contactEmail || null,
+      stripeCustomerId: existing?.stripeCustomerId ?? null,
+      headline: existing?.headline ?? "AI Builder",
+      bio: existing?.bio ?? "Building practical AI workflows and sharing public proof of execution.",
+      careerPathId: input.careerPathId ?? existing?.careerPathId ?? CAREER_PATHS[0].id,
+      skills: existing?.skills ?? [],
+      tools: existing?.tools ?? [],
+      socialLinks: mergedLinks,
+      published: existing?.published ?? false,
+      tokensUsed: existing?.tokensUsed ?? 0,
+      goals: existing?.goals ?? [],
+      acquisition: input.acquisition ?? existing?.acquisition,
+    });
+  }
+
+  return getOrCreateProfile(input);
 }
 
 async function getProjectArtifacts(projectId: string) {
@@ -1697,13 +1798,79 @@ export async function runtimeFindUserByHandle(handle: string) {
 
   const { data } = await supabase
     .from("learner_profiles")
-    .select("id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,created_at,updated_at")
+    .select(PROFILE_SELECT_FIELDS)
     .eq("handle", handle)
     .maybeSingle();
   if (!data) return null;
 
   const skills = await getSkillsForProfile(data.id);
   return profileFromRow(data, skills);
+}
+
+export async function runtimeGetBillingSubscription(userId: string) {
+  if (mode() === "memory") return memGetBillingSubscription(userId);
+
+  const row = await getBillingSubscriptionRowByUserId(userId);
+  return row ? billingSubscriptionFromRow(row) : null;
+}
+
+export async function runtimeUpsertBillingSubscription(input: {
+  userId: string;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string;
+  stripePriceId: string;
+  status: BillingSubscription["status"];
+  trialEndsAt: string | null;
+  currentPeriodEndsAt: string | null;
+  cancelAtPeriodEnd: boolean;
+  lastWebhookEventId?: string | null;
+  lastWebhookReceivedAt?: string | null;
+}) {
+  if (mode() === "memory") {
+    return memUpsertBillingSubscription(input);
+  }
+
+  const profile = await runtimeGetOrCreateProfile({ userId: input.userId });
+  const supabase = getSupabaseAdmin();
+  const now = new Date().toISOString();
+
+  if (input.stripeCustomerId) {
+    await supabase
+      .from("learner_profiles")
+      .update({
+        stripe_customer_id: input.stripeCustomerId,
+        updated_at: now,
+      })
+      .eq("id", profile.id);
+  }
+
+  const row = {
+    learner_profile_id: profile.id,
+    stripe_customer_id: input.stripeCustomerId,
+    stripe_subscription_id: input.stripeSubscriptionId,
+    stripe_price_id: input.stripePriceId,
+    status: input.status,
+    trial_ends_at: input.trialEndsAt,
+    current_period_ends_at: input.currentPeriodEndsAt,
+    cancel_at_period_end: input.cancelAtPeriodEnd,
+    last_webhook_event_id: input.lastWebhookEventId ?? null,
+    last_webhook_received_at: input.lastWebhookReceivedAt ?? null,
+    updated_at: now,
+  };
+
+  const { data, error } = await supabase
+    .from("billing_subscriptions")
+    .upsert(row, { onConflict: "learner_profile_id" })
+    .select(
+      "learner_profile_id,stripe_subscription_id,stripe_customer_id,stripe_price_id,status,trial_ends_at,current_period_ends_at,cancel_at_period_end,last_webhook_event_id,last_webhook_received_at,created_at,updated_at",
+    )
+    .single();
+
+  if (error || !data) {
+    throw new Error(`BILLING_SUBSCRIPTION_UPSERT_FAILED:${error?.message ?? "UNKNOWN"}`);
+  }
+
+  return billingSubscriptionFromRow(data as BillingSubscriptionRow);
 }
 
 export async function runtimeUpdateProfile(userId: string, patch: Partial<UserProfile>) {
@@ -3701,7 +3868,7 @@ export async function runtimeListSignupAuditRecords(input?: {
   let profileQuery = supabase
     .from("learner_profiles")
     .select(
-      "id,external_user_id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,contact_email,created_at,updated_at,welcome_email_sent_at",
+      "id,external_user_id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,contact_email,stripe_customer_id,created_at,updated_at,welcome_email_sent_at",
     )
     .gte("created_at", since)
     .order("created_at", { ascending: false })
@@ -3736,7 +3903,7 @@ export async function runtimeGetSignupAuditDetail(userId: string) {
   const { data: rawProfile } = await supabase
     .from("learner_profiles")
     .select(
-      "id,external_user_id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,contact_email,created_at,updated_at,welcome_email_sent_at",
+      "id,external_user_id,handle,full_name,headline,bio,career_path_id,published,tokens_used,goals,tools,social_links,acquisition,contact_email,stripe_customer_id,created_at,updated_at,welcome_email_sent_at",
     )
     .eq("id", normalizedUserId)
     .maybeSingle();

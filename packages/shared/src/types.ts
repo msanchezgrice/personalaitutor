@@ -73,6 +73,7 @@ export type UserProfile = {
   name: string;
   avatarUrl?: string | null;
   contactEmail?: string | null;
+  stripeCustomerId?: string | null;
   headline: string;
   bio: string;
   careerPathId: string;
@@ -245,6 +246,32 @@ export type OAuthConnection = {
   accountLabel: string | null;
   connectedAt: string | null;
   lastErrorCode: string | null;
+};
+
+export type BillingSubscriptionStatus =
+  | "none"
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "unpaid"
+  | "incomplete"
+  | "incomplete_expired"
+  | "paused";
+
+export type BillingSubscription = {
+  userId: string;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string;
+  stripePriceId: string;
+  status: BillingSubscriptionStatus;
+  trialEndsAt: string | null;
+  currentPeriodEndsAt: string | null;
+  cancelAtPeriodEnd: boolean;
+  lastWebhookEventId?: string | null;
+  lastWebhookReceivedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type TalentCard = {

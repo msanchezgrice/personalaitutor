@@ -4,8 +4,15 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { captureAnalyticsEvent } from "@/lib/analytics";
 
-export function DashboardSettingsMenu({ operatorToolsHref = null }: { operatorToolsHref?: string | null }) {
+export function DashboardSettingsMenu({
+  operatorToolsHref = null,
+  billingPortalEnabled = false,
+}: {
+  operatorToolsHref?: string | null;
+  billingPortalEnabled?: boolean;
+}) {
   const [open, setOpen] = useState(false);
+  const [billingPending, setBillingPending] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -60,6 +67,38 @@ export function DashboardSettingsMenu({ operatorToolsHref = null }: { operatorTo
     });
   }
 
+  async function handleManageBillingClick() {
+    try {
+      setBillingPending(true);
+      setOpen(false);
+      captureAnalyticsEvent("dashboard_settings_item_clicked", {
+        item: "manage_billing",
+        destination: "/api/billing/portal",
+        location: "header",
+      });
+
+      const response = await fetch("/api/billing/portal", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          returnTo: "/dashboard/profile",
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      const url = payload?.url;
+      if (!response.ok || typeof url !== "string" || !url) {
+        throw new Error(payload?.error?.message || "Unable to open billing portal");
+      }
+
+      window.location.assign(url);
+    } catch (error) {
+      console.error("[billing] portal redirect failed", error);
+      setBillingPending(false);
+    }
+  }
+
   function handleSignOutClick() {
     setOpen(false);
     captureAnalyticsEvent("auth_sign_out_clicked", {
@@ -101,6 +140,17 @@ export function DashboardSettingsMenu({ operatorToolsHref = null }: { operatorTo
         >
           <i className="fa-regular fa-user mr-2"></i>Profile Settings
         </Link>
+        {billingPortalEnabled ? (
+          <button
+            type="button"
+            className="w-full text-left px-3 py-2 text-sm text-sky-200 rounded-lg hover:bg-sky-500/20"
+            role="menuitem"
+            disabled={billingPending}
+            onClick={handleManageBillingClick}
+          >
+            <i className="fa-regular fa-credit-card mr-2"></i>{billingPending ? "Opening Billing..." : "Manage Billing"}
+          </button>
+        ) : null}
         {operatorToolsHref ? (
           <a
             href={operatorToolsHref}

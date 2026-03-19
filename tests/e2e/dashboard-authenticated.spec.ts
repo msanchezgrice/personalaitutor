@@ -20,32 +20,19 @@ test.describe("authenticated dashboard flows", () => {
     );
   });
 
-  test("home FTUE explains the layout and recommended work opens the workbench", async ({ page }) => {
+  test("home route shows the billing gate overlay for authenticated users without a subscription", async ({ page }) => {
     await page.goto("/dashboard/?welcome=1");
 
     await expect(page.locator("[data-dashboard-home-content='1']")).toBeVisible();
-    await expect(page.getByText("How this works")).toBeVisible();
-    await page.getByRole("link", { name: /start recommended work/i }).click();
-    await expect(page).toHaveURL(/\/dashboard\/projects\/?#pack-workbench$/);
-    await expect(page.locator("#pack-workbench")).toBeVisible();
-    await expect(page.getByText("Why this module")).toBeVisible();
+    await expect(page.locator("[data-billing-gate='1']")).toBeVisible();
+    await expect(page.getByText("Your dashboard is ready. Start your 7-day free trial")).toBeVisible();
+    await expect(page.getByRole("button", { name: /start 7-day free trial/i })).toBeVisible();
   });
 
-  test("projects page shows the module workbench instead of dropping the user into chat", async ({ page }) => {
+  test("nested dashboard routes redirect back to the gated home route until billing unlocks", async ({ page }) => {
     await page.goto("/dashboard/projects/");
 
-    await expect(page.getByRole("heading", { name: /project portfolio/i })).toBeVisible();
-    await expect(page.locator("#pack-workbench")).toBeVisible();
-    await expect(page.getByText("Build steps")).toBeVisible();
-    await expect(page.getByText("Tool launchers")).toBeVisible();
-  });
-
-  test("activity page renders user-visible actions", async ({ page }) => {
-    await page.goto("/dashboard/updates/");
-
-    await expect(page.getByRole("heading", { name: /recent user activity/i })).toBeVisible();
-    const activityCards = page.locator("article.glass");
-    await expect.poll(() => activityCards.count()).toBeGreaterThan(0);
-    await expect(page.locator("body")).not.toContainText(/No user actions yet/i);
+    await expect(page).toHaveURL(/\/dashboard\?billing=required&return_to=%2Fdashboard%2Fprojects/);
+    await expect(page.locator("[data-billing-gate='1']")).toBeVisible();
   });
 });

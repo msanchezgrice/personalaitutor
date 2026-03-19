@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { notFound, redirect } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
-import { getDashboardServerState } from "@/app/dashboard/_lib";
+import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
 import { runtimeListSignupAuditRecords, type SignupAuditRecord } from "@/lib/runtime";
 import { getCatalogData } from "@aitutor/shared";
 import {
@@ -110,6 +110,8 @@ export default async function DashboardAdminSignupsPage({
       )}
       headerSubtitle="Protected operator view for real signups, persisted onboarding answers, assessments, and chat activity."
       operatorToolsHref={state.operatorToolsUrl}
+      billingPortalEnabled={Boolean(state.billing.subscription)}
+      runtimeBootstrap={buildDashboardRuntimeBootstrap(state)}
       initialUser={{
         name: state.user?.name ?? state.seed?.name ?? "Operator",
         headline: state.user?.headline ?? "Operator",

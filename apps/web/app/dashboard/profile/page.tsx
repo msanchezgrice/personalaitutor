@@ -1,5 +1,5 @@
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
-import { getDashboardServerState } from "@/app/dashboard/_lib";
+import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
 
 export default async function DashboardProfilePage() {
   const state = await getDashboardServerState();
@@ -22,6 +22,8 @@ export default async function DashboardProfilePage() {
       )}
       hideHeaderActionsOnMobile
       operatorToolsHref={state.operatorToolsUrl}
+      billingPortalEnabled={Boolean(state.billing.subscription)}
+      runtimeBootstrap={buildDashboardRuntimeBootstrap(state)}
       initialUser={{
         name: displayName,
         headline: displayHeadline,

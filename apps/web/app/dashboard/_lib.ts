@@ -1,10 +1,33 @@
 import { getAuthSeed } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin-access";
-import { runtimeGetDashboardSummary } from "@/lib/runtime";
-import type { DashboardSummary, Project, UserProfile } from "@aitutor/shared";
+import { billingAccessAllowed, normalizeBillingStatus } from "@/lib/billing";
+import { runtimeGetBillingSubscription, runtimeGetDashboardSummary, runtimeGetOrCreateProfile } from "@/lib/runtime";
+import { syncBillingFromCheckoutSession } from "@/lib/stripe-server";
+import type {
+  BillingSubscription,
+  BillingSubscriptionStatus,
+  DashboardSummary,
+  Project,
+  UserProfile,
+} from "@aitutor/shared";
+
+export type DashboardRuntimeBootstrap = {
+  auth: {
+    userId: string;
+    name: string | null;
+    email: string | null;
+    avatarUrl: string | null;
+  };
+  summary: DashboardSummary | null;
+};
 
 export type DashboardServerState = {
   seed: Awaited<ReturnType<typeof getAuthSeed>>;
+  billing: {
+    subscription: BillingSubscription | null;
+    status: BillingSubscriptionStatus;
+    accessAllowed: boolean;
+  };
   summary: DashboardSummary | null;
   user: UserProfile | null;
   activeProject: Project | null;
@@ -30,11 +53,74 @@ function greetingForServerTime(date = new Date()) {
   return "Good Evening";
 }
 
-export async function getDashboardServerState(): Promise<DashboardServerState> {
+async function getDashboardBillingState(
+  seed: Awaited<ReturnType<typeof getAuthSeed>>,
+  options?: { checkoutSessionId?: string | null },
+) {
+  if (!seed?.userId) {
+    return {
+      subscription: null,
+      status: "none" as BillingSubscriptionStatus,
+      accessAllowed: false,
+    };
+  }
+
+  const user = await runtimeGetOrCreateProfile({
+    userId: seed.userId,
+    name: seed.name,
+    email: seed.email ?? null,
+    avatarUrl: seed.avatarUrl ?? null,
+    handleBase: seed.handleBase,
+  });
+
+  const checkoutSessionId = options?.checkoutSessionId?.trim();
+  if (checkoutSessionId) {
+    try {
+      await syncBillingFromCheckoutSession({
+        userId: user.id,
+        sessionId: checkoutSessionId,
+      });
+    } catch (error) {
+      console.warn("[billing] dashboard checkout sync failed", error instanceof Error ? error.message : "unknown");
+    }
+  }
+
+  const subscription = await runtimeGetBillingSubscription(user.id);
+  const status = normalizeBillingStatus(subscription?.status);
+  return {
+    subscription,
+    status,
+    accessAllowed: billingAccessAllowed(status),
+  };
+}
+
+export async function getDashboardBillingGateState(options?: { checkoutSessionId?: string | null }) {
   const seed = await getAuthSeed();
+  return getDashboardBillingState(seed, options);
+}
+
+export function buildDashboardRuntimeBootstrap(state: DashboardServerState): DashboardRuntimeBootstrap | null {
+  const userId = state.seed?.userId?.trim();
+  if (!userId) return null;
+
+  return {
+    auth: {
+      userId,
+      name: state.seed?.name ?? state.user?.name ?? null,
+      email: state.seed?.email ?? state.user?.contactEmail ?? null,
+      avatarUrl: state.seed?.avatarUrl ?? state.user?.avatarUrl ?? null,
+    },
+    summary: state.summary,
+  };
+}
+
+export async function getDashboardServerState(options?: { checkoutSessionId?: string | null }): Promise<DashboardServerState> {
+  const seed = await getAuthSeed();
+  const billing = await getDashboardBillingState(seed, options);
   if (!seed?.userId) {
     return {
       seed,
+      billing,
       summary: null,
       user: null,
       activeProject: null,
@@ -75,6 +161,7 @@ export async function getDashboardServerState(): Promise<DashboardServerState> {
 
   return {
     seed,
+    billing,
     summary,
     user,
     activeProject,

@@ -559,11 +559,6 @@ function getTimeline(score: number): string {
   return "3-5 years";
 }
 
-function sanitizeRedirectPath(path: string) {
-  if (!path.startsWith("/")) return "/onboarding";
-  return path;
-}
-
 function readSignUpIntent() {
   if (typeof window === "undefined") return null;
   try {
@@ -578,7 +573,7 @@ function readSignUpIntent() {
 function preferredSourceLabel(): string {
   if (typeof window === "undefined") return "social login";
   const source = readClientAttributionEnvelope()?.last?.utmSource?.toLowerCase() ?? "";
-  if (source.includes("linkedin")) return "LinkedIn sign-in";
+  if (source.includes("linkedin")) return "social login";
   if (source === "x" || source.includes("twitter")) return "X sign-in";
   if (isMetaAttributionSource(source)) return "Facebook sign-in";
   return "social login";
@@ -614,7 +609,6 @@ export function OnboardingIntake() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analysisIndex, setAnalysisIndex] = useState(0);
-  const [linkedinConnected, setLinkedinConnected] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
@@ -704,7 +698,6 @@ export function OnboardingIntake() {
       goals_count: selectedGoals.length,
       primary_goal: selectedGoals[0] ?? null,
       has_linkedin_url: hasLinkedInUrl,
-      linkedin_connected: linkedinConnected,
       has_resume: hasResume,
     }),
     [
@@ -713,7 +706,6 @@ export function OnboardingIntake() {
       companySize,
       hasLinkedInUrl,
       hasResume,
-      linkedinConnected,
       selectedCareer.path,
       selectedCareerLabel,
       selectedGoals,
@@ -851,19 +843,6 @@ export function OnboardingIntake() {
       setSessionId(boot.sessionId);
       if (boot.sessionUserId) setSessionUserId(boot.sessionUserId);
       if (boot.sessionToken) setSessionToken(boot.sessionToken);
-    }
-    const oauth = params.get("oauth");
-    if (oauth === "linkedin_connected") {
-      setLinkedinConnected(true);
-      trackPosthog("onboarding_linkedin_oauth_completed", {
-        session_id: maybeSessionId ?? boot?.sessionId ?? null,
-      });
-    } else if (oauth === "linkedin_denied") {
-      setError("LinkedIn connection was denied. You can continue onboarding without it or try again.");
-      trackPosthog("onboarding_linkedin_oauth_failed", {
-        session_id: maybeSessionId ?? boot?.sessionId ?? null,
-        reason: "oauth_denied",
-      });
     }
     return () => {
       document.documentElement.removeAttribute("data-onboarding-react");
@@ -1209,34 +1188,6 @@ export function OnboardingIntake() {
     return null;
   };
 
-  const runLinkedInOAuth = async () => {
-    setError(null);
-    setBusy(true);
-    try {
-      const session = await ensureSession();
-      trackPosthog("onboarding_linkedin_oauth_started", {
-        session_id: session.id,
-        source: "onboarding_step_work_details",
-      });
-      const redirectPath = sanitizeRedirectPath(
-        `/onboarding?sessionId=${encodeURIComponent(session.id)}&oauth=linkedin_connected`,
-      );
-      const href =
-        `/api/auth/linkedin/start?redirect=1` +
-        `&sessionId=${encodeURIComponent(session.id)}` +
-        `&redirectPath=${encodeURIComponent(redirectPath)}`;
-      window.location.href = href;
-    } catch (err) {
-      trackPosthog("onboarding_linkedin_oauth_failed", {
-        session_id: sessionId,
-        reason: err instanceof Error ? err.message : "oauth_start_failed",
-      });
-      setError(err instanceof Error ? err.message : "Unable to start LinkedIn OAuth");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const uploadResume = async (file: File) => {
     setError(null);
     setResumeUploadBusy(true);
@@ -1527,12 +1478,6 @@ export function OnboardingIntake() {
             </div>
           ) : null}
 
-          {linkedinConnected ? (
-            <div className="mb-6 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-              LinkedIn connected successfully. You can continue the onboarding quiz.
-            </div>
-          ) : null}
-
           {step === 1 ? (
             <div className="space-y-5">
               <div>
@@ -1640,17 +1585,6 @@ export function OnboardingIntake() {
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[#1e293b] placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 transition-colors"
                 />
                 <p className="mt-2 text-sm text-slate-500">Optional, but useful for stronger role-specific recommendations.</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void runLinkedInOAuth();
-                  }}
-                  disabled={busy}
-                  className="mt-3 btn btn-secondary"
-                >
-                  <i className="fa-brands fa-linkedin mr-2" />
-                  Connect LinkedIn
-                </button>
               </div>
 
               <div>
@@ -1768,7 +1702,7 @@ export function OnboardingIntake() {
                   <p><strong>Experience:</strong> {selectedExperience.label}</p>
                   <p><strong>Company Size:</strong> {companySize || "Not specified"}</p>
                   <p><strong>Resume:</strong> {uploadedResumeName || resumeFile ? "Uploaded" : "Not provided"}</p>
-                  <p><strong>LinkedIn:</strong> {linkedinUrl.trim() ? "Provided" : linkedinConnected ? "Connected via OAuth" : "Not provided"}</p>
+                  <p><strong>LinkedIn:</strong> {linkedinUrl.trim() ? "Provided" : "Not provided"}</p>
                 </div>
               </div>
             </div>
@@ -1940,7 +1874,7 @@ export function OnboardingIntake() {
 
               <div className="flex flex-col gap-3 border-t border-slate-200 pt-6 md:flex-row md:items-center md:justify-between">
                 <p className="text-sm text-slate-500">
-                  You are set. Continue to your dashboard to start the first recommended module.
+                  You are set. Continue to your dashboard preview to start your 7-day free trial and unlock the first recommended module.
                 </p>
                 {!isSignedIn ? (
                   <SignUpButton mode="modal" forceRedirectUrl={nextRedirectHref ?? "/dashboard/?welcome=1"} fallbackRedirectUrl={nextRedirectHref ?? "/dashboard/?welcome=1"}>
@@ -2060,7 +1994,7 @@ export function OnboardingIntake() {
                       trackPosthog("onboarding_step_completed", {
                         step: 2,
                         step_name: "work_details",
-                        has_linkedin: !!linkedinUrl.trim() || linkedinConnected,
+                        has_linkedin: !!linkedinUrl.trim(),
                         ...onboardingAnalyticsContext,
                       });
                     }

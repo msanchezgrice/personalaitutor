@@ -146,14 +146,14 @@ const homeFaqLd = {
 export const metadata: Metadata = {
   title: `AI Upskilling for Working Professionals | ${BRAND_NAME}`,
   description:
-    "AI upskilling for working professionals. Build AI workflows, verify your skills, and publish public proof employers can trust.",
+    "Build AI skills for your career with personalized modules, a 24/7 tutor, daily AI news, and content that helps you show your progress.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
     title: `AI Upskilling for Working Professionals | ${BRAND_NAME}`,
     description:
-      "Build AI workflows, verify your skills, and generate a public profile employers can trust.",
+      "Personalized AI learning for your career with role-based modules, always-on tutor support, daily AI updates, and visible progress.",
     url: appBaseUrl,
     images: [{
       url: ogImageUrl,
@@ -169,7 +169,7 @@ export const metadata: Metadata = {
     creator: BRAND_X_HANDLE,
     title: `AI Upskilling for Working Professionals | ${BRAND_NAME}`,
     description:
-      "Build AI workflows, verify your skills, and generate a public profile employers can trust.",
+      "Personalized AI learning for your career with role-based modules, always-on tutor support, daily AI updates, and visible progress.",
     images: [ogImageUrl],
   },
   other: {
@@ -208,8 +208,8 @@ export default async function HomePage() {
     `href="${authFirstHref}" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>`;
   replacements['href="/assessment/"'] = `href="${authFirstHref}"`;
   replacements['href="/assessment"'] = `href="${authFirstHref}"`;
-  replacements['<a href="#public-proof" class="nav-link">Public Proof</a>'] =
-    '<a href="#public-proof" class="nav-link">Public Proof</a><a href="/learn" class="nav-link">Learning</a>';
+  replacements['<a href="#features" class="nav-link">Features</a>'] =
+    '<a href="#features" class="nav-link">Features</a><a href="/learn" class="nav-link">Learning</a>';
   replacements["<!-- CTA -->"] = `${homeLearningSectionHtml}\n\n  <!-- CTA -->`;
   replacements['<img src="/assets/branding/brand_wordmark_logo.png" alt="My AI Skill Tutor" class="h-8 w-auto object-contain" />'] =
     '<img src="/assets/branding/brand_brain_icon.svg" alt="My AI Skill Tutor" class="h-11 w-11 object-contain" /><span class="font-[Outfit] font-bold text-[1.9rem] leading-none tracking-tight text-[var(--text-main)]">My AI Skill Tutor</span>';

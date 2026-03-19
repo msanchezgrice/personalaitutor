@@ -1,7 +1,10 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
+import { BillingGateOverlay } from "@/components/billing-gate-overlay";
 import { FbCompleteRegistrationOnDashboard } from "@/components/fb-complete-registration-on-dashboard";
-import { getDashboardServerState } from "@/app/dashboard/_lib";
+import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
+import { sanitizeDashboardReturnTo } from "@/lib/billing";
 
 function summarize(value: string | null | undefined, fallback: string, maxChars = 180) {
   const cleaned = String(value || "").replace(/\s+/g, " ").trim();
@@ -28,7 +31,17 @@ export default async function DashboardPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const state = await getDashboardServerState();
+  const billingIntent = readQueryParam(params.billing);
+  const checkoutSessionId = readQueryParam(params.session_id);
+  const returnTo = sanitizeDashboardReturnTo(readQueryParam(params.return_to));
+  const state = await getDashboardServerState({
+    checkoutSessionId: billingIntent === "success" ? checkoutSessionId : null,
+  });
+
+  if (billingIntent === "success" && state.billing.accessAllowed && returnTo !== "/dashboard") {
+    redirect(returnTo as Parameters<typeof redirect>[0]);
+  }
+
   const user = state.user;
   const summary = state.summary;
   const activeProject = state.activeProject;
@@ -84,6 +97,8 @@ export default async function DashboardPage({
         headerTitle={<span data-dashboard-greeting="1">{state.greeting}</span>}
         headerSubtitle="Welcome to your dashboard. Let's start with one focused win."
         operatorToolsHref={state.operatorToolsUrl}
+        billingPortalEnabled={Boolean(state.billing.subscription)}
+        runtimeBootstrap={buildDashboardRuntimeBootstrap(state)}
         initialUser={{
           name: user?.name ?? state.seed?.name ?? "Learner",
           headline: user?.headline ?? "AI Builder",
@@ -95,7 +110,11 @@ export default async function DashboardPage({
           levelProgressText: state.sidebarLevel.progressText,
         }}
       >
-        <div data-dashboard-home-content="1" className="p-10 max-w-6xl mx-auto w-full pb-24">
+        <div className="relative p-10 max-w-6xl mx-auto w-full pb-24">
+          <div
+            data-dashboard-home-content="1"
+            className={state.billing.accessAllowed ? "" : "pointer-events-none select-none opacity-40 blur-[3px]"}
+          >
           <div
             data-dashboard-home-hero="1"
             className="glass-panel p-6 rounded-2xl mb-8 flex flex-col md:flex-row items-center justify-between gap-6 border border-emerald-500/30 overflow-hidden relative"
@@ -447,6 +466,8 @@ export default async function DashboardPage({
               </section>
             </div>
           </div>
+          </div>
+          {!state.billing.accessAllowed ? <BillingGateOverlay returnTo={returnTo} /> : null}
         </div>
       </DashboardShell>
     </>

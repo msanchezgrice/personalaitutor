@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import Script from "next/script";
+import type { DashboardRuntimeBootstrap } from "@/app/dashboard/_lib";
+import { DashboardRoutePrefetcher } from "@/components/dashboard-route-prefetcher";
 import { DashboardRouteHydrator } from "@/components/dashboard-route-hydrator";
 import { DashboardSettingsMenu } from "@/components/dashboard-settings-menu";
 
@@ -13,8 +15,10 @@ type DashboardShellProps = {
   headerActions?: ReactNode;
   hideHeaderActionsOnMobile?: boolean;
   operatorToolsHref?: string | null;
+  billingPortalEnabled?: boolean;
   children: ReactNode;
   decor?: ReactNode;
+  runtimeBootstrap?: DashboardRuntimeBootstrap | null;
   initialUser?: {
     name?: string | null;
     headline?: string | null;
@@ -116,8 +120,10 @@ export function DashboardShell({
   headerActions,
   hideHeaderActionsOnMobile = false,
   operatorToolsHref = null,
+  billingPortalEnabled = false,
   children,
   decor,
+  runtimeBootstrap = null,
   initialUser,
 }: DashboardShellProps) {
   const displayName = initialUser?.name?.trim() || "Learner";
@@ -128,9 +134,20 @@ export function DashboardShell({
   const levelSubtitle = initialUser?.levelSubtitle?.trim() || "Starter Builder";
   const levelProgressPct = Math.max(0, Math.min(100, Number(initialUser?.levelProgressPct ?? 20)));
   const levelProgressText = initialUser?.levelProgressText?.trim() || "Start building to level up";
+  const runtimeBootstrapJson = runtimeBootstrap
+    ? JSON.stringify(runtimeBootstrap).replace(/</g, "\\u003c")
+    : null;
   return (
     <>
+      {runtimeBootstrapJson ? (
+        <script
+          id="aitutor-dashboard-bootstrap"
+          type="application/json"
+          dangerouslySetInnerHTML={{ __html: runtimeBootstrapJson }}
+        />
+      ) : null}
       <DashboardRouteHydrator />
+      <DashboardRoutePrefetcher />
       <div
         data-gemini-shell="1"
         className="bg-[#0f111a] text-white lg:flex lg:h-screen lg:overflow-hidden min-h-screen text-sm"
@@ -274,7 +291,10 @@ export function DashboardShell({
               </div>
             ) : null}
             <div data-dashboard-header-settings="1" className="flex flex-shrink-0 items-center justify-end">
-              <DashboardSettingsMenu operatorToolsHref={operatorToolsHref} />
+              <DashboardSettingsMenu
+                operatorToolsHref={operatorToolsHref}
+                billingPortalEnabled={billingPortalEnabled}
+              />
             </div>
           </header>
           <div data-dashboard-route="1" className="contents">

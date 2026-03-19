@@ -5,10 +5,19 @@ test.describe("hard gate browser verification", () => {
     await page.goto("/");
 
     await expect(page.getByRole("link", { name: /take the ai assessment/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /build ai skills that actually fit your career/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Career-Based AI Skill Modules" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "24/7 AI Tutor for Your Career" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Daily AI News for Your Career" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Build Your AI Presence" })).toBeVisible();
+    await expect(page.getByText("$49.99")).toBeVisible();
+    await expect(page.locator("body")).toContainText(/7-day free trial/i);
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     await expect(page.locator("#theme-toggle")).toHaveCount(0);
     await expect(page.locator("body")).not.toContainText(/cryptographically verified/i);
     await expect(page.locator("body")).not.toContainText(/cryptographic/i);
+    await expect(page.locator("body")).not.toContainText(/system verified proof/i);
+    await expect(page.locator("body")).not.toContainText(/public proof/i);
   });
 
   test("onboarding route enforces auth-first gate and onboarding options come from matrix API", async ({ page }) => {
