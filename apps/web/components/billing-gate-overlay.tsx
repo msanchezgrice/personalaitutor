@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { BillingCheckoutReminderKey } from "@aitutor/shared";
+import { trackAdCheckoutStarted } from "@/lib/ad-conversions";
 import { captureAnalyticsEvent, getOrCreateFunnelVisitorId } from "@/lib/analytics";
 
 type BillingGateOverlayProps = {
@@ -23,6 +24,7 @@ export function BillingGateOverlay({
   const [error, setError] = useState<string | null>(null);
   const returnToReport = returnToReportProp || "/onboarding?view=report";
   const autoStartedRef = useRef(false);
+  const viewedRef = useRef(false);
 
   async function handleCheckoutStart() {
     try {
@@ -58,12 +60,28 @@ export function BillingGateOverlay({
         return_to: returnTo,
         source: resumeEmailCampaignKey ?? "billing_gate",
       });
+      trackAdCheckoutStarted({
+        sessionId: typeof payload?.sessionId === "string" ? payload.sessionId : null,
+        source: resumeEmailCampaignKey ?? "billing_gate",
+      });
       window.location.assign(checkoutUrl);
     } catch (checkoutError) {
       setError(checkoutError instanceof Error ? checkoutError.message : "Unable to start billing checkout");
       setPending(false);
     }
   }
+
+  useEffect(() => {
+    if (viewedRef.current) return;
+    viewedRef.current = true;
+    captureAnalyticsEvent("billing_hard_gate_viewed", {
+      funnel: "acquisition_activation",
+      return_to: returnTo,
+      resume_email_delivery_id: resumeEmailDeliveryId,
+      resume_email_campaign_key: resumeEmailCampaignKey,
+      auto_start: autoStart,
+    });
+  }, [autoStart, resumeEmailCampaignKey, resumeEmailDeliveryId, returnTo]);
 
   useEffect(() => {
     if (!autoStart || pending || autoStartedRef.current) return;

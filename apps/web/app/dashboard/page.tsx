@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
 import { BillingGateOverlay } from "@/components/billing-gate-overlay";
+import { DashboardEntryTracking } from "@/components/dashboard-entry-tracking";
 import { FbCompleteRegistrationOnDashboard } from "@/components/fb-complete-registration-on-dashboard";
 import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
 import { buildOnboardingReportReturnUrl, sanitizeDashboardReturnTo } from "@/lib/billing";
@@ -33,13 +34,15 @@ export default async function DashboardPage({
   const params = await searchParams;
   const billingIntent = readQueryParam(params.billing);
   const checkoutSessionId = readQueryParam(params.session_id);
+  const onboardingSessionId = readQueryParam(params.onboardingSessionId);
   const returnTo = sanitizeDashboardReturnTo(readQueryParam(params.return_to));
-  const returnToReport = buildOnboardingReportReturnUrl(readQueryParam(params.onboardingSessionId));
+  const returnToReport = buildOnboardingReportReturnUrl(onboardingSessionId);
   const autoStartBillingCheckout = readQueryParam(params.billing_resume) === "1";
   const resumeEmailDeliveryId = readQueryParam(params.email_delivery_id) || null;
   const resumeEmailCampaignKey = readQueryParam(params.email_campaign_key) || null;
   const state = await getDashboardServerState({
     checkoutSessionId: billingIntent === "success" ? checkoutSessionId : null,
+    onboardingSessionId,
   });
 
   if (billingIntent === "success" && state.billing.accessAllowed && returnTo !== "/dashboard") {
@@ -96,6 +99,14 @@ export default async function DashboardPage({
       <Suspense fallback={null}>
         <FbCompleteRegistrationOnDashboard />
       </Suspense>
+      {state.seed?.userId ? (
+        <DashboardEntryTracking
+          billingIntent={billingIntent || null}
+          checkoutSessionId={checkoutSessionId || null}
+          onboardingSessionId={onboardingSessionId || null}
+          locked={!state.billing.accessAllowed}
+        />
+      ) : null}
       <DashboardShell
         activeTab="home"
         headerTitle={<span data-dashboard-greeting="1">{state.greeting}</span>}

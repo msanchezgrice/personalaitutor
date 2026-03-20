@@ -1424,7 +1424,8 @@ export async function runtimeClaimOnboardingSession(input: {
   });
 
   const sourceProfileId = session.userId;
-  if (sourceProfileId !== targetProfile.id) {
+  const migrated = sourceProfileId !== targetProfile.id;
+  if (migrated) {
     await supabase
       .from("onboarding_sessions")
       .update({
@@ -1648,33 +1649,35 @@ export async function runtimeClaimOnboardingSession(input: {
 
   const updatedUser = (await runtimeUpdateProfile(currentTarget.id, patch)) ?? currentTarget;
 
-  await recordPersistedFunnelEvent({
-    eventKey: "guest_session_claimed",
-    occurredAt: new Date().toISOString(),
-    authUserId: input.authUserId,
-    learnerProfileId: updatedUser.id,
-    onboardingSessionId: input.sessionId,
-    utmSource: mergedAcquisition?.last?.utmSource ?? mergedAcquisition?.first?.utmSource ?? null,
-    utmMedium: mergedAcquisition?.last?.utmMedium ?? mergedAcquisition?.first?.utmMedium ?? null,
-    utmCampaign: mergedAcquisition?.last?.utmCampaign ?? mergedAcquisition?.first?.utmCampaign ?? null,
-    utmContent: mergedAcquisition?.last?.utmContent ?? mergedAcquisition?.first?.utmContent ?? null,
-    utmTerm: mergedAcquisition?.last?.utmTerm ?? mergedAcquisition?.first?.utmTerm ?? null,
-    firstUtmSource: mergedAcquisition?.first?.utmSource ?? null,
-    firstUtmMedium: mergedAcquisition?.first?.utmMedium ?? null,
-    firstUtmCampaign: mergedAcquisition?.first?.utmCampaign ?? null,
-    firstUtmContent: mergedAcquisition?.first?.utmContent ?? null,
-    firstUtmTerm: mergedAcquisition?.first?.utmTerm ?? null,
-    landingPath: mergedAcquisition?.last?.landingPath ?? mergedAcquisition?.first?.landingPath ?? null,
-    firstLandingPath: mergedAcquisition?.first?.landingPath ?? null,
-    referrer: mergedAcquisition?.last?.referrer ?? mergedAcquisition?.first?.referrer ?? null,
-    firstReferrer: mergedAcquisition?.first?.referrer ?? null,
-    paidSource: null,
-    properties: {
-      migrated: sourceProfileId !== updatedUser.id,
-      source_profile_id: sourceProfileId,
-      target_profile_id: updatedUser.id,
-    },
-  });
+  if (migrated) {
+    await recordPersistedFunnelEvent({
+      eventKey: "guest_session_claimed",
+      occurredAt: new Date().toISOString(),
+      authUserId: input.authUserId,
+      learnerProfileId: updatedUser.id,
+      onboardingSessionId: input.sessionId,
+      utmSource: mergedAcquisition?.last?.utmSource ?? mergedAcquisition?.first?.utmSource ?? null,
+      utmMedium: mergedAcquisition?.last?.utmMedium ?? mergedAcquisition?.first?.utmMedium ?? null,
+      utmCampaign: mergedAcquisition?.last?.utmCampaign ?? mergedAcquisition?.first?.utmCampaign ?? null,
+      utmContent: mergedAcquisition?.last?.utmContent ?? mergedAcquisition?.first?.utmContent ?? null,
+      utmTerm: mergedAcquisition?.last?.utmTerm ?? mergedAcquisition?.first?.utmTerm ?? null,
+      firstUtmSource: mergedAcquisition?.first?.utmSource ?? null,
+      firstUtmMedium: mergedAcquisition?.first?.utmMedium ?? null,
+      firstUtmCampaign: mergedAcquisition?.first?.utmCampaign ?? null,
+      firstUtmContent: mergedAcquisition?.first?.utmContent ?? null,
+      firstUtmTerm: mergedAcquisition?.first?.utmTerm ?? null,
+      landingPath: mergedAcquisition?.last?.landingPath ?? mergedAcquisition?.first?.landingPath ?? null,
+      firstLandingPath: mergedAcquisition?.first?.landingPath ?? null,
+      referrer: mergedAcquisition?.last?.referrer ?? mergedAcquisition?.first?.referrer ?? null,
+      firstReferrer: mergedAcquisition?.first?.referrer ?? null,
+      paidSource: null,
+      properties: {
+        migrated: sourceProfileId !== updatedUser.id,
+        source_profile_id: sourceProfileId,
+        target_profile_id: updatedUser.id,
+      },
+    });
+  }
 
   return {
     session: refreshedSession,

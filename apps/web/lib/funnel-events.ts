@@ -10,9 +10,12 @@ export const CLIENT_PERSISTED_FUNNEL_EVENTS = new Set([
   "auth_sign_in_completed",
   "onboarding_viewed",
   "onboarding_assessment_funnel_step",
+  "onboarding_continue_to_dashboard",
   "assessment_started",
   "assessment_completed",
   "onboarding_completed",
+  "billing_hard_gate_viewed",
+  "dashboard_signed_in_landed",
 ] as const);
 
 export type PersistedFunnelEventKey =
@@ -23,11 +26,15 @@ export type PersistedFunnelEventKey =
   | "auth_sign_in_completed"
   | "onboarding_viewed"
   | "onboarding_assessment_funnel_step"
+  | "onboarding_continue_to_dashboard"
   | "assessment_started"
   | "assessment_completed"
   | "onboarding_completed"
+  | "billing_hard_gate_viewed"
+  | "dashboard_signed_in_landed"
   | "billing_checkout_started"
   | "billing_checkout_completed"
+  | "billing_first_paid_invoice"
   | "project_created"
   | "guest_session_claimed";
 

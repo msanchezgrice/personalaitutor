@@ -128,14 +128,22 @@ export function fbOnboardingComplete(eventId?: string) {
   fbCustomEvent("OnboardingComplete", undefined, eventId);
 }
 
+/** User starts Stripe checkout. */
+export function fbInitiateCheckout(value?: number, currency = "USD", eventId?: string) {
+  fbEvent("InitiateCheckout", {
+    value,
+    currency,
+  }, eventId);
+}
+
 /** Future: Subscription purchased. */
-export function fbSubscribe(value: number, currency = "USD", planId?: string) {
-  fbEvent("Subscribe", { value, currency, predicted_ltv: value, content_name: planId });
+export function fbSubscribe(value: number, currency = "USD", planId?: string, eventId?: string) {
+  fbEvent("Subscribe", { value, currency, predicted_ltv: value, content_name: planId }, eventId);
 }
 
 /** Future: One-time purchase. */
-export function fbPurchase(value: number, currency = "USD", contentId?: string) {
-  fbEvent("Purchase", { value, currency, content_ids: contentId ? [contentId] : undefined });
+export function fbPurchase(value: number, currency = "USD", contentId?: string, eventId?: string) {
+  fbEvent("Purchase", { value, currency, content_ids: contentId ? [contentId] : undefined }, eventId);
 }
 
 /* ---------- TypeScript global augmentation ---------- */

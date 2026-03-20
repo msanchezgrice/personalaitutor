@@ -6,14 +6,24 @@ import {
 import { readClientAttributionEnvelope, type AttributionEnvelope } from "@/lib/attribution";
 import {
   fbCompleteRegistration,
+  fbInitiateCheckout,
   fbOnboardingComplete,
   fbOnboardingStart,
   fbQuizComplete,
   fbQuizStart,
+  fbSubscribe,
 } from "@/lib/fb-pixel";
+import { trackGoogleAdsConversion } from "@/lib/google-ads";
 
 const linkedInSignupConversionId = Number(process.env.NEXT_PUBLIC_LINKEDIN_SIGNUP_CONVERSION_ID || "0") || 0;
 const linkedInLeadConversionId = Number(process.env.NEXT_PUBLIC_LINKEDIN_LEAD_CONVERSION_ID || "0") || 0;
+const googleAdsSignupConversionLabel = process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_LABEL?.trim() || "";
+const googleAdsLeadConversionLabel = process.env.NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL?.trim() || "";
+const googleAdsCheckoutStartedConversionLabel =
+  process.env.NEXT_PUBLIC_GOOGLE_ADS_CHECKOUT_STARTED_CONVERSION_LABEL?.trim() || "";
+const googleAdsCheckoutCompletedConversionLabel =
+  process.env.NEXT_PUBLIC_GOOGLE_ADS_CHECKOUT_COMPLETED_CONVERSION_LABEL?.trim() || "";
+const DEFAULT_CHECKOUT_VALUE = 49.99;
 
 function hasWindow() {
   return typeof window !== "undefined";
@@ -25,7 +35,9 @@ type ConversionEvent =
   | "onboarding_start"
   | "quiz_start"
   | "quiz_complete"
-  | "onboarding_complete";
+  | "onboarding_complete"
+  | "checkout_started"
+  | "checkout_completed";
 
 type ServerConversionPayload = {
   event: ConversionEvent;
@@ -51,6 +63,8 @@ type ServerConversionPayload = {
   firstUtmTerm?: string | null;
   landingPath?: string | null;
   paidSource?: string | null;
+  gclid?: string | null;
+  msclkid?: string | null;
 };
 
 function trackXEvent(event: string, params?: Record<string, unknown>) {
@@ -95,6 +109,19 @@ function sendServerConversion(payload: {
     visitorId: getOrCreateFunnelVisitorId(),
     attribution: readClientAttributionEnvelope(),
   });
+  const bodyJson = JSON.stringify(body);
+
+  try {
+    if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+      const blob = new Blob([bodyJson], { type: "application/json" });
+      if (navigator.sendBeacon("/api/analytics/conversion", blob)) {
+        return;
+      }
+    }
+  } catch {
+    // Fallback to fetch below.
+  }
+
   void fetch("/api/analytics/conversion", {
     method: "POST",
     headers: {
@@ -102,7 +129,8 @@ function sendServerConversion(payload: {
       "cache-control": "no-store",
     },
     credentials: "same-origin",
-    body: JSON.stringify(body),
+    keepalive: true,
+    body: bodyJson,
   }).catch(() => {
     // Non-blocking analytics path.
   });
@@ -159,6 +187,8 @@ export function buildServerConversionPayload(
     firstUtmTerm: first?.utmTerm ?? null,
     landingPath: last?.landingPath ?? null,
     paidSource: normalizePaidSource(context.attribution),
+    gclid: last?.gclid ?? first?.gclid ?? null,
+    msclkid: last?.msclkid ?? first?.msclkid ?? null,
   };
 }
 
@@ -172,7 +202,7 @@ function captureAdMirror(payload: {
   recommendedPaths?: string[];
 }) {
   captureAnalyticsEvent("ad_conversion_event", {
-    ad_network: "meta",
+    ad_network: "multi",
     conversion_event: payload.event,
     event_id: payload.eventId,
     session_id: payload.sessionId ?? null,
@@ -190,6 +220,9 @@ export function trackAdCompleteRegistration(input: {
   const eventId = createAnalyticsEventId("complete_registration");
 
   fbCompleteRegistration("clerk", eventId);
+  trackGoogleAdsConversion(googleAdsSignupConversionLabel, {
+    transactionId: input.sessionId ?? eventId,
+  });
   trackXEvent("SignUp", {
     content_name: "signup",
   });
@@ -221,6 +254,11 @@ export function trackAdLead(input: {
   const eventId = input.eventId ?? createAnalyticsEventId("lead");
 
   fbQuizComplete(input.score, input.recommendedPaths, eventId);
+  trackGoogleAdsConversion(googleAdsLeadConversionLabel, {
+    value: input.score,
+    currency: "USD",
+    transactionId: input.sessionId ?? eventId,
+  });
   trackXEvent("Lead", {
     value: input.score,
     currency: "USD",
@@ -342,6 +380,79 @@ export function trackAdOnboardingComplete(input: {
     sessionId: input.sessionId ?? null,
     careerCategory: input.careerCategory,
     score: input.score,
+    source: input.source,
+  });
+}
+
+export function trackAdCheckoutStarted(input: {
+  sessionId?: string | null;
+  source?: string;
+  value?: number;
+  currency?: string;
+}) {
+  const eventId = input.sessionId?.trim()
+    ? `checkout_started_${input.sessionId.trim()}`
+    : createAnalyticsEventId("checkout_started");
+  const value = typeof input.value === "number" && Number.isFinite(input.value)
+    ? input.value
+    : DEFAULT_CHECKOUT_VALUE;
+  const currency = input.currency?.trim() || "USD";
+
+  fbInitiateCheckout(value, currency, eventId);
+  trackGoogleAdsConversion(googleAdsCheckoutStartedConversionLabel, {
+    value,
+    currency,
+    transactionId: input.sessionId ?? eventId,
+  });
+  sendServerConversion({
+    event: "checkout_started",
+    eventId,
+    value,
+    currency,
+    sessionId: input.sessionId ?? null,
+    source: input.source,
+  });
+  captureAdMirror({
+    event: "checkout_started",
+    eventId,
+    sessionId: input.sessionId ?? null,
+    source: input.source,
+  });
+}
+
+export function trackAdCheckoutCompleted(input: {
+  sessionId?: string | null;
+  source?: string;
+  value?: number;
+  currency?: string;
+  planId?: string | null;
+}) {
+  const eventId = input.sessionId?.trim()
+    ? `checkout_completed_${input.sessionId.trim()}`
+    : createAnalyticsEventId("checkout_completed");
+  const value = typeof input.value === "number" && Number.isFinite(input.value)
+    ? input.value
+    : DEFAULT_CHECKOUT_VALUE;
+  const currency = input.currency?.trim() || "USD";
+
+  fbSubscribe(value, currency, input.planId ?? "monthly_subscription", eventId);
+  trackGoogleAdsConversion(googleAdsCheckoutCompletedConversionLabel, {
+    value,
+    currency,
+    transactionId: input.sessionId ?? eventId,
+  });
+  sendServerConversion({
+    event: "checkout_completed",
+    eventId,
+    value,
+    currency,
+    sessionId: input.sessionId ?? null,
+    source: input.source,
+  });
+  captureAdMirror({
+    event: "checkout_completed",
+    eventId,
+    sessionId: input.sessionId ?? null,
     source: input.source,
   });
 }

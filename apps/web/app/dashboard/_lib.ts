@@ -1,6 +1,10 @@
 import { getAuthSeed } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin-access";
-import { runtimeGetBillingAccessState, runtimeGetDashboardSummary } from "@/lib/runtime";
+import {
+  runtimeClaimOnboardingSession,
+  runtimeGetBillingAccessState,
+  runtimeGetDashboardSummary,
+} from "@/lib/runtime";
 import { syncBillingFromCheckoutSession } from "@/lib/stripe-server";
 import type {
   BillingSubscription,
@@ -54,8 +58,29 @@ function greetingForServerTime(date = new Date()) {
 
 async function getDashboardBillingState(
   seed: Awaited<ReturnType<typeof getAuthSeed>>,
-  options?: { checkoutSessionId?: string | null },
+  options?: { checkoutSessionId?: string | null; onboardingSessionId?: string | null },
 ) {
+  const onboardingSessionId = options?.onboardingSessionId?.trim();
+  if (seed?.userId && onboardingSessionId) {
+    try {
+      await runtimeClaimOnboardingSession({
+        sessionId: onboardingSessionId,
+        authUserId: seed.userId,
+        seed: {
+          name: seed.name,
+          email: seed.email ?? null,
+          handleBase: seed.handleBase,
+          avatarUrl: seed.avatarUrl ?? null,
+        },
+      });
+    } catch (error) {
+      console.warn(
+        "[onboarding] dashboard session claim failed",
+        error instanceof Error ? error.message : "unknown",
+      );
+    }
+  }
+
   const billing = await runtimeGetBillingAccessState({
     userId: seed?.userId ?? null,
     seed: seed
@@ -95,7 +120,10 @@ async function getDashboardBillingState(
   return billing;
 }
 
-export async function getDashboardBillingGateState(options?: { checkoutSessionId?: string | null }) {
+export async function getDashboardBillingGateState(options?: {
+  checkoutSessionId?: string | null;
+  onboardingSessionId?: string | null;
+}) {
   const seed = await getAuthSeed();
   return getDashboardBillingState(seed, options);
 }
@@ -115,7 +143,10 @@ export function buildDashboardRuntimeBootstrap(state: DashboardServerState): Das
   };
 }
 
-export async function getDashboardServerState(options?: { checkoutSessionId?: string | null }): Promise<DashboardServerState> {
+export async function getDashboardServerState(options?: {
+  checkoutSessionId?: string | null;
+  onboardingSessionId?: string | null;
+}): Promise<DashboardServerState> {
   const seed = await getAuthSeed();
   const billingState = await getDashboardBillingState(seed, options);
   const billing = {

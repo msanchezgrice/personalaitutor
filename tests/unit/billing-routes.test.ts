@@ -7,6 +7,7 @@ const {
   mockCreateStripePortalSession,
   mockConstructStripeWebhookEvent,
   mockHandleStripeWebhookEvent,
+  mockRecordPersistedFunnelEvent,
 } = vi.hoisted(() => ({
   mockGetAuthSeed: vi.fn(),
   mockGetUserId: vi.fn(),
@@ -14,6 +15,7 @@ const {
   mockCreateStripePortalSession: vi.fn(),
   mockConstructStripeWebhookEvent: vi.fn(),
   mockHandleStripeWebhookEvent: vi.fn(),
+  mockRecordPersistedFunnelEvent: vi.fn(),
 }));
 
 class MockNextRequest extends Request {
@@ -44,6 +46,10 @@ vi.mock("@/lib/stripe-server", () => ({
   handleStripeWebhookEvent: mockHandleStripeWebhookEvent,
 }));
 
+vi.mock("@/lib/funnel-events-server", () => ({
+  recordPersistedFunnelEvent: mockRecordPersistedFunnelEvent,
+}));
+
 import { POST as checkoutPost } from "../../apps/web/app/api/billing/checkout/route";
 import { POST as portalPost } from "../../apps/web/app/api/billing/portal/route";
 import { POST as webhookPost } from "../../apps/web/app/api/billing/webhook/route";
@@ -56,6 +62,7 @@ describe("billing routes", () => {
     mockCreateStripePortalSession.mockReset();
     mockConstructStripeWebhookEvent.mockReset();
     mockHandleStripeWebhookEvent.mockReset();
+    mockRecordPersistedFunnelEvent.mockReset();
   });
 
   test("checkout rejects unauthenticated requests", async () => {
@@ -84,6 +91,10 @@ describe("billing routes", () => {
       handleBase: "billing-user",
     });
     mockCreateStripeCheckoutSession.mockResolvedValue({
+      profile: {
+        id: "profile_123",
+        acquisition: undefined,
+      },
       session: {
         id: "cs_test_123",
         url: "https://checkout.stripe.com/pay/cs_test_123",
@@ -109,7 +120,7 @@ describe("billing routes", () => {
     );
   });
 
-  test("checkout forwards reminder resume metadata when a billing reminder restarts checkout", async () => {
+  test("checkout forwards reminder resume metadata when a billing reminder link restarts checkout", async () => {
     mockGetAuthSeed.mockResolvedValue({
       userId: "user_123",
       name: "Billing User",
@@ -118,6 +129,10 @@ describe("billing routes", () => {
       handleBase: "billing-user",
     });
     mockCreateStripeCheckoutSession.mockResolvedValue({
+      profile: {
+        id: "profile_123",
+        acquisition: undefined,
+      },
       session: {
         id: "cs_test_resume_123",
         url: "https://checkout.stripe.com/pay/cs_test_resume_123",

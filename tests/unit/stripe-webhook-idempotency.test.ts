@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const {
+  mockRelayFirstPaidInvoiceConversion,
   mockRuntimeClaimStripeWebhookEvent,
   mockRuntimeGetBillingSubscription,
   mockRuntimeGetOrCreateProfile,
@@ -8,6 +9,7 @@ const {
   mockRuntimeReleaseStripeWebhookEventClaim,
   mockRuntimeUpsertBillingSubscription,
 } = vi.hoisted(() => ({
+  mockRelayFirstPaidInvoiceConversion: vi.fn(),
   mockRuntimeClaimStripeWebhookEvent: vi.fn(),
   mockRuntimeGetBillingSubscription: vi.fn(),
   mockRuntimeGetOrCreateProfile: vi.fn(),
@@ -23,6 +25,10 @@ vi.mock("@/lib/runtime", () => ({
   runtimeMarkStripeWebhookEventProcessed: mockRuntimeMarkStripeWebhookEventProcessed,
   runtimeReleaseStripeWebhookEventClaim: mockRuntimeReleaseStripeWebhookEventClaim,
   runtimeUpsertBillingSubscription: mockRuntimeUpsertBillingSubscription,
+}));
+
+vi.mock("@/lib/billing-conversion-relay", () => ({
+  relayFirstPaidInvoiceConversion: mockRelayFirstPaidInvoiceConversion,
 }));
 
 import { handleStripeWebhookEvent } from "../../apps/web/lib/stripe-server";
@@ -50,6 +56,7 @@ describe("stripe webhook idempotency", () => {
   } as const;
 
   beforeEach(() => {
+    mockRelayFirstPaidInvoiceConversion.mockReset();
     mockRuntimeClaimStripeWebhookEvent.mockReset();
     mockRuntimeGetBillingSubscription.mockReset();
     mockRuntimeGetOrCreateProfile.mockReset();
@@ -116,5 +123,82 @@ describe("stripe webhook idempotency", () => {
 
     expect(mockRuntimeReleaseStripeWebhookEventClaim).toHaveBeenCalledWith("evt_test_123");
     expect(mockRuntimeMarkStripeWebhookEventProcessed).not.toHaveBeenCalled();
+  });
+
+  test("relays the first paid invoice conversion when Stripe reports a successful paid invoice", async () => {
+    mockRuntimeClaimStripeWebhookEvent.mockResolvedValue(true);
+    mockRuntimeGetOrCreateProfile.mockResolvedValue({
+      id: "user_123",
+      contactEmail: "learner@example.com",
+      acquisition: {
+        first: {
+          utmSource: "google",
+          utmMedium: "cpc",
+          utmCampaign: "brand_search",
+          gclid: "gclid_test_123",
+        },
+      },
+    });
+
+    const invoiceEvent = {
+      id: "evt_invoice_paid_123",
+      type: "invoice.paid",
+      data: {
+        object: {
+          id: "in_test_123",
+          status: "paid",
+          amount_paid: 4999,
+          currency: "usd",
+          billing_reason: "subscription_cycle",
+          parent: {
+            type: "subscription_details",
+            quote_details: null,
+            subscription_details: {
+              subscription: {
+                id: "sub_test_123",
+                customer: "cus_test_123",
+                status: "active",
+                cancel_at_period_end: false,
+                trial_end: null,
+                current_period_end: 1_710_000_000,
+                items: {
+                  data: [{ price: { id: "price_test_123" } }],
+                },
+                metadata: {
+                  userId: "user_123",
+                },
+              },
+              metadata: {
+                userId: "user_123",
+              },
+            },
+          },
+          lines: {
+            data: [],
+          },
+        },
+      },
+    } as const;
+
+    await handleStripeWebhookEvent(invoiceEvent as never);
+
+    expect(mockRelayFirstPaidInvoiceConversion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user_123",
+        profile: expect.objectContaining({
+          id: "user_123",
+        }),
+        invoice: expect.objectContaining({
+          id: "in_test_123",
+          amount_paid: 4999,
+        }),
+      }),
+    );
+    expect(mockRuntimeMarkStripeWebhookEventProcessed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: "evt_invoice_paid_123",
+        userId: "user_123",
+      }),
+    );
   });
 });

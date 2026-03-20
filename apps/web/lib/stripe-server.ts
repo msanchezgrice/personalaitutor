@@ -27,6 +27,7 @@ import {
   runtimeReleaseStripeWebhookEventClaim,
   runtimeUpsertBillingSubscription,
 } from "@/lib/runtime";
+import { relayFirstPaidInvoiceConversion } from "@/lib/billing-conversion-relay";
 import { getSiteUrl } from "@/lib/site";
 
 const STRIPE_WEBHOOK_EVENTS = new Set([
@@ -35,6 +36,8 @@ const STRIPE_WEBHOOK_EVENTS = new Set([
   "customer.subscription.updated",
   "customer.subscription.deleted",
   "customer.subscription.trial_will_end",
+  "invoice.paid",
+  "invoice.payment_succeeded",
 ]);
 
 let cachedStripe: Stripe | null = null;
@@ -467,6 +470,48 @@ export async function handleStripeWebhookEvent(event: Stripe.Event): Promise<Bil
         if (billingAccessAllowed(synced.status)) {
           await cancelQueuedBillingReminderDeliveries(userId);
         }
+        return synced;
+      },
+    });
+  }
+
+  if (event.type === "invoice.paid" || event.type === "invoice.payment_succeeded") {
+    const invoice = event.data.object as Stripe.Invoice;
+    const invoiceSubscription = invoice.parent?.subscription_details?.subscription;
+    if (!invoiceSubscription) {
+      return null;
+    }
+
+    const subscription = await resolveStripeSubscription(invoiceSubscription);
+    const userId = subscriptionUserIdFromMetadata(subscription);
+    if (!userId) {
+      return null;
+    }
+
+    return withWebhookClaim({
+      eventId: event.id,
+      eventType: event.type,
+      userId,
+      receivedAt,
+      run: async () => {
+        const synced = await syncBillingFromStripeSubscription({
+          userId,
+          subscription,
+          lastWebhookEventId: event.id,
+          lastWebhookReceivedAt: receivedAt,
+        });
+        if (billingAccessAllowed(synced.status)) {
+          await cancelQueuedBillingReminderDeliveries(userId);
+        }
+
+        const profile = await runtimeGetOrCreateProfile({ userId });
+        await relayFirstPaidInvoiceConversion({
+          userId,
+          profile,
+          invoice,
+          subscription,
+        });
+
         return synced;
       },
     });

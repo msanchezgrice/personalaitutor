@@ -9,6 +9,8 @@ const conversionEventSchema = z.enum([
   "quiz_start",
   "quiz_complete",
   "onboarding_complete",
+  "checkout_started",
+  "checkout_completed",
 ]);
 
 const schema = z.object({
@@ -35,12 +37,14 @@ const schema = z.object({
   firstUtmTerm: z.string().max(240).nullable().optional(),
   landingPath: z.string().max(240).nullable().optional(),
   paidSource: z.string().max(120).nullable().optional(),
+  gclid: z.string().max(240).nullable().optional(),
+  msclkid: z.string().max(240).nullable().optional(),
 });
 
 type ConversionEvent = z.infer<typeof conversionEventSchema>;
 
 type RelayResult = {
-  provider: "meta" | "linkedin" | "x";
+  provider: "meta" | "google" | "linkedin" | "x";
   delivered: boolean;
   status?: number;
   reason?: string;
@@ -60,11 +64,15 @@ function eventName(event: ConversionEvent) {
       return "QuizComplete";
     case "onboarding_complete":
       return "OnboardingComplete";
+    case "checkout_started":
+      return "InitiateCheckout";
+    case "checkout_completed":
+      return "Subscribe";
   }
 }
 
-function providerSupportsEvent(provider: "meta" | "linkedin" | "x", event: ConversionEvent) {
-  if (provider === "meta") return true;
+function providerSupportsEvent(provider: "meta" | "google" | "linkedin" | "x", event: ConversionEvent) {
+  if (provider === "meta" || provider === "google") return true;
   return event === "complete_registration" || event === "lead";
 }
 
@@ -138,6 +146,133 @@ async function relayMeta(payload: z.infer<typeof schema>, req: NextRequest): Pro
   };
 }
 
+function googleAdsConversionActionForEvent(event: ConversionEvent) {
+  switch (event) {
+    case "complete_registration":
+      return process.env.GOOGLE_ADS_COMPLETE_REGISTRATION_CONVERSION_ACTION?.trim();
+    case "lead":
+      return process.env.GOOGLE_ADS_LEAD_CONVERSION_ACTION?.trim();
+    case "checkout_started":
+      return process.env.GOOGLE_ADS_CHECKOUT_STARTED_CONVERSION_ACTION?.trim();
+    case "checkout_completed":
+      return process.env.GOOGLE_ADS_CHECKOUT_COMPLETED_CONVERSION_ACTION?.trim();
+    default:
+      return null;
+  }
+}
+
+function normalizeGoogleAdsCustomerId(value: string | null | undefined) {
+  const digits = String(value || "").replace(/\D+/g, "");
+  return digits || null;
+}
+
+function formatGoogleAdsDateTime(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const absoluteMinutes = Math.abs(offsetMinutes);
+  const offsetHours = String(Math.floor(absoluteMinutes / 60)).padStart(2, "0");
+  const offsetRemainderMinutes = String(absoluteMinutes % 60).padStart(2, "0");
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}${sign}${offsetHours}:${offsetRemainderMinutes}`;
+}
+
+async function relayGoogleAds(payload: z.infer<typeof schema>): Promise<RelayResult> {
+  if (!providerSupportsEvent("google", payload.event)) {
+    return { provider: "google", delivered: false, reason: "UNSUPPORTED_EVENT" };
+  }
+
+  const customerId = normalizeGoogleAdsCustomerId(process.env.GOOGLE_ADS_CUSTOMER_ID);
+  const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN?.trim();
+  const clientId = process.env.GOOGLE_ADS_CLIENT_ID?.trim();
+  const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET?.trim();
+  const refreshToken = process.env.GOOGLE_ADS_REFRESH_TOKEN?.trim();
+  const loginCustomerId = normalizeGoogleAdsCustomerId(process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID);
+  const conversionAction = googleAdsConversionActionForEvent(payload.event);
+  const apiVersion = process.env.GOOGLE_ADS_API_VERSION?.trim() || "v22";
+
+  if (!customerId || !developerToken || !clientId || !clientSecret || !refreshToken || !conversionAction) {
+    return { provider: "google", delivered: false, reason: "MISSING_CONFIG" };
+  }
+
+  if (!payload.gclid?.trim()) {
+    return { provider: "google", delivered: false, reason: "MISSING_CLICK_ID" };
+  }
+
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+
+  if (!tokenRes.ok) {
+    return {
+      provider: "google",
+      delivered: false,
+      status: tokenRes.status,
+      reason: "GOOGLE_TOKEN_FAILED",
+    };
+  }
+
+  const tokenPayload = await tokenRes.json().catch(() => null) as { access_token?: string } | null;
+  const accessToken = tokenPayload?.access_token?.trim();
+  if (!accessToken) {
+    return {
+      provider: "google",
+      delivered: false,
+      reason: "GOOGLE_TOKEN_MISSING",
+    };
+  }
+
+  const uploadRes = await fetch(
+    `https://googleads.googleapis.com/${encodeURIComponent(apiVersion)}/customers/${encodeURIComponent(customerId)}:uploadClickConversions`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+        "developer-token": developerToken,
+        ...(loginCustomerId ? { "login-customer-id": loginCustomerId } : {}),
+      },
+      body: JSON.stringify({
+        conversions: [
+          {
+            conversionAction: conversionAction,
+            gclid: payload.gclid.trim(),
+            conversionDateTime: formatGoogleAdsDateTime(new Date()),
+            conversionValue:
+              typeof payload.value === "number" && Number.isFinite(payload.value)
+                ? payload.value
+                : 1,
+            currencyCode: payload.currency ?? "USD",
+            orderId: payload.sessionId ?? payload.eventId ?? undefined,
+          },
+        ],
+        partialFailure: false,
+        validateOnly: false,
+      }),
+    },
+  );
+
+  return {
+    provider: "google",
+    delivered: uploadRes.ok,
+    status: uploadRes.status,
+    reason: uploadRes.ok ? undefined : "GOOGLE_RELAY_FAILED",
+  };
+}
+
 async function relayGenericProvider(
   provider: "linkedin" | "x",
   payload: z.infer<typeof schema>,
@@ -185,6 +320,8 @@ async function relayGenericProvider(
       firstUtmTerm: payload.firstUtmTerm,
       landingPath: payload.landingPath,
       paidSource: payload.paidSource,
+      gclid: payload.gclid,
+      msclkid: payload.msclkid,
     }),
   });
 
@@ -206,15 +343,16 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = parsed.data;
-    const [meta, linkedin, x] = await Promise.all([
+    const [meta, google, linkedin, x] = await Promise.all([
       relayMeta(payload, req),
+      relayGoogleAds(payload),
       relayGenericProvider("linkedin", payload),
       relayGenericProvider("x", payload),
     ]);
 
     return jsonOk({
       event: payload.event,
-      relays: [meta, linkedin, x],
+      relays: [meta, google, linkedin, x],
     });
   } catch (error) {
     return jsonError("CONVERSION_RELAY_FAILED", "Failed to relay conversion event", 500, {

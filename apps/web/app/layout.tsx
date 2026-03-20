@@ -22,6 +22,7 @@ const appBaseUrl = getSiteUrl();
 const facebookAppId = process.env.FACEBOOK_APP_ID?.trim() || process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();
 const defaultOgImageUrl = `${appBaseUrl}${DEFAULT_OG_IMAGE_PATH}`;
 const fbPixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID?.trim() || "";
+const googleAdsTagId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID?.trim() || process.env.NEXT_PUBLIC_GOOGLE_ADS_TAG_ID?.trim() || "";
 const linkedinPartnerId = process.env.NEXT_PUBLIC_LINKEDIN_PARTNER_ID?.trim() || "";
 const xPixelId = process.env.NEXT_PUBLIC_X_PIXEL_ID?.trim() || process.env.NEXT_PUBLIC_TWITTER_PIXEL_ID?.trim() || "";
 const posthogProjectApiKey = process.env.NEXT_PUBLIC_POSTHOG_KEY?.trim() || "";
@@ -95,6 +96,20 @@ fbq('track', 'PageView');
 }
 
 const fbPixelScript = buildFbPixelScript(fbPixelId);
+
+function buildGoogleAdsInitScript(tagId: string) {
+  if (!tagId) return "";
+  const safeTagId = JSON.stringify(tagId);
+  return `
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+window.gtag = window.gtag || gtag;
+gtag('js', new Date());
+gtag('config', ${safeTagId});
+`;
+}
+
+const googleAdsInitScript = buildGoogleAdsInitScript(googleAdsTagId);
 
 function buildLinkedInInsightScript(partnerId: string) {
   if (!partnerId) return "";
@@ -203,6 +218,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         ) : null}
         {fbPixelScript ? (
           <script id="fb-pixel" dangerouslySetInnerHTML={{ __html: fbPixelScript }} />
+        ) : null}
+        {googleAdsTagId ? (
+          <script async src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(googleAdsTagId)}`}></script>
+        ) : null}
+        {googleAdsInitScript ? (
+          <script id="google-ads-tag" dangerouslySetInnerHTML={{ __html: googleAdsInitScript }} />
         ) : null}
         {linkedinInsightScript ? (
           <script id="linkedin-insight" dangerouslySetInnerHTML={{ __html: linkedinInsightScript }} />
