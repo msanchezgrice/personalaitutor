@@ -7,6 +7,7 @@ import {
   jsonError,
   jsonOk,
   readLifecycleEmailTracking,
+  type EmailCampaignKey,
 } from "@aitutor/shared";
 import { NextRequest } from "next/server";
 
@@ -20,11 +21,11 @@ type LifecycleEmailEventType =
   | "complained"
   | "unsubscribed";
 
-type LifecycleDeliveryRow = {
+type EmailDeliveryRow = {
   id: string;
   learner_profile_id: string;
   external_user_id: string | null;
-  campaign_key: string;
+  campaign_key: EmailCampaignKey;
   recipient_email: string;
   provider: string | null;
   provider_message_id: string | null;
@@ -208,11 +209,11 @@ async function findDeliveryByProviderMessageId(providerMessageId: string) {
     .maybeSingle();
 
   if (error) throw error;
-  return (data as LifecycleDeliveryRow | null) ?? null;
+  return (data as EmailDeliveryRow | null) ?? null;
 }
 
 async function insertLifecycleEmailEvent(input: {
-  delivery: LifecycleDeliveryRow;
+  delivery: EmailDeliveryRow;
   providerEventId: string;
   providerMessageId: string;
   eventType: LifecycleEmailEventType;
@@ -259,7 +260,7 @@ async function insertLifecycleEmailEvent(input: {
 }
 
 async function captureLifecycleEmailEventToPosthog(input: {
-  delivery: LifecycleDeliveryRow;
+  delivery: EmailDeliveryRow;
   eventType: LifecycleEmailEventType;
   eventAt: string;
   providerEventId: string;
@@ -290,6 +291,8 @@ async function captureLifecycleEmailEventToPosthog(input: {
       event_source: "resend_webhook",
       learner_profile_id: input.delivery.learner_profile_id,
       recipient_email: input.delivery.recipient_email,
+      email_delivery_id: input.delivery.id,
+      email_campaign_key: input.delivery.campaign_key,
       lifecycle_delivery_id: input.delivery.id,
       lifecycle_campaign_key: input.delivery.campaign_key,
       email_provider: "resend",

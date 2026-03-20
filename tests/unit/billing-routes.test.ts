@@ -109,6 +109,45 @@ describe("billing routes", () => {
     );
   });
 
+  test("checkout forwards reminder resume metadata when a billing reminder restarts checkout", async () => {
+    mockGetAuthSeed.mockResolvedValue({
+      userId: "user_123",
+      name: "Billing User",
+      email: "billing@example.com",
+      avatarUrl: null,
+      handleBase: "billing-user",
+    });
+    mockCreateStripeCheckoutSession.mockResolvedValue({
+      session: {
+        id: "cs_test_resume_123",
+        url: "https://checkout.stripe.com/pay/cs_test_resume_123",
+      },
+    });
+
+    const response = await checkoutPost(
+      new MockNextRequest("http://localhost/api/billing/checkout", {
+        method: "POST",
+        body: JSON.stringify({
+          returnTo: "/dashboard/projects",
+          resumeEmailDeliveryId: "delivery_123",
+          resumeEmailCampaignKey: "billing_checkout_reminder_24h",
+        }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(mockCreateStripeCheckoutSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user_123",
+        returnTo: "/dashboard/projects",
+        resumeEmailDeliveryId: "delivery_123",
+        resumeEmailCampaignKey: "billing_checkout_reminder_24h",
+      }),
+    );
+  });
+
   test("portal returns a hosted customer portal url", async () => {
     mockGetAuthSeed.mockResolvedValue({
       userId: "user_123",

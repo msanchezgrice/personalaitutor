@@ -35,6 +35,9 @@ export default async function DashboardPage({
   const checkoutSessionId = readQueryParam(params.session_id);
   const returnTo = sanitizeDashboardReturnTo(readQueryParam(params.return_to));
   const returnToReport = buildOnboardingReportReturnUrl(readQueryParam(params.onboardingSessionId));
+  const autoStartBillingCheckout = readQueryParam(params.billing_resume) === "1";
+  const resumeEmailDeliveryId = readQueryParam(params.email_delivery_id) || null;
+  const resumeEmailCampaignKey = readQueryParam(params.email_campaign_key) || null;
   const state = await getDashboardServerState({
     checkoutSessionId: billingIntent === "success" ? checkoutSessionId : null,
   });
@@ -101,7 +104,17 @@ export default async function DashboardPage({
         billingPortalEnabled={Boolean(state.billing.subscription)}
         runtimeBootstrap={buildDashboardRuntimeBootstrap(state)}
         locked={!state.billing.accessAllowed}
-        lockOverlay={!state.billing.accessAllowed ? <BillingGateOverlay returnTo={returnTo} returnToReport={returnToReport} /> : null}
+        lockOverlay={!state.billing.accessAllowed ? (
+          <BillingGateOverlay
+            returnTo={returnTo}
+            returnToReport={returnToReport}
+            autoStart={autoStartBillingCheckout}
+            resumeEmailDeliveryId={resumeEmailDeliveryId}
+            resumeEmailCampaignKey={resumeEmailCampaignKey === "billing_checkout_reminder_1h" || resumeEmailCampaignKey === "billing_checkout_reminder_24h"
+              ? resumeEmailCampaignKey
+              : null}
+          />
+        ) : null}
         initialUser={{
           name: user?.name ?? state.seed?.name ?? "Learner",
           headline: user?.headline ?? "AI Builder",

@@ -1,14 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
+  BILLING_CHECKOUT_REMINDER_KEYS,
   CAREER_PATHS,
   EMAIL_PRODUCT_NAME,
   LIFECYCLE_EMAIL_UTM_MEDIUM,
   LIFECYCLE_EMAIL_UTM_SOURCE,
   appendLifecycleEmailTracking,
+  buildBillingCheckoutReminderEmail,
+  buildBillingCheckoutReminderResumeUrl,
   buildLifecycleEmail,
   capturePosthogServerEvent,
+  isBillingCheckoutReminderCampaign,
+  isBillingCheckoutReminderDue,
   resolveLifecycleEmailKey,
+  type EmailCampaignKey,
   type LifecycleEmailAssessment,
   type LifecycleEmailKey,
   type LifecycleEmailNewsItem,
@@ -61,6 +67,12 @@ function lifecycleMaxSendsPerRun() {
   const parsed = Number(process.env.LIFECYCLE_EMAIL_MAX_SENDS_PER_RUN ?? "25");
   if (!Number.isFinite(parsed)) return 25;
   return Math.max(1, Math.min(200, Math.floor(parsed)));
+}
+
+function billingReminderMaxSendsPerRun() {
+  const parsed = Number(process.env.BILLING_REMINDER_MAX_SENDS_PER_RUN ?? "25");
+  if (!Number.isFinite(parsed)) return 25;
+  return Math.max(1, Math.min(100, Math.floor(parsed)));
 }
 
 function normalizeSiteUrl(input: string) {
@@ -412,14 +424,24 @@ type LifecycleProfileRow = {
 
 type LifecycleDeliveryRow = {
   id: string;
-  campaign_key: string;
+  learner_profile_id?: string;
+  external_user_id?: string | null;
+  campaign_key: EmailCampaignKey;
   status: string;
   recipient_email: string;
   subject: string;
   provider: string | null;
   provider_message_id: string | null;
+  email_source?: string | null;
+  email_medium?: string | null;
+  email_campaign?: string | null;
+  cohort_source?: string | null;
+  cohort_medium?: string | null;
+  cohort_campaign?: string | null;
+  cohort_paid_source?: string | null;
   payload: Record<string, unknown> | null;
   sent_at: string | null;
+  created_at?: string;
 };
 
 type DailySignupDigestRow = {
@@ -652,7 +674,7 @@ async function insertLifecycleEmailEvent(input: {
   userId: string;
   externalUserId?: string | null;
   recipientEmail: string;
-  campaignKey: LifecycleEmailKey;
+  campaignKey: EmailCampaignKey;
   provider: string;
   providerMessageId?: string | null;
   providerEventId: string;
@@ -710,7 +732,7 @@ async function captureLifecycleEmailEventToPosthog(input: {
   distinctId: string;
   recipientEmail: string;
   userId: string;
-  campaignKey: LifecycleEmailKey;
+  campaignKey: EmailCampaignKey;
   deliveryId: string;
   eventType: LifecycleEmailEventType;
   eventAt: string;
@@ -744,6 +766,8 @@ async function captureLifecycleEmailEventToPosthog(input: {
       event_source: input.eventType === "sent" ? "worker" : "resend_webhook",
       learner_profile_id: input.userId,
       recipient_email: input.recipientEmail,
+      email_delivery_id: input.deliveryId,
+      email_campaign_key: input.campaignKey,
       lifecycle_delivery_id: input.deliveryId,
       lifecycle_campaign_key: input.campaignKey,
       email_provider: input.provider,
@@ -1352,10 +1376,66 @@ async function lifecycleDeliveriesForUser(userId: string) {
   const supabase = supabaseAdmin();
   const { data } = await supabase
     .from("learner_email_deliveries")
-    .select("id,campaign_key,status,recipient_email,subject,provider,provider_message_id,payload,sent_at")
+    .select("id,campaign_key,status,recipient_email,subject,provider,provider_message_id,payload,sent_at,created_at")
     .eq("learner_profile_id", userId);
 
   return (data ?? []) as LifecycleDeliveryRow[];
+}
+
+async function updateEmailDeliveryRecord(input: {
+  deliveryId: string;
+  patch: Record<string, unknown>;
+}) {
+  const supabase = supabaseAdmin();
+  const { error } = await supabase
+    .from("learner_email_deliveries")
+    .update({
+      ...input.patch,
+      updated_at: nowIso(),
+    })
+    .eq("id", input.deliveryId);
+  if (error) throw error;
+}
+
+async function dueBillingReminderDeliveries(limit: number) {
+  const supabase = supabaseAdmin();
+  const { data } = await supabase
+    .from("learner_email_deliveries")
+    .select(
+      "id,learner_profile_id,external_user_id,campaign_key,status,recipient_email,subject,provider,provider_message_id,email_source,email_medium,email_campaign,cohort_source,cohort_medium,cohort_campaign,cohort_paid_source,payload,sent_at,created_at",
+    )
+    .in("campaign_key", [...BILLING_CHECKOUT_REMINDER_KEYS])
+    .eq("status", "queued")
+    .order("created_at", { ascending: true })
+    .limit(limit);
+
+  return ((data ?? []) as LifecycleDeliveryRow[]).filter((delivery) =>
+    isBillingCheckoutReminderCampaign(delivery.campaign_key)
+      ? isBillingCheckoutReminderDue({
+          campaignKey: delivery.campaign_key,
+          createdAt: delivery.created_at ?? nowIso(),
+        })
+      : false,
+  );
+}
+
+async function claimQueuedBillingReminderDelivery(deliveryId: string) {
+  const supabase = supabaseAdmin();
+  const { data, error } = await supabase
+    .from("learner_email_deliveries")
+    .update({
+      status: "processing",
+      updated_at: nowIso(),
+    })
+    .eq("id", deliveryId)
+    .eq("status", "queued")
+    .select(
+      "id,learner_profile_id,external_user_id,campaign_key,status,recipient_email,subject,provider,provider_message_id,email_source,email_medium,email_campaign,cohort_source,cohort_medium,cohort_campaign,cohort_paid_source,payload,sent_at,created_at",
+    )
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data as LifecycleDeliveryRow | null) ?? null;
 }
 
 async function upsertLifecycleDelivery(input: {
@@ -1753,6 +1833,203 @@ async function sendDueLifecycleEmails() {
   }
 
   console.log(`[worker] lifecycle emails sent: ${sentCount} (max ${maxSends})`);
+}
+
+function billingReminderAccessAllowed(status: string | null | undefined) {
+  const normalized = String(status || "").trim().toLowerCase();
+  return normalized === "trialing" || normalized === "active";
+}
+
+async function maybeSendBillingCheckoutReminder(delivery: LifecycleDeliveryRow) {
+  const claimedDelivery = await claimQueuedBillingReminderDelivery(delivery.id);
+  if (!claimedDelivery) return false;
+  if (!isBillingCheckoutReminderCampaign(claimedDelivery.campaign_key)) {
+    await updateEmailDeliveryRecord({
+      deliveryId: claimedDelivery.id,
+      patch: { status: "skipped" },
+    });
+    return false;
+  }
+
+  const userId = claimedDelivery.learner_profile_id?.trim();
+  if (!userId) {
+    await updateEmailDeliveryRecord({
+      deliveryId: claimedDelivery.id,
+      patch: { status: "skipped" },
+    });
+    return false;
+  }
+
+  const supabase = supabaseAdmin();
+  const [{ data: profile }, { data: billing }] = await Promise.all([
+    supabase
+      .from("learner_profiles")
+      .select("id,external_user_id,full_name,contact_email")
+      .eq("id", userId)
+      .maybeSingle(),
+    supabase
+      .from("billing_subscriptions")
+      .select("status")
+      .eq("learner_profile_id", userId)
+      .maybeSingle(),
+  ]);
+
+  const recipientEmail =
+    (typeof profile?.contact_email === "string" && profile.contact_email.trim())
+    || claimedDelivery.recipient_email
+    || "";
+
+  if (!recipientEmail || billingReminderAccessAllowed(typeof billing?.status === "string" ? billing.status : null)) {
+    await updateEmailDeliveryRecord({
+      deliveryId: claimedDelivery.id,
+      patch: { status: "skipped" },
+    });
+    return false;
+  }
+
+  const returnTo =
+    typeof claimedDelivery.payload?.returnTo === "string" && claimedDelivery.payload.returnTo.trim()
+      ? claimedDelivery.payload.returnTo
+      : "/dashboard";
+  const emailSource = claimedDelivery.email_source ?? LIFECYCLE_EMAIL_UTM_SOURCE;
+  const emailMedium = claimedDelivery.email_medium ?? LIFECYCLE_EMAIL_UTM_MEDIUM;
+  const emailCampaign = claimedDelivery.email_campaign ?? claimedDelivery.campaign_key;
+  const cohortSource = claimedDelivery.cohort_source ?? "unknown";
+  const cohortMedium = claimedDelivery.cohort_medium ?? "unknown";
+  const cohortCampaign = claimedDelivery.cohort_campaign ?? "unknown";
+  const cohortPaidSource = claimedDelivery.cohort_paid_source ?? "unknown";
+  const provider = claimedDelivery.provider ?? "resend";
+  const resumeUrl = buildBillingCheckoutReminderResumeUrl({
+    baseUrl: appBaseUrl(),
+    returnTo,
+    deliveryId: claimedDelivery.id,
+    campaignKey: claimedDelivery.campaign_key,
+  });
+  const template = buildBillingCheckoutReminderEmail({
+    campaignKey: claimedDelivery.campaign_key,
+    learnerName: typeof profile?.full_name === "string" ? profile.full_name : null,
+    resumeUrl,
+  });
+
+  const delivered = await sendResendEmail({
+    to: recipientEmail,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+  });
+
+  if (!delivered.ok) {
+    await updateEmailDeliveryRecord({
+      deliveryId: claimedDelivery.id,
+      patch: {
+        status: "failed",
+        subject: template.subject,
+        payload: {
+          ...(claimedDelivery.payload ?? {}),
+          previewText: template.previewText,
+          ctaUrl: resumeUrl,
+          errorCode: delivered.errorCode,
+          detail: "detail" in delivered ? delivered.detail ?? null : null,
+        },
+      },
+    });
+    console.error(
+      `[worker] billing reminder failed key=${claimedDelivery.campaign_key} user=${userId} code=${delivered.errorCode}`,
+    );
+    return false;
+  }
+
+  const sentAt = nowIso();
+  await updateEmailDeliveryRecord({
+    deliveryId: claimedDelivery.id,
+    patch: {
+      status: "sent",
+      subject: template.subject,
+      provider_message_id: delivered.messageId ?? claimedDelivery.provider_message_id ?? null,
+      sent_at: sentAt,
+      payload: {
+        ...(claimedDelivery.payload ?? {}),
+        previewText: template.previewText,
+        ctaUrl: resumeUrl,
+        providerMessageId: delivered.messageId ?? null,
+      },
+    },
+  });
+
+  const sentInserted = await insertLifecycleEmailEvent({
+    deliveryId: claimedDelivery.id,
+    userId,
+    externalUserId:
+      (typeof profile?.external_user_id === "string" && profile.external_user_id.trim())
+      || claimedDelivery.external_user_id
+      || null,
+    recipientEmail,
+    campaignKey: claimedDelivery.campaign_key,
+    provider,
+    providerMessageId: delivered.messageId ?? claimedDelivery.provider_message_id ?? null,
+    providerEventId: `${provider}:sent:${claimedDelivery.id}`,
+    eventType: "sent",
+    eventAt: sentAt,
+    emailSource,
+    emailMedium,
+    emailCampaign,
+    cohortSource,
+    cohortMedium,
+    cohortCampaign,
+    cohortPaidSource,
+    payload: {
+      subject: template.subject,
+      previewText: template.previewText,
+    },
+  });
+
+  if (sentInserted) {
+    await captureLifecycleEmailEventToPosthog({
+      distinctId:
+        (typeof profile?.external_user_id === "string" && profile.external_user_id.trim())
+        || recipientEmail
+        || userId,
+      recipientEmail,
+      userId,
+      campaignKey: claimedDelivery.campaign_key,
+      deliveryId: claimedDelivery.id,
+      eventType: "sent",
+      eventAt: sentAt,
+      provider,
+      providerMessageId: delivered.messageId ?? claimedDelivery.provider_message_id ?? null,
+      emailSource,
+      emailMedium,
+      emailCampaign,
+      cohortSource,
+      cohortMedium,
+      cohortCampaign,
+      cohortPaidSource,
+      payload: {
+        subject: template.subject,
+        previewText: template.previewText,
+      },
+    });
+  }
+
+  console.log(`[worker] billing reminder sent key=${claimedDelivery.campaign_key} user=${userId}`);
+  return true;
+}
+
+async function sendDueBillingCheckoutReminderEmails() {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) {
+    console.log("[worker] billing reminder skipped: RESEND_API_KEY missing");
+    return;
+  }
+
+  const dueDeliveries = await dueBillingReminderDeliveries(billingReminderMaxSendsPerRun());
+  let sentCount = 0;
+  for (const delivery of dueDeliveries) {
+    const sent = await maybeSendBillingCheckoutReminder(delivery);
+    if (sent) sentCount += 1;
+  }
+
+  console.log(`[worker] billing reminders sent: ${sentCount}`);
 }
 
 async function processArtifactJob(job: ClaimedJob) {
@@ -2223,6 +2500,7 @@ async function runSchedulers() {
   await queueMemoryRefreshJobs();
   await createDailyUpdateForDefaultUser();
   await sendDueLifecycleEmails();
+  await sendDueBillingCheckoutReminderEmails();
   await sendDailySignupDigest();
 }
 

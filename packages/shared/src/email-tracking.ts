@@ -1,11 +1,11 @@
-import type { LifecycleEmailKey } from "./lifecycle-email";
+import type { EmailCampaignKey } from "./email-campaigns";
 
 export const LIFECYCLE_EMAIL_UTM_SOURCE = "lifecycle_email";
 export const LIFECYCLE_EMAIL_UTM_MEDIUM = "email";
 
 export type LifecycleEmailTrackingInput = {
   url: string;
-  campaignKey: LifecycleEmailKey;
+  campaignKey: EmailCampaignKey;
   deliveryId: string;
   cta: string;
 };

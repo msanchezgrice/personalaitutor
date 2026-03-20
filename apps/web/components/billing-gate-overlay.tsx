@@ -1,20 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { BillingCheckoutReminderKey } from "@aitutor/shared";
 import { captureAnalyticsEvent } from "@/lib/analytics";
 
 type BillingGateOverlayProps = {
   returnTo?: string | null;
   returnToReport?: string | null;
+  autoStart?: boolean;
+  resumeEmailDeliveryId?: string | null;
+  resumeEmailCampaignKey?: BillingCheckoutReminderKey | null;
 };
 
 export function BillingGateOverlay({
   returnTo = "/dashboard",
   returnToReport: returnToReportProp = "/onboarding?view=report",
+  autoStart = false,
+  resumeEmailDeliveryId = null,
+  resumeEmailCampaignKey = null,
 }: BillingGateOverlayProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const returnToReport = returnToReportProp || "/onboarding?view=report";
+  const autoStartedRef = useRef(false);
 
   async function handleCheckoutStart() {
     try {
@@ -29,6 +37,8 @@ export function BillingGateOverlay({
         credentials: "same-origin",
         body: JSON.stringify({
           returnTo,
+          resumeEmailDeliveryId,
+          resumeEmailCampaignKey,
         }),
       });
       const payload = await response.json().catch(() => null);
@@ -45,7 +55,7 @@ export function BillingGateOverlay({
       captureAnalyticsEvent("billing_checkout_started", {
         checkout_session_id: typeof payload?.sessionId === "string" ? payload.sessionId : null,
         return_to: returnTo,
-        source: "billing_gate",
+        source: resumeEmailCampaignKey ?? "billing_gate",
       });
       window.location.assign(checkoutUrl);
     } catch (checkoutError) {
@@ -53,6 +63,12 @@ export function BillingGateOverlay({
       setPending(false);
     }
   }
+
+  useEffect(() => {
+    if (!autoStart || pending || autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    void handleCheckoutStart();
+  }, [autoStart, pending]);
 
   function handleBackToReport() {
     window.location.assign(returnToReport);

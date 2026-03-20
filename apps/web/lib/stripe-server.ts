@@ -1,8 +1,19 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
-import type { BillingSubscription } from "@aitutor/shared";
 import {
+  BILLING_CHECKOUT_REMINDER_KEYS,
+  LIFECYCLE_EMAIL_UTM_MEDIUM,
+  LIFECYCLE_EMAIL_UTM_SOURCE,
+  buildBillingCheckoutReminderEmail,
+  buildBillingCheckoutReminderResumeUrl,
+  type BillingCheckoutReminderKey,
+  type BillingSubscription,
+} from "@aitutor/shared";
+import {
+  billingAccessAllowed,
   buildBillingSubscriptionRecord,
   buildCheckoutUrls,
   buildStripeCheckoutSessionParams,
@@ -24,6 +35,7 @@ const STRIPE_WEBHOOK_EVENTS = new Set([
 ]);
 
 let cachedStripe: Stripe | null = null;
+let cachedSupabaseAdmin: SupabaseClient | null = null;
 
 function requiredEnv(name: string) {
   const value = process.env[name]?.trim();
@@ -51,6 +63,169 @@ export function getStripeReturnBaseUrl() {
   return getSiteUrl();
 }
 
+function getSupabaseAdminOrNull() {
+  if (cachedSupabaseAdmin) return cachedSupabaseAdmin;
+
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) {
+    return null;
+  }
+
+  cachedSupabaseAdmin = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  return cachedSupabaseAdmin;
+}
+
+function normalizeCohortValue(value: string | null | undefined) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized || "unknown";
+}
+
+function cohortPaidSource(value: string | null | undefined, gclid?: string | null, msclkid?: string | null) {
+  const source = normalizeCohortValue(value);
+  if (source.includes("linkedin")) return "linkedin";
+  if (source === "x" || source.includes("twitter")) return "x";
+  if (source.includes("facebook") || source.includes("instagram") || source.includes("meta")) return "facebook";
+  if ((gclid || "").trim() || source.includes("google")) return "google";
+  if ((msclkid || "").trim() || source.includes("bing")) return "bing";
+  return "unknown";
+}
+
+function cohortFields(profile: {
+  acquisition?: {
+    first?: {
+      utmSource?: string;
+      utmMedium?: string;
+      utmCampaign?: string;
+      gclid?: string;
+      msclkid?: string;
+    };
+    last?: {
+      utmSource?: string;
+      utmMedium?: string;
+      utmCampaign?: string;
+      gclid?: string;
+      msclkid?: string;
+    };
+  };
+}) {
+  const last = profile.acquisition?.last;
+  const first = profile.acquisition?.first;
+  const source = last?.utmSource ?? first?.utmSource ?? null;
+  const medium = last?.utmMedium ?? first?.utmMedium ?? null;
+  const campaign = last?.utmCampaign ?? first?.utmCampaign ?? null;
+  const gclid = last?.gclid ?? first?.gclid ?? null;
+  const msclkid = last?.msclkid ?? first?.msclkid ?? null;
+
+  return {
+    cohortSource: normalizeCohortValue(source),
+    cohortMedium: normalizeCohortValue(medium),
+    cohortCampaign: normalizeCohortValue(campaign),
+    cohortPaidSource: cohortPaidSource(source, gclid, msclkid),
+  };
+}
+
+async function cancelQueuedBillingReminderDeliveries(userId: string) {
+  const supabase = getSupabaseAdminOrNull();
+  if (!supabase) return;
+
+  await supabase
+    .from("learner_email_deliveries")
+    .update({
+      status: "skipped",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("learner_profile_id", userId)
+    .in("campaign_key", [...BILLING_CHECKOUT_REMINDER_KEYS])
+    .in("status", ["queued", "processing"]);
+}
+
+async function replaceQueuedBillingReminderDeliveries(input: {
+  userId: string;
+  learnerName?: string | null;
+  recipientEmail: string;
+  returnTo?: string | null;
+  baseUrl: string;
+  acquisition?: {
+    first?: {
+      utmSource?: string;
+      utmMedium?: string;
+      utmCampaign?: string;
+      gclid?: string;
+      msclkid?: string;
+    };
+    last?: {
+      utmSource?: string;
+      utmMedium?: string;
+      utmCampaign?: string;
+      gclid?: string;
+      msclkid?: string;
+    };
+  };
+}) {
+  const supabase = getSupabaseAdminOrNull();
+  if (!supabase) return;
+
+  await cancelQueuedBillingReminderDeliveries(input.userId);
+
+  const now = new Date().toISOString();
+  const cohort = cohortFields({ acquisition: input.acquisition });
+  const rows = BILLING_CHECKOUT_REMINDER_KEYS.map((campaignKey) => {
+    const deliveryId = randomUUID();
+    const ctaUrl = buildBillingCheckoutReminderResumeUrl({
+      baseUrl: input.baseUrl,
+      returnTo: input.returnTo,
+      deliveryId,
+      campaignKey,
+    });
+    const template = buildBillingCheckoutReminderEmail({
+      campaignKey,
+      learnerName: input.learnerName ?? null,
+      resumeUrl: ctaUrl,
+    });
+
+    return {
+      id: deliveryId,
+      learner_profile_id: input.userId,
+      external_user_id: null,
+      campaign_key: campaignKey,
+      status: "queued",
+      recipient_email: input.recipientEmail,
+      subject: template.subject,
+      provider: "resend",
+      provider_message_id: null,
+      email_source: LIFECYCLE_EMAIL_UTM_SOURCE,
+      email_medium: LIFECYCLE_EMAIL_UTM_MEDIUM,
+      email_campaign: campaignKey,
+      cohort_source: cohort.cohortSource,
+      cohort_medium: cohort.cohortMedium,
+      cohort_campaign: cohort.cohortCampaign,
+      cohort_paid_source: cohort.cohortPaidSource,
+      payload: {
+        returnTo: sanitizeDashboardReturnTo(input.returnTo),
+        previewText: template.previewText,
+        ctaUrl,
+      },
+      sent_at: null,
+      updated_at: now,
+    };
+  });
+
+  const { error } = await supabase.from("learner_email_deliveries").insert(rows);
+  if (error) {
+    throw new Error(`BILLING_REMINDER_QUEUE_FAILED:${error.message}`);
+  }
+}
+
+function resumedFromBillingReminder(input: {
+  resumeEmailDeliveryId?: string | null;
+  resumeEmailCampaignKey?: BillingCheckoutReminderKey | null;
+}) {
+  return Boolean(input.resumeEmailDeliveryId?.trim() && input.resumeEmailCampaignKey);
+}
+
 export async function createStripeCheckoutSession(input: {
   userId: string;
   name?: string;
@@ -58,6 +233,8 @@ export async function createStripeCheckoutSession(input: {
   avatarUrl?: string | null;
   handleBase?: string;
   returnTo?: string | null;
+  resumeEmailDeliveryId?: string | null;
+  resumeEmailCampaignKey?: BillingCheckoutReminderKey | null;
 }) {
   const profile = await runtimeGetOrCreateProfile({
     userId: input.userId,
@@ -88,6 +265,18 @@ export async function createStripeCheckoutSession(input: {
 
   if (!session.url) {
     throw new Error("STRIPE_CHECKOUT_URL_MISSING");
+  }
+
+  const recipientEmail = profile.contactEmail ?? input.email ?? null;
+  if (recipientEmail?.trim() && !resumedFromBillingReminder(input)) {
+    await replaceQueuedBillingReminderDeliveries({
+      userId: profile.id,
+      learnerName: profile.name,
+      recipientEmail: recipientEmail.trim(),
+      returnTo: input.returnTo,
+      baseUrl: getStripeReturnBaseUrl(),
+      acquisition: profile.acquisition,
+    });
   }
 
   return {
@@ -199,12 +388,14 @@ export async function handleStripeWebhookEvent(event: Stripe.Event): Promise<Bil
       return null;
     }
 
-    return syncBillingFromCheckoutSession({
+    const synced = await syncBillingFromCheckoutSession({
       userId,
       sessionId: session.id,
       lastWebhookEventId: event.id,
       lastWebhookReceivedAt: receivedAt,
     });
+    await cancelQueuedBillingReminderDeliveries(userId);
+    return synced;
   }
 
   if (
@@ -219,12 +410,16 @@ export async function handleStripeWebhookEvent(event: Stripe.Event): Promise<Bil
       return null;
     }
 
-    return syncBillingFromStripeSubscription({
+    const synced = await syncBillingFromStripeSubscription({
       userId,
       subscription,
       lastWebhookEventId: event.id,
       lastWebhookReceivedAt: receivedAt,
     });
+    if (billingAccessAllowed(synced.status)) {
+      await cancelQueuedBillingReminderDeliveries(userId);
+    }
+    return synced;
   }
 
   return null;
