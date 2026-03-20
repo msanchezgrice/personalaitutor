@@ -16,5 +16,6 @@ describe("billing gate overlay", () => {
     expect(source).toContain("fixed inset-0");
     expect(source).toContain("returnToReport");
     expect(source).toContain("window.location.assign(returnToReport)");
+    expect(source).toContain("mt-4 text-sm font-medium text-white");
   });
 });

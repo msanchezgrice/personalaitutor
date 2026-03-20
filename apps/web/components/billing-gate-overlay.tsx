@@ -90,7 +90,7 @@ export function BillingGateOverlay({
         <p className="mt-5 text-sm text-slate-300">
           Auto-renews at $49.99/month unless canceled before trial end.
         </p>
-        {error ? <p className="mt-4 text-sm text-rose-200">{error}</p> : null}
+        {error ? <p className="mt-4 text-sm font-medium text-white">{error}</p> : null}
       </div>
     </div>
   );
