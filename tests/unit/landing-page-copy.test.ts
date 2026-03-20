@@ -30,6 +30,15 @@ describe("landing page copy", () => {
     expect(featureIndexes).toEqual([...featureIndexes].sort((a, b) => a - b));
   });
 
+  test("maps feature sections to the correct screenshot assets", () => {
+    const template = readFileSync(landingTemplatePath, "utf8");
+
+    expect(template).toContain('src="/assets/screenshot_ai_news.png" alt="Daily AI News"');
+    expect(template).toContain('src="/assets/screenshot_public_profile.png" alt="Public profile preview"');
+    expect(template).not.toContain('src="/assets/screenshot_profile.png" alt="Daily AI News"');
+    expect(template).not.toContain('src="/assets/screenshot_projects.png" alt="Project Portfolios"');
+  });
+
   test("homepage metadata matches the new positioning", () => {
     const source = readFileSync(homePagePath, "utf8");
 
