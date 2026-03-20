@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { GeminiStaticPage } from "@/components/gemini-static-page";
+import { HomePageTracking } from "@/components/home-page-tracking";
 import { getAuthSeed } from "@/lib/auth";
 import { getFeaturedLearnArticles } from "@/lib/learn-content";
 import { runtimeGetDashboardSummary } from "@/lib/runtime";
@@ -216,6 +217,7 @@ export default async function HomePage() {
   return (
     <>
       <GeminiStaticPage template="index.html" replacements={replacements} runtime="none" />
+      <HomePageTracking />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeFaqLd) }} />

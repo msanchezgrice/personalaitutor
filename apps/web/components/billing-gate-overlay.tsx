@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { captureAnalyticsEvent } from "@/lib/analytics";
 
 type BillingGateOverlayProps = {
   returnTo?: string | null;
@@ -41,6 +42,11 @@ export function BillingGateOverlay({
         throw new Error(payload?.error?.message || "Unable to start billing checkout");
       }
 
+      captureAnalyticsEvent("billing_checkout_started", {
+        checkout_session_id: typeof payload?.sessionId === "string" ? payload.sessionId : null,
+        return_to: returnTo,
+        source: "billing_gate",
+      });
       window.location.assign(checkoutUrl);
     } catch (checkoutError) {
       setError(checkoutError instanceof Error ? checkoutError.message : "Unable to start billing checkout");

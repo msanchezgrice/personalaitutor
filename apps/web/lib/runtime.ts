@@ -68,6 +68,7 @@ import {
 } from "@aitutor/shared";
 import { BRAND_NAME, getSiteUrl } from "./site";
 import { mergeAttribution } from "./attribution";
+import { recordPersistedFunnelEvent } from "./funnel-events-server";
 
 const DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -1611,6 +1612,34 @@ export async function runtimeClaimOnboardingSession(input: {
 
   const updatedUser = (await runtimeUpdateProfile(currentTarget.id, patch)) ?? currentTarget;
 
+  await recordPersistedFunnelEvent({
+    eventKey: "guest_session_claimed",
+    occurredAt: new Date().toISOString(),
+    authUserId: input.authUserId,
+    learnerProfileId: updatedUser.id,
+    onboardingSessionId: input.sessionId,
+    utmSource: mergedAcquisition?.last?.utmSource ?? mergedAcquisition?.first?.utmSource ?? null,
+    utmMedium: mergedAcquisition?.last?.utmMedium ?? mergedAcquisition?.first?.utmMedium ?? null,
+    utmCampaign: mergedAcquisition?.last?.utmCampaign ?? mergedAcquisition?.first?.utmCampaign ?? null,
+    utmContent: mergedAcquisition?.last?.utmContent ?? mergedAcquisition?.first?.utmContent ?? null,
+    utmTerm: mergedAcquisition?.last?.utmTerm ?? mergedAcquisition?.first?.utmTerm ?? null,
+    firstUtmSource: mergedAcquisition?.first?.utmSource ?? null,
+    firstUtmMedium: mergedAcquisition?.first?.utmMedium ?? null,
+    firstUtmCampaign: mergedAcquisition?.first?.utmCampaign ?? null,
+    firstUtmContent: mergedAcquisition?.first?.utmContent ?? null,
+    firstUtmTerm: mergedAcquisition?.first?.utmTerm ?? null,
+    landingPath: mergedAcquisition?.last?.landingPath ?? mergedAcquisition?.first?.landingPath ?? null,
+    firstLandingPath: mergedAcquisition?.first?.landingPath ?? null,
+    referrer: mergedAcquisition?.last?.referrer ?? mergedAcquisition?.first?.referrer ?? null,
+    firstReferrer: mergedAcquisition?.first?.referrer ?? null,
+    paidSource: null,
+    properties: {
+      migrated: sourceProfileId !== updatedUser.id,
+      source_profile_id: sourceProfileId,
+      target_profile_id: updatedUser.id,
+    },
+  });
+
   return {
     session: refreshedSession,
     user: updatedUser,
@@ -1831,6 +1860,7 @@ export async function runtimeUpsertBillingSubscription(input: {
   }
 
   const profile = await runtimeGetOrCreateProfile({ userId: input.userId });
+  const previous = await runtimeGetBillingSubscription(profile.id);
   const supabase = getSupabaseAdmin();
   const now = new Date().toISOString();
 
@@ -1870,7 +1900,41 @@ export async function runtimeUpsertBillingSubscription(input: {
     throw new Error(`BILLING_SUBSCRIPTION_UPSERT_FAILED:${error?.message ?? "UNKNOWN"}`);
   }
 
-  return billingSubscriptionFromRow(data as BillingSubscriptionRow);
+  const subscription = billingSubscriptionFromRow(data as BillingSubscriptionRow);
+
+  const wasActiveBefore = previous ? ["trialing", "active"].includes(previous.status) : false;
+  const isActiveNow = ["trialing", "active"].includes(subscription.status);
+  if (isActiveNow && !wasActiveBefore) {
+    await recordPersistedFunnelEvent({
+      eventKey: "billing_checkout_completed",
+      eventId: subscription.stripeSubscriptionId,
+      occurredAt: subscription.updatedAt,
+      authUserId: input.userId === profile.id ? null : input.userId,
+      learnerProfileId: profile.id,
+      utmSource: profile.acquisition?.last?.utmSource ?? profile.acquisition?.first?.utmSource ?? null,
+      utmMedium: profile.acquisition?.last?.utmMedium ?? profile.acquisition?.first?.utmMedium ?? null,
+      utmCampaign: profile.acquisition?.last?.utmCampaign ?? profile.acquisition?.first?.utmCampaign ?? null,
+      utmContent: profile.acquisition?.last?.utmContent ?? profile.acquisition?.first?.utmContent ?? null,
+      utmTerm: profile.acquisition?.last?.utmTerm ?? profile.acquisition?.first?.utmTerm ?? null,
+      firstUtmSource: profile.acquisition?.first?.utmSource ?? null,
+      firstUtmMedium: profile.acquisition?.first?.utmMedium ?? null,
+      firstUtmCampaign: profile.acquisition?.first?.utmCampaign ?? null,
+      firstUtmContent: profile.acquisition?.first?.utmContent ?? null,
+      firstUtmTerm: profile.acquisition?.first?.utmTerm ?? null,
+      landingPath: profile.acquisition?.last?.landingPath ?? profile.acquisition?.first?.landingPath ?? null,
+      firstLandingPath: profile.acquisition?.first?.landingPath ?? null,
+      referrer: profile.acquisition?.last?.referrer ?? profile.acquisition?.first?.referrer ?? null,
+      firstReferrer: profile.acquisition?.first?.referrer ?? null,
+      paidSource: null,
+      properties: {
+        billing_status: subscription.status,
+        stripe_subscription_id: subscription.stripeSubscriptionId,
+        stripe_customer_id: subscription.stripeCustomerId,
+      },
+    });
+  }
+
+  return subscription;
 }
 
 export async function runtimeUpdateProfile(userId: string, patch: Partial<UserProfile>) {
@@ -2040,6 +2104,34 @@ export async function runtimeCreateProject(input: {
     type: "project.created",
     message: `Project ${data.title} created`,
     payload: { title: data.title },
+  });
+
+  await recordPersistedFunnelEvent({
+    eventKey: "project_created",
+    eventId: data.id,
+    occurredAt: data.created_at,
+    authUserId: input.userId === profile.id ? null : input.userId,
+    learnerProfileId: profile.id,
+    projectId: data.id,
+    utmSource: profile.acquisition?.last?.utmSource ?? profile.acquisition?.first?.utmSource ?? null,
+    utmMedium: profile.acquisition?.last?.utmMedium ?? profile.acquisition?.first?.utmMedium ?? null,
+    utmCampaign: profile.acquisition?.last?.utmCampaign ?? profile.acquisition?.first?.utmCampaign ?? null,
+    utmContent: profile.acquisition?.last?.utmContent ?? profile.acquisition?.first?.utmContent ?? null,
+    utmTerm: profile.acquisition?.last?.utmTerm ?? profile.acquisition?.first?.utmTerm ?? null,
+    firstUtmSource: profile.acquisition?.first?.utmSource ?? null,
+    firstUtmMedium: profile.acquisition?.first?.utmMedium ?? null,
+    firstUtmCampaign: profile.acquisition?.first?.utmCampaign ?? null,
+    firstUtmContent: profile.acquisition?.first?.utmContent ?? null,
+    firstUtmTerm: profile.acquisition?.first?.utmTerm ?? null,
+    landingPath: profile.acquisition?.last?.landingPath ?? profile.acquisition?.first?.landingPath ?? null,
+    firstLandingPath: profile.acquisition?.first?.landingPath ?? null,
+    referrer: profile.acquisition?.last?.referrer ?? profile.acquisition?.first?.referrer ?? null,
+    firstReferrer: profile.acquisition?.first?.referrer ?? null,
+    paidSource: null,
+    properties: {
+      title: data.title,
+      state: data.state,
+    },
   });
 
   return projectFromRow(data);

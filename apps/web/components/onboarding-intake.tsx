@@ -1323,6 +1323,11 @@ export function OnboardingIntake() {
         ...assessmentAnswerProps,
         session_id: session.id,
       });
+      trackPosthog("assessment_started", {
+        ...onboardingAnalyticsContext,
+        session_id: session.id,
+        career_path_id: selectedCareer.path,
+      });
       if (!quizStartFired.current) {
         quizStartFired.current = true;
         trackAdQuizStart({
@@ -1358,6 +1363,13 @@ export function OnboardingIntake() {
 
       const score = completed.assessment?.score ?? 0;
       const recommended = completed.assessment?.recommendedCareerPathIds ?? [];
+      trackPosthog("assessment_completed", {
+        ...onboardingAnalyticsContext,
+        session_id: session.id,
+        career_path_id: selectedCareer.path,
+        score,
+        recommended_paths: recommended.join(","),
+      });
       const redirectPath = `/dashboard/?welcome=1&onboardingSessionId=${encodeURIComponent(session.id)}`;
       const redirectLabel = completed.signedIn ? "Open Dashboard" : "Create Account to Continue";
       setAssessmentScore(score);

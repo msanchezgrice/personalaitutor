@@ -5,6 +5,7 @@ import { DashboardShell } from "@/components/dashboard-runtime-shell";
 import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
 import { runtimeListSignupAuditRecords, type SignupAuditRecord } from "@/lib/runtime";
 import { getCatalogData } from "@aitutor/shared";
+import { AdminSectionNav } from "@/components/admin-section-nav";
 import {
   assessmentAnswerEntries,
   formatDateTime,
@@ -163,6 +164,9 @@ export default async function DashboardAdminSignupsPage({
         </section>
 
         <section className="glass rounded-2xl p-6 md:p-8">
+          <div className="mb-6">
+            <AdminSectionNav active="signups" />
+          </div>
           <form className="grid items-end gap-4 lg:grid-cols-[1.4fr,repeat(2,minmax(0,0.55fr)),auto]" method="get">
             <label className="block">
               <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Search</span>

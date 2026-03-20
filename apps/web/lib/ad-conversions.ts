@@ -1,4 +1,9 @@
-import { captureAnalyticsEvent, createAnalyticsEventId } from "@/lib/analytics";
+import {
+  captureAnalyticsEvent,
+  createAnalyticsEventId,
+  getOrCreateFunnelVisitorId,
+} from "@/lib/analytics";
+import { readClientAttributionEnvelope, type AttributionEnvelope } from "@/lib/attribution";
 import {
   fbCompleteRegistration,
   fbOnboardingComplete,
@@ -21,6 +26,32 @@ type ConversionEvent =
   | "quiz_start"
   | "quiz_complete"
   | "onboarding_complete";
+
+type ServerConversionPayload = {
+  event: ConversionEvent;
+  eventId?: string;
+  value?: number;
+  currency?: string;
+  sessionId?: string | null;
+  careerCategory?: string;
+  score?: number;
+  source?: string;
+  recommendedPaths?: string[];
+  sourceUrl: string;
+  visitorId: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  utmContent?: string | null;
+  utmTerm?: string | null;
+  firstUtmSource?: string | null;
+  firstUtmMedium?: string | null;
+  firstUtmCampaign?: string | null;
+  firstUtmContent?: string | null;
+  firstUtmTerm?: string | null;
+  landingPath?: string | null;
+  paidSource?: string | null;
+};
 
 function trackXEvent(event: string, params?: Record<string, unknown>) {
   if (!hasWindow() || typeof window.twq !== "function") return;
@@ -59,6 +90,11 @@ function sendServerConversion(payload: {
   recommendedPaths?: string[];
 }) {
   if (!hasWindow()) return;
+  const body = buildServerConversionPayload(payload, {
+    sourceUrl: window.location.href,
+    visitorId: getOrCreateFunnelVisitorId(),
+    attribution: readClientAttributionEnvelope(),
+  });
   void fetch("/api/analytics/conversion", {
     method: "POST",
     headers: {
@@ -66,13 +102,64 @@ function sendServerConversion(payload: {
       "cache-control": "no-store",
     },
     credentials: "same-origin",
-    body: JSON.stringify({
-      ...payload,
-      sourceUrl: window.location.href,
-    }),
+    body: JSON.stringify(body),
   }).catch(() => {
     // Non-blocking analytics path.
   });
+}
+
+function normalizePaidSource(attribution: AttributionEnvelope | null | undefined) {
+  const last = attribution?.last;
+  const source = (last?.utmSource || "").toLowerCase();
+
+  if (source.includes("linkedin")) return "linkedin";
+  if (source === "x" || source.includes("twitter")) return "x";
+  if (source.includes("facebook") || source.includes("instagram") || source.includes("meta")) {
+    return "facebook";
+  }
+  if (source.includes("google") || last?.gclid) return "google";
+  if (source.includes("bing") || last?.msclkid) return "bing";
+  return "unknown";
+}
+
+export function buildServerConversionPayload(
+  payload: {
+    event: ConversionEvent;
+    eventId?: string;
+    value?: number;
+    currency?: string;
+    sessionId?: string | null;
+    careerCategory?: string;
+    score?: number;
+    source?: string;
+    recommendedPaths?: string[];
+  },
+  context: {
+    sourceUrl: string;
+    visitorId: string | null;
+    attribution: AttributionEnvelope | null | undefined;
+  },
+): ServerConversionPayload {
+  const first = context.attribution?.first;
+  const last = context.attribution?.last;
+
+  return {
+    ...payload,
+    sourceUrl: context.sourceUrl,
+    visitorId: context.visitorId,
+    utmSource: last?.utmSource ?? null,
+    utmMedium: last?.utmMedium ?? null,
+    utmCampaign: last?.utmCampaign ?? null,
+    utmContent: last?.utmContent ?? null,
+    utmTerm: last?.utmTerm ?? null,
+    firstUtmSource: first?.utmSource ?? null,
+    firstUtmMedium: first?.utmMedium ?? null,
+    firstUtmCampaign: first?.utmCampaign ?? null,
+    firstUtmContent: first?.utmContent ?? null,
+    firstUtmTerm: first?.utmTerm ?? null,
+    landingPath: last?.landingPath ?? null,
+    paidSource: normalizePaidSource(context.attribution),
+  };
 }
 
 function captureAdMirror(payload: {
