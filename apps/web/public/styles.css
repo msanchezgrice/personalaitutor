@@ -1943,3 +1943,17 @@ body[data-path^="/dashboard"] [data-gemini-shell="1"] > main article {
   gap: 0.5rem;
   margin-top: 0.75rem;
 }
+
+:root[data-theme="light"] [data-billing-gate="1"] [data-billing-gate-heading="1"],
+:root[data-theme="light"] [data-billing-gate="1"] [data-billing-gate-subcopy="1"],
+:root[data-theme="light"] [data-billing-gate="1"] [data-billing-gate-error="1"],
+.gemini-light-shell [data-billing-gate="1"] [data-billing-gate-heading="1"],
+.gemini-light-shell [data-billing-gate="1"] [data-billing-gate-subcopy="1"],
+.gemini-light-shell [data-billing-gate="1"] [data-billing-gate-error="1"] {
+  color: #ffffff !important;
+}
+
+:root[data-theme="light"] [data-billing-gate="1"] [data-billing-gate-footnote="1"],
+.gemini-light-shell [data-billing-gate="1"] [data-billing-gate-footnote="1"] {
+  color: #cbd5e1 !important;
+}
