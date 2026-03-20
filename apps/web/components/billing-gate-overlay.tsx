@@ -60,11 +60,11 @@ export function BillingGateOverlay({
         <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/18 text-emerald-200">
           <i className="fa-solid fa-credit-card text-xl"></i>
         </div>
-        <h2 className="text-3xl font-[Outfit] leading-tight text-white">
+        <h2 data-billing-gate-heading="1" className="text-3xl font-[Outfit] leading-tight text-white">
           Your dashboard is ready. Start your 7-day free trial to unlock your personalized modules, AI tutor, daily AI
           news, and social/build-log tools.
         </h2>
-        <p className="mt-4 text-base leading-7 text-slate-100">
+        <p data-billing-gate-subcopy="1" className="mt-4 text-base leading-7 text-slate-100">
           Card required today. You will not be charged until your trial ends.
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
@@ -87,10 +87,10 @@ export function BillingGateOverlay({
             Back to My Report
           </button>
         </div>
-        <p className="mt-5 text-sm text-slate-300">
+        <p data-billing-gate-footnote="1" className="mt-5 text-sm text-slate-300">
           Auto-renews at $49.99/month unless canceled before trial end.
         </p>
-        {error ? <p className="mt-4 text-sm font-medium text-white">{error}</p> : null}
+        {error ? <p data-billing-gate-error="1" className="mt-4 text-sm font-medium text-white">{error}</p> : null}
       </div>
     </div>
   );

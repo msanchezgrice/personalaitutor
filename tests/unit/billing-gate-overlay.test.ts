@@ -17,5 +17,9 @@ describe("billing gate overlay", () => {
     expect(source).toContain("returnToReport");
     expect(source).toContain("window.location.assign(returnToReport)");
     expect(source).toContain("mt-4 text-sm font-medium text-white");
+    expect(source).toContain('data-billing-gate-heading="1"');
+    expect(source).toContain('data-billing-gate-subcopy="1"');
+    expect(source).toContain('data-billing-gate-footnote="1"');
+    expect(source).toContain('data-billing-gate-error="1"');
   });
 });

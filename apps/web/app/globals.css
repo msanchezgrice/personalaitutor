@@ -125,3 +125,19 @@ html[data-runtime-ready="0"][data-path^="/dashboard"] [data-shell-loader="1"] {
     font-size: 0.98rem;
   }
 }
+
+[data-billing-gate="1"] [data-billing-gate-heading="1"] {
+  color: #ffffff !important;
+}
+
+[data-billing-gate="1"] [data-billing-gate-subcopy="1"] {
+  color: #f8fafc !important;
+}
+
+[data-billing-gate="1"] [data-billing-gate-footnote="1"] {
+  color: #cbd5e1 !important;
+}
+
+[data-billing-gate="1"] [data-billing-gate-error="1"] {
+  color: #ffffff !important;
+}
