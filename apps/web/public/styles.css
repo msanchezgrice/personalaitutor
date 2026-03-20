@@ -258,6 +258,35 @@ body[data-path="/dashboard/social"] .runtime-social-card-x .runtime-social-loadi
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.88), rgba(255, 255, 255, 0.96));
 }
 
+html[data-path="/"],
+body[data-path="/"] {
+  --landing-header-height: 6.125rem;
+  scroll-padding-top: calc(var(--landing-header-height) + 1rem);
+}
+
+html[data-path="/"] [data-landing-header="1"],
+body[data-path="/"] [data-landing-header="1"] {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  width: 100%;
+}
+
+html[data-path="/"] [data-landing-main="1"],
+body[data-path="/"] [data-landing-main="1"] {
+  padding-top: var(--landing-header-height);
+}
+
+html[data-path="/"] #how-it-works,
+html[data-path="/"] #features,
+html[data-path="/"] #pricing,
+body[data-path="/"] #how-it-works,
+body[data-path="/"] #features,
+body[data-path="/"] #pricing {
+  scroll-margin-top: calc(var(--landing-header-height) + 1rem);
+}
+
 html[data-path="/onboarding"] button,
 html[data-path="/onboarding"] a.btn,
 body[data-path="/onboarding"] button,
@@ -1728,6 +1757,11 @@ body[data-path^="/dashboard"] [data-gemini-shell="1"] > main article {
   html[data-path="/dashboard/ai-news"] .runtime-loading-panel,
   body[data-path="/dashboard/ai-news"] .runtime-loading-panel {
     padding: 1rem !important;
+  }
+
+  html[data-path="/"],
+  body[data-path="/"] {
+    --landing-header-height: 4.5625rem;
   }
 
   html[data-path="/"] .container.nav > a,
