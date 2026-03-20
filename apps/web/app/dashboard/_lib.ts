@@ -1,7 +1,6 @@
 import { getAuthSeed } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin-access";
-import { billingAccessAllowed, normalizeBillingStatus } from "@/lib/billing";
-import { runtimeGetBillingSubscription, runtimeGetDashboardSummary, runtimeGetOrCreateProfile } from "@/lib/runtime";
+import { runtimeGetBillingAccessState, runtimeGetDashboardSummary } from "@/lib/runtime";
 import { syncBillingFromCheckoutSession } from "@/lib/stripe-server";
 import type {
   BillingSubscription,
@@ -57,41 +56,43 @@ async function getDashboardBillingState(
   seed: Awaited<ReturnType<typeof getAuthSeed>>,
   options?: { checkoutSessionId?: string | null },
 ) {
-  if (!seed?.userId) {
-    return {
-      subscription: null,
-      status: "none" as BillingSubscriptionStatus,
-      accessAllowed: false,
-    };
-  }
-
-  const user = await runtimeGetOrCreateProfile({
-    userId: seed.userId,
-    name: seed.name,
-    email: seed.email ?? null,
-    avatarUrl: seed.avatarUrl ?? null,
-    handleBase: seed.handleBase,
+  const billing = await runtimeGetBillingAccessState({
+    userId: seed?.userId ?? null,
+    seed: seed
+      ? {
+          name: seed.name,
+          email: seed.email ?? null,
+          avatarUrl: seed.avatarUrl ?? null,
+          handleBase: seed.handleBase,
+        }
+      : undefined,
   });
 
   const checkoutSessionId = options?.checkoutSessionId?.trim();
-  if (checkoutSessionId) {
+  if (checkoutSessionId && billing.profile) {
     try {
       await syncBillingFromCheckoutSession({
-        userId: user.id,
+        userId: billing.profile.id,
         sessionId: checkoutSessionId,
       });
     } catch (error) {
       console.warn("[billing] dashboard checkout sync failed", error instanceof Error ? error.message : "unknown");
     }
+
+    return runtimeGetBillingAccessState({
+      userId: seed?.userId ?? null,
+      seed: seed
+        ? {
+            name: seed.name,
+            email: seed.email ?? null,
+            avatarUrl: seed.avatarUrl ?? null,
+            handleBase: seed.handleBase,
+          }
+        : undefined,
+    });
   }
 
-  const subscription = await runtimeGetBillingSubscription(user.id);
-  const status = normalizeBillingStatus(subscription?.status);
-  return {
-    subscription,
-    status,
-    accessAllowed: billingAccessAllowed(status),
-  };
+  return billing;
 }
 
 export async function getDashboardBillingGateState(options?: { checkoutSessionId?: string | null }) {
@@ -116,7 +117,12 @@ export function buildDashboardRuntimeBootstrap(state: DashboardServerState): Das
 
 export async function getDashboardServerState(options?: { checkoutSessionId?: string | null }): Promise<DashboardServerState> {
   const seed = await getAuthSeed();
-  const billing = await getDashboardBillingState(seed, options);
+  const billingState = await getDashboardBillingState(seed, options);
+  const billing = {
+    subscription: billingState.subscription,
+    status: billingState.status,
+    accessAllowed: billingState.accessAllowed,
+  };
   if (!seed?.userId) {
     return {
       seed,
@@ -140,6 +146,33 @@ export async function getDashboardServerState(options?: { checkoutSessionId?: st
     };
   }
 
+  const billingUser = billingState.profile;
+  const fallbackDisplayName = billingUser?.name?.trim() || seed.name?.trim() || "Learner";
+  const fallbackFirstName = fallbackDisplayName.split(" ")[0] || fallbackDisplayName;
+
+  if (!billing.accessAllowed) {
+    return {
+      seed,
+      billing,
+      summary: null,
+      user: billingUser,
+      activeProject: null,
+      completedProject: null,
+      sidebarLevel: {
+        level: 1,
+        label: "Level 1",
+        subtitle: "Starter Builder",
+        progressPct: 20,
+        progressText: "Start building to level up",
+        xpTotal: 0,
+      },
+      publicProfileUrl: billingUser?.published && billingUser.handle ? `/u/${billingUser.handle}/` : null,
+      greeting: `${greetingForServerTime()}, ${fallbackFirstName} 👋`,
+      isAdmin: isAdminEmail(seed.email),
+      operatorToolsUrl: isAdminEmail(seed.email) ? "/dashboard/admin/signups" : null,
+    };
+  }
+
   const summary = await runtimeGetDashboardSummary(seed.userId, {
     name: seed.name,
     handleBase: seed.handleBase,
@@ -147,7 +180,7 @@ export async function getDashboardServerState(options?: { checkoutSessionId?: st
     email: seed.email ?? null,
   });
 
-  const user = summary?.user ?? null;
+  const user = summary?.user ?? billingUser ?? null;
   const projects = summary?.projects ?? [];
   const activeProject =
     projects.find((project) => project.state === "building" || project.state === "planned" || project.state === "idea") ??
@@ -155,7 +188,7 @@ export async function getDashboardServerState(options?: { checkoutSessionId?: st
   const completedProject =
     projects.find((project) => project.state === "built" || project.state === "showcased") ??
     null;
-  const displayName = user?.name?.trim() || seed.name?.trim() || "Learner";
+  const displayName = user?.name?.trim() || fallbackDisplayName;
   const firstName = displayName.split(" ")[0] || displayName;
   const gamification = summary?.gamification;
 

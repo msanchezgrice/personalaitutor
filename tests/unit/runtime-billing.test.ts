@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import {
   runtimeFindUserById,
+  runtimeGetBillingAccessState,
   runtimeGetBillingSubscription,
   runtimeGetOrCreateProfile,
   runtimeUpsertBillingSubscription,
@@ -46,5 +47,40 @@ describe("runtime billing helpers", () => {
     expect(await runtimeFindUserById(profile.id)).toMatchObject({
       stripeCustomerId: "cus_123",
     });
+  });
+
+  test("computes billing access from the stored subscription state", async () => {
+    const locked = await runtimeGetBillingAccessState({
+      userId: "user_billing_lock_001",
+      seed: {
+        name: "Locked Learner",
+        email: "locked@example.com",
+        handleBase: "locked-learner",
+        avatarUrl: null,
+      },
+    });
+
+    expect(locked.accessAllowed).toBe(false);
+    expect(locked.status).toBe("none");
+    expect(locked.profile?.id).toBe("user_billing_lock_001");
+
+    await runtimeUpsertBillingSubscription({
+      userId: "user_billing_lock_001",
+      stripeCustomerId: "cus_trialing_123",
+      stripeSubscriptionId: "sub_trialing_123",
+      stripePriceId: "price_trialing_123",
+      status: "trialing",
+      trialEndsAt: "2026-03-26T12:00:00.000Z",
+      currentPeriodEndsAt: "2026-03-26T12:00:00.000Z",
+      cancelAtPeriodEnd: false,
+      lastWebhookEventId: "evt_trialing_123",
+      lastWebhookReceivedAt: "2026-03-19T12:00:00.000Z",
+    });
+
+    const unlocked = await runtimeGetBillingAccessState({ userId: "user_billing_lock_001" });
+
+    expect(unlocked.accessAllowed).toBe(true);
+    expect(unlocked.status).toBe("trialing");
+    expect(unlocked.subscription?.stripeSubscriptionId).toBe("sub_trialing_123");
   });
 });

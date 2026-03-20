@@ -2,12 +2,20 @@ import { jsonError, jsonOk, runtimeRefreshRelevantNews } from "@/lib/runtime";
 import { NextRequest } from "next/server";
 import { forcedFailCode, getUserId } from "@/lib/api";
 import { getAuthSeed } from "@/lib/auth";
+import { billingSeedFromAuthSeed, requireBillingAccess } from "@/lib/billing-access";
 
 export async function POST(req: NextRequest) {
   const seed = await getAuthSeed(req);
   const userId = seed?.userId ?? getUserId(req);
   if (!userId) {
     return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+  }
+  const access = await requireBillingAccess({
+    userId,
+    seed: billingSeedFromAuthSeed(seed),
+  });
+  if (!access.ok) {
+    return access.response;
   }
 
   const result = await runtimeRefreshRelevantNews({

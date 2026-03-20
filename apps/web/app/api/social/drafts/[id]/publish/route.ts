@@ -1,6 +1,7 @@
 import { jsonError, jsonOk, runtimePublishSocialDraft } from "@/lib/runtime";
 import { NextRequest } from "next/server";
 import { forcedFailCode, getUserId } from "@/lib/api";
+import { requireBillingAccess } from "@/lib/billing-access";
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -8,6 +9,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const userId = getUserId(req);
     if (!userId) {
       return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+    }
+    const access = await requireBillingAccess({ userId });
+    if (!access.ok) {
+      return access.response;
     }
 
     const mode = req.nextUrl.searchParams.get("mode");

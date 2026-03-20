@@ -3,6 +3,7 @@ import { z } from "zod";
 import { NextRequest } from "next/server";
 import { getAuthSeed } from "@/lib/auth";
 import { forcedFailCode, getUserId } from "@/lib/api";
+import { billingSeedFromAuthSeed, requireBillingAccess } from "@/lib/billing-access";
 
 const schema = z.object({
   maxStories: z.number().int().min(3).max(8).optional(),
@@ -22,6 +23,13 @@ export async function POST(req: NextRequest) {
     const userId = seed?.userId ?? getUserId(req);
     if (!userId) {
       return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+    }
+    const access = await requireBillingAccess({
+      userId,
+      seed: billingSeedFromAuthSeed(seed),
+    });
+    if (!access.ok) {
+      return access.response;
     }
 
     const result = await runtimeRefreshRelevantNews({

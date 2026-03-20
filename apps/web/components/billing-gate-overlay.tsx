@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { BillingCheckoutReminderKey } from "@aitutor/shared";
-import { captureAnalyticsEvent } from "@/lib/analytics";
+import { captureAnalyticsEvent, getOrCreateFunnelVisitorId } from "@/lib/analytics";
 
 type BillingGateOverlayProps = {
   returnTo?: string | null;
@@ -37,6 +37,7 @@ export function BillingGateOverlay({
         credentials: "same-origin",
         body: JSON.stringify({
           returnTo,
+          visitorId: getOrCreateFunnelVisitorId(),
           resumeEmailDeliveryId,
           resumeEmailCampaignKey,
         }),
@@ -83,12 +84,18 @@ export function BillingGateOverlay({
           <i className="fa-solid fa-credit-card text-xl"></i>
         </div>
         <h2 data-billing-gate-heading="1" className="text-3xl font-[Outfit] leading-tight text-white">
-          Your dashboard is ready. Start your 7-day free trial to unlock your personalized modules, AI tutor, daily AI
-          news, and social/build-log tools.
+          Your dashboard is ready. Start your 7-day free trial to unlock the paid experience.
         </h2>
-        <p data-billing-gate-subcopy="1" className="mt-4 text-base leading-7 text-slate-100">
-          Card required today. You will not be charged until your trial ends.
-        </p>
+        <div data-billing-gate-subcopy="1" className="mt-4 space-y-3 text-left text-base leading-7 text-slate-100">
+          <p className="text-center text-slate-100">Pay to unlock features including:</p>
+          <ul className="space-y-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm text-slate-100 sm:text-base">
+            <li>Get career-related AI news sent to you daily</li>
+            <li>Get suggested tweets that you can post to show your progress and your focus on AI</li>
+            <li>Get dedicated AI skills modules based on your career</li>
+            <li>Get a 24/7 dedicated AI tutor that can help with any questions</li>
+          </ul>
+          <p className="text-center text-sm text-slate-200">Cancel anytime. Satisfaction guaranteed.</p>
+        </div>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <button
             type="button"

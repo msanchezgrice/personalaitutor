@@ -875,7 +875,7 @@ export function OnboardingIntake() {
       setAssessmentScore(reportSnapshot.assessmentScore);
       setRecommendedPaths(reportSnapshot.recommendedPaths);
       setNextRedirectHref(reportSnapshot.nextRedirectHref);
-      setNextRedirectLabel(reportSnapshot.nextRedirectLabel || "Open Dashboard");
+      setNextRedirectLabel(reportSnapshot.nextRedirectLabel || "Go to Dashboard");
       onboardingCompleteFired.current = true;
       setStep(5);
       return () => {
@@ -1371,7 +1371,7 @@ export function OnboardingIntake() {
         recommended_paths: recommended.join(","),
       });
       const redirectPath = `/dashboard/?welcome=1&onboardingSessionId=${encodeURIComponent(session.id)}`;
-      const redirectLabel = completed.signedIn ? "Open Dashboard" : "Create Account to Continue";
+      const redirectLabel = completed.signedIn ? "Go to Dashboard" : "Create Account to Continue";
       setAssessmentScore(score);
       setRecommendedPaths(recommended);
       if (!quizCompleteFired.current) {
@@ -1967,7 +1967,7 @@ export function OnboardingIntake() {
 
               <div className="flex flex-col gap-3 border-t border-slate-200 pt-6 md:flex-row md:items-center md:justify-between">
                 <p className="text-sm text-slate-500">
-                  You are set. Continue to your dashboard preview to start your 7-day free trial and unlock the first recommended module.
+                  You are set. Go to your dashboard to start your 7-day free trial and unlock the first recommended module.
                 </p>
                 {!isSignedIn ? (
                   <SignUpButton mode="modal" forceRedirectUrl={nextRedirectHref ?? "/dashboard/?welcome=1"} fallbackRedirectUrl={nextRedirectHref ?? "/dashboard/?welcome=1"}>

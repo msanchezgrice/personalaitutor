@@ -2,6 +2,7 @@ import { jsonError, jsonOk, runtimeFindProjectById, runtimeFindUserById, runtime
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { getUserId } from "@/lib/api";
+import { requireBillingAccess } from "@/lib/billing-access";
 
 const schema = z.object({
   toolKey: z.string().min(1).max(80),
@@ -21,6 +22,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const userId = getUserId(req);
     if (!userId) {
       return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+    }
+    const access = await requireBillingAccess({ userId });
+    if (!access.ok) {
+      return access.response;
     }
 
     const [profile, project] = await Promise.all([

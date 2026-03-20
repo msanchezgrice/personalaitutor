@@ -20,8 +20,11 @@ import {
   sanitizeDashboardReturnTo,
 } from "@/lib/billing";
 import {
+  runtimeClaimStripeWebhookEvent,
   runtimeGetBillingSubscription,
   runtimeGetOrCreateProfile,
+  runtimeMarkStripeWebhookEventProcessed,
+  runtimeReleaseStripeWebhookEventClaim,
   runtimeUpsertBillingSubscription,
 } from "@/lib/runtime";
 import { getSiteUrl } from "@/lib/site";
@@ -374,6 +377,36 @@ function subscriptionUserIdFromMetadata(subscription: Stripe.Subscription) {
   return userId || null;
 }
 
+async function withWebhookClaim<T>(input: {
+  eventId: string;
+  eventType: string;
+  userId: string;
+  receivedAt: string;
+  run: () => Promise<T>;
+}) {
+  const claimed = await runtimeClaimStripeWebhookEvent({
+    eventId: input.eventId,
+    eventType: input.eventType,
+    userId: input.userId,
+  });
+  if (!claimed) {
+    return null;
+  }
+
+  try {
+    const result = await input.run();
+    await runtimeMarkStripeWebhookEventProcessed({
+      eventId: input.eventId,
+      userId: input.userId,
+      processedAt: input.receivedAt,
+    });
+    return result;
+  } catch (error) {
+    await runtimeReleaseStripeWebhookEventClaim(input.eventId);
+    throw error;
+  }
+}
+
 export async function handleStripeWebhookEvent(event: Stripe.Event): Promise<BillingSubscription | null> {
   if (!STRIPE_WEBHOOK_EVENTS.has(event.type)) {
     return null;
@@ -388,14 +421,23 @@ export async function handleStripeWebhookEvent(event: Stripe.Event): Promise<Bil
       return null;
     }
 
-    const synced = await syncBillingFromCheckoutSession({
+    const subscription = await withWebhookClaim({
+      eventId: event.id,
+      eventType: event.type,
       userId,
-      sessionId: session.id,
-      lastWebhookEventId: event.id,
-      lastWebhookReceivedAt: receivedAt,
+      receivedAt,
+      run: async () => {
+        const synced = await syncBillingFromCheckoutSession({
+          userId,
+          sessionId: session.id,
+          lastWebhookEventId: event.id,
+          lastWebhookReceivedAt: receivedAt,
+        });
+        await cancelQueuedBillingReminderDeliveries(userId);
+        return synced;
+      },
     });
-    await cancelQueuedBillingReminderDeliveries(userId);
-    return synced;
+    return subscription;
   }
 
   if (
@@ -410,16 +452,24 @@ export async function handleStripeWebhookEvent(event: Stripe.Event): Promise<Bil
       return null;
     }
 
-    const synced = await syncBillingFromStripeSubscription({
+    return withWebhookClaim({
+      eventId: event.id,
+      eventType: event.type,
       userId,
-      subscription,
-      lastWebhookEventId: event.id,
-      lastWebhookReceivedAt: receivedAt,
+      receivedAt,
+      run: async () => {
+        const synced = await syncBillingFromStripeSubscription({
+          userId,
+          subscription,
+          lastWebhookEventId: event.id,
+          lastWebhookReceivedAt: receivedAt,
+        });
+        if (billingAccessAllowed(synced.status)) {
+          await cancelQueuedBillingReminderDeliveries(userId);
+        }
+        return synced;
+      },
     });
-    if (billingAccessAllowed(synced.status)) {
-      await cancelQueuedBillingReminderDeliveries(userId);
-    }
-    return synced;
   }
 
   return null;

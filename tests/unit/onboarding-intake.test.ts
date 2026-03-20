@@ -22,4 +22,11 @@ describe("onboarding intake", () => {
     expect(source).toContain("window.sessionStorage.getItem(ONBOARDING_REPORT_SNAPSHOT_KEY)");
     expect(source).toContain('params.get("view")');
   });
+
+  test("uses the dashboard handoff language after the report", () => {
+    const source = readFileSync(onboardingIntakePath, "utf8");
+
+    expect(source).toContain("Go to Dashboard");
+    expect(source).not.toContain("Continue to your dashboard preview");
+  });
 });

@@ -1,6 +1,6 @@
+import { EMAIL_PRODUCT_NAME } from "./lifecycle-email";
 import { appendLifecycleEmailTracking } from "./email-tracking";
 import { type BillingCheckoutReminderKey } from "./email-campaigns";
-import { EMAIL_PRODUCT_NAME } from "./lifecycle-email";
 
 type BillingCheckoutReminderTemplate = {
   subject: string;
@@ -135,8 +135,8 @@ export function buildBillingCheckoutReminderEmail(input: {
       ? `${learnerFirstName}, your ${EMAIL_PRODUCT_NAME} trial is still ready`
       : `Your ${EMAIL_PRODUCT_NAME} dashboard is still waiting`,
     paragraphs: [
-      "Your 7-day free trial is still available, and your personalized modules are ready the moment you jump back in.",
-      "You will unlock Chat Tutor, daily AI news, social/build-log tools, and the guided project workbench in one dashboard.",
+      `Your 7-day free trial is still available, and your personalized modules are ready the moment you jump back in.`,
+      `You will unlock Chat Tutor, daily AI news, social/build-log tools, and the guided project workbench in one dashboard.`,
       isEarlyReminder
         ? "Card required today, but you will not be charged until the 7-day trial ends."
         : "If you still want to build with a clear path instead of figuring it out alone, come back through this link and resume your trial.",

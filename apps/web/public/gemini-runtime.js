@@ -600,6 +600,19 @@
     writeSessionObject(key, { ts: Date.now(), data: data });
   }
 
+  function readDashboardBootstrap() {
+    if (!isDashboardPath) return null;
+    var node = document.getElementById("aitutor-dashboard-bootstrap");
+    if (!node || !node.textContent) return null;
+    try {
+      var payload = JSON.parse(node.textContent);
+      if (!payload || !payload.auth || !payload.auth.userId) return null;
+      return payload;
+    } catch {
+      return null;
+    }
+  }
+
   function isNarrowViewport() {
     if (!window || typeof window.matchMedia !== "function") {
       return window.innerWidth <= 1024;
@@ -972,6 +985,18 @@
     return warmSocialDrafts(projectId, false);
   }
 
+  function scheduleLowPriority(task) {
+    if (typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(function () {
+        task();
+      }, { timeout: 1500 });
+      return;
+    }
+    window.setTimeout(function () {
+      task();
+    }, 300);
+  }
+
   function topProjectForPrewarm(summary) {
     if (!summary || !Array.isArray(summary.projects) || !summary.projects.length) return null;
     return summary.projects.find(function (project) {
@@ -990,28 +1015,32 @@
       saveCtx(ctx);
     }
 
-    void maybeWarmHomeNews(summaryUserId)
-      .then(function () {
-        captureEvent("dashboard_news_prewarmed", { source: "background" });
-      })
-      .catch(function (error) {
-        captureEvent("dashboard_news_prewarm_failed", {
-          reason: error && error.message ? error.message : "unknown_error",
+    scheduleLowPriority(function () {
+      void maybeWarmHomeNews(summaryUserId)
+        .then(function () {
+          captureEvent("dashboard_news_prewarmed", { source: "background" });
+        })
+        .catch(function (error) {
+          captureEvent("dashboard_news_prewarm_failed", {
+            reason: error && error.message ? error.message : "unknown_error",
+          });
         });
-      });
+    });
 
-    void maybeWarmSocialDrafts(prewarmProjectId)
-      .then(function () {
-        captureEvent("dashboard_social_prewarmed", {
-          source: "background",
-          has_project: Boolean(prewarmProjectId),
+    scheduleLowPriority(function () {
+      void maybeWarmSocialDrafts(prewarmProjectId)
+        .then(function () {
+          captureEvent("dashboard_social_prewarmed", {
+            source: "background",
+            has_project: Boolean(prewarmProjectId),
+          });
+        })
+        .catch(function (error) {
+          captureEvent("dashboard_social_prewarm_failed", {
+            reason: error && error.message ? error.message : "unknown_error",
+          });
         });
-      })
-      .catch(function (error) {
-        captureEvent("dashboard_social_prewarm_failed", {
-          reason: error && error.message ? error.message : "unknown_error",
-        });
-      });
+    });
   }
 
   function persistDashboardSnapshot(pathname) {
@@ -1376,6 +1405,13 @@
     return false;
   }
 
+  function isSubscriptionRequiredError(err) {
+    if (!err) return false;
+    if (err.code === "SUBSCRIPTION_REQUIRED") return true;
+    if (typeof err.message === "string" && err.message.toLowerCase().indexOf("free trial") !== -1) return true;
+    return false;
+  }
+
   async function performSignOut() {
     captureEvent("auth_sign_out_clicked", { auth_provider: "clerk" });
     var posthog = posthogClient();
@@ -1452,50 +1488,55 @@
     }
   }
 
+  function applyAuthData(data, source) {
+    if (!data || !data.auth) return null;
+    var incomingUserId = data.auth.userId || null;
+    if (incomingUserId && ctx.userId && incomingUserId !== ctx.userId) {
+      clearScopedCaches(String(ctx.userId));
+      ctx.sessionId = null;
+      ctx.projectId = null;
+      ctx.handle = null;
+      ctx.headline = null;
+    }
+    ctx.authUserId = incomingUserId || ctx.authUserId;
+    ctx.userId = incomingUserId || ctx.userId;
+    if (data.auth.name) ctx.name = data.auth.name;
+    if (data.auth.avatarUrl) ctx.avatarUrl = data.auth.avatarUrl;
+    if (data.auth.email) ctx.email = data.auth.email;
+    if (data.summary && data.summary.user && data.summary.user.handle) {
+      if (data.summary.user.id) ctx.profileUserId = data.summary.user.id;
+      ctx.handle = data.summary.user.handle;
+      ctx.headline = headlineForUser(data.summary.user);
+      ctx.published = Boolean(data.summary.user.published);
+      if (data.summary.user.careerPathId) ctx.careerPathId = data.summary.user.careerPathId;
+      if (data.summary.user.avatarUrl) ctx.avatarUrl = data.summary.user.avatarUrl;
+      primeDashboardDailyData(data.summary);
+    }
+    if (data.summary) {
+      writeDashboardSummaryCache(data.summary);
+    }
+    saveCtx(ctx);
+    identifyPosthogUser();
+    maybeTrackSignUpCompletion("sync_auth_context");
+    if (incomingUserId) {
+      writeAuthSessionCache(data, incomingUserId);
+    }
+    captureEvent("auth_session_synced", {
+      scope: "required_path",
+      has_summary: Boolean(data.summary),
+      source: source || "network",
+    });
+    hasAppliedAuthCtx = true;
+    applyCtxImmediately();
+    return data;
+  }
+
   async function syncAuthContext() {
     if (!needsAuth()) return null;
-    var applyAuthData = function (data, source) {
-      if (!data || !data.auth) return null;
-      var incomingUserId = data.auth.userId || null;
-      if (incomingUserId && ctx.userId && incomingUserId !== ctx.userId) {
-        clearScopedCaches(String(ctx.userId));
-        ctx.sessionId = null;
-        ctx.projectId = null;
-        ctx.handle = null;
-        ctx.headline = null;
-      }
-      ctx.authUserId = incomingUserId || ctx.authUserId;
-      ctx.userId = incomingUserId || ctx.userId;
-      if (data.auth.name) ctx.name = data.auth.name;
-      if (data.auth.avatarUrl) ctx.avatarUrl = data.auth.avatarUrl;
-      if (data.auth.email) ctx.email = data.auth.email;
-      if (data.summary && data.summary.user && data.summary.user.handle) {
-        if (data.summary.user.id) ctx.profileUserId = data.summary.user.id;
-        ctx.handle = data.summary.user.handle;
-        ctx.headline = headlineForUser(data.summary.user);
-        ctx.published = Boolean(data.summary.user.published);
-        if (data.summary.user.careerPathId) ctx.careerPathId = data.summary.user.careerPathId;
-        if (data.summary.user.avatarUrl) ctx.avatarUrl = data.summary.user.avatarUrl;
-        primeDashboardDailyData(data.summary);
-      }
-      if (data.summary) {
-        writeDashboardSummaryCache(data.summary);
-      }
-      saveCtx(ctx);
-      identifyPosthogUser();
-      maybeTrackSignUpCompletion("sync_auth_context");
-      if (incomingUserId) {
-        writeAuthSessionCache(data, incomingUserId);
-      }
-      captureEvent("auth_session_synced", {
-        scope: "required_path",
-        has_summary: Boolean(data.summary),
-        source: source || "network",
-      });
-      hasAppliedAuthCtx = true;
-      applyCtxImmediately();
-      return data;
-    };
+    var cached = readAuthSessionCache();
+    if (cached && cached.auth) {
+      return applyAuthData(cached, "session_storage");
+    }
 
     var fresh = await getJson("/api/auth/session");
     if (!fresh || !fresh.auth) return null;
@@ -1570,7 +1611,7 @@
     });
     if (!navLogIn) return;
 
-    var isSignedIn = Boolean(summary && summary.user && summary.user.handle);
+    var isSignedIn = Boolean((summary && summary.user && summary.user.handle) || ctx.authUserId || ctx.userId);
     if (!isSignedIn) {
       navLogIn.setAttribute("href", "/sign-in?redirect_url=/dashboard/");
       navLogIn.textContent = "Log In";
@@ -1585,23 +1626,23 @@
     if (currentPath !== "/") return;
     try {
       var data = await getJson("/api/auth/session");
-      if (data && data.summary) {
+      if (data && data.auth) {
         if (data.auth && data.auth.userId) {
           ctx.authUserId = data.auth.userId;
           ctx.userId = data.auth.userId;
         }
         if (data.auth && data.auth.name) ctx.name = data.auth.name;
         if (data.auth && data.auth.avatarUrl) ctx.avatarUrl = data.auth.avatarUrl;
-        if (data.summary.user && data.summary.user.id) ctx.profileUserId = data.summary.user.id;
-        if (data.summary.user && data.summary.user.handle) ctx.handle = data.summary.user.handle;
-        if (data.summary.user && data.summary.user.careerPathId) ctx.careerPathId = data.summary.user.careerPathId;
-        if (data.summary.user) ctx.published = Boolean(data.summary.user.published);
+        if (data.summary && data.summary.user && data.summary.user.id) ctx.profileUserId = data.summary.user.id;
+        if (data.summary && data.summary.user && data.summary.user.handle) ctx.handle = data.summary.user.handle;
+        if (data.summary && data.summary.user && data.summary.user.careerPathId) ctx.careerPathId = data.summary.user.careerPathId;
+        if (data.summary && data.summary.user) ctx.published = Boolean(data.summary.user.published);
         saveCtx(ctx);
         identifyPosthogUser();
         maybeTrackSignUpCompletion("landing_auth");
-        applyLandingAuthUi(data.summary);
+        applyLandingAuthUi(data.summary || null);
         ensureGlobalSignOutControl(true);
-        captureEvent("auth_session_synced", { scope: "landing", signed_in: true });
+        captureEvent("auth_session_synced", { scope: "landing", signed_in: true, has_summary: Boolean(data.summary) });
       } else {
         resetCtxIdentity();
         lastPosthogIdentifiedUserId = null;
@@ -2058,11 +2099,22 @@
       }
       return response.summary;
     } catch (err) {
+      if (isSubscriptionRequiredError(err)) {
+        return null;
+      }
       if (!isUnauthenticatedError(err)) {
         throw err;
       }
       await ensureSession();
-      var retry = await getJson("/api/dashboard/summary");
+      var retry;
+      try {
+        retry = await getJson("/api/dashboard/summary");
+      } catch (retryErr) {
+        if (isSubscriptionRequiredError(retryErr)) {
+          return null;
+        }
+        throw retryErr;
+      }
       if (retry && retry.summary) {
         writeDashboardSummaryCache(retry.summary);
         captureEvent("dashboard_summary_loaded", { source: "network_after_session" });
@@ -4746,7 +4798,7 @@
         document.documentElement.setAttribute("data-mobile-nav", "closed");
       }
       try {
-        if (needsAuth()) {
+        if (needsAuth() && (!hasAppliedAuthCtx || !readAuthSessionCache())) {
           await syncAuthContext();
         }
       } catch (err) {
@@ -4788,7 +4840,7 @@
   async function boot() {
     captureEvent("app_boot_started", { path: currentPath });
     markRouteHydrated(currentPath);
-    var holdRevealUntilHydrated = isDashboardPath;
+    var holdRevealUntilHydrated = false;
     try {
       applyAcquisitionLandingVariant();
       maybeTrackAuthEntryEvents();
@@ -4796,11 +4848,17 @@
       if (!holdRevealUntilHydrated) {
         document.documentElement.setAttribute("data-runtime-ready", "1");
       }
+      var dashboardBootstrap = readDashboardBootstrap();
+      if (dashboardBootstrap) {
+        applyAuthData(dashboardBootstrap, "server_bootstrap");
+      }
       await trySyncLandingAuth();
       await syncOptionalAuthUi();
 
       try {
-        await syncAuthContext();
+        if (needsAuth() && (!hasAppliedAuthCtx || !readAuthSessionCache())) {
+          await syncAuthContext();
+        }
       } catch (err) {
         if (needsAuth()) {
           toast(err instanceof Error ? err.message : "Authentication required", true);

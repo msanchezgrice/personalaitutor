@@ -1,6 +1,7 @@
 import { jsonError, runtimeFindProjectById, runtimeFindUserById, runtimeListProjectEvents } from "@/lib/runtime";
 import { NextRequest } from "next/server";
 import { getUserId } from "@/lib/api";
+import { requireBillingAccess } from "@/lib/billing-access";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,10 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
   const userId = getUserId(req);
   if (!userId) {
     return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+  }
+  const access = await requireBillingAccess({ userId });
+  if (!access.ok) {
+    return access.response;
   }
   const [profile, project] = await Promise.all([
     runtimeFindUserById(userId),

@@ -49,6 +49,7 @@ import {
   upsertBillingSubscription as memUpsertBillingSubscription,
   type AssessmentAttempt,
   type BillingSubscription,
+  type BillingSubscriptionStatus,
   type BuildLogEntry,
   type DailyUpdate,
   type DashboardSummary,
@@ -69,6 +70,7 @@ import {
 import { BRAND_NAME, getSiteUrl } from "./site";
 import { mergeAttribution } from "./attribution";
 import { recordPersistedFunnelEvent } from "./funnel-events-server";
+import { billingAccessAllowed, normalizeBillingStatus } from "./billing";
 
 const DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -119,6 +121,13 @@ export type SignupAuditTimelineEntry = {
 export type SignupAuditDetail = SignupAuditRecord & {
   projects: SignupAuditProjectSummary[];
   timeline: SignupAuditTimelineEntry[];
+};
+
+export type RuntimeBillingAccessState = {
+  profile: UserProfile | null;
+  subscription: BillingSubscription | null;
+  status: BillingSubscriptionStatus;
+  accessAllowed: boolean;
 };
 
 type SignupAuditProfileRow = {
@@ -178,6 +187,26 @@ type BillingSubscriptionRow = {
   created_at: string;
   updated_at: string;
 };
+
+type StripeWebhookEventStateRow = {
+  stripe_event_id: string;
+  event_type: string;
+  learner_profile_id: string | null;
+  state: "processing" | "processed";
+  processed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+const memoryStripeWebhookEvents = new Map<
+  string,
+  {
+    eventType: string;
+    userId: string | null;
+    state: "processing" | "processed";
+    processedAt: string | null;
+  }
+>();
 
 function mode(): PersistenceMode {
   const explicit = process.env.PERSISTENCE_MODE?.toLowerCase();
@@ -637,6 +666,13 @@ async function getBillingSubscriptionRowByUserId(userId: string) {
     .maybeSingle();
 
   return (data as BillingSubscriptionRow | null) ?? null;
+}
+
+async function getStripeWebhookEventProfileId(userId?: string | null) {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) return null;
+  const profile = await runtimeGetOrCreateProfile({ userId: normalizedUserId });
+  return profile.id;
 }
 
 async function getOrCreateProfile(input: {
@@ -1843,6 +1879,158 @@ export async function runtimeGetBillingSubscription(userId: string) {
   return row ? billingSubscriptionFromRow(row) : null;
 }
 
+export async function runtimeGetBillingAccessState(input: {
+  userId?: string | null;
+  seed?: {
+    name?: string;
+    handleBase?: string;
+    avatarUrl?: string | null;
+    email?: string | null;
+  };
+}): Promise<RuntimeBillingAccessState> {
+  const userId = String(input.userId || "").trim();
+  if (!userId) {
+    return {
+      profile: null,
+      subscription: null,
+      status: "none",
+      accessAllowed: false,
+    };
+  }
+
+  const profile = await runtimeGetOrCreateProfile({
+    userId,
+    name: input.seed?.name,
+    email: input.seed?.email ?? null,
+    avatarUrl: input.seed?.avatarUrl ?? null,
+    handleBase: input.seed?.handleBase,
+  });
+  const subscription = await runtimeGetBillingSubscription(profile.id);
+  const status = normalizeBillingStatus(subscription?.status);
+
+  return {
+    profile,
+    subscription,
+    status,
+    accessAllowed: billingAccessAllowed(status),
+  };
+}
+
+export async function runtimeClaimStripeWebhookEvent(input: {
+  eventId: string;
+  eventType: string;
+  userId?: string | null;
+}) {
+  const eventId = String(input.eventId || "").trim();
+  if (!eventId) {
+    throw new Error("STRIPE_WEBHOOK_EVENT_ID_REQUIRED");
+  }
+
+  if (mode() === "memory") {
+    if (memoryStripeWebhookEvents.has(eventId)) {
+      return false;
+    }
+    memoryStripeWebhookEvents.set(eventId, {
+      eventType: input.eventType,
+      userId: input.userId?.trim() || null,
+      state: "processing",
+      processedAt: null,
+    });
+    return true;
+  }
+
+  const supabase = getSupabaseAdmin();
+  const profileId = await getStripeWebhookEventProfileId(input.userId);
+  const { error } = await supabase.from("stripe_webhook_events").insert({
+    stripe_event_id: eventId,
+    event_type: input.eventType,
+    learner_profile_id: profileId,
+    state: "processing",
+    processed_at: null,
+  } satisfies Partial<StripeWebhookEventStateRow>);
+
+  if (!error) {
+    return true;
+  }
+  if (error.code === "23505") {
+    return false;
+  }
+
+  throw new Error(`STRIPE_WEBHOOK_EVENT_CLAIM_FAILED:${error.message ?? "UNKNOWN"}`);
+}
+
+export async function runtimeMarkStripeWebhookEventProcessed(input: {
+  eventId: string;
+  userId?: string | null;
+  processedAt?: string | null;
+}) {
+  const eventId = String(input.eventId || "").trim();
+  if (!eventId) {
+    throw new Error("STRIPE_WEBHOOK_EVENT_ID_REQUIRED");
+  }
+
+  const processedAt = input.processedAt?.trim() || new Date().toISOString();
+  if (mode() === "memory") {
+    const existing = memoryStripeWebhookEvents.get(eventId);
+    if (!existing) {
+      memoryStripeWebhookEvents.set(eventId, {
+        eventType: "unknown",
+        userId: input.userId?.trim() || null,
+        state: "processed",
+        processedAt,
+      });
+      return;
+    }
+    memoryStripeWebhookEvents.set(eventId, {
+      ...existing,
+      userId: input.userId?.trim() || existing.userId,
+      state: "processed",
+      processedAt,
+    });
+    return;
+  }
+
+  const supabase = getSupabaseAdmin();
+  const profileId = await getStripeWebhookEventProfileId(input.userId);
+  const { error } = await supabase
+    .from("stripe_webhook_events")
+    .update({
+      learner_profile_id: profileId,
+      state: "processed",
+      processed_at: processedAt,
+      updated_at: new Date().toISOString(),
+    } satisfies Partial<StripeWebhookEventStateRow>)
+    .eq("stripe_event_id", eventId);
+
+  if (error) {
+    throw new Error(`STRIPE_WEBHOOK_EVENT_MARK_FAILED:${error.message ?? "UNKNOWN"}`);
+  }
+}
+
+export async function runtimeReleaseStripeWebhookEventClaim(eventIdInput: string) {
+  const eventId = String(eventIdInput || "").trim();
+  if (!eventId) return;
+
+  if (mode() === "memory") {
+    const existing = memoryStripeWebhookEvents.get(eventId);
+    if (existing?.state === "processing") {
+      memoryStripeWebhookEvents.delete(eventId);
+    }
+    return;
+  }
+
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase
+    .from("stripe_webhook_events")
+    .delete()
+    .eq("stripe_event_id", eventId)
+    .eq("state", "processing");
+
+  if (error) {
+    throw new Error(`STRIPE_WEBHOOK_EVENT_RELEASE_FAILED:${error.message ?? "UNKNOWN"}`);
+  }
+}
+
 export async function runtimeUpsertBillingSubscription(input: {
   userId: string;
   stripeCustomerId: string | null;
@@ -2005,6 +2193,8 @@ export async function runtimeUpdateProfile(userId: string, patch: Partial<UserPr
 }
 
 export async function runtimePublishProfile(userId: string) {
+  const billing = await runtimeGetBillingAccessState({ userId });
+  if (!billing.accessAllowed) return null;
   if (mode() === "memory") return memPublishProfile(userId);
 
   const supabase = getSupabaseAdmin();
@@ -2044,6 +2234,8 @@ export async function runtimeCreateProject(input: {
   description: string;
   slug?: string;
 }) {
+  const billing = await runtimeGetBillingAccessState({ userId: input.userId });
+  if (!billing.accessAllowed) return null;
   if (mode() === "memory") return memCreateProject(input);
 
   const supabase = getSupabaseAdmin();
@@ -2260,6 +2452,8 @@ export async function runtimeUpdateProjectModuleStep(input: {
   stepKey: string;
   status: ProjectModuleStepStatus;
 }) {
+  const billing = await runtimeGetBillingAccessState({ userId: input.userId });
+  if (!billing.accessAllowed) return null;
   if (mode() === "memory") return memUpdateProjectModuleStep(input);
 
   const project = await runtimeFindProjectById(input.projectId);
@@ -2479,6 +2673,8 @@ export async function runtimeAddProjectChatMessage(input: {
   message: string;
   forceFailCode?: string;
 }) {
+  const billing = await runtimeGetBillingAccessState({ userId: input.userId });
+  if (!billing.accessAllowed) return null;
   if (mode() === "memory") return memAddProjectChatMessage(input);
 
   const project = await runtimeFindProjectById(input.projectId);
@@ -2615,6 +2811,8 @@ export async function runtimeRequestArtifactGeneration(input: {
   stepKey?: string | null;
   forceFailCode?: string;
 }) {
+  const billing = await runtimeGetBillingAccessState({ userId: input.userId });
+  if (!billing.accessAllowed) return null;
   if (mode() === "memory") return memRequestArtifactGeneration(input);
 
   const project = await runtimeFindProjectById(input.projectId);
@@ -2731,6 +2929,8 @@ export async function runtimeRecordProjectArtifact(input: {
   metadata?: Record<string, unknown>;
   awardTokens?: number;
 }) {
+  const billing = await runtimeGetBillingAccessState({ userId: input.userId });
+  if (!billing.accessAllowed) return null;
   if (mode() === "memory") {
     return memRecordProjectArtifact(input);
   }
@@ -2965,6 +3165,10 @@ export async function runtimeGenerateProjectToolAction(input: {
   careerPathId?: string | null;
   stepKey?: string | null;
 }) {
+  const billing = await runtimeGetBillingAccessState({ userId: input.userId });
+  if (!billing.accessAllowed) {
+    return { ok: false as const, errorCode: "SUBSCRIPTION_REQUIRED", output: null };
+  }
   const project = await runtimeFindProjectById(input.projectId);
   const profile = await runtimeFindUserById(input.userId);
   if (!project || !profile || project.userId !== profile.id) {
@@ -4527,6 +4731,13 @@ export async function runtimeGenerateSocialIdeas(input: {
     email?: string | null;
   };
 }) {
+  const billing = await runtimeGetBillingAccessState({
+    userId: input.userId,
+    seed: input.seed,
+  });
+  if (!billing.accessAllowed) {
+    return { ok: false as const, errorCode: "SUBSCRIPTION_REQUIRED", ideas: null, memorySignals: [] as string[] };
+  }
   const summary =
     mode() === "memory"
       ? memGetDashboardSummary(input.userId)
@@ -4669,6 +4880,10 @@ export async function runtimeCreateSocialDrafts(input: {
   projectId?: string | null;
   forceFailCode?: string;
 }) {
+  const billing = await runtimeGetBillingAccessState({ userId: input.userId });
+  if (!billing.accessAllowed) {
+    return { ok: false as const, errorCode: "SUBSCRIPTION_REQUIRED", drafts: [] as SocialDraft[] };
+  }
   if (mode() === "memory") return memCreateSocialDrafts(input);
   if (input.forceFailCode) {
     return { ok: false as const, errorCode: input.forceFailCode, drafts: [] as SocialDraft[] };
@@ -4736,6 +4951,12 @@ export async function runtimePublishSocialDraft(input: {
   userId?: string;
   forceFailCode?: string;
 }) {
+  if (input.userId) {
+    const billing = await runtimeGetBillingAccessState({ userId: input.userId });
+    if (!billing.accessAllowed) {
+      return { ok: false as const, errorCode: "SUBSCRIPTION_REQUIRED", draft: null };
+    }
+  }
   if (mode() === "memory") return memPublishSocialDraft(input);
 
   const supabase = getSupabaseAdmin();
@@ -4916,6 +5137,15 @@ export async function runtimeRefreshRelevantNews(options?: {
   maxStories?: number;
   preferFresh?: boolean;
 }) {
+  if (options?.userId) {
+    const billing = await runtimeGetBillingAccessState({
+      userId: options.userId,
+      seed: options.seed,
+    });
+    if (!billing.accessAllowed) {
+      return { ok: false as const, errorCode: "SUBSCRIPTION_REQUIRED", insights: [] };
+    }
+  }
   if (mode() === "memory") {
     const memoryResult = memRefreshRelevantNews({
       forceFailCode: options?.forceFailCode,
@@ -5239,6 +5469,10 @@ export async function runtimeRefreshRelevantNews(options?: {
 }
 
 export async function runtimeCreateDailyUpdate(input: { userId: string; forceFailCode?: string }) {
+  const billing = await runtimeGetBillingAccessState({ userId: input.userId });
+  if (!billing.accessAllowed) {
+    return { ok: false as const, errorCode: "SUBSCRIPTION_REQUIRED", update: null };
+  }
   if (mode() === "memory") return memCreateDailyUpdate(input);
 
   const profile = await runtimeFindUserById(input.userId);

@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { jsonError, jsonOk, runtimeFindProjectById, runtimeFindUserById, runtimeRecordProjectArtifact } from "@/lib/runtime";
 import { NextRequest } from "next/server";
 import { getUserId } from "@/lib/api";
+import { requireBillingAccess } from "@/lib/billing-access";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = new Set(["png", "jpg", "jpeg", "webp", "pdf", "txt"]);
@@ -88,6 +89,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const userId = getUserId(req);
     if (!userId) {
       return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+    }
+    const access = await requireBillingAccess({ userId });
+    if (!access.ok) {
+      return access.response;
     }
 
     const [profile, project] = await Promise.all([

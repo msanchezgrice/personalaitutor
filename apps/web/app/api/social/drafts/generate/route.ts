@@ -2,6 +2,7 @@ import { jsonError, jsonOk, runtimeCreateSocialDrafts } from "@/lib/runtime";
 import { z } from "zod";
 import { NextRequest } from "next/server";
 import { forcedFailCode, getUserId } from "@/lib/api";
+import { requireBillingAccess } from "@/lib/billing-access";
 
 const schema = z.object({
   userId: z.string().optional(),
@@ -18,6 +19,10 @@ export async function POST(req: NextRequest) {
     const userId = getUserId(req);
     if (!userId) {
       return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+    }
+    const access = await requireBillingAccess({ userId });
+    if (!access.ok) {
+      return access.response;
     }
     const result = await runtimeCreateSocialDrafts({
       userId,

@@ -1,11 +1,31 @@
 import { jsonError, jsonOk, runtimeGetDashboardSummary } from "@/lib/runtime";
 import { getAuthSeed } from "@/lib/auth";
 import { NextRequest } from "next/server";
+import { billingSeedFromAuthSeed, runtimeGetBillingAccessState, toBillingPayload } from "@/lib/billing-access";
 
 export async function GET(req: NextRequest) {
   const seed = await getAuthSeed(req);
   if (!seed?.userId) {
     return jsonError("UNAUTHENTICATED", "Sign in required", 401);
+  }
+
+  const billing = await runtimeGetBillingAccessState({
+    userId: seed.userId,
+    seed: billingSeedFromAuthSeed(seed),
+  });
+  const auth = {
+    userId: seed.userId,
+    name: seed.name ?? billing.profile?.name ?? null,
+    email: seed.email ?? billing.profile?.contactEmail ?? null,
+    avatarUrl: seed.avatarUrl ?? billing.profile?.avatarUrl ?? null,
+  };
+
+  if (!billing.accessAllowed) {
+    return jsonOk({
+      auth,
+      billing: toBillingPayload(billing),
+      summary: null,
+    });
   }
 
   const summary = await runtimeGetDashboardSummary(seed.userId, {
@@ -21,11 +41,11 @@ export async function GET(req: NextRequest) {
 
   return jsonOk({
     auth: {
-      userId: seed.userId,
-      name: seed.name ?? summary.user.name,
-      email: seed.email ?? null,
-      avatarUrl: seed.avatarUrl ?? summary.user.avatarUrl ?? null,
+      ...auth,
+      name: auth.name ?? summary.user.name,
+      avatarUrl: auth.avatarUrl ?? summary.user.avatarUrl ?? null,
     },
+    billing: toBillingPayload(billing),
     summary,
   });
 }

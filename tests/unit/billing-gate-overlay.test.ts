@@ -9,12 +9,22 @@ describe("billing gate overlay", () => {
     const source = readFileSync(billingGateOverlayPath, "utf8");
 
     expect(source).toContain("Your dashboard is ready. Start your 7-day free trial");
-    expect(source).toContain("Card required today. You will not be charged until your trial ends.");
+    expect(source).toContain("Pay to unlock features including:");
+    expect(source).toContain("Get career-related AI news sent to you daily");
+    expect(source).toContain("Get suggested tweets that you can post to show your progress and your focus on AI");
+    expect(source).toContain("Get dedicated AI skills modules based on your career");
+    expect(source).toContain("Get a 24/7 dedicated AI tutor that can help with any questions");
+    expect(source).toContain("Cancel anytime. Satisfaction guaranteed.");
     expect(source).toContain("Start 7-Day Free Trial");
     expect(source).toContain("Back to My Report");
     expect(source).toContain("Auto-renews at $49.99/month unless canceled before trial end.");
     expect(source).toContain("fixed inset-0");
     expect(source).toContain("returnToReport");
+    expect(source).toContain("autoStart");
+    expect(source).toContain("resumeEmailDeliveryId");
+    expect(source).toContain("resumeEmailCampaignKey");
+    expect(source).toContain("captureAnalyticsEvent(\"billing_checkout_started\"");
+    expect(source).toContain("getOrCreateFunnelVisitorId()");
     expect(source).toContain("window.location.assign(returnToReport)");
     expect(source).toContain("mt-4 text-sm font-medium text-white");
     expect(source).toContain('data-billing-gate-heading="1"');
