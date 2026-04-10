@@ -288,6 +288,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Analytics />
           </ClerkProvider>
         )}
+        <Script
+          src="https://selfimprove-iota.vercel.app/widget.js"
+          data-project="4d3357e8-c1a1-4758-8954-d7e74701e378"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
