@@ -214,6 +214,26 @@ export async function listCompletedDailyActionsSince(input: {
   return ((data ?? []) as DailyActionRow[]).map(actionFromRow);
 }
 
+/**
+ * All-time count of completed daily actions — a gamification XP signal
+ * (rebuild dashboard batch item 4).
+ */
+export async function countCompletedDailyActions(learnerProfileId: string): Promise<number> {
+  if (mode() === "memory") {
+    return Array.from(memoryActions.values()).filter(
+      (record) => record.learnerProfileId === learnerProfileId && record.status === "completed",
+    ).length;
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { count } = await supabase
+    .from("daily_actions")
+    .select("id", { count: "exact", head: true })
+    .eq("learner_profile_id", learnerProfileId)
+    .eq("status", "completed");
+  return Number(count ?? 0);
+}
+
 // --- streak store ---------------------------------------------------------------
 
 export async function getStreak(learnerProfileId: string): Promise<StreakRecord> {

@@ -66,6 +66,7 @@ import {
   type UserProfile,
 } from "@aitutor/shared";
 import { BRAND_NAME, getSiteUrl } from "./site";
+import { collectGamificationActivitySignalsSafe } from "./gamification-signals";
 import { callOpenAiResponses, extractOpenAiOutputText } from "./openai-responses";
 import { briefingNewsForPath } from "./daily-briefing";
 import { mergeAttribution } from "./attribution";
@@ -3116,7 +3117,9 @@ export async function runtimeGetDashboardSummary(
     email?: string | null;
   },
 ): Promise<DashboardSummary | null> {
-  if (mode() === "memory") return memGetDashboardSummary(userId);
+  if (mode() === "memory") {
+    return memGetDashboardSummary(userId, await collectGamificationActivitySignalsSafe(userId));
+  }
 
   let profile = await runtimeFindUserById(userId);
   if (!profile || seed?.email?.trim()) {
@@ -3230,6 +3233,7 @@ export async function runtimeGetDashboardSummary(
   const firstPublishedSocialDraft = socialRows
     .filter((row) => String(row.status || "").toLowerCase() === "published")
     .sort((a, b) => Date.parse(String(a.updated_at || a.created_at)) - Date.parse(String(b.updated_at || b.created_at)))[0];
+  const activity = await collectGamificationActivitySignalsSafe(profile.id);
   const gamification = buildDashboardGamification({
     user: profile,
     projects,
@@ -3242,6 +3246,7 @@ export async function runtimeGetDashboardSummary(
     socialDraftCreatedAt: firstSocialDraft?.created_at ?? null,
     hasPublishedSocialDraft: Boolean(firstPublishedSocialDraft?.id),
     socialDraftPublishedAt: firstPublishedSocialDraft?.updated_at ?? firstPublishedSocialDraft?.created_at ?? null,
+    activity,
   });
 
   return {

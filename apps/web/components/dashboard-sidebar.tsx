@@ -10,7 +10,6 @@ const links = [
   { href: "/dashboard", label: "Home", icon: "⌂" },
   { href: "/dashboard/chat", label: "Chat Tutor", icon: "✦" },
   { href: "/dashboard/projects", label: "Projects", icon: "▣" },
-  { href: "/dashboard/social", label: "Social Drafts", icon: "in" },
   { href: "/dashboard/ai-news", label: "AI News", icon: "🗞" },
   { href: "/dashboard/updates", label: "Activity", icon: "◷", count: 2 },
   { href: "/dashboard/profile", label: "Profile", icon: "◉" },

@@ -5,7 +5,7 @@ import {
   getModuleTracksForCareerPath,
   MODULE_TRACKS,
 } from "./matrix";
-import { buildDashboardGamification } from "./gamification";
+import { buildDashboardGamification, type GamificationActivitySignals } from "./gamification";
 import { canMarkProjectBuilt } from "./verification-gating";
 import type {
   AcquisitionAttribution,
@@ -1531,7 +1531,10 @@ export function latestDailyUpdate(userId: string) {
   return state.dailyUpdates.find((entry) => entry.userId === userId) ?? null;
 }
 
-export function getDashboardSummary(userId: string): DashboardSummary | null {
+export function getDashboardSummary(
+  userId: string,
+  activity?: Partial<GamificationActivitySignals> | null,
+): DashboardSummary | null {
   const user = findUserById(userId);
   if (!user) return null;
   const projects = listProjectsByUser(userId);
@@ -1571,6 +1574,7 @@ export function getDashboardSummary(userId: string): DashboardSummary | null {
         socialDrafts
           .filter((entry) => entry.status === "published")
           .sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt))[0]?.updatedAt ?? null,
+      activity: activity ?? null,
     }),
   };
 }

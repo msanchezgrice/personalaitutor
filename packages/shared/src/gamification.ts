@@ -1,6 +1,28 @@
 import { getCareerPath } from "./matrix";
 import type { AgentJobEvent, DashboardAchievement, DashboardBadge, DashboardGamification, Project, UserProfile } from "./types";
 
+/**
+ * Activity signals for the retention loop (rebuild dashboard batch item 4):
+ * daily-action completions (`daily_actions`), streaks (`learner_streaks`),
+ * and tutor-session milestones (`module_tutor_sessions`). All optional so
+ * legacy call sites keep their exact behavior.
+ */
+export type GamificationActivitySignals = {
+  /** Count of completed daily actions (from the daily_actions store). */
+  dailyActionsCompleted: number;
+  /** Live streak (already normalized for display). */
+  streakCurrent: number;
+  /** All-time longest streak — achievements key off this so they never re-lock. */
+  streakLongest: number;
+  /** UTC yyyy-mm-dd of the last completed daily action (used as unlockedAt). */
+  streakLastActionDate?: string | null;
+  /** Tutor sessions ever started (module_tutor_sessions rows). */
+  tutorSessionsStarted: number;
+  /** Tutor sessions fully completed (steps + proof checklist done). */
+  tutorSessionsCompleted: number;
+  firstTutorSessionCompletedAt?: string | null;
+};
+
 type GamificationSignals = {
   user: UserProfile;
   projects: Project[];
@@ -13,9 +35,34 @@ type GamificationSignals = {
   socialDraftCreatedAt?: string | null;
   hasPublishedSocialDraft: boolean;
   socialDraftPublishedAt?: string | null;
+  activity?: Partial<GamificationActivitySignals> | null;
 };
 
 const LEVEL_THRESHOLDS = [0, 90, 180, 300, 450, 650];
+
+// Activity XP: sized so an active week 1 (5 daily actions + 1 completed tutor
+// session) crosses the Level 2 threshold (90 XP) on the new loop alone.
+const XP_PER_DAILY_ACTION = 10;
+const XP_PER_TUTOR_SESSION_COMPLETED = 25;
+const XP_FIRST_TUTOR_SESSION_STARTED = 10;
+const STREAK_ACHIEVEMENT_DAYS = 7;
+
+function nonNegativeCount(value: number | null | undefined) {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0;
+}
+
+function normalizeActivity(activity: Partial<GamificationActivitySignals> | null | undefined): GamificationActivitySignals {
+  return {
+    dailyActionsCompleted: nonNegativeCount(activity?.dailyActionsCompleted),
+    streakCurrent: nonNegativeCount(activity?.streakCurrent),
+    streakLongest: nonNegativeCount(activity?.streakLongest),
+    streakLastActionDate: activity?.streakLastActionDate ?? null,
+    tutorSessionsStarted: nonNegativeCount(activity?.tutorSessionsStarted),
+    tutorSessionsCompleted: nonNegativeCount(activity?.tutorSessionsCompleted),
+    firstTutorSessionCompletedAt: activity?.firstTutorSessionCompletedAt ?? null,
+  };
+}
 
 function cleanText(value: string | null | undefined) {
   return String(value || "").trim();
@@ -97,6 +144,7 @@ function computeLevel(xpTotal: number) {
 }
 
 export function buildDashboardGamification(input: GamificationSignals): DashboardGamification {
+  const activity = normalizeActivity(input.activity);
   const chatStarted = hasEventMessage(input.latestEvents, ["project.chat queued", "project.chat completed"]);
   const firstOutputGenerated =
     hasProjectOutput(input.projects) ||
@@ -196,9 +244,30 @@ export function buildDashboardGamification(input: GamificationSignals): Dashboar
       unlocked: verifiedSkill,
       unlockedAt: verifiedSkill ? input.user.updatedAt : null,
     },
+    {
+      key: "tutor_session_completed",
+      title: "First Tutor Session Complete",
+      description: "You finished a full tutor session — every step and proof item evidenced.",
+      xp: 60,
+      unlocked: activity.tutorSessionsCompleted > 0,
+      unlockedAt: activity.tutorSessionsCompleted > 0 ? activity.firstTutorSessionCompletedAt ?? null : null,
+    },
+    {
+      key: "streak_7",
+      title: "Seven-Day Streak",
+      description: "You completed your daily action seven days in a row.",
+      xp: 70,
+      unlocked: activity.streakLongest >= STREAK_ACHIEVEMENT_DAYS,
+      unlockedAt: activity.streakLongest >= STREAK_ACHIEVEMENT_DAYS ? activity.streakLastActionDate ?? null : null,
+    },
   ];
 
-  const xpTotal = achievements.reduce((sum, achievement) => sum + (achievement.unlocked ? achievement.xp : 0), 0);
+  const achievementXp = achievements.reduce((sum, achievement) => sum + (achievement.unlocked ? achievement.xp : 0), 0);
+  const activityXp =
+    activity.dailyActionsCompleted * XP_PER_DAILY_ACTION +
+    activity.tutorSessionsCompleted * XP_PER_TUTOR_SESSION_COMPLETED +
+    (activity.tutorSessionsStarted > 0 ? XP_FIRST_TUTOR_SESSION_STARTED : 0);
+  const xpTotal = achievementXp + activityXp;
   const levelMeta = computeLevel(xpTotal);
   const badges: DashboardBadge[] = [
     {

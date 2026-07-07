@@ -244,6 +244,24 @@ export async function createAnonymousAssessment(input: {
   return assessmentFromRow(data as AnonymousAssessmentRow);
 }
 
+export async function getAnonymousAssessmentById(id: string): Promise<AnonymousAssessment | null> {
+  const normalized = cleanText(id, 80);
+  if (!normalized) return null;
+
+  if (mode() === "memory") {
+    const record = memoryAssessments.get(normalized);
+    return record ? { ...record } : null;
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data } = await supabase
+    .from("anonymous_assessments")
+    .select(ASSESSMENT_SELECT_FIELDS)
+    .eq("id", normalized)
+    .maybeSingle();
+  return data ? assessmentFromRow(data as AnonymousAssessmentRow) : null;
+}
+
 export async function findAnonymousAssessmentByToken(token: string): Promise<AnonymousAssessment | null> {
   const normalized = cleanText(token, 200);
   if (!normalized) return null;

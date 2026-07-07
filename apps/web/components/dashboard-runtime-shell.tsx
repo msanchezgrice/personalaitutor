@@ -75,14 +75,8 @@ const navItems: NavItem[] = [
     activeClassName: "bg-amber-500/20 text-amber-400 border border-amber-500/30",
     iconClassName: "text-amber-400",
   },
-  {
-    key: "social",
-    href: "/dashboard/social",
-    label: "Social Drafts",
-    icon: "fa-share-nodes",
-    activeClassName: "bg-[#0077b5]/20 text-[#0077b5] border border-[#0077b5]/30",
-    iconClassName: "text-[#0077b5]",
-  },
+  // The social-drafts entry was removed from the nav (rebuild dashboard batch
+  // item 5). The route and its hydration remain for direct URL access.
   {
     key: "ai-news",
     href: "/dashboard/ai-news",

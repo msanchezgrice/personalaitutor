@@ -72,99 +72,244 @@ const GOAL_LABELS: Partial<Record<GoalType, string>> = {
   ship_ai_projects: "ship one real AI-enabled workflow",
 };
 
-const PLAYBOOKS: Record<string, PlaybookTemplate> = {
+const CHATGPT_LAUNCH: RecommendedModuleToolLaunch = {
+  key: "chatgpt",
+  label: "ChatGPT",
+  description: "Run the session prompts here — every step of this playbook happens inside an AI chat.",
+  href: "https://chatgpt.com/",
+  ctaLabel: "Open ChatGPT",
+  kind: "external",
+  opensInNewTab: true,
+  verificationHint: "Paste the outputs back into your evidence notes as you go.",
+};
+
+const CLAUDE_LAUNCH: RecommendedModuleToolLaunch = {
+  key: "claude",
+  label: "Claude",
+  description: "Use Claude for the session prompts when the work needs longer context or structured writing.",
+  href: "https://claude.ai/",
+  ctaLabel: "Open Claude",
+  kind: "external",
+  opensInNewTab: true,
+  verificationHint: "Paste the outputs back into your evidence notes as you go.",
+};
+
+const NOTION_LAUNCH: RecommendedModuleToolLaunch = {
+  key: "notion",
+  label: "Notion",
+  description: "Store the final brief, decision note, or PRD slice where your team already works.",
+  href: "https://www.notion.so/",
+  ctaLabel: "Open Notion",
+  kind: "external",
+  opensInNewTab: true,
+  verificationHint: "Paste the doc URL or upload a screenshot of the final page.",
+};
+
+const ANALYTICS_LAUNCH: RecommendedModuleToolLaunch = {
+  key: "google-analytics",
+  label: "Google Analytics",
+  description: "Open the traffic baseline or campaign target you want this module to improve.",
+  href: "https://analytics.google.com/",
+  ctaLabel: "Open Analytics",
+  kind: "external",
+  opensInNewTab: true,
+  verificationHint: "Reference the traffic or conversion metric you are trying to move.",
+};
+
+const PM_TOOL_LAUNCHES = [CHATGPT_LAUNCH, CLAUDE_LAUNCH, NOTION_LAUNCH];
+const MSEO_TOOL_LAUNCHES = [CHATGPT_LAUNCH, CLAUDE_LAUNCH, ANALYTICS_LAUNCH];
+
+/**
+ * Per-module playbooks (rebuild item: AI-tool sessions). Every step is an
+ * action performed inside an AI tool with a copy-pasteable prompt embedded in
+ * the step text, produces pasteable evidence, and builds toward the module's
+ * final artifact. ~45 minutes per session.
+ */
+const MODULE_PLAYBOOKS: Record<string, Record<string, PlaybookTemplate>> = {
   "product-management": {
-    why: "This is the fastest module for turning product judgment into visible AI-assisted proof instead of private notes.",
-    expectedOutput: "A research brief, wireframe set, or PRD section that shows what changed because AI was used well.",
-    proofChecklist: [
-      "Show the workflow you improved.",
-      "Capture a before-and-after output.",
-      "Summarize the decision quality or speed gain in plain English.",
-    ],
-    steps: [
-      "Choose one live product question that is still fuzzy or slow.",
-      "Use the module to produce a first pass artifact with AI support.",
-      "Tighten the artifact and record what became clearer, faster, or more actionable.",
-    ],
-    toolLaunches: [
-      {
-        key: "jira",
-        label: "Jira",
-        description: "Open the live backlog or ticket where this workflow starts.",
-        href: "https://www.atlassian.com/software/jira",
-        ctaLabel: "Open Jira",
-        kind: "external",
-        opensInNewTab: true,
-        verificationHint: "Capture the ticket, workflow, or backlog item you improved.",
-      },
-      {
-        key: "figma",
-        label: "Figma",
-        description: "Move the module output into a real wireframe, flow, or review artifact.",
-        href: "https://www.figma.com/files/",
-        ctaLabel: "Open Figma",
-        kind: "external",
-        opensInNewTab: true,
-        verificationHint: "Export a frame or share link as proof.",
-      },
-      {
-        key: "notion",
-        label: "Notion",
-        description: "Store the final brief, decision note, or PRD slice where your team already works.",
-        href: "https://www.notion.so/",
-        ctaLabel: "Open Notion",
-        kind: "external",
-        opensInNewTab: true,
-        verificationHint: "Paste the doc URL or upload a screenshot of the final page.",
-      },
-    ],
+    "Synthetic User Research": {
+      why: "Synthetic user research turns a fuzzy product question into evidence you can act on today: you interview five AI-simulated users before booking a single real call.",
+      expectedOutput:
+        "A synthetic user research brief that cites five AI-run interviews: your ICP, ranked themes with supporting quotes, and a recommended next decision.",
+      proofChecklist: [
+        "Paste your final ICP definition from the ICP prompt.",
+        "Paste all five synthetic interview transcripts (or links to the chats).",
+        "Paste the ranked theme table with one supporting quote per theme.",
+      ],
+      steps: [
+        'Define your ICP in ChatGPT or Claude (8 min). Paste this prompt: "Act as my product research partner. My product is [one line] and my open question is [one line]. Draft my ideal customer profile: role, company size, top 3 jobs-to-be-done, top 3 pains, and the trigger that makes them look for a solution. Ask me up to 3 clarifying questions before you answer." Paste the final ICP into your evidence notes.',
+        'Turn the ICP into an interview script (7 min). Prompt: "Using this ICP: [paste ICP], write an 8-question user interview script that probes their current workflow, pains, workarounds, and willingness to change. No leading questions." Save the script — you will reuse it five times.',
+        'Run 5 synthetic user interviews (12 min). Open a fresh chat for each persona and paste: "You are a [role from my ICP] at a [company size] company. Stay in character with realistic constraints and skepticism. I will interview you about [topic]. Answer from lived experience, including annoyances and workarounds." Ask your 8 questions, vary one trait per persona (seniority, industry, team size), and copy each full transcript into your evidence.',
+        'Extract themes from the transcripts (8 min). Prompt: "Here are 5 user interview transcripts: [paste transcripts]. Extract the top 5 themes ranked by frequency and intensity. For each theme give a name, a 1-sentence summary, one direct quote per interview that supports it, and any contradictions between interviews." Paste the ranked theme table as evidence.',
+        "Generate your research brief artifact (10 min). Ask the tutor to generate the brief from your pasted ICP, transcripts, and themes — it must cite the interviews directly. Review it for anything the transcripts do not support, then attach it as your final artifact.",
+      ],
+      toolLaunches: PM_TOOL_LAUNCHES,
+    },
+    "AI Wireframing": {
+      why: "AI wireframing collapses the idea-to-mock loop from days to one session: you go from user problem to a critiqued wireframe set without opening a design tool.",
+      expectedOutput:
+        "An annotated wireframe set for one real flow: a screen-by-screen spec, an AI-generated grayscale HTML mock, and a heuristic critique with the fixes applied.",
+      proofChecklist: [
+        "Paste the flow spec (screens, key elements, primary action per screen).",
+        "Paste or screenshot the generated wireframe mock output.",
+        "Paste the heuristic critique table and note what you changed in response.",
+      ],
+      steps: [
+        'Pick one real flow and spec it with AI (8 min). Paste this prompt: "Act as a senior product designer. I need to wireframe this flow: [user + problem + happy path in 2-3 sentences]. Produce a screen-by-screen spec: for each screen list its goal, key elements top-to-bottom, primary action, and empty/error states. Ask me up to 3 clarifying questions first." Paste the final spec into your evidence.',
+        'Turn the spec into text wireframes (8 min). Prompt: "Turn this flow spec into low-fidelity wireframes described as layout blocks: [paste spec]. For each screen, output a text wireframe using sections, boxes, and labels so a developer could sketch it exactly. Flag any element that has no clear user need." Copy the output into your evidence.',
+        'Generate a clickable grayscale mock (12 min). Prompt: "Generate a single-file HTML page that renders these wireframes as grayscale mock screens I can click through: [paste text wireframes]. No branding, no color — boxes and labels only." Save the output and capture a screenshot as evidence.',
+        "Run a heuristic critique (9 min). In a fresh chat: \"Review these wireframes against Nielsen's 10 usability heuristics: [paste wireframes]. Output a table: heuristic, issue, severity 1-3, concrete fix. Then rewrite the two highest-severity screens with the fixes applied.\" Paste the critique table as evidence.",
+        "Generate your wireframe artifact (8 min). Ask the tutor to generate the annotated wireframe set from your pasted spec, mock, and critique, then attach it as your final artifact.",
+      ],
+      toolLaunches: PM_TOOL_LAUNCHES,
+    },
+    "PRD Generation": {
+      why: "A PRD written with an AI red-team catches the gaps a first draft always hides — you ship a reviewable document in one session instead of a week of doc-wrangling.",
+      expectedOutput:
+        "A complete, red-teamed PRD for one real feature: problem, users, requirements, acceptance criteria, and open risks — ready to circulate.",
+      proofChecklist: [
+        "Paste the feature context brief the AI interviewed you into.",
+        "Paste the first-draft PRD with assumptions marked.",
+        "Paste the red-team gap list and how each gap was resolved or rejected.",
+      ],
+      steps: [
+        'Build the context brief (7 min). Paste this prompt: "Interview me to build a feature context brief. Ask me one question at a time about: the user problem, who has it, evidence it matters, constraints, and the metric that should move. Stop after 6 questions and output the brief." Paste the brief into your evidence.',
+        'Draft the PRD (10 min). Prompt: "Write a PRD from this context brief: [paste brief]. Sections: problem statement, target users, user stories (as a / I want / so that), functional requirements (must/should/will not), success metrics, rollout risks. Mark every assumption you had to make with [ASSUMPTION]." Copy the draft into your evidence.',
+        'Red-team it (10 min). In a fresh chat: "You are a skeptical engineering lead and a data-informed designer reviewing this PRD: [paste PRD]. List the 10 most important gaps, ambiguities, or hidden dependencies, ranked by how badly each would hurt the build. Be blunt." Paste the gap list as evidence.',
+        'Resolve the gaps and add acceptance criteria (10 min). Prompt: "Revise the PRD to close these gaps: [paste gap list — mark any you reject with a reason]. Then add Given/When/Then acceptance criteria for each user story." Save the revised PRD.',
+        "Generate your PRD artifact (8 min). Ask the tutor to generate the final PRD artifact grounded in your pasted brief, draft, and red-team evidence, then attach it.",
+      ],
+      toolLaunches: PM_TOOL_LAUNCHES,
+    },
+    "Sentiment Analysis": {
+      why: "Sentiment analysis with an LLM turns a pile of raw feedback into a defensible read on what users feel and why — evidence attached, no spreadsheet gymnastics.",
+      expectedOutput:
+        "A feedback insight memo built from 20+ real feedback snippets: sentiment breakdown, top pain themes with verbatim quotes, and three recommended actions.",
+      proofChecklist: [
+        "Paste the numbered raw feedback snippets you collected.",
+        "Paste the AI-tagged sentiment/theme table.",
+        "Paste the quantified summary — the memo must cite real quotes by line number.",
+      ],
+      steps: [
+        "Collect 20-50 real feedback snippets (8 min). Pull from support tickets, app reviews, NPS verbatims, or sales notes. Number each line, then paste the numbered list into your evidence notes — the whole session grounds on it.",
+        'Tag the data (10 min). Prompt: "Classify each numbered feedback snippet below. Output a table: #, sentiment (positive/neutral/negative), emotion (frustration, delight, confusion, ...), theme (define max 6 recurring themes), quote-worthy yes/no. Snippets: [paste numbered list]." Paste the tagged table as evidence.',
+        'Quantify it (8 min). Prompt: "From this tagged table: [paste table], output counts by sentiment and by theme, the top 3 negative themes ranked by frequency times intensity, and the 5 most quote-worthy lines with their numbers." Copy the summary into your evidence.',
+        'Draft the insight memo (9 min). Prompt: "Write a one-page insight memo from this analysis: [paste counts + quotes]. Three insights max — each with the evidence, one verbatim quote cited by line number, and one recommended product action. No claims the data does not support." Paste the memo draft.',
+        "Generate your insight artifact (10 min). Ask the tutor to generate the final sentiment analysis brief citing your tagged snippets and memo, then attach it as your artifact.",
+      ],
+      toolLaunches: PM_TOOL_LAUNCHES,
+    },
   },
   "marketing-seo": {
-    why: "This module gives you one concrete growth workflow you can turn into proof quickly, which is better than consuming more generic AI content.",
-    expectedOutput: "A campaign brief, content system, or SEO asset set tied to one measurable marketing goal.",
+    "Programmatic SEO": {
+      why: "Programmatic SEO wins when one template can honestly answer hundreds of long-tail queries — this session gets you a validated pattern and real sample pages, not a theory.",
+      expectedOutput:
+        "A programmatic SEO plan: a validated page pattern, a template with variable slots, and three fully generated sample pages grounded in facts you supplied.",
+      proofChecklist: [
+        "Paste the chosen pattern with its example long-tail queries.",
+        "Paste the page template with variable slots.",
+        "Paste the three generated sample pages and the dataset rows that power them.",
+      ],
+      steps: [
+        "Find your repeatable pattern (8 min). Paste this prompt: \"I run [business, one line]. Propose 5 programmatic SEO patterns of the form '[modifier] + [head term]' (like 'X for [industry]' or 'X vs Y') that my audience genuinely searches and that I can answer with data I actually have. For each: the pattern, 10 example long-tail queries, and the dataset that would power it. Ask me what data I have first.\" Paste the chosen pattern and queries into your evidence.",
+        'Inventory your real facts (9 min). List the true data you have for the pattern (features, integrations, locations, comparisons). Prompt: "Turn these raw facts into a structured dataset table for the pattern [pattern]: [paste facts]. One row per future page; flag rows with too little unique data to justify a page." Paste the table as evidence.',
+        'Design the template (10 min). Prompt: "Design a page template for [pattern] with variable slots in {curly braces}: title tag, meta description, H1, intro paragraph, 3-5 body sections, FAQ block, CTA. Every section must stay true when variables change — flag any section that would read as duplicate filler across pages." Copy the template into your evidence.',
+        'Generate 3 sample pages (10 min). Prompt: "Fill the template with these 3 rows from my dataset: [paste rows]. Generate all three complete pages. Use ONLY facts from the rows — where data is missing, write [MISSING] instead of inventing." Paste the pages and replace every [MISSING] with a real fact before saving.',
+        "Generate your plan artifact (8 min). Ask the tutor to generate the programmatic SEO plan artifact citing your pattern, dataset, and sample pages, then attach it.",
+      ],
+      toolLaunches: MSEO_TOOL_LAUNCHES,
+    },
+    "Bulk Content Generation": {
+      why: "Bulk content only works with a voice profile and brief system that keeps piece #40 as sharp as piece #1 — this session builds that system and proves it on five drafts.",
+      expectedOutput:
+        "A reusable content production system: a voice profile, a brief template, and five on-voice draft outlines with openings produced from it in one batch.",
+      proofChecklist: [
+        "Paste the extracted voice profile.",
+        "Paste the filled brief template for the five chosen angles.",
+        "Paste the five outlines with openings plus your on-voice / off-voice QA notes.",
+      ],
+      steps: [
+        'Build a voice profile from your best work (8 min). Paste this prompt: "Here are 2-3 samples of our best content: [paste samples]. Extract a voice profile: tone adjectives, sentence rhythm, vocabulary to prefer, phrases to ban, how we open and close pieces, and a sounds-like-us / does-not-sound-like-us example pair." Paste the profile into your evidence.',
+        'Define the cluster and angles (8 min). Prompt: "We are producing a content batch about [topic] for [audience]. Propose 8 piece angles that do not cannibalize each other: working title, the search query it targets, a one-line unique angle, and the reader\'s job-to-be-done. Cut any angle that overlaps another by more than 30%." Save your chosen 5 angles as evidence.',
+        'Create the brief template (10 min). Prompt: "Create a reusable content brief template with slots for: target query, angle, voice profile (attached), required sections, internal links, sources to cite, and a do-not-say list. Then fill it for these 5 angles: [paste angles]." Paste the filled briefs.',
+        'Batch-generate the five drafts (11 min). For each brief, open a fresh chat and paste: "Using this brief and voice profile: [paste one brief + the profile], write the full outline with H2/H3s and the first 150 words. Follow the voice profile exactly — drafts that break the banned-phrases list will be rejected." Collect all five, mark each line on-voice or off-voice, and paste the batch with QA notes.',
+        "Generate your content system artifact (8 min). Ask the tutor to generate the content system artifact (voice profile + brief template + batch) grounded in your pasted evidence, then attach it.",
+      ],
+      toolLaunches: MSEO_TOOL_LAUNCHES,
+    },
+    "AI Keyword Clustering": {
+      why: "Keyword clustering by intent is the difference between publishing pages and building a rankable topic map — an LLM does the grouping in minutes when prompted correctly.",
+      expectedOutput:
+        "An intent-clustered keyword map for one topic: named clusters, priority scores, and a page-by-page mapping ready to hand to content.",
+      proofChecklist: [
+        "Paste the raw query list you started from.",
+        "Paste the intent cluster table (including the unclustered bucket).",
+        "Paste the prioritized page map for the top clusters.",
+      ],
+      steps: [
+        'Assemble 40-80 real queries (8 min). Export from Search Console or your keyword tool if you have one; otherwise paste this prompt: "List 60 realistic search queries a [audience] would type when researching [topic]. Mix informational, comparison, and buying intent. One per line, no invented volume numbers." Paste the final query list into your evidence.',
+        "Cluster by intent (10 min). Prompt: \"Cluster these queries by search intent and sub-topic: [paste queries]. Output a table: cluster name, intent (informational/comparison/transactional), the queries in it, and the single page type that should target it (guide, comparison, landing page, FAQ). Do not force queries into clusters they do not fit — put outliers in an 'unclustered' bucket.\" Paste the cluster table as evidence.",
+        'Prioritize the clusters (9 min). Prompt: "Score each cluster 1-5 on: business fit for [your offer], buying intent, and how realistically a new page could rank. Multiply into a priority score and rank the clusters, with one sentence of reasoning each." Copy the ranked list into your evidence.',
+        "Map clusters to pages (10 min). Prompt: \"For the top 5 clusters, output: URL slug, title tag (under 60 chars), meta description (under 155 chars), H1, and 4-6 H2s that cover the cluster's queries. Our existing pages are [paste URLs or 'none'] — note where updating an existing page beats creating a new one.\" Paste the page map.",
+        "Generate your clustering artifact (8 min). Ask the tutor to generate the keyword clustering brief artifact citing your query list, clusters, and page map, then attach it.",
+      ],
+      toolLaunches: MSEO_TOOL_LAUNCHES,
+    },
+    "Copywriting Agents": {
+      why: "A copywriting agent is a system prompt that reliably produces on-brand variants on demand — build it once and every future campaign starts at draft ten instead of draft zero.",
+      expectedOutput:
+        "A reusable copywriting agent (system prompt) plus a tested copy pack: ten scored variants for one real conversion surface and the top three ready to ship.",
+      proofChecklist: [
+        "Paste the conversion copy brief the AI interviewed you into.",
+        "Paste the agent system prompt you built.",
+        "Paste all ten variants with their scores and the chosen top three.",
+      ],
+      steps: [
+        'Pick one conversion surface and build the offer brief (7 min). Paste this prompt: "Interview me one question at a time to build a conversion copy brief for my [landing hero / email / ad]. Cover: audience, pain, promise, proof, main objection, CTA, and the exact action we want. Stop after 6 questions and output the brief." Paste the brief into your evidence.',
+        'Draft the agent (9 min). Prompt: "Write a reusable system prompt for a copywriting agent that produces [surface] copy for us. Include: role, our offer brief (attached), voice rules with banned phrases, output format (headline + subhead + CTA), and 3 quality checks it must run on its own output before answering." Paste the system prompt as evidence.',
+        'Run the agent (11 min). Open a fresh chat, paste the agent system prompt, then: "Produce 10 distinct variants. Vary the persuasion angle across: pain-led, outcome-led, social-proof-led, objection-led, and curiosity-led. Label each variant with its angle." Copy all ten variants into your evidence.',
+        'Score and select (10 min). Prompt: "Score each variant 1-5 against the brief on clarity, specificity, believability, and CTA strength: [paste variants + brief]. Rank them, pick the top 3, and state what a simple A/B test between #1 and #2 should measure." Paste the scoring table.',
+        "Generate your copy pack artifact (8 min). Ask the tutor to generate the copy pack artifact (agent prompt + top variants + test plan) from your pasted evidence, then attach it.",
+      ],
+      toolLaunches: MSEO_TOOL_LAUNCHES,
+    },
+  },
+};
+
+const PLAYBOOKS: Record<string, PlaybookTemplate> = {
+  "product-management": {
+    why: "This path's playbooks run the whole loop inside an AI tool: real product context in, pasteable evidence out, and a reviewable artifact at the end.",
+    expectedOutput:
+      "One AI-produced product artifact (brief, spec, or analysis) grounded in a real workflow, with the prompts and outputs that produced it.",
     proofChecklist: [
-      "Show the target audience or query set.",
-      "Show the AI-assisted content or clustering output.",
-      "State the metric or workflow improvement you expect to move.",
+      "Paste the restated problem statement.",
+      "Paste the AI-produced working output with assumptions marked.",
+      "Paste the red-team gap list and what you changed.",
     ],
     steps: [
-      "Pick one campaign, content cluster, or search theme.",
-      "Run the module on that real workflow instead of a made-up example.",
-      "Package the result as a reusable system you can explain publicly.",
+      'Anchor {module} on one real product question (10 min). Paste this prompt into ChatGPT or Claude: "Act as my product thinking partner for {module}. My open question is [one line]. Ask me up to 4 questions to pin down the user, the decision I need to make, and what evidence would change my mind — then restate the problem crisply." Paste the restated problem as evidence.',
+      'Produce the first working output with AI (12 min). Prompt: "Using this problem statement: [paste it], produce the first working version of the {module} output. Mark every assumption with [ASSUMPTION] so I can verify it." Copy the full output into your evidence.',
+      'Red-team and revise (13 min). In a fresh chat: "You are a skeptical product leader reviewing this work: [paste output]. List the 5 biggest gaps or wrong assumptions, ranked by risk. Be blunt." Fix what holds up, note what you rejected, and save both lists as evidence.',
+      "Generate your artifact (10 min). Ask the tutor to generate the final artifact from your pasted problem, output, and red-team notes, then attach it as proof.",
     ],
-    toolLaunches: [
-      {
-        key: "google-analytics",
-        label: "Google Analytics",
-        description: "Open the traffic baseline or campaign target you want this module to improve.",
-        href: "https://analytics.google.com/",
-        ctaLabel: "Open Analytics",
-        kind: "external",
-        opensInNewTab: true,
-        verificationHint: "Reference the traffic or conversion metric you are trying to move.",
-      },
-      {
-        key: "hubspot",
-        label: "HubSpot",
-        description: "Launch directly into campaign, CRM, or sequence context tied to this build.",
-        href: "https://app.hubspot.com/",
-        ctaLabel: "Open HubSpot",
-        kind: "external",
-        opensInNewTab: true,
-        verificationHint: "Show the campaign, list, or sequence the AI workflow improved.",
-      },
-      {
-        key: "linkedin",
-        label: "LinkedIn",
-        description: "Connect LinkedIn when this module needs audience research or visible proof sharing.",
-        href: "https://www.linkedin.com/feed/",
-        ctaLabel: "Connect LinkedIn",
-        kind: "oauth",
-        platform: "linkedin_profile",
-        opensInNewTab: true,
-        verificationHint: "Use LinkedIn research or publish the proof story once the module is ready.",
-      },
+    toolLaunches: PM_TOOL_LAUNCHES,
+  },
+  "marketing-seo": {
+    why: "This path's playbooks run the whole growth loop inside an AI tool: real audience and campaign context in, pasteable evidence out, and a reusable asset at the end.",
+    expectedOutput:
+      "One AI-produced marketing asset (brief, cluster map, or copy system) tied to a real audience, with the prompts and outputs that produced it.",
+    proofChecklist: [
+      "Paste the audience and goal brief.",
+      "Paste the AI-produced working output.",
+      "Paste the critique pass and what you changed.",
     ],
+    steps: [
+      'Anchor {module} on one real audience and goal (10 min). Paste this prompt into ChatGPT or Claude: "Act as my growth partner for {module}. My audience is [who] and the metric I care about is [metric]. Ask me up to 4 questions to sharpen the target, then restate the goal and the single asset that would move it." Paste the restated goal as evidence.',
+      'Produce the first working output with AI (12 min). Prompt: "Using this goal: [paste it], produce the first working version of the {module} output. Ground every claim in what I told you — mark anything you had to assume with [ASSUMPTION]." Copy the full output into your evidence.',
+      'Critique and tighten (13 min). In a fresh chat: "You are a demanding head of growth reviewing this asset: [paste output]. List the 5 weakest points — vague claims, generic copy, missing intent match — ranked by impact, then rewrite the two weakest sections." Save the critique and rewrites as evidence.',
+      "Generate your artifact (10 min). Ask the tutor to generate the final artifact from your pasted goal, output, and critique notes, then attach it as proof.",
+    ],
+    toolLaunches: MSEO_TOOL_LAUNCHES,
   },
   "branding-design": {
     why: "This module is the quickest route to visible creative proof because the output is immediately inspectable by other people.",
@@ -553,8 +698,15 @@ function toolActionForLaunch(tool: RecommendedModuleToolLaunch): RecommendedModu
   }
 }
 
-function stepDefinitionForTitle(title: string, index: number, moduleTitle: string): RecommendedModuleStepDefinition {
-  if (index === 0) {
+function stepDefinitionForTitle(
+  title: string,
+  index: number,
+  moduleTitle: string,
+  totalSteps: number,
+): RecommendedModuleStepDefinition {
+  const lastIndex = Math.max(0, totalSteps - 1);
+
+  if (index === 0 && lastIndex > 0) {
     return {
       title,
       whyThisStep: `This step anchors ${moduleTitle} to a real workflow so the rest of the pack stays specific instead of generic.`,
@@ -567,10 +719,10 @@ function stepDefinitionForTitle(title: string, index: number, moduleTitle: strin
     };
   }
 
-  if (index === 1) {
+  if (index < lastIndex) {
     return {
       title,
-      whyThisStep: `This step captures the working draft so you can prove the AI-assisted output existed before the final polish.`,
+      whyThisStep: `This step captures the working output so you can prove the AI-assisted work existed before the final polish.`,
       proofRequirement: {
         key: "working-draft",
         label: "Working draft",
@@ -599,7 +751,10 @@ export function buildRecommendedModuleGuide(input: {
   primaryGoal?: GoalType | null;
 }): RecommendedModuleGuide {
   const careerPath = getCareerPath(String(input.careerPathId || "")) ?? null;
-  const template = careerPath ? PLAYBOOKS[careerPath.id] ?? null : null;
+  const trimmedModuleTitle = input.moduleTitle.trim();
+  const template = careerPath
+    ? MODULE_PLAYBOOKS[careerPath.id]?.[trimmedModuleTitle] ?? PLAYBOOKS[careerPath.id] ?? null
+    : null;
   const careerPathId = careerPath?.id ?? "general";
   const careerPathName = careerPath?.name ?? "Current path";
   const moduleTitle = input.moduleTitle.trim() || "Starter AI Pack";
@@ -645,7 +800,7 @@ export function buildRecommendedModuleGuide(input: {
         "Show the AI-assisted output.",
         "Summarize what changed and why it matters.",
       ],
-      stepDefinitions: steps.map((step, index) => stepDefinitionForTitle(step, index, moduleTitle)),
+      stepDefinitions: steps.map((step, index) => stepDefinitionForTitle(step, index, moduleTitle, steps.length)),
       steps,
       toolFocus: [],
       toolLaunches: toolLaunches.map((tool) => ({ ...tool, apiAction: toolActionForLaunch(tool) })),
@@ -660,7 +815,7 @@ export function buildRecommendedModuleGuide(input: {
     whyThisModule: `${template.why} For ${roleLabel}, the goal is to ${goalLabel}.`,
     expectedOutput: template.expectedOutput,
     proofChecklist: template.proofChecklist,
-    stepDefinitions: steps.map((step, index) => stepDefinitionForTitle(step, index, moduleTitle)),
+    stepDefinitions: steps.map((step, index) => stepDefinitionForTitle(step, index, moduleTitle, steps.length)),
     steps,
     toolFocus: careerPath?.tools.slice(0, 4) ?? [],
     toolLaunches: template.toolLaunches.map((tool) => ({

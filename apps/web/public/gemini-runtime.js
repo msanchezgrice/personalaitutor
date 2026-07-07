@@ -2730,6 +2730,151 @@
     var sending = false;
     var chatHistoryState = [];
     var cacheProjectId = null;
+    // Session-aware chat (rebuild dashboard batch item 2): when the active
+    // project's module has a running tutor session, messages route through
+    // the session-aware endpoint so replies carry playbook + profile +
+    // assessment context. Generic project chat stays as the fallback.
+    var activeTutorSession = null;
+
+    function tutorSessionUrl(projectId) {
+      return "/api/projects/" + encodeURIComponent(projectId) + "/tutor-session";
+    }
+
+    async function fetchActiveTutorSession(projectId) {
+      try {
+        var result = await getJson(tutorSessionUrl(projectId));
+        var session = result && result.session ? result.session : null;
+        return session && session.status === "active" ? session : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function truncateChatText(value, maxChars) {
+      var text = String(value || "").replace(/\s+/g, " ").trim();
+      if (text.length <= maxChars) return text;
+      return text.slice(0, Math.max(0, maxChars - 3)).trim() + "...";
+    }
+
+    function sessionProgress(session) {
+      var steps = Array.isArray(session.steps) ? session.steps : [];
+      var checklist = Array.isArray(session.checklist) ? session.checklist : [];
+      var rawIndex = Number(session.currentStepIndex || 0);
+      var currentStep = steps[Math.min(rawIndex, Math.max(0, steps.length - 1))] || null;
+      return {
+        stepNumber: Math.min(rawIndex + 1, steps.length),
+        totalSteps: steps.length,
+        allStepsDone: rawIndex >= steps.length,
+        currentStepTitle: currentStep && currentStep.title ? String(currentStep.title) : "",
+        checklistDone: checklist.filter(function (item) {
+          return item && item.done;
+        }).length,
+        checklistTotal: checklist.length,
+      };
+    }
+
+    function updateChatSubtitle(project) {
+      if (!subtitle) return;
+      if (activeTutorSession) {
+        var progress = sessionProgress(activeTutorSession);
+        subtitle.textContent =
+          (activeTutorSession.moduleTitle || "Module") +
+          " • Tutor Session • Step " + progress.stepNumber + " of " + progress.totalSteps;
+      } else if (project && project.title) {
+        subtitle.textContent = project.title + " • Active Build";
+      }
+    }
+
+    function renderTutorSessionBanner(project) {
+      var banner = document.querySelector("[data-chat-tutor-session-banner='1']");
+      if (!banner) {
+        banner = document.createElement("div");
+        banner.setAttribute("data-chat-tutor-session-banner", "1");
+        banner.className = "px-4 md:px-8 pt-4 z-10 flex-shrink-0";
+        if (history.parentNode) {
+          history.parentNode.insertBefore(banner, history);
+        }
+      }
+
+      if (activeTutorSession) {
+        var progress = sessionProgress(activeTutorSession);
+        var stepLine = progress.allStepsDone
+          ? "All steps complete — finish the proof checklist to complete the session."
+          : "Step " + progress.stepNumber + " of " + progress.totalSteps + ": " + escapeHtml(truncateChatText(progress.currentStepTitle, 110));
+        banner.innerHTML =
+          '<div class="glass-panel border border-emerald-500/30 bg-emerald-500/5 rounded-2xl p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">' +
+          '<div class="min-w-0">' +
+          '<p class="text-[10px] font-semibold uppercase tracking-widest text-emerald-300/80">Tutor Session • ' +
+          escapeHtml(activeTutorSession.moduleTitle || "Module") +
+          "</p>" +
+          '<p class="text-sm text-white mt-1">' + stepLine + "</p>" +
+          '<p class="text-xs text-gray-400 mt-1">Checklist ' +
+          progress.checklistDone + "/" + progress.checklistTotal +
+          " done — replies here carry your playbook, profile, and assessment context.</p>" +
+          "</div>" +
+          '<a href="/dashboard/projects/#pack-workbench" class="text-xs text-emerald-400 hover:text-emerald-300 whitespace-nowrap">Open workbench</a>' +
+          "</div>";
+        return;
+      }
+
+      if (project && project.id) {
+        banner.innerHTML =
+          '<div class="glass-panel border border-white/10 rounded-2xl p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">' +
+          '<div class="min-w-0">' +
+          '<p class="text-sm text-white">No tutor session is running for ' +
+          escapeHtml(truncateChatText(project.title || "your project", 80)) +
+          ".</p>" +
+          '<p class="text-xs text-gray-400 mt-1">Start one to get step-by-step coaching grounded in your playbook and assessment — or keep using generic chat below.</p>' +
+          "</div>" +
+          '<div class="flex items-center gap-3">' +
+          '<button type="button" data-chat-start-tutor-session="1" class="btn btn-primary text-sm whitespace-nowrap">Start Tutor Session</button>' +
+          '<a href="/dashboard/projects/#pack-workbench" class="text-xs text-gray-400 hover:text-white whitespace-nowrap">Open workbench</a>' +
+          "</div>" +
+          "</div>";
+        var startButton = banner.querySelector("[data-chat-start-tutor-session='1']");
+        if (startButton) {
+          startButton.addEventListener("click", function () {
+            void startTutorSessionFromChat(project, startButton);
+          });
+        }
+        return;
+      }
+
+      banner.innerHTML = "";
+    }
+
+    async function startTutorSessionFromChat(project, button) {
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Starting...";
+      }
+      try {
+        var result = await postJson(tutorSessionUrl(project.id), {});
+        var session = result && result.session ? result.session : null;
+        activeTutorSession = session && session.status === "active" ? session : null;
+        renderTutorSessionBanner(project);
+        updateChatSubtitle(project);
+        if (activeTutorSession) {
+          captureEvent("chat_tutor_session_started", {
+            project_id: project.id,
+            module_title: activeTutorSession.moduleTitle || null,
+          });
+          var progress = sessionProgress(activeTutorSession);
+          var startedText =
+            "Tutor session started: " + (activeTutorSession.moduleTitle || "your module") +
+            ". We're on step " + progress.stepNumber + " of " + progress.totalSteps +
+            ". Tell me what you're working with and I'll coach you through it.";
+          renderMessage("assistant", startedText);
+          appendAndPersist("assistant", startedText);
+        }
+      } catch (err) {
+        toast(err && err.message ? err.message : "Unable to start tutor session", true);
+        if (button) {
+          button.disabled = false;
+          button.textContent = "Start Tutor Session";
+        }
+      }
+    }
 
     function persistChatHistory() {
       if (!cacheProjectId) return;
@@ -2762,6 +2907,10 @@
       project = null;
     }
 
+    activeTutorSession = project && project.id ? await fetchActiveTutorSession(project.id) : null;
+    renderTutorSessionBanner(project);
+    updateChatSubtitle(project);
+
     cacheProjectId = (project && project.id) || ctx.projectId || "none";
     var cachedMessages = readChatHistoryCache(cacheProjectId);
 
@@ -2778,7 +2927,12 @@
       });
     } else {
       var introText = "Welcome! Let’s get started. I’m your AI Skill Tutor. I help you learn faster, build projects, and turn your work into proof you can show.";
-      if (project && project.title) {
+      if (activeTutorSession) {
+        var sessionProgressIntro = sessionProgress(activeTutorSession);
+        introText = "Welcome back! We’re in your " + (activeTutorSession.moduleTitle || "module") +
+          " tutor session — step " + sessionProgressIntro.stepNumber + " of " + sessionProgressIntro.totalSteps +
+          ". Paste what you have so far or ask for help with the current step.";
+      } else if (project && project.title) {
         introText = "Welcome! Let’s get started. I’m your AI Skill Tutor. Let’s continue " +
           project.title +
           ". Share where you’re stuck and I’ll guide your next move.";
@@ -2796,16 +2950,34 @@
       renderMessage("user", text);
       appendAndPersist("user", text);
       textarea.value = "";
-      captureEvent("chat_message_sent", { message_length: text.length });
+      captureEvent("chat_message_sent", {
+        message_length: text.length,
+        chat_mode: activeTutorSession ? "tutor_session" : "generic",
+      });
 
       try {
         var project = await projectPromise;
         if (!project || !project.id) {
           throw new Error("Project context unavailable");
         }
-        var result = await postJson("/api/projects/" + encodeURIComponent(project.id) + "/chat", {
-          message: text,
-        });
+        var endpoint = activeTutorSession
+          ? "/api/projects/" + encodeURIComponent(project.id) + "/tutor-session/message"
+          : "/api/projects/" + encodeURIComponent(project.id) + "/chat";
+        var result;
+        try {
+          result = await postJson(endpoint, { message: text });
+        } catch (sendErr) {
+          if (activeTutorSession && sendErr && sendErr.code === "TUTOR_SESSION_NOT_FOUND") {
+            // The session ended elsewhere (e.g. completed in the workbench):
+            // drop to generic chat instead of failing the message.
+            activeTutorSession = null;
+            renderTutorSessionBanner(project);
+            updateChatSubtitle(project);
+            result = await postJson("/api/projects/" + encodeURIComponent(project.id) + "/chat", { message: text });
+          } else {
+            throw sendErr;
+          }
+        }
 
         var replyText = result.reply || "My AI Skill Tutor: I logged this step in your project build log.";
         renderMessage("assistant", replyText);

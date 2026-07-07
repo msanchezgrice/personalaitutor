@@ -5,9 +5,11 @@ import { BillingGateOverlay } from "@/components/billing-gate-overlay";
 import { DashboardEntryTracking } from "@/components/dashboard-entry-tracking";
 import { FbCompleteRegistrationOnDashboard } from "@/components/fb-complete-registration-on-dashboard";
 import { DailyActionCard } from "@/components/daily-action-card";
+import { ReadinessScoreCard } from "@/components/readiness-score-card";
 import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
 import { buildOnboardingReportReturnUrl, sanitizeDashboardReturnTo } from "@/lib/billing";
 import { getDailyActionWithStreak } from "@/lib/daily-action";
+import { getReadinessScoreCard } from "@/lib/readiness-score";
 
 function summarize(value: string | null | undefined, fallback: string, maxChars = 180) {
   const cleaned = String(value || "").replace(/\s+/g, " ").trim();
@@ -102,6 +104,13 @@ export default async function DashboardPage({
     state.billing.accessAllowed && user?.id
       ? await getDailyActionWithStreak({ learnerProfileId: user.id }).catch(() => null)
       : null;
+  // AI-readiness score card (batch item 1) — the score is the product's spine.
+  // Read-only here; history lives in assessment_report_history. Failure
+  // degrades to the CTA state, never a crash.
+  const readinessCard =
+    state.billing.accessAllowed && user?.id
+      ? await getReadinessScoreCard(user.id).catch(() => ({ hasReport: false as const }))
+      : null;
   return (
     <>
       <Suspense fallback={null}>
@@ -177,6 +186,8 @@ export default async function DashboardPage({
               Start Recommended Work
             </a>
           </div>
+
+          {readinessCard ? <ReadinessScoreCard card={readinessCard} /> : null}
 
           {dailyActionView ? (
             <DailyActionCard

@@ -340,6 +340,52 @@ export async function setTutorChecklistItem(input: {
   return persistSessionPatch(next);
 }
 
+export type TutorSessionMilestones = {
+  /** Sessions ever started for this learner (any status). */
+  started: number;
+  /** Sessions fully completed (steps + proof checklist done). */
+  completed: number;
+  firstCompletedAt: string | null;
+};
+
+/**
+ * Tutor-session milestone counts — a gamification XP signal (rebuild
+ * dashboard batch item 4).
+ */
+export async function countTutorSessionMilestones(learnerProfileId: string): Promise<TutorSessionMilestones> {
+  if (mode() === "memory") {
+    const sessions = Array.from(memorySessions.values()).filter(
+      (session) => session.learnerProfileId === learnerProfileId,
+    );
+    const completedAts = sessions
+      .filter((session) => session.status === "completed" && session.completedAt)
+      .map((session) => String(session.completedAt))
+      .sort();
+    return {
+      started: sessions.length,
+      completed: sessions.filter((session) => session.status === "completed").length,
+      firstCompletedAt: completedAts[0] ?? null,
+    };
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data } = await supabase
+    .from("module_tutor_sessions")
+    .select("status,completed_at")
+    .eq("learner_profile_id", learnerProfileId);
+
+  const rows = (data ?? []) as Array<{ status: string; completed_at: string | null }>;
+  const completedAts = rows
+    .filter((row) => row.status === "completed" && row.completed_at)
+    .map((row) => String(row.completed_at))
+    .sort();
+  return {
+    started: rows.length,
+    completed: rows.filter((row) => row.status === "completed").length,
+    firstCompletedAt: completedAts[0] ?? null,
+  };
+}
+
 export function tutorSessionChecklistComplete(session: TutorSessionRecord) {
   return (
     session.steps.length > 0 &&
