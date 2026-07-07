@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Welcome | Profile-Site Mockup</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./profile-site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="ps-body">
+  <div class="fixed top-4 right-4 z-[100]">
+    <button id="theme-toggle" class="btn bg-white/10 hover:bg-white/20 text-white border border-white/10 px-3 py-2 rounded-lg flex items-center justify-center transition-colors">
+      <i class="fa-solid fa-sun" id="theme-icon"></i>
+    </button>
+  </div>
+
+  <div class="ps-shell">
+    <div class="ps-dashboard-layout">
+      <aside class="ps-sidebar">
+        <a class="ps-brand" href="./index.html" style="color: white;">
+          <span class="ps-brand-mark"><i class="fa-solid fa-brain"></i></span>
+          <span>My AI Skill Tutor</span>
+        </a>
+
+        <nav>
+          <a class="active" href="#"><i class="fa-solid fa-house"></i> Home</a>
+          <a href="#"><i class="fa-solid fa-message"></i> Chat Tutor</a>
+          <a href="#"><i class="fa-solid fa-folder-open"></i> Projects</a>
+          <a href="#"><i class="fa-brands fa-linkedin"></i> Social Media</a>
+          <a href="#"><i class="fa-solid fa-clock-rotate-left"></i> Activity</a>
+        </nav>
+
+        <div class="ps-xp" style="margin-top: 28px;">
+          <div class="ps-xp-top">
+            <div>
+              <div class="ps-meta-label">Current level</div>
+              <div class="ps-title ps-title-md" style="font-size: 1.16rem;">Level 2 · Public Builder</div>
+            </div>
+            <span class="ps-level-badge"><i class="fa-solid fa-fire"></i> Day 0</span>
+          </div>
+          <div class="ps-progress-track"><div class="ps-progress-fill" style="width: 32%;"></div></div>
+          <div class="ps-chip-row">
+            <span class="ps-chip ps-chip-emerald"><i class="fa-solid fa-medal"></i> 3 badges today</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="ps-main">
+        <section class="ps-dashboard-hero">
+          <span class="ps-kicker"><i class="fa-solid fa-sun"></i> Today’s mission</span>
+          <div class="ps-grid" style="grid-template-columns: minmax(0, 1.18fr) minmax(0, 0.82fr); margin-top: 18px;">
+            <div class="ps-section">
+              <div>
+                <h1 class="ps-title ps-title-lg">Make your public profile more credible.</h1>
+                <p class="ps-copy" style="margin-top: 10px;">The dashboard no longer opens with a vague welcome state. It opens with the next mission, the visible progression, and the shortest path to the next reward.</p>
+              </div>
+
+              <div class="ps-progress-track"><div class="ps-progress-fill" style="width: 68%;"></div></div>
+              <div class="ps-chip-row">
+                <span class="ps-chip ps-chip-emerald"><i class="fa-solid fa-check"></i> Drafted</span>
+                <span class="ps-chip ps-chip-emerald"><i class="fa-solid fa-check"></i> Published</span>
+                <span class="ps-chip ps-chip-slate"><i class="fa-solid fa-share-nodes"></i> Shared next</span>
+              </div>
+
+              <div class="ps-action-row">
+                <a class="btn btn-primary" href="./04-coach.html">Add Proof Artifact <i class="fa-solid fa-arrow-right ml-2"></i></a>
+                <a class="ps-button-ghost" href="./04-coach.html">Ask Chat For Help</a>
+              </div>
+            </div>
+
+            <div class="ps-note">
+              <strong class="ps-card-title">What changed today</strong>
+              <ul>
+                <li><i class="fa-solid fa-globe"></i><span>Public profile is now live at `/u/miguel`</span></li>
+                <li><i class="fa-solid fa-badge-check"></i><span>Level 2 unlocked after shipping the website</span></li>
+                <li><i class="fa-solid fa-fire"></i><span>Day 0 streak is live, setting up a day-1 return</span></li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <div class="ps-dashboard-grid">
+          <section class="ps-panel">
+            <div class="ps-panel-inner ps-section">
+              <span class="ps-kicker"><i class="fa-solid fa-list-check"></i> Mission 2 credibility tasks</span>
+              <div class="ps-status-checklist">
+                <div class="ps-status-item"><i class="fa-solid fa-plus text-emerald-500"></i> Add one measurable proof bullet or result card</div>
+                <div class="ps-status-item"><i class="fa-solid fa-robot text-emerald-500"></i> Use AI to tighten one section for a hiring audience</div>
+                <div class="ps-status-item"><i class="fa-brands fa-linkedin text-emerald-500"></i> Generate the first LinkedIn post from the published site</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="ps-panel">
+            <div class="ps-panel-inner ps-section">
+              <span class="ps-kicker"><i class="fa-solid fa-trophy"></i> Unlocked today</span>
+              <div class="ps-achievement-grid">
+                <div class="ps-achievement unlocked">
+                  <span class="ps-achievement-icon" style="background: rgba(16, 185, 129, 0.14); color: var(--ps-emerald-deep);"><i class="fa-solid fa-globe"></i></span>
+                  <div class="ps-achievement-copy">
+                    <strong>Website Shipped</strong>
+                    <span>The first deliverable is complete.</span>
+                  </div>
+                </div>
+                <div class="ps-achievement unlocked">
+                  <span class="ps-achievement-icon" style="background: rgba(245, 158, 11, 0.14); color: #b45309;"><i class="fa-solid fa-star"></i></span>
+                  <div class="ps-achievement-copy">
+                    <strong>Level 2 Unlocked</strong>
+                    <span>Public Builder status earned on publish.</span>
+                  </div>
+                </div>
+                <div class="ps-achievement unlocked">
+                  <span class="ps-achievement-icon" style="background: rgba(14, 165, 233, 0.14); color: #0369a1;"><i class="fa-solid fa-fire"></i></span>
+                  <div class="ps-achievement-copy">
+                    <strong>Day 0 Streak</strong>
+                    <span>The next visit can reinforce momentum instead of restarting it.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="./profile-site.js"></script>
+</body>
+</html>

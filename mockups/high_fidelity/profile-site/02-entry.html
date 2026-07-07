@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile-Site Wizard Entry | Mockup</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./profile-site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="ps-body">
+  <div class="fixed top-4 right-4 z-[100]">
+    <button id="theme-toggle" class="btn bg-white/10 hover:bg-white/20 text-white border border-white/10 px-3 py-2 rounded-lg flex items-center justify-center transition-colors">
+      <i class="fa-solid fa-sun" id="theme-icon"></i>
+    </button>
+  </div>
+
+  <div class="ps-shell">
+    <div class="ps-topbar">
+      <a class="ps-brand" href="./index.html">
+        <span class="ps-brand-mark"><i class="fa-solid fa-brain"></i></span>
+        <span>Profile-Site Mockups</span>
+      </a>
+      <div class="ps-top-actions">
+        <span class="ps-chip ps-chip-slate"><i class="fa-solid fa-flask"></i> 02 / 06</span>
+        <span class="ps-chip ps-chip-emerald"><i class="fa-solid fa-layer-group"></i> Assessment done</span>
+        <span class="ps-chip ps-chip-sky"><i class="fa-solid fa-globe"></i> Profile site</span>
+        <span class="ps-chip ps-chip-amber"><i class="fa-solid fa-star"></i> Mission 1 of 3</span>
+      </div>
+    </div>
+
+    <div class="ps-xp" style="margin-bottom: 22px;">
+      <div class="ps-xp-top">
+        <div>
+          <div class="ps-meta-label">Day-zero gamification</div>
+          <div class="ps-title ps-title-md">The website mission already feels like progress.</div>
+        </div>
+        <span class="ps-level-badge"><i class="fa-solid fa-fire"></i> Day 0 streak live</span>
+      </div>
+      <div class="ps-progress-track"><div class="ps-progress-fill" style="width: 44%;"></div></div>
+      <div class="ps-chip-row">
+        <span class="ps-chip ps-chip-emerald"><i class="fa-solid fa-plus"></i> 88 XP earned</span>
+        <span class="ps-chip ps-chip-sky"><i class="fa-solid fa-medal"></i> Mission Accepted</span>
+        <span class="ps-chip ps-chip-amber"><i class="fa-solid fa-lock-open"></i> Level 2 at publish</span>
+      </div>
+    </div>
+
+    <div class="ps-grid ps-grid-entry">
+      <section class="ps-panel">
+        <div class="ps-panel-inner ps-section">
+          <span class="ps-kicker"><i class="fa-solid fa-compass-drafting"></i> Mission setup</span>
+          <h1 class="ps-title ps-title-lg">Choose your starting point.</h1>
+          <p class="ps-copy">The user sees one mission with three paths in, but the website preview stays visible from the first screen so the work feels tangible right away.</p>
+
+          <div class="ps-option-grid">
+            <div class="ps-option-card active">
+              <div class="ps-option-copy">
+                <strong>Use My Current Info</strong>
+                <span>Start with the onboarding answers, assessment result, current headline, and existing skills.</span>
+              </div>
+              <span class="ps-chip ps-chip-emerald"><i class="fa-solid fa-check"></i> Default</span>
+            </div>
+            <div class="ps-option-card">
+              <div class="ps-option-copy">
+                <strong>Import From LinkedIn</strong>
+                <span>Bring in profile context and proof points, then let AI rewrite them for the public site.</span>
+              </div>
+              <span class="ps-chip ps-chip-sky"><i class="fa-brands fa-linkedin"></i> Fast path</span>
+            </div>
+            <div class="ps-option-card">
+              <div class="ps-option-copy">
+                <strong>Start From A Prompt</strong>
+                <span>Write what you want the site to say and use the prompt coach to tighten it before generation.</span>
+              </div>
+              <span class="ps-chip ps-chip-slate"><i class="fa-solid fa-wand-magic-sparkles"></i> More control</span>
+            </div>
+          </div>
+
+          <div class="ps-note">
+            <strong class="ps-card-title">What you’ll learn</strong>
+            <ul>
+              <li><i class="fa-solid fa-check"></i><span>How to define strong variables before generation</span></li>
+              <li><i class="fa-solid fa-check"></i><span>How to improve a weak prompt into a better instruction set</span></li>
+              <li><i class="fa-solid fa-check"></i><span>How AI output becomes a public deliverable, not just a draft</span></li>
+            </ul>
+          </div>
+
+          <div class="ps-note">
+            <strong class="ps-card-title">Session progression</strong>
+            <ul>
+              <li><i class="fa-solid fa-circle-check"></i><span><strong>Mission Accepted</strong> · streak started and XP granted</span></li>
+              <li><i class="fa-solid fa-circle-half-stroke"></i><span><strong>Identity Defined</strong> · unlocks after variables are completed</span></li>
+              <li><i class="fa-solid fa-circle"></i><span><strong>Website Shipped</strong> · unlocks when the profile is published and Level 2 is earned</span></li>
+            </ul>
+          </div>
+
+          <div class="ps-action-row">
+            <a class="btn btn-primary" href="./03-variables.html">Continue To Variables <i class="fa-solid fa-arrow-right ml-2"></i></a>
+            <a class="ps-button-ghost" href="./04-coach.html">Generate A First Draft Now</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="ps-preview-wrap">
+        <div class="ps-preview-label"><i class="fa-solid fa-eye"></i> Live preview</div>
+        <div class="ps-preview-shell">
+          <div class="ps-site-canvas">
+            <div class="ps-site-hero">
+              <div class="ps-avatar"><img src="../assets/avatar.png" alt="avatar"></div>
+              <div class="ps-stack">
+                <span class="ps-placeholder ps-line-sm"></span>
+                <span class="ps-placeholder ps-line-lg"></span>
+                <span class="ps-placeholder ps-line-md"></span>
+              </div>
+              <div class="ps-site-chip-row">
+                <span class="ps-site-chip">AI Product Ops</span>
+                <span class="ps-site-chip">Workflow Systems</span>
+                <span class="ps-site-chip">Public proof</span>
+              </div>
+            </div>
+
+            <div class="ps-site-block-grid">
+              <div class="ps-site-block ps-stack">
+                <span class="ps-meta-label">Proof bullets</span>
+                <span class="ps-placeholder ps-line-lg"></span>
+                <span class="ps-placeholder ps-line-lg" style="width: 88%;"></span>
+                <span class="ps-placeholder ps-line-md" style="width: 72%;"></span>
+              </div>
+              <div class="ps-side-rail">
+                <span class="ps-meta-label">Featured project</span>
+                <span class="ps-placeholder ps-line-md" style="width: 90%;"></span>
+                <span class="ps-placeholder ps-line-sm" style="width: 68%;"></span>
+                <span class="ps-chip ps-chip-amber"><i class="fa-solid fa-bolt"></i> First deliverable</span>
+              </div>
+            </div>
+
+            <div class="ps-site-block ps-stack">
+              <span class="ps-meta-label">Call to action</span>
+              <span class="ps-placeholder ps-line-md" style="width: 46%;"></span>
+            </div>
+
+            <div class="ps-note">
+              <strong class="ps-card-title">Achievement ribbon</strong>
+              <p>Even before publish, the user sees the progression model: Day 0 streak started, first badges in motion, Level 2 waiting behind the website ship moment.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="./profile-site.js"></script>
+</body>
+</html>

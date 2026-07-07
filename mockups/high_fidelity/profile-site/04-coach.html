@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prompt Coach | Profile-Site Mockup</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="./profile-site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="ps-body">
+  <div class="fixed top-4 right-4 z-[100]">
+    <button id="theme-toggle" class="btn bg-white/10 hover:bg-white/20 text-white border border-white/10 px-3 py-2 rounded-lg flex items-center justify-center transition-colors">
+      <i class="fa-solid fa-sun" id="theme-icon"></i>
+    </button>
+  </div>
+
+  <div class="ps-shell">
+    <div class="ps-topbar">
+      <a class="ps-brand" href="./index.html">
+        <span class="ps-brand-mark"><i class="fa-solid fa-brain"></i></span>
+        <span>Profile-Site Mockups</span>
+      </a>
+      <div class="ps-top-actions">
+        <span class="ps-chip ps-chip-slate"><i class="fa-solid fa-flask"></i> 04 / 06</span>
+        <span class="ps-chip ps-chip-sky"><i class="fa-solid fa-wand-magic-sparkles"></i> Prompt coach</span>
+      </div>
+    </div>
+
+    <div class="ps-success-strip" style="margin-bottom: 22px;">
+      <div>
+        <span class="ps-kicker"><i class="fa-solid fa-trophy"></i> Achievement unlocked</span>
+        <h1 class="ps-title ps-title-md" style="margin-top: 10px;">Prompt Refiner +40 XP</h1>
+        <p class="ps-copy">The coach turns the user’s rough prompt into something more specific, and the system makes that improvement visible as skill progression.</p>
+      </div>
+      <div class="ps-chip-row">
+        <span class="ps-chip ps-chip-emerald"><i class="fa-solid fa-fire"></i> Day 0 streak active</span>
+        <span class="ps-chip ps-chip-amber"><i class="fa-solid fa-star"></i> 180 / 200 XP</span>
+      </div>
+    </div>
+
+    <div class="ps-grid ps-grid-wizard">
+      <section class="ps-panel">
+        <div class="ps-panel-inner ps-section">
+          <span class="ps-kicker"><i class="fa-solid fa-comment-dots"></i> Prompt coach</span>
+          <h1 class="ps-title ps-title-lg">The assistant teaches while it writes.</h1>
+          <p class="ps-copy">This screen is where the product becomes a first skill. The user sees what was weak, what got added, and how better inputs produce stronger public-facing output.</p>
+
+          <div class="ps-coach-grid">
+            <div class="ps-form-card">
+              <label>Your rough prompt</label>
+              <textarea class="ps-textarea">Write my site so I sound good to hiring managers and make me look like someone who uses AI well.</textarea>
+            </div>
+
+            <div class="ps-suggestion">
+              <span class="ps-meta-label">What’s weak</span>
+              <ul class="ps-list">
+                <li><span class="ps-icon-bullet"><i class="fa-solid fa-minus"></i></span><div><strong>The audience is vague.</strong><span>“Hiring managers” needs more specificity so the copy can sharpen around one buyer.</span></div></li>
+                <li><span class="ps-icon-bullet"><i class="fa-solid fa-minus"></i></span><div><strong>The proof is generic.</strong><span>The prompt asks to “sound good” instead of naming concrete outcomes or systems built.</span></div></li>
+              </ul>
+            </div>
+
+            <div class="ps-form-card">
+              <label>Improved prompt</label>
+              <textarea class="ps-textarea">Write a credible personal profile site for hiring managers at AI-native B2B SaaS startups. Position me as a product manager who turns messy workflows into measurable AI systems, with proof bullets that emphasize automation wins, operating clarity, and faster shipping.</textarea>
+            </div>
+
+            <div class="ps-note">
+              <strong class="ps-card-title">What was added</strong>
+              <ul>
+                <li><i class="fa-solid fa-check"></i><span>Specific audience narrowed to AI-native B2B SaaS hiring managers</span></li>
+                <li><i class="fa-solid fa-check"></i><span>Concrete value promise tied to workflow outcomes</span></li>
+                <li><i class="fa-solid fa-check"></i><span>Proof language oriented around automation wins and execution speed</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="ps-achievement-grid">
+            <div class="ps-achievement unlocked">
+              <span class="ps-achievement-icon" style="background: rgba(245, 158, 11, 0.14); color: #b45309;"><i class="fa-solid fa-bolt"></i></span>
+              <div class="ps-achievement-copy">
+                <strong>Draft Ready</strong>
+                <span>The user is one click away from the first website draft and the Level 2 unlock moment.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ps-action-row">
+            <a class="btn btn-primary" href="./05-publish.html">Save Draft <i class="fa-solid fa-arrow-right ml-2"></i></a>
+            <a class="ps-button-ghost" href="./05-publish.html">Publish Preview</a>
+            <button class="ps-button-ghost">Regenerate Hero Only</button>
+            <button class="ps-button-ghost">Regenerate Proof Section</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="ps-preview-wrap" style="position: relative;">
+        <div class="ps-preview-label">
+          <i class="fa-solid fa-laptop-code"></i> Full profile-site preview
+          <span class="ps-template-switch">
+            <span class="ps-template-pill active">Clean Proof</span>
+            <span class="ps-template-pill disabled">Narrative · Coming next</span>
+          </span>
+        </div>
+        <div class="ps-preview-shell">
+          <div class="ps-site-canvas">
+            <div class="ps-site-hero">
+              <div class="ps-avatar"><img src="../assets/avatar.png" alt="avatar"></div>
+              <h2 class="ps-title ps-title-lg" style="font-size: 2.2rem;">I build AI operating systems that help product teams ship with more clarity.</h2>
+              <p class="ps-copy" style="max-width: 54ch;">Product manager focused on workflow systems, prompt packs, and execution loops that cut reporting drag and create measurable operational leverage.</p>
+              <div class="ps-site-chip-row">
+                <span class="ps-site-chip">AI-native B2B SaaS</span>
+                <span class="ps-site-chip">Product ops</span>
+                <span class="ps-site-chip">Prompt systems</span>
+              </div>
+            </div>
+
+            <div class="ps-site-block-grid">
+              <div class="ps-site-block ps-stack">
+                <span class="ps-meta-label">Proof bullets</span>
+                <div class="ps-status-item"><i class="fa-solid fa-check text-emerald-500"></i> Built an AI support triage prototype that cut manual review loops</div>
+                <div class="ps-status-item"><i class="fa-solid fa-check text-emerald-500"></i> Turned stakeholder update work into repeatable prompt-driven workflows</div>
+                <div class="ps-status-item"><i class="fa-solid fa-check text-emerald-500"></i> Framed ambiguous team operations as measurable AI execution systems</div>
+              </div>
+              <div class="ps-side-rail">
+                <span class="ps-meta-label">Featured project</span>
+                <strong class="ps-card-title" style="margin-bottom: 0;">Customer Support Copilot</strong>
+                <p class="ps-card-copy">An AI-assisted workflow that reduces manual ticket triage and creates cleaner context for replies.</p>
+                <span class="ps-chip ps-chip-emerald"><i class="fa-solid fa-bolt"></i> First deliverable leads into public proof</span>
+              </div>
+            </div>
+
+            <div class="ps-site-block">
+              <span class="ps-meta-label">Call to action</span>
+              <div class="ps-action-row" style="margin-top: 10px;">
+                <span class="btn btn-primary">Connect On LinkedIn</span>
+                <span class="ps-button-ghost">See My Work</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ps-chat-dock">
+          <span class="ps-kicker"><i class="fa-solid fa-robot"></i> Ask My AI Skill Tutor</span>
+          <p class="ps-copy" style="margin-top: 10px;">The chat remains project-centric, but it understands the profile-site mission, the generated sections, and the next unlock.</p>
+          <div class="ps-chat-prompt-row" style="margin-top: 12px;">
+            <span class="ps-chat-pill">Make this more credible</span>
+            <span class="ps-chat-pill">Tighten the headline</span>
+            <span class="ps-chat-pill">Hiring-focused version</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="./profile-site.js"></script>
+</body>
+</html>

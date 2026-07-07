@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The 2026 AI Upskilling Roadmap | My AI Skill Tutor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="relative min-h-screen flex flex-col">
+    <!-- Background Glows -->
+    <div class="bg-glow top-[-180px] left-[-120px] opacity-45"></div>
+    <div class="bg-glow top-[16%] right-[-220px] opacity-30"
+        style="background: radial-gradient(circle, var(--secondary-glow) 0%, rgba(0,0,0,0) 70%);"></div>
+
+    <!-- Navigation -->
+    <header class="glass sticky top-0 z-50 border-x-0 border-t-0 rounded-none bg-opacity-80 backdrop-blur-xl">
+        <div class="container nav">
+            <a href="/" class="flex items-center gap-2">
+                <img src="/assets/branding/brand_wordmark_logo.png" alt="My AI Skill Tutor"
+                    class="h-8 w-auto object-contain" />
+            </a>
+            <nav class="hidden md:flex flex-1 justify-center nav-links">
+                <a href="/learn/" class="nav-link !text-emerald-400 font-semibold">Learning Hub</a>
+                <a href="/employers/talent/" class="nav-link">Talent Board</a>
+            </nav>
+            <div class="flex gap-4">
+                <a href="/u/alex-chen-ai/" class="btn btn-secondary">See Example Profile</a>
+            </div>
+        </div>
+        <div class="fixed top-4 right-4 z-[100]">
+            <button id="theme-toggle"
+                class="btn bg-white/10 hover:bg-white/20 text-white border border-white/10 px-3 py-2 rounded-lg flex items-center justify-center transition-colors">
+                <i class="fa-solid fa-sun" id="theme-icon"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow pt-12 pb-24">
+        <div class="container max-w-6xl">
+            <!-- Hero Section -->
+            <section class="glass-panel relative mb-10 overflow-hidden p-8 md:p-10">
+                <div class="pointer-events-none absolute right-0 top-0 translate-x-10 -translate-y-10 opacity-10">
+                    <i class="fa-solid fa-book-open-reader text-[240px] text-white"></i>
+                </div>
+
+                <div class="relative z-10 grid gap-8 xl:grid-cols-[1.08fr,0.92fr] xl:items-start">
+                    <!-- Left side (Text) -->
+                    <div>
+                        <!-- Breadcrumbs -->
+                        <div class="mb-5 flex flex-wrap items-center gap-3 text-sm text-gray-400">
+                            <a href="/" class="hover:text-white transition">Home</a>
+                            <span>/</span>
+                            <a href="/learn/" class="hover:text-white transition">Learning Hub</a>
+                            <span>/</span>
+                            <span class="text-gray-300">The 2026 AI Upskilling Roadmap</span>
+                        </div>
+
+                        <!-- Category -->
+                        <div
+                            class="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-sm font-medium text-emerald-300">
+                            Strategy
+                        </div>
+
+                        <h1 class="max-w-5xl text-5xl font-[Outfit] text-white md:text-6xl mb-6">The 2026 AI Upskilling
+                            Roadmap</h1>
+                        <p class="max-w-3xl text-lg leading-8 text-gray-300">
+                            A step-by-step methodology for moving from basic prompt engineering to deploying multi-agent
+                            workflows. This roadmap is used by our top learners to navigate the transition into
+                            AI-enhanced roles.
+                        </p>
+
+                        <div class="mt-8 flex flex-wrap gap-3 text-sm text-gray-400">
+                            <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><i
+                                    class="fa-regular fa-calendar mr-1"></i> Published March 2026</span>
+                            <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><i
+                                    class="fa-solid fa-pen-nib mr-1"></i> Updated March 2026</span>
+                            <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><i
+                                    class="fa-regular fa-clock mr-1"></i> 25 min read</span>
+                        </div>
+
+                        <div class="mt-8 flex flex-col sm:flex-row gap-4">
+                            <a href="/assessment/" class="btn btn-primary px-8 py-3 w-full sm:w-auto text-center">Start
+                                Assessment</a>
+                            <a href="/u/alex-chen-ai/"
+                                class="btn btn-secondary px-8 py-3 w-full sm:w-auto text-center">See Example Profile</a>
+                        </div>
+                    </div>
+
+                    <!-- Right side (Metrics) -->
+                    <div class="grid gap-4">
+                        <div class="glass rounded-3xl border border-white/10 bg-black/30 p-6">
+                            <div class="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400">What this
+                                guide gives you</div>
+                            <div class="grid gap-3">
+                                <div
+                                    class="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-7 text-gray-300">
+                                    A complete timeline for acquiring foundational and advanced AI skills.
+                                </div>
+                                <div
+                                    class="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-7 text-gray-300">
+                                    Role-specific integration points for Marketing and PM roles.
+                                </div>
+                                <div
+                                    class="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-7 text-gray-300">
+                                    Verification checkpoints to prove progress to employers.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid gap-4 sm:grid-cols-3">
+                            <div class="glass rounded-2xl border border-white/10 bg-black/30 p-5 text-center">
+                                <div class="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                                    Sections</div>
+                                <div class="text-3xl font-[Outfit] text-white">5</div>
+                            </div>
+                            <div class="glass rounded-2xl border border-white/10 bg-black/30 p-5 text-center">
+                                <div class="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">FAQ
+                                    items</div>
+                                <div class="text-3xl font-[Outfit] text-white">4</div>
+                            </div>
+                            <div class="glass rounded-2xl border border-white/10 bg-black/30 p-5 text-center">
+                                <div class="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                                    Keywords</div>
+                                <div class="text-3xl font-[Outfit] text-white">7</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Main Content Block -->
+            <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr),320px]">
+                <!-- Article Content -->
+                <article class="space-y-8">
+                    <!-- Section 1 -->
+                    <section id="section-1"
+                        class="glass rounded-3xl border border-white/10 bg-black/20 p-8 transition hover:border-emerald-500/20">
+                        <div class="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">
+                            Section 01
+                        </div>
+                        <h2 class="mb-5 text-3xl font-[Outfit] text-white">The End of the "Prompt Engineer"</h2>
+                        <div class="space-y-5 text-base leading-8 text-gray-300">
+                            <p>In early 2023, "Prompt Engineer" was heavily touted as the job of the future. By 2026, it
+                                is completely obvious that prompting is not a job—it is a foundational skill similar to
+                                knowing how to type or use a spreadsheet.</p>
+                            <p>The true leverage lies not in writing clever prompts in an isolated chat window, but in
+                                <a href="#"
+                                    class="text-emerald-400 hover:text-emerald-300 underline decoration-emerald-500/40">embedding
+                                    AI natively into existing workflows</a>. The most valuable professionals today are
+                                those who understand their domain constraints so well that they can successfully
+                                architect an AI system to accelerate it.</p>
+                        </div>
+                        <div class="mt-6 rounded-3xl border border-white/10 bg-white/5 p-5">
+                            <ul class="space-y-3">
+                                <li class="flex items-start gap-3 text-sm leading-7 text-gray-300">
+                                    <span class="mt-2 h-2 w-2 rounded-full bg-emerald-400 shrink-0"></span>
+                                    <span>Stop collecting certificates for "Prompt Strategy."</span>
+                                </li>
+                                <li class="flex items-start gap-3 text-sm leading-7 text-gray-300">
+                                    <span class="mt-2 h-2 w-2 rounded-full bg-emerald-400 shrink-0"></span>
+                                    <span>Start mapping the repetitive parts of your specific job to basic LLM
+                                        tasks.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- Section 2 -->
+                    <section id="section-2"
+                        class="glass rounded-3xl border border-white/10 bg-black/20 p-8 transition hover:border-emerald-500/20">
+                        <div class="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">
+                            Section 02
+                        </div>
+                        <h2 class="mb-5 text-3xl font-[Outfit] text-white">The Three Pillars of Implementation</h2>
+                        <div class="space-y-5 text-base leading-8 text-gray-300">
+                            <p>To move beyond basic text generation, you must understand three technical pillars:
+                                Context Windows, Structural Outputs (like JSON schemas), and API Chaining.</p>
+                            <p>Context windows define how much "memory" the LLM can hold. A workflow that parses
+                                100-page medical forms requires completely different architecture than a workflow
+                                writing short email replies. Once you master passing the right context to the model, you
+                                must ensure the model returns its data in a reliable <a href="#"
+                                    class="text-emerald-400 hover:text-emerald-300 underline decoration-emerald-500/40">JSON
+                                    structural format</a> so other tools can consume it.</p>
+                        </div>
+                    </section>
+
+                    <!-- Section 3 -->
+                    <section id="section-3"
+                        class="glass rounded-3xl border border-white/10 bg-black/20 p-8 transition hover:border-emerald-500/20">
+                        <div class="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">
+                            Section 03
+                        </div>
+                        <h2 class="mb-5 text-3xl font-[Outfit] text-white">Shipping Proof Over Certificates</h2>
+                        <div class="space-y-5 text-base leading-8 text-gray-300">
+                            <p>Employers do not care what courses you have watched. They care about what systems you can
+                                build. An applicant who can link to a live GitHub repository showing a script that
+                                automates competitor analysis will always beat an applicant with a generic "AI Bootcamp"
+                                badge.</p>
+                        </div>
+                    </section>
+
+                    <!-- FAQ -->
+                    <section class="glass rounded-3xl border border-white/10 bg-black/20 p-8">
+                        <div class="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400">FAQ</div>
+                        <h2 class="mb-6 text-3xl font-[Outfit] text-white">Frequently asked questions</h2>
+                        <div class="space-y-4">
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+                                <h3 class="mb-2 text-lg font-medium text-white">Do I need to learn to code?</h3>
+                                <p class="text-sm leading-7 text-gray-300">Not immediately, but you should understand
+                                    how to read JSON and basic API requests. Tools like Cursor make writing Python
+                                    scripts accessible, but you still need system-level thinking.</p>
+                            </div>
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+                                <h3 class="mb-2 text-lg font-medium text-white">How long does this roadmap take?</h3>
+                                <p class="text-sm leading-7 text-gray-300">Most professionals can complete their first
+                                    actionable workflow in under a week. Reaching multi-agent architecture mastery takes
+                                    roughly 3-6 months of consistent building.</p>
+                            </div>
+                        </div>
+                    </section>
+                </article>
+
+                <!-- Sidebar (Sticky) -->
+                <aside class="space-y-6">
+                    <section class="glass sticky top-28 rounded-3xl border border-white/10 bg-black/25 p-6 shadow-xl">
+                        <div class="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">Article
+                            outline</div>
+                        <div class="space-y-3">
+                            <a href="#section-1"
+                                class="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300 transition hover:border-emerald-500/30 hover:text-white hover:bg-white/10">
+                                <span class="mr-2 text-[11px] uppercase tracking-[0.16em] text-gray-500">01</span>
+                                The End of the "Prompt Engineer"
+                            </a>
+                            <a href="#section-2"
+                                class="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300 transition hover:border-emerald-500/30 hover:text-white hover:bg-white/10">
+                                <span class="mr-2 text-[11px] uppercase tracking-[0.16em] text-gray-500">02</span>
+                                The Three Pillars of Implementation
+                            </a>
+                            <a href="#section-3"
+                                class="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300 transition hover:border-emerald-500/30 hover:text-white hover:bg-white/10">
+                                <span class="mr-2 text-[11px] uppercase tracking-[0.16em] text-gray-500">03</span>
+                                Shipping Proof Over Certificates
+                            </a>
+                        </div>
+                    </section>
+
+                    <section class="glass rounded-3xl border border-white/10 bg-black/25 p-6">
+                        <div class="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400">Keywords</div>
+                        <div class="flex flex-wrap gap-2">
+                            <span
+                                class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] text-gray-300">Workflow
+                                Automation</span>
+                            <span
+                                class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] text-gray-300">API</span>
+                            <span
+                                class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] text-gray-300">Career
+                                Pivot</span>
+                        </div>
+                    </section>
+
+                    <section class="glass rounded-3xl border border-white/10 bg-black/25 p-6">
+                        <div class="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-amber-400">Read next
+                        </div>
+                        <div class="space-y-4">
+                            <a href="#"
+                                class="block rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-amber-500/30 hover:bg-white/10">
+                                <div class="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                                    Project Guide</div>
+                                <div class="mb-2 text-base font-medium text-white">How to Build an AI Portfolio</div>
+                                <p class="text-sm leading-7 text-gray-300">Stop collecting certificates. Start shipping
+                                    projects that trace directly to revenue.</p>
+                            </a>
+                        </div>
+                    </section>
+
+                    <section
+                        class="glass rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/5 p-6">
+                        <div class="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">Turn this
+                            into proof</div>
+                        <h2 class="mb-3 text-2xl font-[Outfit] text-white">Build the workflow, then publish the
+                            evidence.</h2>
+                        <p class="mb-5 text-sm leading-7 text-gray-300">
+                            The highest-leverage path is still the same: one guide becomes one workflow, one workflow
+                            becomes one project, and one project becomes visible proof.
+                        </p>
+                        <div class="flex flex-col gap-3">
+                            <a href="/assessment/" class="btn btn-primary text-center">Start Assessment</a>
+                            <a href="/u/alex-chen-ai/"
+                                class="btn bg-black/40 text-white border border-white/10 hover:border-white/20 text-center">See
+                                Example Profile</a>
+                        </div>
+                    </section>
+
+                </aside>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="border-t border-white/10 py-12 mt-auto text-center md:text-left">
+        <div class="container flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-2">
+                <img src="/assets/branding/brand_wordmark_logo.png" alt="My AI Skill Tutor"
+                    class="h-6 w-auto object-contain" />
+            </div>
+            <p class="text-sm text-gray-500">© 2026 My AI Skill Tutor. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
+
+            const currentTheme = localStorage.getItem('theme') || 'dark';
+            if (currentTheme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+                themeIcon.classList.replace('fa-sun', 'fa-moon');
+                if (themeToggle) {
+                    themeToggle.classList.replace('text-white', 'text-gray-800');
+                    themeToggle.classList.replace('border-white/10', 'border-gray-300');
+                }
+            }
+
+            if (themeToggle) {
+                themeToggle.addEventListener('click', () => {
+                    let theme = document.documentElement.getAttribute('data-theme');
+                    if (theme === 'light') {
+                        document.documentElement.removeAttribute('data-theme');
+                        localStorage.setItem('theme', 'dark');
+                        themeIcon.classList.replace('fa-moon', 'fa-sun');
+                        themeToggle.classList.replace('text-gray-800', 'text-white');
+                        themeToggle.classList.replace('border-gray-300', 'border-white/10');
+                    } else {
+                        document.documentElement.setAttribute('data-theme', 'light');
+                        localStorage.setItem('theme', 'light');
+                        themeIcon.classList.replace('fa-sun', 'fa-moon');
+                        themeToggle.classList.replace('text-white', 'text-gray-800');
+                        themeToggle.classList.replace('border-white/10', 'border-gray-300');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>
