@@ -68,6 +68,7 @@ import {
   type UserProfile,
 } from "@aitutor/shared";
 import { BRAND_NAME, getSiteUrl } from "./site";
+import { callOpenAiResponses, extractOpenAiOutputText } from "./openai-responses";
 import { mergeAttribution } from "./attribution";
 import { recordPersistedFunnelEvent } from "./funnel-events-server";
 import { billingAccessAllowed, normalizeBillingStatus } from "./billing";
@@ -2620,12 +2621,6 @@ async function generateTutorReply(input: {
   project: Project;
   message: string;
 }) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY_MISSING");
-  }
-
-  const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
   const prompt = [
     `You are ${BRAND_NAME}, a practical coding tutor.`,
     `Learner name: ${input.profile.name}`,
@@ -2636,38 +2631,7 @@ async function generateTutorReply(input: {
     `Learner message: ${input.message}`,
   ].join("\n");
 
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      input: prompt,
-      temperature: 0.2,
-    }),
-  });
-
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`OPENAI_RESPONSE_FAILED:${response.status}:${detail.slice(0, 200)}`);
-  }
-
-  const data = (await response.json()) as {
-    output_text?: string;
-    output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
-  };
-
-  const fromOutputText = typeof data.output_text === "string" ? data.output_text.trim() : "";
-  if (fromOutputText) return fromOutputText;
-
-  const firstText = data.output
-    ?.flatMap((entry) => entry.content ?? [])
-    .find((entry) => entry.type === "output_text" || entry.type === "text")?.text;
-
-  if (firstText?.trim()) return firstText.trim();
-  throw new Error("OPENAI_EMPTY_RESPONSE");
+  return callOpenAiResponses({ prompt, temperature: 0.2 });
 }
 
 export async function runtimeAddProjectChatMessage(input: {
@@ -3597,18 +3561,6 @@ function socialShareUrl(platform: SocialPlatform, text: string) {
   return platform === "linkedin"
     ? `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`
     : `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-}
-
-function extractOpenAiOutputText(data: {
-  output_text?: string;
-  output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
-}) {
-  const fromOutputText = typeof data.output_text === "string" ? data.output_text.trim() : "";
-  if (fromOutputText) return fromOutputText;
-  const firstText = data.output
-    ?.flatMap((entry) => entry.content ?? [])
-    .find((entry) => entry.type === "output_text" || entry.type === "text")?.text;
-  return firstText?.trim() || "";
 }
 
 function parseIdeaPayload(raw: string): { linkedin: string; x: string; contextLabel: string } | null {

@@ -13,7 +13,7 @@ export function HomePageTracking() {
 
     const ctaNodes = Array.from(
       document.querySelectorAll<HTMLAnchorElement>(
-        "a[href*='/sign-up?redirect_url=/onboarding/'], a[href*='/sign-up/?redirect_url=/onboarding/']",
+        "a[href$='/assessment'], a[href$='/assessment/'], a[href*='/sign-up?redirect_url=/onboarding/'], a[href*='/sign-up/?redirect_url=/onboarding/']",
       ),
     );
 

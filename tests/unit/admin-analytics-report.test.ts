@@ -24,6 +24,37 @@ describe("admin analytics report", () => {
     expect(html).toContain("Landing views");
     expect(html).toContain("Checkout completed");
     expect(html).toContain("Guest linked");
+    expect(html).toContain("Anon assessment started");
+    expect(html).toContain("Anon assessment completed");
+    expect(html).toContain("Assessment email captured");
+    expect(html).toContain("Assessment report viewed");
+  });
+
+  test("counts the anonymous assessment funnel steps by unique visitor", () => {
+    const base = {
+      occurredAt: "2026-03-18T12:00:00.000Z",
+      utmSource: "google",
+      utmCampaign: "assessment_launch",
+      landingPath: "/",
+    };
+    const report = buildAdminAnalyticsReportFromEvents({
+      window: "30d",
+      now: "2026-03-19T18:00:00.000Z",
+      events: [
+        { ...base, eventKey: "anonymous_assessment_started", visitorId: "visitor_a" },
+        { ...base, eventKey: "anonymous_assessment_started", visitorId: "visitor_b" },
+        { ...base, eventKey: "anonymous_assessment_completed", visitorId: "visitor_a" },
+        { ...base, eventKey: "assessment_email_captured", visitorId: "visitor_a" },
+        { ...base, eventKey: "assessment_report_viewed", visitorId: "visitor_a" },
+        { ...base, eventKey: "assessment_report_viewed", visitorId: "visitor_a" },
+      ],
+    });
+
+    expect(report.trackedSteps.anonymousAssessmentStarted).toBe(2);
+    expect(report.trackedSteps.anonymousAssessmentCompleted).toBe(1);
+    expect(report.trackedSteps.assessmentEmailCaptured).toBe(1);
+    // Unique visitors, not raw event count.
+    expect(report.trackedSteps.assessmentReportViewed).toBe(1);
   });
 
   test("builds a linked funnel report with source attribution", () => {

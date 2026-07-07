@@ -200,6 +200,24 @@ export function AdminAnalyticsPageView({
           <MetricCard label="Onboarding completed" value={formatCount(report.trackedSteps.onboardingCompleted)} />
           <MetricCard label="Project created" value={formatCount(report.trackedSteps.projectCreated)} />
         </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            label="Anon assessment started"
+            value={formatCount(report.trackedSteps.anonymousAssessmentStarted)}
+          />
+          <MetricCard
+            label="Anon assessment completed"
+            value={formatCount(report.trackedSteps.anonymousAssessmentCompleted)}
+          />
+          <MetricCard
+            label="Assessment email captured"
+            value={formatCount(report.trackedSteps.assessmentEmailCaptured)}
+          />
+          <MetricCard
+            label="Assessment report viewed"
+            value={formatCount(report.trackedSteps.assessmentReportViewed)}
+          />
+        </div>
       </section>
 
       <BreakdownTable

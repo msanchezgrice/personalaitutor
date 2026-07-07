@@ -14,6 +14,10 @@ export const CLIENT_PERSISTED_FUNNEL_EVENTS = new Set([
   "assessment_started",
   "assessment_completed",
   "onboarding_completed",
+  "anonymous_assessment_started",
+  "anonymous_assessment_completed",
+  "assessment_email_captured",
+  "assessment_report_viewed",
   "billing_hard_gate_viewed",
   "dashboard_signed_in_landed",
 ] as const);
@@ -30,6 +34,10 @@ export type PersistedFunnelEventKey =
   | "assessment_started"
   | "assessment_completed"
   | "onboarding_completed"
+  | "anonymous_assessment_started"
+  | "anonymous_assessment_completed"
+  | "assessment_email_captured"
+  | "assessment_report_viewed"
   | "billing_hard_gate_viewed"
   | "dashboard_signed_in_landed"
   | "billing_checkout_started"

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { AnonymousAssessment } from "@/components/anonymous-assessment";
 import {
   BRAND_NAME,
   BRAND_X_HANDLE,
@@ -10,14 +10,16 @@ import {
 } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: `${BRAND_NAME} | AI Assessment`,
-  description: "Take the AI assessment to generate your personalized skill path and dashboard plan.",
+  title: `${BRAND_NAME} | Free AI-Readiness Assessment`,
+  description:
+    "Take the free AI assessment — no account required. Get your 0-100 AI-readiness score, your skill gaps ranked by market impact, and a 30-day plan.",
   alternates: {
     canonical: "/assessment",
   },
   openGraph: {
-    title: `${BRAND_NAME} | AI Assessment`,
-    description: "Take the AI assessment to generate your personalized skill path and dashboard plan.",
+    title: `${BRAND_NAME} | Free AI-Readiness Assessment`,
+    description:
+      "Get your 0-100 AI-readiness score, your skill gaps ranked by market impact, and a 30-day plan. No account required.",
     url: "/assessment",
     images: [{
       url: DEFAULT_OG_IMAGE_PATH,
@@ -31,16 +33,13 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: BRAND_X_HANDLE,
     creator: BRAND_X_HANDLE,
-    title: `${BRAND_NAME} | AI Assessment`,
-    description: "Take the AI assessment to generate your personalized skill path and dashboard plan.",
+    title: `${BRAND_NAME} | Free AI-Readiness Assessment`,
+    description:
+      "Get your 0-100 AI-readiness score, your skill gaps ranked by market impact, and a 30-day plan. No account required.",
     images: [DEFAULT_OG_IMAGE_PATH],
-  },
-  robots: {
-    index: false,
-    follow: false,
   },
 };
 
 export default function AssessmentPage() {
-  redirect("/onboarding");
+  return <AnonymousAssessment />;
 }

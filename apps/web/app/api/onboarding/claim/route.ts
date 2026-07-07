@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { getAuthSeed } from "@/lib/auth";
+import { linkAnonymousAssessmentsToProfile } from "@/lib/anonymous-assessment";
 import {
   jsonError,
   jsonOk,
@@ -38,6 +39,19 @@ export async function POST(req: NextRequest) {
 
     if (!claimed) {
       return jsonError("SESSION_NOT_FOUND", "Onboarding session not found", 404);
+    }
+
+    // Attach any anonymous assessments taken before sign-up (matched on email).
+    try {
+      await linkAnonymousAssessmentsToProfile({
+        learnerProfileId: claimed.user.id,
+        email: seed.email ?? null,
+      });
+    } catch (error) {
+      console.warn(
+        "[assessment] anonymous assessment link failed",
+        error instanceof Error ? error.message : "unknown",
+      );
     }
 
     return jsonOk({

@@ -1,5 +1,6 @@
 import { getAuthSeed } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin-access";
+import { linkAnonymousAssessmentsToProfile } from "@/lib/anonymous-assessment";
 import {
   runtimeClaimOnboardingSession,
   runtimeGetBillingAccessState,
@@ -92,6 +93,22 @@ async function getDashboardBillingState(
         }
       : undefined,
   });
+
+  // Attach any anonymous assessments taken before sign-up (matched on email).
+  // Idempotent: only unlinked assessment rows are claimed.
+  if (billing.profile?.id && seed?.email) {
+    try {
+      await linkAnonymousAssessmentsToProfile({
+        learnerProfileId: billing.profile.id,
+        email: seed.email,
+      });
+    } catch (error) {
+      console.warn(
+        "[assessment] anonymous assessment link failed",
+        error instanceof Error ? error.message : "unknown",
+      );
+    }
+  }
 
   const checkoutSessionId = options?.checkoutSessionId?.trim();
   if (checkoutSessionId && billing.profile) {

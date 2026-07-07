@@ -27,9 +27,11 @@ lessons behind the paywall, retention loops past week 1. Done = the verification
   - [x] Product definition decided: living AI-readiness score + weekly proof artifact + landscape monitoring; daily actions = habit layer
   - [x] MDD absorption decided; MDD audit saved (thoughts/shared/research/2026-07-07-mydailydownload-audit.md); plan Phase 3 rewritten
   - [x] Miguel GO 2026-07-07: full build, ship-live authority delegated, all decisions delegated, stay on Fable 5
-- Now: [→] Phase 0: Baseline, scope cleanup (park Social Radar + Workspace, prune stale worktrees), verify Stripe prod env
+- Done (cont.):
+  - [x] Phase 0 nearly done (2026-07-07): parked Social Radar (park/social-radar), Workspace (park/workspace-prototype), WIP funnel tests (park/wip-funnel-tests, 7 failing tests); pruned 7 stale worktrees; committed loading.tsx + mockups + plan docs to main; baseline GREEN 61/61. FOUND+FIXED: OPENAI_API_KEY was missing from Vercel PRODUCTION env for 127 days (tutor chat dead in prod since launch) — added, redeploying. Stripe prod vars confirmed present (110d). Remaining: real-card conversion (Miguel).
+  - [x] Phase 1 CODE COMPLETE (2026-07-07, branch rebuild/core-product, uncommitted): anonymous assessment at /assessment (no Clerk gate; CTAs un-rewritten in page.tsx + gemini-static-page.tsx), LLM report module apps/web/lib/assessment-report.ts (extracted OpenAI plumbing → apps/web/lib/openai-responses.ts, runtime.ts SHRUNK), anonymous_assessments + assessment_report_history tables (migration 20260707150000, NOT applied to prod), report page /assessment/report/[token], Resend report email, email-match linking (dashboard/_lib + onboarding claim/complete), 4 funnel events + admin analytics tracked steps, proxy.ts whitelists /api/assessment/anonymous/* AND /api/analytics/funnel (was 401 for anon visitors!). Suite 61→102 green; web build green. ⚠️ OPENAI_API_KEY in local .env AND apps/web/.env.local both 401 (rotated?) — live LLM sanity check blocked; run `pnpm vitest run tests/live/assessment-report.live.test.ts` after key rotation.
+- Now: [→] Phase 1 verification: rotate local OPENAI_API_KEY + run live test; apply migration to prod Supabase; ship + incognito E2E; then demand gate.
 - Remaining:
-  - [ ] Phase 1: Invert lead path — anonymous assessment + LLM skill-gap report + persistent 0-100 score (~3 days)
   - [ ] Phase 2: Real artifact generation + tutor-driven lessons + real built/verified states (~2 wks)
   - [ ] Phase 3: MDD engine port (packages/daily-content) + event re-scoring + proof-of-watch email + streaks/winbacks + SEO-hub funnel (~1-1.5 wks)
   - [ ] Miguel unblock: one real-card prod conversion; OK to point mydailydownload.com hubs at myaiskilltutor.com

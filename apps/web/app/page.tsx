@@ -183,7 +183,9 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const replacements: Record<string, string> = {};
-  const authFirstHref = "/sign-up?redirect_url=/onboarding/";
+  // Phase 1 rebuild: assessment CTAs route straight to the anonymous
+  // assessment (/assessment/) — no sign-up gate before the quiz. The static
+  // template already links there, so no CTA rewrite is needed.
   const seed = await getAuthSeed();
   if (seed?.userId) {
     const summary = await runtimeGetDashboardSummary(seed.userId, {
@@ -197,18 +199,6 @@ export default async function HomePage() {
         'href="/dashboard/?welcome=1" class="btn btn-secondary">Dashboard</a>';
     }
   }
-  replacements['href="/assessment/" class="btn btn-primary animate-pulse-glow">Start Assessment <i class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>'] =
-    `href="${authFirstHref}" class="btn btn-primary animate-pulse-glow">Start Assessment <i class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>`;
-  replacements['href="/assessment/" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>'] =
-    `href="${authFirstHref}" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>`;
-  replacements['href="/assessment/" class="btn btn-primary text-xl px-10 py-5 animate-pulse-glow shadow-2xl">Start Your AI'] =
-    `href="${authFirstHref}" class="btn btn-primary text-xl px-10 py-5 animate-pulse-glow shadow-2xl">Start Your AI`;
-  replacements['href="/assessment" class="btn btn-primary animate-pulse-glow">Start Assessment <i class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>'] =
-    `href="${authFirstHref}" class="btn btn-primary animate-pulse-glow">Start Assessment <i class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>`;
-  replacements['href="/assessment" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>'] =
-    `href="${authFirstHref}" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>`;
-  replacements['href="/assessment/"'] = `href="${authFirstHref}"`;
-  replacements['href="/assessment"'] = `href="${authFirstHref}"`;
   replacements['<a href="#features" class="nav-link">Features</a>'] =
     '<a href="#features" class="nav-link">Features</a><a href="/learn" class="nav-link">Learning</a>';
   replacements["<!-- CTA -->"] = `${homeLearningSectionHtml}\n\n  <!-- CTA -->`;

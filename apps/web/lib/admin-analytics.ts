@@ -63,6 +63,10 @@ export type AdminAnalyticsTrackedSteps = {
   assessmentStarted: number;
   onboardingCompleted: number;
   projectCreated: number;
+  anonymousAssessmentStarted: number;
+  anonymousAssessmentCompleted: number;
+  assessmentEmailCaptured: number;
+  assessmentReportViewed: number;
 };
 
 export type AdminAnalyticsReport = {
@@ -103,6 +107,10 @@ const TRACKED_STEP_KEYS = [
   "assessment_started",
   "assessment_completed",
   "onboarding_completed",
+  "anonymous_assessment_started",
+  "anonymous_assessment_completed",
+  "assessment_email_captured",
+  "assessment_report_viewed",
   "billing_checkout_started",
   "billing_checkout_completed",
   "project_created",
@@ -236,6 +244,10 @@ export function createEmptyAdminAnalyticsReport(window: AdminAnalyticsWindow): A
       assessmentStarted: 0,
       onboardingCompleted: 0,
       projectCreated: 0,
+      anonymousAssessmentStarted: 0,
+      anonymousAssessmentCompleted: 0,
+      assessmentEmailCaptured: 0,
+      assessmentReportViewed: 0,
     },
     attributionCoverage: {
       eventsWithUtmSource: 0,
@@ -380,6 +392,10 @@ export function buildAdminAnalyticsReportFromEvents(
       assessmentStarted: trackedUniqueByEvent.get("assessment_started")?.size ?? 0,
       onboardingCompleted: trackedUniqueByEvent.get("onboarding_completed")?.size ?? 0,
       projectCreated: trackedUniqueByEvent.get("project_created")?.size ?? 0,
+      anonymousAssessmentStarted: trackedUniqueByEvent.get("anonymous_assessment_started")?.size ?? 0,
+      anonymousAssessmentCompleted: trackedUniqueByEvent.get("anonymous_assessment_completed")?.size ?? 0,
+      assessmentEmailCaptured: trackedUniqueByEvent.get("assessment_email_captured")?.size ?? 0,
+      assessmentReportViewed: trackedUniqueByEvent.get("assessment_report_viewed")?.size ?? 0,
     },
     attributionCoverage: {
       eventsWithUtmSource,
