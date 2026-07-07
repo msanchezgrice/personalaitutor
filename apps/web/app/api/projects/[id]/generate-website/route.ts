@@ -1,4 +1,5 @@
-import { jsonError, jsonOk, runtimeFindProjectById, runtimeFindUserById, runtimeRequestArtifactGeneration } from "@/lib/runtime";
+import { jsonError, jsonOk, runtimeFindProjectById, runtimeFindUserById } from "@/lib/runtime";
+import { runtimeRequestArtifactGeneration } from "@/lib/artifact-generation";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { forcedFailCode, getUserId } from "@/lib/api";

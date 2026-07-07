@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { jsonError, jsonOk, runtimeFindProjectById, runtimeFindUserById, runtimeRecordProjectArtifact } from "@/lib/runtime";
+import { jsonError, jsonOk, runtimeFindProjectById, runtimeFindUserById } from "@/lib/runtime";
+import { runtimeRecordProjectArtifact } from "@/lib/artifact-generation";
 import { NextRequest } from "next/server";
 import { getUserId } from "@/lib/api";
 import { requireBillingAccess } from "@/lib/billing-access";

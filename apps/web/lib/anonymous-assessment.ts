@@ -474,6 +474,38 @@ export async function getLatestAssessmentReport(
   return history.length ? history[history.length - 1] : null;
 }
 
+/**
+ * Latest readiness report for a signed-in learner (linked via
+ * `linkAnonymousAssessmentsToProfile`). Used to personalize artifact
+ * generation and tutor sessions; returns null for users who never took the
+ * anonymous assessment.
+ */
+export async function getLatestAssessmentReportForProfile(
+  learnerProfileId: string,
+): Promise<AssessmentReportRecord | null> {
+  const normalized = cleanText(learnerProfileId, 80);
+  if (!normalized) return null;
+
+  if (mode() === "memory") {
+    const matches = Array.from(memoryReports.values())
+      .flat()
+      .filter((entry) => entry.learnerProfileId === normalized)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return matches.length ? { ...matches[matches.length - 1] } : null;
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data } = await supabase
+    .from("assessment_report_history")
+    .select(REPORT_SELECT_FIELDS)
+    .eq("learner_profile_id", normalized)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data ? reportFromRow(data as AssessmentReportHistoryRow) : null;
+}
+
 // --- account linking ---------------------------------------------------------
 
 /**

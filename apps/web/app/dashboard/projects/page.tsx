@@ -1,7 +1,8 @@
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
-import { DashboardProjectWorkbench } from "@/components/dashboard-project-workbench";
+import { DashboardProjectWorkbench, type TutorSessionView } from "@/components/dashboard-project-workbench";
 import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
 import { runtimeListOAuthConnections, runtimeSyncProjectModuleSteps } from "@/lib/runtime";
+import { getTutorSessionForProject } from "@/lib/tutor-session";
 import { buildRecommendedModuleGuide, getCareerPath } from "@aitutor/shared";
 
 function summarize(value: string | null | undefined, fallback: string, maxChars = 160) {
@@ -34,6 +35,25 @@ export default async function DashboardProjectsPage() {
         })
       : activeProject;
   const oauthConnections = user ? await runtimeListOAuthConnections(user.id) : [];
+  const tutorSessionRecord =
+    syncedActiveProject && user
+      ? await getTutorSessionForProject({
+          projectId: syncedActiveProject.id,
+          learnerProfileId: user.id,
+          includeCompleted: true,
+        }).catch(() => null)
+      : null;
+  const initialTutorSession: TutorSessionView | null = tutorSessionRecord
+    ? {
+        id: tutorSessionRecord.id,
+        status: tutorSessionRecord.status,
+        moduleTitle: tutorSessionRecord.moduleTitle,
+        currentStepIndex: tutorSessionRecord.currentStepIndex,
+        steps: tutorSessionRecord.steps,
+        checklist: tutorSessionRecord.checklist,
+        completedAt: tutorSessionRecord.completedAt,
+      }
+    : null;
   return (
     <DashboardShell
       activeTab="projects"
@@ -148,6 +168,7 @@ export default async function DashboardProjectsPage() {
           initialSteps={syncedActiveProject?.moduleSteps ?? []}
           oauthConnections={oauthConnections}
           publicProfileUrl={state.publicProfileUrl}
+          initialTutorSession={initialTutorSession}
         />
 
         <section>

@@ -36,8 +36,6 @@ import {
   publishProfile as memPublishProfile,
   publishSocialDraft as memPublishSocialDraft,
   refreshRelevantNews as memRefreshRelevantNews,
-  recordProjectArtifact as memRecordProjectArtifact,
-  requestArtifactGeneration as memRequestArtifactGeneration,
   startAssessment as memStartAssessment,
   submitAssessment as memSubmitAssessment,
   syncProjectModuleSteps as memSyncProjectModuleSteps,
@@ -232,7 +230,7 @@ function includeSyntheticTalent() {
 
 let cachedClient: SupabaseClient | null = null;
 
-function getSupabaseAdmin() {
+export function getSupabaseAdmin() {
   if (cachedClient) return cachedClient;
 
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -974,7 +972,10 @@ async function getProjectsByUserFromDb(userId: string) {
   return mapped;
 }
 
-async function insertJobEvent(input: {
+// NOTE: the following persistence helpers are exported for sibling runtime
+// modules extracted from this file (see apps/web/lib/artifact-generation.ts).
+// runtime.ts must not grow — extract what you touch.
+export async function insertJobEvent(input: {
   jobId: string;
   userId: string;
   projectId: string | null;
@@ -994,7 +995,7 @@ async function insertJobEvent(input: {
   });
 }
 
-async function createJob(input: {
+export async function createJob(input: {
   userId: string;
   projectId: string | null;
   type: string;
@@ -1029,7 +1030,7 @@ async function createJob(input: {
   return jobId;
 }
 
-async function appendBuildLog(input: {
+export async function appendBuildLog(input: {
   projectId: string;
   userId: string;
   message: string;
@@ -1047,7 +1048,7 @@ async function appendBuildLog(input: {
   });
 }
 
-async function insertVerificationEvent(input: {
+export async function insertVerificationEvent(input: {
   userId: string;
   projectId: string | null;
   skill: string;
@@ -1065,7 +1066,7 @@ async function insertVerificationEvent(input: {
   });
 }
 
-async function touchProfileTokenUsage(userId: string, addTokens: number) {
+export async function touchProfileTokenUsage(userId: string, addTokens: number) {
   const supabase = getSupabaseAdmin();
   const existing = await getProfileRowById(userId);
   if (!existing) return;
@@ -1075,7 +1076,7 @@ async function touchProfileTokenUsage(userId: string, addTokens: number) {
     .eq("id", existing.id);
 }
 
-async function upsertSkill(input: {
+export async function upsertSkill(input: {
   userId: string;
   skill: string;
   status: "not_started" | "in_progress" | "built" | "verified";
@@ -2573,13 +2574,9 @@ export async function runtimeUpdateProjectModuleStep(input: {
   }
 
   if (!beforeAllCompleted && allCompleted) {
-    await upsertSkill({
-      userId: profile.id,
-      skill: targetSkill,
-      status: "built",
-      score: Math.max(getVerificationPolicy().moduleMinScore + 0.05, 0.45),
-      evidenceDelta: 1,
-    });
+    // Phase 2.3: completing the module checklist alone never fabricates a
+    // "built" skill — built requires a real generated artifact or submitted
+    // proof (see apps/web/lib/artifact-generation.ts).
     await insertVerificationEvent({
       userId: profile.id,
       projectId: updatedProject.id,
@@ -2771,236 +2768,10 @@ export async function runtimeAddProjectChatMessage(input: {
   }
 }
 
-export async function runtimeRequestArtifactGeneration(input: {
-  projectId: string;
-  userId: string;
-  kind: "website" | "pptx" | "pdf" | "resume_docx" | "resume_pdf";
-  stepKey?: string | null;
-  forceFailCode?: string;
-}) {
-  const billing = await runtimeGetBillingAccessState({ userId: input.userId });
-  if (!billing.accessAllowed) return null;
-  if (mode() === "memory") return memRequestArtifactGeneration(input);
+// runtimeRequestArtifactGeneration and runtimeRecordProjectArtifact moved to
+// apps/web/lib/artifact-generation.ts (Phase 2.1: real content generation +
+// Phase 2.3 state gating). runtime.ts must not grow — extract what you touch.
 
-  const project = await runtimeFindProjectById(input.projectId);
-  const profile = await runtimeFindUserById(input.userId);
-  if (!project || !profile || project.userId !== profile.id) return null;
-  const step = input.stepKey ? project.moduleSteps.find((entry) => entry.stepKey === input.stepKey) ?? null : null;
-
-  const supabase = getSupabaseAdmin();
-
-  await supabase.from("projects").update({ state: "building", updated_at: new Date().toISOString() }).eq("id", project.id);
-
-  const jobId = await createJob({
-    userId: profile.id,
-    projectId: project.id,
-    type: input.kind === "website" ? "project.generate_website" : "project.generate_artifact",
-    payload: { kind: input.kind, forceFailCode: input.forceFailCode ?? null },
-  });
-
-  if (input.forceFailCode) {
-    await supabase
-      .from("agent_jobs")
-      .update({ status: "failed", last_error_code: input.forceFailCode, updated_at: new Date().toISOString() })
-      .eq("id", jobId);
-
-    await insertJobEvent({
-      jobId,
-      userId: profile.id,
-      projectId: project.id,
-      type: "job.failed",
-      message: `${input.kind} generation failed (${input.forceFailCode})`,
-      payload: { errorCode: input.forceFailCode },
-    });
-
-    await appendBuildLog({
-      projectId: project.id,
-      userId: profile.id,
-      level: "error",
-      message: `Artifact generation failed for ${input.kind}: ${input.forceFailCode}`,
-    });
-
-    return {
-      job: { id: jobId, status: "failed", lastErrorCode: input.forceFailCode },
-      result: { ok: false, job: { id: jobId, lastErrorCode: input.forceFailCode } },
-      project: await runtimeFindProjectById(project.id),
-    };
-  }
-
-  const artifactUrl = `/generated/${project.slug}/${input.kind}-${Date.now()}.${
-    input.kind === "website" ? "html" : input.kind === "pptx" ? "pptx" : input.kind === "resume_docx" ? "docx" : "pdf"
-  }`;
-
-  await supabase.from("project_artifacts").insert({
-    id: randomUUID(),
-    project_id: project.id,
-    kind: input.kind,
-    url: artifactUrl,
-    metadata: {
-      source: "generated_artifact",
-      generator: input.kind === "website" ? "website" : "artifact",
-      stepKey: step?.stepKey ?? null,
-      stepTitle: step?.title ?? null,
-    },
-  });
-
-  await appendBuildLog({
-    projectId: project.id,
-    userId: profile.id,
-    level: "success",
-    message: `Artifact generated${step ? ` for ${step.title}` : ""}: ${input.kind}`,
-    metadata: {
-      stepKey: step?.stepKey ?? null,
-      stepTitle: step?.title ?? null,
-    },
-  });
-
-  await supabase.from("projects").update({ state: "built", updated_at: new Date().toISOString() }).eq("id", project.id);
-
-  await supabase
-    .from("agent_jobs")
-    .update({ status: "completed", updated_at: new Date().toISOString() })
-    .eq("id", jobId);
-
-  await insertJobEvent({
-    jobId,
-    userId: profile.id,
-    projectId: project.id,
-    type: "job.completed",
-    message: `${input.kind} generation completed`,
-  });
-
-  await upsertSkill({
-    userId: profile.id,
-    skill: CAREER_PATHS.find((path) => path.id === profile.careerPathId)?.modules[0] ?? "Applied AI",
-    status: "built",
-    score: Math.max(getVerificationPolicy().projectMinScore + 0.1, 0.5),
-    evidenceDelta: 1,
-  });
-
-  await touchProfileTokenUsage(profile.id, 950);
-
-  return {
-    job: { id: jobId, status: "completed", lastErrorCode: null },
-    result: { ok: true, job: { id: jobId, lastErrorCode: null } },
-    project: await runtimeFindProjectById(project.id),
-  };
-}
-
-export async function runtimeRecordProjectArtifact(input: {
-  projectId: string;
-  userId: string;
-  kind: string;
-  url: string;
-  logMessage: string;
-  metadata?: Record<string, unknown>;
-  awardTokens?: number;
-}) {
-  const billing = await runtimeGetBillingAccessState({ userId: input.userId });
-  if (!billing.accessAllowed) return null;
-  if (mode() === "memory") {
-    return memRecordProjectArtifact(input);
-  }
-
-  const project = await runtimeFindProjectById(input.projectId);
-  const profile = await runtimeFindUserById(input.userId);
-  if (!project || !profile || project.userId !== profile.id) return null;
-  const wasCompleted = project.state === "built" || project.state === "showcased";
-
-  const supabase = getSupabaseAdmin();
-
-  await supabase.from("project_artifacts").insert({
-    id: randomUUID(),
-    project_id: project.id,
-    kind: input.kind,
-    url: input.url,
-    metadata: input.metadata ?? {},
-  });
-
-  await appendBuildLog({
-    projectId: project.id,
-    userId: profile.id,
-    level: "success",
-    message: input.logMessage,
-    metadata: input.metadata,
-  });
-
-  await supabase
-    .from("projects")
-    .update({ state: "built", updated_at: new Date().toISOString() })
-    .eq("id", project.id);
-
-  await upsertSkill({
-    userId: profile.id,
-    skill: CAREER_PATHS.find((path) => path.id === profile.careerPathId)?.modules[0] ?? "Applied AI",
-    status: "built",
-    score: Math.max(getVerificationPolicy().projectMinScore + 0.1, 0.5),
-    evidenceDelta: 1,
-  });
-
-  await insertVerificationEvent({
-    userId: profile.id,
-    projectId: project.id,
-    skill: CAREER_PATHS.find((path) => path.id === profile.careerPathId)?.modules[0] ?? "Applied AI",
-    eventType: "artifact_generated",
-    details: {
-      kind: input.kind,
-      artifactUrl: input.url,
-      source: input.metadata?.source ?? "manual_submission",
-    },
-  });
-
-  await touchProfileTokenUsage(profile.id, Math.max(0, Number(input.awardTokens ?? 180)));
-
-  const artifactJobId = await createJob({
-    userId: profile.id,
-    projectId: project.id,
-    type: "project.proof_attached",
-    payload: {
-      kind: input.kind,
-      url: input.url,
-      source: input.metadata?.source ?? "manual_submission",
-      stepKey: typeof input.metadata?.stepKey === "string" ? input.metadata.stepKey : null,
-    },
-    status: "completed",
-  });
-  await insertJobEvent({
-    jobId: artifactJobId,
-    userId: profile.id,
-    projectId: project.id,
-    type: "project.proof_attached",
-    message: `Proof attached for ${project.title}`,
-    payload: {
-      kind: input.kind,
-      url: input.url,
-      source: input.metadata?.source ?? "manual_submission",
-      stepKey: typeof input.metadata?.stepKey === "string" ? input.metadata.stepKey : null,
-    },
-  });
-  if (!wasCompleted) {
-    const completedJobId = await createJob({
-      userId: profile.id,
-      projectId: project.id,
-      type: "project.completed",
-      payload: {
-        source: input.metadata?.source ?? "manual_submission",
-      },
-      status: "completed",
-    });
-    await insertJobEvent({
-      jobId: completedJobId,
-      userId: profile.id,
-      projectId: project.id,
-      type: "project.completed",
-      message: `Project ${project.title} completed`,
-      payload: {
-        source: input.metadata?.source ?? "manual_submission",
-      },
-    });
-  }
-
-  return runtimeFindProjectById(project.id);
-}
 
 type ProjectToolActionOutput = {
   toolKey: string;

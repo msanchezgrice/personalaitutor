@@ -6,6 +6,7 @@ import {
   MODULE_TRACKS,
 } from "./matrix";
 import { buildDashboardGamification } from "./gamification";
+import { canMarkProjectBuilt } from "./verification-gating";
 import type {
   AcquisitionAttribution,
   AgentJob,
@@ -769,23 +770,6 @@ export function transitionJob(jobId: string, status: AgentJobStatus, errorCode?:
   return job;
 }
 
-function artifactExtension(kind: ArtifactKind) {
-  switch (kind) {
-    case "website":
-      return "html";
-    case "pptx":
-      return "pptx";
-    case "pdf":
-      return "pdf";
-    case "resume_docx":
-      return "docx";
-    case "resume_pdf":
-      return "pdf";
-    default:
-      return "bin";
-  }
-}
-
 export function processJob(jobId: string, options?: { forceFailCode?: string }) {
   const job = state.jobs.find((entry) => entry.id === jobId);
   if (!job) return null;
@@ -817,47 +801,10 @@ export function processJob(jobId: string, options?: { forceFailCode?: string }) 
     });
   }
 
-  if ((job.type === "project.generate_website" || job.type === "project.generate_artifact") && job.projectId && job.userId) {
-    const project = findProjectById(job.projectId);
-    const user = findUserById(job.userId);
-    if (project && user) {
-      const kind = (job.payload.kind as ArtifactKind | undefined) ?? "website";
-      const artifact = {
-        kind,
-        url: `/generated/${project.slug}/${kind}-${Date.now()}.${artifactExtension(kind)}`,
-        createdAt: nowIso(),
-      };
-      project.artifacts.push(artifact);
-      project.state = project.artifacts.length >= verificationPolicy.builtMinArtifacts ? "built" : "building";
-      project.updatedAt = nowIso();
-
-      addBuildLogEntry({
-        projectId: project.id,
-        userId: user.id,
-        level: "success",
-        message: `Artifact generated: ${kind}`,
-      });
-
-      const career = getCareerPath(user.careerPathId);
-      if (career) {
-        const targetSkill = career.modules[0] ?? "Applied AI";
-        updateSkill(user, targetSkill, "built", verificationPolicy.projectMinScore + 0.1, 1);
-
-        state.verificationEvents.push({
-          id: id("ver"),
-          userId: user.id,
-          projectId: project.id,
-          skill: targetSkill,
-          eventType: "artifact_generated",
-          details: { kind, artifactUrl: artifact.url },
-          createdAt: nowIso(),
-        });
-      }
-
-      user.tokensUsed += 950;
-      touchProfile(user);
-    }
-  }
+  // NOTE (Phase 2.1): artifact generation jobs are NEVER completed here with
+  // placeholder content. Content generation is orchestrated by the caller
+  // (apps/web/lib/artifact-generation.ts or the worker), which calls
+  // completeArtifactGeneration / failArtifactGeneration explicitly.
 
   transitionJob(job.id, "completed");
   return { ok: true, job };
@@ -897,10 +844,17 @@ export function addProjectChatMessage(input: { projectId: string; userId: string
   };
 }
 
+/**
+ * Begins an artifact generation job. This NEVER emits an artifact by itself —
+ * the caller must generate real content and then call
+ * `completeArtifactGeneration` (success) or `failArtifactGeneration`
+ * (hard failure, no placeholder, no state flip).
+ */
 export function requestArtifactGeneration(input: {
   projectId: string;
   userId: string;
   kind: ArtifactKind;
+  stepKey?: string | null;
   forceFailCode?: string;
 }) {
   const project = findProjectById(input.projectId);
@@ -913,11 +867,149 @@ export function requestArtifactGeneration(input: {
     type: input.kind === "website" ? "project.generate_website" : "project.generate_artifact",
     userId: input.userId,
     projectId: input.projectId,
-    payload: { kind: input.kind, forceFailCode: input.forceFailCode ?? null },
+    payload: { kind: input.kind, stepKey: input.stepKey ?? null, forceFailCode: input.forceFailCode ?? null },
   });
 
-  const result = processJob(job.id, { forceFailCode: input.forceFailCode });
-  return { job, result, project: findProjectById(input.projectId) };
+  if (input.forceFailCode) {
+    transitionJob(job.id, "failed", input.forceFailCode);
+    addBuildLogEntry({
+      projectId: project.id,
+      userId: input.userId,
+      level: "error",
+      message: `Job ${job.type} failed with ${input.forceFailCode}`,
+      metadata: { errorCode: input.forceFailCode },
+    });
+    return { job, result: { ok: false as const, job }, project: findProjectById(input.projectId) };
+  }
+
+  transitionJob(job.id, "running");
+  return { job, result: { ok: true as const, job }, project: findProjectById(input.projectId) };
+}
+
+/**
+ * Completes an artifact generation job with REAL persisted content.
+ * `contentId` must reference the stored structured content row — it is what
+ * lets the built-state gate distinguish real artifacts from legacy
+ * placeholders.
+ */
+export function completeArtifactGeneration(input: {
+  jobId: string;
+  projectId: string;
+  userId: string;
+  kind: ArtifactKind;
+  url: string;
+  contentId: string;
+  model?: string | null;
+  stepKey?: string | null;
+  stepTitle?: string | null;
+}) {
+  const project = findProjectById(input.projectId);
+  const user = ensureUserExists(input.userId);
+  if (!project || !user) return null;
+
+  const artifact = {
+    kind: input.kind,
+    url: input.url,
+    createdAt: nowIso(),
+    metadata: {
+      source: "generated_artifact",
+      generator: input.kind === "website" ? "website" : "artifact",
+      contentId: input.contentId,
+      model: input.model ?? null,
+      stepKey: input.stepKey ?? null,
+      stepTitle: input.stepTitle ?? null,
+    },
+  };
+  project.artifacts.push(artifact);
+  project.state = canMarkProjectBuilt(project.artifacts) ? "built" : project.state;
+  project.updatedAt = nowIso();
+
+  addBuildLogEntry({
+    projectId: project.id,
+    userId: user.id,
+    level: "success",
+    message: `Artifact generated: ${input.kind}`,
+    metadata: { contentId: input.contentId, model: input.model ?? null },
+  });
+
+  const career = getCareerPath(user.careerPathId);
+  if (career) {
+    const targetSkill = career.modules[0] ?? "Applied AI";
+    updateSkill(user, targetSkill, "built", verificationPolicy.projectMinScore + 0.1, 1);
+
+    state.verificationEvents.push({
+      id: id("ver"),
+      userId: user.id,
+      projectId: project.id,
+      skill: targetSkill,
+      eventType: "artifact_generated",
+      details: { kind: input.kind, artifactUrl: artifact.url, contentId: input.contentId },
+      createdAt: nowIso(),
+    });
+  }
+
+  user.tokensUsed += 950;
+  touchProfile(user);
+
+  const job = transitionJob(input.jobId, "completed");
+  if (!job) return null;
+  return { job, result: { ok: true as const, job }, project: findProjectById(input.projectId) };
+}
+
+/**
+ * Hard failure for an artifact generation job: mark it failed loudly and do
+ * NOT flip project or skill state. No placeholder artifact is ever written.
+ */
+export function failArtifactGeneration(input: {
+  jobId: string;
+  projectId: string;
+  userId: string;
+  failureCode: string;
+}) {
+  const job = transitionJob(input.jobId, "failed", input.failureCode);
+  if (!job) return null;
+  addBuildLogEntry({
+    projectId: input.projectId,
+    userId: input.userId,
+    level: "error",
+    message: `Artifact generation failed: ${input.failureCode}`,
+    metadata: { errorCode: input.failureCode },
+  });
+  return { job, result: { ok: false as const, job }, project: findProjectById(input.projectId) };
+}
+
+/**
+ * Marks a module skill verified once the tutor-session proof checklist is
+ * complete AND the project has real built evidence (Phase 2.3 gate).
+ */
+export function markSkillVerified(input: { userId: string; projectId: string; skill?: string | null }) {
+  const user = ensureUserExists(input.userId);
+  const project = findProjectById(input.projectId);
+  if (!user || !project) return null;
+
+  const targetSkill = input.skill?.trim() || targetModuleSkill(user);
+  updateSkill(user, targetSkill, "verified", verificationPolicy.projectMinScore + 0.2, 1);
+
+  state.verificationEvents.push({
+    id: id("ver"),
+    userId: user.id,
+    projectId: project.id,
+    skill: targetSkill,
+    eventType: "verification_passed",
+    details: { source: "tutor_session_checklist" },
+    createdAt: nowIso(),
+  });
+
+  addBuildLogEntry({
+    projectId: project.id,
+    userId: user.id,
+    level: "success",
+    message: `Skill verified: ${targetSkill}`,
+    metadata: { source: "tutor_session_checklist" },
+  });
+
+  touchProfile(user);
+  return user.skills.find((entry) => entry.skill === targetSkill) ?? null;
 }
 
 function moduleStepKey(title: string, index: number) {
@@ -1034,7 +1126,8 @@ export function updateProjectModuleStep(input: {
   }
 
   if (!beforeAllCompleted && allCompleted) {
-    updateSkill(user, targetModuleSkill(user), "built", verificationPolicy.moduleMinScore + 0.05, 1);
+    // Phase 2.3: completing the checklist alone never fabricates a "built"
+    // skill — built requires a real generated artifact or submitted proof.
     state.verificationEvents.push({
       id: id("ver"),
       userId: user.id,
@@ -1078,7 +1171,9 @@ export function recordProjectArtifact(input: {
     createdAt: nowIso(),
     metadata: input.metadata ?? {},
   });
-  project.state = project.artifacts.length >= verificationPolicy.builtMinArtifacts ? "built" : "building";
+  // Phase 2.3 gate: only real evidence (generated content or submitted proof)
+  // can move a project to "built".
+  project.state = canMarkProjectBuilt(project.artifacts) ? "built" : project.state;
   project.updatedAt = nowIso();
 
   addBuildLogEntry({

@@ -1,4 +1,12 @@
 import { runtimeFindProjectBySlug } from "@/lib/runtime";
+import { getArtifactContentByUrl } from "@/lib/artifact-content-store";
+import type {
+  ArtifactContentRecord,
+  BriefContent,
+  DeckContent,
+  ResumeContent,
+  WebsiteContent,
+} from "@aitutor/shared";
 
 type ArtifactDescriptor = {
   projectSlug: string;
@@ -6,6 +14,12 @@ type ArtifactDescriptor = {
   description: string;
   kindLabel: string;
   generatedAtIso: string;
+};
+
+type PptxSlide = {
+  title: string;
+  bullets: string[];
+  notes?: string | null;
 };
 
 const CRC32_TABLE = (() => {
@@ -273,19 +287,17 @@ function buildDocxBuffer(lines: string[]) {
   ]);
 }
 
-function buildPptxBuffer(lines: string[]) {
-  const title = lines[0]?.trim() || "Generated Artifact";
-  const bulletLines = lines.slice(1, 8).map((line) => line.trim()).filter(Boolean);
-
+function buildSlideXml(slide: PptxSlide) {
   const titleParagraph = [
     "<a:p>",
     '<a:r><a:rPr lang="en-US" sz="3600" b="1"/><a:t>',
-    escapeXml(title),
+    escapeXml(slide.title || "Generated Artifact"),
     "</a:t></a:r>",
     '<a:endParaRPr lang="en-US" sz="3600"/>',
     "</a:p>",
   ].join("");
 
+  const bulletLines = slide.bullets.map((line) => line.trim()).filter(Boolean);
   const bulletParagraphs = bulletLines.length
     ? bulletLines
       .map((line) => [
@@ -298,13 +310,51 @@ function buildPptxBuffer(lines: string[]) {
       .join("")
     : '<a:p><a:r><a:rPr lang="en-US" sz="2000"/><a:t>Generated presentation content.</a:t></a:r><a:endParaRPr lang="en-US" sz="2000"/></a:p>';
 
+  const notesParagraph = slide.notes?.trim()
+    ? [
+        '<a:p><a:r><a:rPr lang="en-US" sz="1400" i="1"/><a:t>',
+        escapeXml(`Speaker notes: ${slide.notes.trim()}`),
+        "</a:t></a:r>",
+        '<a:endParaRPr lang="en-US" sz="1400"/></a:p>',
+      ].join("")
+    : "";
+
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">',
+    "<p:cSld><p:spTree>",
+    '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>',
+    '<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>',
+    '<p:sp><p:nvSpPr><p:cNvPr id="2" name="Title"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>',
+    '<a:xfrm><a:off x="457200" y="274320"/><a:ext cx="8229600" cy="1143000"/></a:xfrm>',
+    "</p:spPr><p:txBody><a:bodyPr/><a:lstStyle/>",
+    titleParagraph,
+    "</p:txBody></p:sp>",
+    '<p:sp><p:nvSpPr><p:cNvPr id="3" name="Body"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>',
+    '<a:xfrm><a:off x="457200" y="1714500"/><a:ext cx="8229600" cy="4381500"/></a:xfrm>',
+    "</p:spPr><p:txBody><a:bodyPr/><a:lstStyle/>",
+    bulletParagraphs,
+    notesParagraph,
+    "</p:txBody></p:sp>",
+    "</p:spTree></p:cSld>",
+    "<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>",
+    "</p:sld>",
+  ].join("");
+}
+
+function buildPptxBuffer(slides: PptxSlide[]) {
+  const slideList = slides.length ? slides.slice(0, 12) : [{ title: "Generated Artifact", bullets: [] }];
+
   const contentTypes = [
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
     '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
     '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
     '<Default Extension="xml" ContentType="application/xml"/>',
     '<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>',
-    '<Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>',
+    ...slideList.map(
+      (_slide, index) =>
+        `<Override PartName="/ppt/slides/slide${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`,
+    ),
     '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>',
     '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>',
     "</Types>",
@@ -322,38 +372,22 @@ function buildPptxBuffer(lines: string[]) {
   const presentationRels = [
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
-    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>',
+    ...slideList.map(
+      (_slide, index) =>
+        `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${index + 1}.xml"/>`,
+    ),
     "</Relationships>",
   ].join("");
 
   const presentationXml = [
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
     '<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">',
-    '<p:sldIdLst><p:sldId id="256" r:id="rId1"/></p:sldIdLst>',
+    "<p:sldIdLst>",
+    ...slideList.map((_slide, index) => `<p:sldId id="${256 + index}" r:id="rId${index + 1}"/>`),
+    "</p:sldIdLst>",
     '<p:sldSz cx="9144000" cy="6858000" type="screen4x3"/>',
     '<p:notesSz cx="6858000" cy="9144000"/>',
     "</p:presentation>",
-  ].join("");
-
-  const slideXml = [
-    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
-    '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">',
-    "<p:cSld><p:spTree>",
-    '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>',
-    '<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>',
-    '<p:sp><p:nvSpPr><p:cNvPr id="2" name="Title"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>',
-    '<a:xfrm><a:off x="457200" y="274320"/><a:ext cx="8229600" cy="1143000"/></a:xfrm>',
-    "</p:spPr><p:txBody><a:bodyPr/><a:lstStyle/>",
-    titleParagraph,
-    "</p:txBody></p:sp>",
-    '<p:sp><p:nvSpPr><p:cNvPr id="3" name="Body"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>',
-    '<a:xfrm><a:off x="457200" y="1714500"/><a:ext cx="8229600" cy="4381500"/></a:xfrm>',
-    "</p:spPr><p:txBody><a:bodyPr/><a:lstStyle/>",
-    bulletParagraphs,
-    "</p:txBody></p:sp>",
-    "</p:spTree></p:cSld>",
-    "<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>",
-    "</p:sld>",
   ].join("");
 
   const now = new Date().toISOString();
@@ -371,7 +405,7 @@ function buildPptxBuffer(lines: string[]) {
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
     '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">',
     "<Application>My AI Skill Tutor</Application>",
-    "<Slides>1</Slides>",
+    `<Slides>${slideList.length}</Slides>`,
     "<Notes>0</Notes>",
     "<HiddenSlides>0</HiddenSlides>",
     "<MMClips>0</MMClips>",
@@ -384,7 +418,10 @@ function buildPptxBuffer(lines: string[]) {
     { name: "_rels/.rels", data: Buffer.from(rootRels, "utf8") },
     { name: "ppt/presentation.xml", data: Buffer.from(presentationXml, "utf8") },
     { name: "ppt/_rels/presentation.xml.rels", data: Buffer.from(presentationRels, "utf8") },
-    { name: "ppt/slides/slide1.xml", data: Buffer.from(slideXml, "utf8") },
+    ...slideList.map((slide, index) => ({
+      name: `ppt/slides/slide${index + 1}.xml`,
+      data: Buffer.from(buildSlideXml(slide), "utf8"),
+    })),
     { name: "docProps/core.xml", data: Buffer.from(coreXml, "utf8") },
     { name: "docProps/app.xml", data: Buffer.from(appXml, "utf8") },
   ]);
@@ -450,6 +487,155 @@ function safeFilename(name: string, ext: string) {
   return `${base}.${ext}`;
 }
 
+// --- real content renderers (Phase 2.1) --------------------------------------
+// These feed the writers above with the persisted structured content instead
+// of the legacy title+timestamp placeholder.
+
+function websiteContentToHtml(content: WebsiteContent, descriptor: ArtifactDescriptor) {
+  const sections = content.sections
+    .map((section) => {
+      const bullets = section.bullets?.length
+        ? `<ul>${section.bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join("")}</ul>`
+        : "";
+      return `<section><h2>${escapeHtml(section.heading)}</h2><p>${escapeHtml(section.body)}</p>${bullets}</section>`;
+    })
+    .join("");
+
+  return [
+    "<!doctype html>",
+    '<html lang="en">',
+    "<head>",
+    '<meta charset="utf-8" />',
+    '<meta name="viewport" content="width=device-width, initial-scale=1" />',
+    `<title>${escapeHtml(content.title)}</title>`,
+    "<style>body{font-family:Inter,Arial,sans-serif;background:#0f172a;color:#e2e8f0;margin:0;padding:32px}main{max-width:860px;margin:0 auto}header{background:linear-gradient(135deg,#111827,#0b1220);border:1px solid #1f2937;border-radius:20px;padding:40px 32px;text-align:center}h1{margin:0 0 12px;font-size:34px;color:#f8fafc}.tagline{color:#94a3b8;font-size:18px;line-height:1.6;margin:0 auto;max-width:640px}.cta{display:inline-block;margin-top:24px;padding:12px 24px;border-radius:999px;background:#10b981;color:#052e22;font-weight:600;text-decoration:none}section{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;margin-top:20px}h2{margin:0 0 10px;font-size:20px;color:#a7f3d0}p{line-height:1.7;margin:0}ul{margin:12px 0 0;padding-left:20px;line-height:1.7}footer{margin-top:28px;text-align:center;color:#64748b;font-size:13px}</style>",
+    "</head>",
+    "<body>",
+    "<main>",
+    "<header>",
+    `<h1>${escapeHtml(content.title)}</h1>`,
+    `<p class="tagline">${escapeHtml(content.tagline)}</p>`,
+    `<span class="cta">${escapeHtml(content.heroCta)}</span>`,
+    "</header>",
+    sections,
+    `<footer>${escapeHtml(content.footerNote)} &middot; ${escapeHtml(descriptor.projectSlug)}</footer>`,
+    "</main>",
+    "</body>",
+    "</html>",
+  ].join("");
+}
+
+function resumeContentToLines(content: ResumeContent) {
+  return [
+    content.fullName,
+    content.headline,
+    "",
+    "SUMMARY",
+    content.summary,
+    "",
+    "EXPERIENCE HIGHLIGHTS",
+    ...content.experienceBullets.map((bullet) => `- ${bullet}`),
+    "",
+    "SKILLS",
+    content.skills.join(", "),
+    "",
+    "AI PROOF-OF-WORK",
+    ...content.aiProof.map((line) => `- ${line}`),
+  ];
+}
+
+function briefContentToLines(content: BriefContent) {
+  return [
+    content.title,
+    "",
+    content.summary,
+    "",
+    ...content.sections.flatMap((section) => [
+      section.heading.toUpperCase(),
+      section.body,
+      ...(section.bullets ?? []).map((bullet) => `- ${bullet}`),
+      "",
+    ]),
+    "NEXT STEPS",
+    ...content.nextSteps.map((step) => `- ${step}`),
+  ];
+}
+
+function deckContentToSlides(content: DeckContent): PptxSlide[] {
+  return [
+    { title: content.title, bullets: [content.subtitle] },
+    ...content.slides.map((slide) => ({
+      title: slide.title,
+      bullets: slide.bullets,
+      notes: slide.speakerNotes,
+    })),
+  ];
+}
+
+function deckContentToLines(content: DeckContent) {
+  return [
+    content.title,
+    content.subtitle,
+    "",
+    ...content.slides.flatMap((slide, index) => [
+      `Slide ${index + 1}: ${slide.title}`,
+      ...slide.bullets.map((bullet) => `- ${bullet}`),
+      `Speaker notes: ${slide.speakerNotes}`,
+      "",
+    ]),
+  ];
+}
+
+function renderStoredContent(record: ArtifactContentRecord, descriptor: ArtifactDescriptor, ext: string): Buffer | null {
+  switch (record.contentKind) {
+    case "website": {
+      const content = record.content as WebsiteContent;
+      if (ext === "html") return Buffer.from(websiteContentToHtml(content, descriptor), "utf8");
+      return null;
+    }
+    case "resume": {
+      const content = record.content as ResumeContent;
+      const lines = resumeContentToLines(content);
+      if (ext === "docx") return buildDocxBuffer(lines);
+      if (ext === "pdf") return buildPdfBuffer(lines);
+      if (ext === "txt") return Buffer.from(lines.join("\n"), "utf8");
+      return null;
+    }
+    case "deck": {
+      const content = record.content as DeckContent;
+      if (ext === "pptx") return buildPptxBuffer(deckContentToSlides(content));
+      if (ext === "pdf") return buildPdfBuffer(deckContentToLines(content));
+      if (ext === "txt") return Buffer.from(deckContentToLines(content).join("\n"), "utf8");
+      return null;
+    }
+    case "brief": {
+      const content = record.content as BriefContent;
+      const lines = briefContentToLines(content);
+      if (ext === "pdf") return buildPdfBuffer(lines);
+      if (ext === "docx") return buildDocxBuffer(lines);
+      if (ext === "txt") return Buffer.from(lines.join("\n"), "utf8");
+      return null;
+    }
+    default:
+      return null;
+  }
+}
+
+function artifactResponse(payload: Buffer, fileName: string, ext: string, renderer: string) {
+  const filename = safeFilename(fileName, ext);
+  const disposition = ext === "html" ? "inline" : "attachment";
+  return new Response(new Uint8Array(payload), {
+    status: 200,
+    headers: {
+      "content-type": mimeByExtension(ext),
+      "content-length": String(payload.length),
+      "content-disposition": `${disposition}; filename="${filename}"`,
+      "cache-control": "public, max-age=60, s-maxage=60",
+      "x-artifact-renderer": renderer,
+    },
+  });
+}
+
 export async function GET(_req: Request, context: { params: Promise<{ slug?: string[] }> }) {
   const { slug = [] } = await context.params;
   const parts = slug.map((part) => sanitizePart(part)).filter((part): part is string => Boolean(part));
@@ -468,27 +654,32 @@ export async function GET(_req: Request, context: { params: Promise<{ slug?: str
     return new Response("Artifact not found", { status: 404 });
   }
 
+  // Phase 2.1: artifacts render from persisted, LLM-generated content.
+  const artifactUrl = `/generated/${parts.join("/")}`;
+  const stored = await getArtifactContentByUrl(artifactUrl).catch(() => null);
+  if (stored) {
+    const payload = renderStoredContent(stored, descriptor, ext);
+    if (payload) {
+      return artifactResponse(payload, fileName, ext, "generated-route-v2");
+    }
+  }
+
+  // No persisted content: only the demo slug may render the descriptor shell.
+  // Real artifact URLs without content 404 — placeholders are never emitted.
+  if (descriptor.projectSlug !== "demo") {
+    return new Response("Artifact content not found", { status: 404 });
+  }
+
   const lines = descriptorLines(descriptor);
   const payload = ext === "html"
     ? Buffer.from(buildHtmlArtifact(descriptor), "utf8")
     : ext === "pdf"
       ? buildPdfBuffer(lines)
       : ext === "pptx"
-        ? buildPptxBuffer(lines)
+        ? buildPptxBuffer([{ title: lines[0] ?? "Demo Artifact", bullets: lines.slice(1, 8) }])
       : ext === "docx"
         ? buildDocxBuffer(lines)
         : Buffer.from(lines.join("\n"), "utf8");
 
-  const filename = safeFilename(fileName, ext);
-  const disposition = ext === "html" ? "inline" : "attachment";
-  return new Response(payload, {
-    status: 200,
-    headers: {
-      "content-type": mimeByExtension(ext),
-      "content-length": String(payload.length),
-      "content-disposition": `${disposition}; filename="${filename}"`,
-      "cache-control": "public, max-age=60, s-maxage=60",
-      "x-artifact-renderer": "generated-route-v1",
-    },
-  });
+  return artifactResponse(payload, fileName, ext, "generated-route-v1");
 }

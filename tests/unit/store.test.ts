@@ -1,15 +1,20 @@
 import { describe, expect, test, beforeEach } from "vitest";
 import {
   applyVerificationForSkill,
+  completeArtifactGeneration,
   createDailyUpdate,
   createOnboardingSession,
   createProject,
   createSocialDrafts,
+  failArtifactGeneration,
+  findProjectById,
   findUserById,
   publishSocialDraft,
   refreshRelevantNews,
   requestArtifactGeneration,
   resetStateForTests,
+  syncProjectModuleSteps,
+  updateProjectModuleStep,
 } from "../../packages/shared/src/store";
 
 const defaultUser = "user_test_0001";
@@ -19,7 +24,7 @@ describe("store workflows", () => {
     resetStateForTests();
   });
 
-  test("artifact generation creates evidence and keeps deterministic state", () => {
+  test("artifact request alone never emits a placeholder or flips built", () => {
     const project = createProject({
       userId: defaultUser,
       title: "TEST_PROJECT",
@@ -36,7 +41,97 @@ describe("store workflows", () => {
 
     expect(result).toBeTruthy();
     expect(result?.result.ok).toBe(true);
-    expect(result?.project?.artifacts.some((entry) => entry.kind === "pptx")).toBe(true);
+    // Content generation is orchestrated by the caller; the request itself
+    // must not fabricate artifacts or progress.
+    expect(result?.project?.artifacts.length ?? 0).toBe(0);
+    expect(result?.project?.state).toBe("building");
+    expect(result?.job.status).toBe("running");
+  });
+
+  test("completeArtifactGeneration records the artifact with content metadata and flips built", () => {
+    const project = createProject({
+      userId: defaultUser,
+      title: "TEST_PROJECT_COMPLETE",
+      description: "Test project for artifact completion",
+    });
+    if (!project) throw new Error("TEST_PROJECT_CREATE_FAILED");
+
+    const pending = requestArtifactGeneration({ userId: defaultUser, projectId: project.id, kind: "pptx" });
+    if (!pending) throw new Error("TEST_REQUEST_FAILED");
+
+    const completed = completeArtifactGeneration({
+      jobId: pending.job.id,
+      projectId: project.id,
+      userId: defaultUser,
+      kind: "pptx",
+      url: `/generated/${project.slug}/pptx-1.pptx`,
+      contentId: "content-abc",
+      model: "gpt-4.1-mini",
+    });
+
+    expect(completed?.project?.state).toBe("built");
+    const artifact = completed?.project?.artifacts.find((entry) => entry.kind === "pptx");
+    expect(artifact?.metadata?.contentId).toBe("content-abc");
+    expect(artifact?.metadata?.source).toBe("generated_artifact");
+    expect(completed?.job.status).toBe("completed");
+
+    const user = findUserById(defaultUser);
+    expect(user?.skills.some((entry) => entry.status === "built" || entry.status === "verified")).toBe(true);
+  });
+
+  test("failArtifactGeneration marks the job failed with no artifact and no built flip", () => {
+    const project = createProject({
+      userId: defaultUser,
+      title: "TEST_PROJECT_FAIL",
+      description: "Test project for artifact failure",
+    });
+    if (!project) throw new Error("TEST_PROJECT_CREATE_FAILED");
+
+    const pending = requestArtifactGeneration({ userId: defaultUser, projectId: project.id, kind: "website" });
+    if (!pending) throw new Error("TEST_REQUEST_FAILED");
+
+    const failed = failArtifactGeneration({
+      jobId: pending.job.id,
+      projectId: project.id,
+      userId: defaultUser,
+      failureCode: "OPENAI_RESPONSE_FAILED:500",
+    });
+
+    expect(failed?.job.status).toBe("failed");
+    expect(failed?.job.lastErrorCode).toBe("OPENAI_RESPONSE_FAILED:500");
+    expect(failed?.project?.artifacts.length ?? 0).toBe(0);
+    expect(failed?.project?.state).not.toBe("built");
+  });
+
+  test("completing every module step no longer auto-awards a built skill", () => {
+    const project = createProject({
+      userId: defaultUser,
+      title: "TEST_PROJECT_STEPS",
+      description: "Module step gating test",
+    });
+    if (!project) throw new Error("TEST_PROJECT_CREATE_FAILED");
+
+    syncProjectModuleSteps({
+      projectId: project.id,
+      userId: defaultUser,
+      steps: ["Step one", "Step two"],
+    });
+
+    const synced = findProjectById(project.id);
+    for (const step of synced?.moduleSteps ?? []) {
+      updateProjectModuleStep({
+        projectId: project.id,
+        userId: defaultUser,
+        stepKey: step.stepKey,
+        status: "completed",
+      });
+    }
+
+    const user = findUserById(defaultUser);
+    const targetSkill = user?.skills.find((entry) => entry.skill === "Synthetic User Research");
+    // Checklist completion may mark progress, but never fabricates "built".
+    expect(targetSkill?.status ?? "in_progress").not.toBe("built");
+    expect(findProjectById(project.id)?.state).not.toBe("built");
   });
 
   test("social publish fails in api mode without oauth connection", () => {

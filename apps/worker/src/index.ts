@@ -6,14 +6,21 @@ import {
   EMAIL_PRODUCT_NAME,
   LIFECYCLE_EMAIL_UTM_MEDIUM,
   LIFECYCLE_EMAIL_UTM_SOURCE,
+  PROJECT_ARTIFACT_CONTENTS_TABLE,
   appendLifecycleEmailTracking,
+  artifactContentRowFrom,
+  artifactGenerationFailureCode,
   buildBillingCheckoutReminderEmail,
   buildBillingCheckoutReminderResumeUrl,
   buildLifecycleEmail,
+  buildRecommendedModuleGuide,
   capturePosthogServerEvent,
+  generateArtifactContent,
   isBillingCheckoutReminderCampaign,
   isBillingCheckoutReminderDue,
   resolveLifecycleEmailKey,
+  type ArtifactContentRecord,
+  type ArtifactGenerationContext,
   type EmailCampaignKey,
   type LifecycleEmailAssessment,
   type LifecycleEmailKey,
@@ -2032,13 +2039,98 @@ async function sendDueBillingCheckoutReminderEmails() {
   console.log(`[worker] billing reminders sent: ${sentCount}`);
 }
 
+/**
+ * Builds the artifact generation context for jobs enqueued without a context
+ * snapshot (legacy queued jobs / crash recovery). Jobs created by the web
+ * runtime carry the full context in `payload.context` (explicit identity
+ * across process boundaries) — that snapshot is preferred.
+ */
+async function buildWorkerArtifactContext(
+  job: ClaimedJob,
+  project: { id: string; slug: string; title: string; description?: string | null },
+): Promise<ArtifactGenerationContext> {
+  const supabase = supabaseAdmin();
+
+  const { data: profile } = await supabase
+    .from("learner_profiles")
+    .select("id,full_name,headline,bio,career_path_id,goals")
+    .eq("id", job.learner_profile_id)
+    .maybeSingle();
+
+  const careerPath = CAREER_PATHS.find((path) => path.id === profile?.career_path_id) ?? null;
+  const guide = buildRecommendedModuleGuide({
+    careerPathId: profile?.career_path_id ?? null,
+    moduleTitle: careerPath?.modules[0] ?? "Starter AI Pack",
+    jobTitle: typeof profile?.headline === "string" ? profile.headline : null,
+    primaryGoal: Array.isArray(profile?.goals) ? (profile.goals[0] as never) ?? null : null,
+  });
+
+  const { data: steps } = await supabase
+    .from("project_module_steps")
+    .select("title,status,completed_at")
+    .eq("project_id", project.id)
+    .order("order_index", { ascending: true });
+
+  const { data: artifacts } = await supabase
+    .from("project_artifacts")
+    .select("kind,url,metadata")
+    .eq("project_id", project.id)
+    .in("kind", ["proof_link", "proof_upload"])
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  return {
+    learner: {
+      name: typeof profile?.full_name === "string" ? profile.full_name : "Learner",
+      headline: typeof profile?.headline === "string" ? profile.headline : null,
+      careerPathId: profile?.career_path_id ?? null,
+      careerPathName: careerPath?.name ?? null,
+      goals: Array.isArray(profile?.goals) ? profile.goals.map((goal: unknown) => String(goal)) : [],
+      bio: typeof profile?.bio === "string" ? profile.bio : null,
+    },
+    assessment: null,
+    module: {
+      moduleTitle: guide.moduleTitle,
+      whyThisModule: guide.whyThisModule,
+      expectedOutput: guide.expectedOutput,
+      proofChecklist: guide.proofChecklist,
+      steps: guide.steps,
+    },
+    project: {
+      title: project.title,
+      slug: project.slug,
+      description: typeof project.description === "string" ? project.description : "",
+    },
+    evidence: {
+      completedSteps: (steps ?? [])
+        .filter((step) => step.status === "completed")
+        .map((step) => ({ title: String(step.title), completedAt: step.completed_at ?? null })),
+      proofArtifacts: (artifacts ?? []).map((artifact) => ({
+        kind: String(artifact.kind),
+        url: String(artifact.url),
+        note:
+          artifact.metadata && typeof (artifact.metadata as Record<string, unknown>).note === "string"
+            ? String((artifact.metadata as Record<string, unknown>).note)
+            : null,
+      })),
+      buildNotes: [],
+    },
+  };
+}
+
+/**
+ * Real artifact generation (Phase 2.1). HARD FAILURE contract: any generation
+ * failure throws a coded error — the job is marked failed by the claim loop,
+ * NO artifact row is written, and project/skill state does NOT flip. The
+ * legacy placeholder insert is gone for good.
+ */
 async function processArtifactJob(job: ClaimedJob) {
   if (!job.project_id || !job.learner_profile_id) return;
   const supabase = supabaseAdmin();
 
   const { data: project } = await supabase
     .from("projects")
-    .select("id,slug,title")
+    .select("id,slug,title,description")
     .eq("id", job.project_id)
     .maybeSingle();
 
@@ -2056,13 +2148,59 @@ async function processArtifactJob(job: ClaimedJob) {
         ? "website"
         : "pdf";
 
+  const snapshot = job.payload?.context as ArtifactGenerationContext | undefined;
+  const context =
+    snapshot && typeof snapshot === "object" && snapshot.learner && snapshot.module && snapshot.project
+      ? snapshot
+      : await buildWorkerArtifactContext(job, project);
+
+  let generated;
+  try {
+    generated = await generateArtifactContent({ kind, context });
+  } catch (error) {
+    const failureCode = artifactGenerationFailureCode(error);
+    await appendBuildLog({
+      projectId: project.id,
+      userId: job.learner_profile_id,
+      level: "error",
+      message: `Artifact generation failed for ${kind}: ${failureCode}`,
+      metadata: { errorCode: failureCode },
+    });
+    // Re-throw with the stable code so the claim loop marks the job failed.
+    throw new Error(failureCode);
+  }
+
   const artifactUrl = `/generated/${project.slug}/${kind}-${Date.now()}.${artifactExtension(kind)}`;
+
+  const contentRecord: ArtifactContentRecord = {
+    id: randomUUID(),
+    projectId: project.id,
+    learnerProfileId: job.learner_profile_id,
+    artifactUrl,
+    kind,
+    contentKind: generated.contentKind,
+    content: generated.content,
+    model: generated.model,
+    createdAt: nowIso(),
+  };
+  const { error: contentError } = await supabase
+    .from(PROJECT_ARTIFACT_CONTENTS_TABLE)
+    .insert(artifactContentRowFrom(contentRecord));
+  if (contentError) {
+    throw new Error(`ARTIFACT_CONTENT_PERSIST_FAILED:${contentError.message}`);
+  }
 
   await supabase.from("project_artifacts").insert({
     id: randomUUID(),
     project_id: project.id,
     kind,
     url: artifactUrl,
+    metadata: {
+      source: "generated_artifact",
+      generator: kind === "website" ? "website" : "artifact",
+      contentId: contentRecord.id,
+      model: generated.model,
+    },
   });
 
   await supabase
@@ -2075,6 +2213,7 @@ async function processArtifactJob(job: ClaimedJob) {
     userId: job.learner_profile_id,
     level: "success",
     message: `Artifact generated: ${kind}`,
+    metadata: { contentId: contentRecord.id, model: generated.model },
   });
 
   const skill = await firstModuleForUser(job.learner_profile_id);
@@ -2310,7 +2449,12 @@ async function processClaimedJobs() {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`[worker] job error: ${job.id} ${message}`);
-      await scheduleRetryOrFail(job, "WORKER_RUNTIME_ERROR");
+      // Preserve stable failure codes (OPENAI_*, ARTIFACT_CONTENT_*) so job
+      // rows report the real cause instead of a generic runtime error.
+      const failureCode = /^[A-Z][A-Z0-9_:.-]*$/.test(message.split(":").slice(0, 2).join(":"))
+        ? message.slice(0, 120)
+        : "WORKER_RUNTIME_ERROR";
+      await scheduleRetryOrFail(job, failureCode);
     }
   }
 }

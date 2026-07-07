@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import {
   addProjectChatMessage,
+  completeArtifactGeneration,
   createOnboardingSession,
   createProject,
   createSocialDrafts,
@@ -84,6 +85,19 @@ describe("integration flows", () => {
       kind: "pdf",
     });
     expect(artifact?.result.ok).toBe(true);
+    // Requesting generation never fabricates an artifact by itself.
+    expect(artifact?.project?.artifacts.length ?? 0).toBe(0);
+
+    const completed = completeArtifactGeneration({
+      jobId: artifact!.job.id,
+      projectId: project.id,
+      userId: "user_test_0001",
+      kind: "pdf",
+      url: `/generated/${project.slug}/pdf-1.pdf`,
+      contentId: "content-int-001",
+      model: "gpt-4.1-mini",
+    });
+    expect(completed?.project?.artifacts.some((entry) => entry.kind === "pdf")).toBe(true);
 
     const events = listProjectEvents(project.id);
     expect(events.length).toBeGreaterThan(0);
