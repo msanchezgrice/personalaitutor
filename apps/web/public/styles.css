@@ -1865,29 +1865,9 @@ body[data-path^="/dashboard"] [data-gemini-shell="1"] > main article {
 
 /* Onboarding now uses explicit light colors — no theme overrides needed */
 
-:root[data-theme="light"] body[data-path="/assessment"] h1,
-:root[data-theme="light"] body[data-path="/assessment"] h2,
-:root[data-theme="light"] body[data-path="/assessment"] p {
-  color: #0f172a !important;
-}
-
-:root[data-theme="light"] body[data-path="/assessment"] .glass-panel {
-  background: #ffffff !important;
-  border-color: rgba(148, 163, 184, 0.35) !important;
-}
-
-:root[data-theme="light"] body[data-path="/assessment"] .glass-panel .text-emerald-400 {
-  color: #059669 !important;
-}
-
-:root[data-theme="light"] body[data-path="/assessment"] .glass-panel label {
-  color: #0f172a !important;
-}
-
-:root[data-theme="light"] body[data-path="/assessment"] .glass-panel span.text-gray-500,
-:root[data-theme="light"] body[data-path="/assessment"] .glass-panel .text-gray-500 {
-  color: #64748b !important;
-}
+/* The anonymous assessment page (rebuild Phase 1) is always dark and styles
+   itself; the legacy light-theme-by-path overrides that used to live here
+   painted its text dark-on-dark and are gone. */
 
 /* Runtime loading skeletons for dashboard first-load responsiveness */
 .runtime-skeleton {
