@@ -2,6 +2,29 @@ import { jsonError, jsonOk, runtimeCreateDailyUpdate, runtimeFindUserById } from
 import { NextRequest } from "next/server";
 import { forcedFailCode, getUserId } from "@/lib/api";
 import { requireBillingAccess } from "@/lib/billing-access";
+import { requireCronSecret } from "@/lib/cron-auth";
+import { runDailyRescoreSweep } from "@/lib/daily-action";
+
+export const maxDuration = 300;
+
+/**
+ * Vercel cron entry (crons send GET): daily re-scoring + daily-action sweep
+ * for all active subscribers (rebuild Phase 3.3/3.6). Guarded by CRON_SECRET.
+ * The POST handler below stays for per-user manual triggering.
+ */
+export async function GET(req: NextRequest) {
+  const unauthorized = requireCronSecret(req);
+  if (unauthorized) return unauthorized;
+
+  const result = await runDailyRescoreSweep();
+  return jsonOk({
+    attempted: result.attempted,
+    created: result.created,
+    existing: result.existing,
+    skipped: result.skipped,
+    failed: result.failed,
+  });
+}
 
 export async function POST(req: NextRequest) {
   const userId = getUserId(req);

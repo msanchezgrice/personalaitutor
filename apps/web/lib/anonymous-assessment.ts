@@ -506,6 +506,35 @@ export async function getLatestAssessmentReportForProfile(
   return data ? reportFromRow(data as AssessmentReportHistoryRow) : null;
 }
 
+/**
+ * Full append-only score history for a learner, oldest first. This is the
+ * score's spine: daily re-scoring appends to it and the weekly proof-of-watch
+ * email derives the score trend from it at send time (rebuild Phase 3.3/3.4).
+ */
+export async function listAssessmentReportsForProfile(
+  learnerProfileId: string,
+): Promise<AssessmentReportRecord[]> {
+  const normalized = cleanText(learnerProfileId, 80);
+  if (!normalized) return [];
+
+  if (mode() === "memory") {
+    return Array.from(memoryReports.values())
+      .flat()
+      .filter((entry) => entry.learnerProfileId === normalized)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((entry) => ({ ...entry }));
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data } = await supabase
+    .from("assessment_report_history")
+    .select(REPORT_SELECT_FIELDS)
+    .eq("learner_profile_id", normalized)
+    .order("created_at", { ascending: true });
+
+  return ((data ?? []) as AssessmentReportHistoryRow[]).map(reportFromRow);
+}
+
 // --- account linking ---------------------------------------------------------
 
 /**

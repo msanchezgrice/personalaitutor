@@ -67,6 +67,7 @@ import {
 } from "@aitutor/shared";
 import { BRAND_NAME, getSiteUrl } from "./site";
 import { callOpenAiResponses, extractOpenAiOutputText } from "./openai-responses";
+import { briefingNewsForPath } from "./daily-briefing";
 import { mergeAttribution } from "./attribution";
 import { recordPersistedFunnelEvent } from "./funnel-events-server";
 import { billingAccessAllowed, normalizeBillingStatus } from "./billing";
@@ -3363,40 +3364,6 @@ function parseIdeaPayload(raw: string): { linkedin: string; x: string; contextLa
   }
 }
 
-type PersonalizedNewsCategory = "capabilities" | "tools" | "job_displacement" | "policy" | "workflow";
-type StoryImpact = "high" | "medium" | "low";
-
-type PersonalizedNewsStory = {
-  title: string;
-  url: string;
-  summary: string;
-  category: PersonalizedNewsCategory;
-  relevanceScore: number;
-  rankingScore: number;
-  whyRelevant: string;
-  recommendedAction: string;
-  impact: StoryImpact;
-  source: string | null;
-  publishedAt: string;
-};
-
-type PersonalizedNewsPayload = {
-  focusSummary: string;
-  selectionRationale: string;
-  stories: Array<{
-    title: string;
-    url: string;
-    source?: string | null;
-    publishedAt?: string | null;
-    summary: string;
-    category?: string | null;
-    relevanceScore?: number | null;
-    whyRelevant?: string | null;
-    actionForUser?: string | null;
-    impact?: string | null;
-  }>;
-};
-
 type LearnerNewsContext = {
   user: UserProfile;
   projects: Project[];
@@ -3416,183 +3383,9 @@ type LearnerNewsContext = {
   careerPathIds: string[];
 };
 
-function clampNumber(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function normalizeStoryCategory(input?: string | null): PersonalizedNewsCategory {
-  const normalized = String(input ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s-]+/g, "_");
-  if (normalized === "capabilities" || normalized === "capability") return "capabilities";
-  if (normalized === "tools" || normalized === "tooling" || normalized === "infrastructure") return "tools";
-  if (normalized === "job_displacement" || normalized === "job_market" || normalized === "labor" || normalized === "workforce") {
-    return "job_displacement";
-  }
-  if (normalized === "policy" || normalized === "regulation" || normalized === "compliance") return "policy";
-  return "workflow";
-}
-
-function normalizeImpact(input?: string | null): StoryImpact {
-  const normalized = String(input ?? "")
-    .trim()
-    .toLowerCase();
-  if (normalized === "high" || normalized === "critical") return "high";
-  if (normalized === "low") return "low";
-  return "medium";
-}
-
-function sanitizeHttpUrl(input: string) {
-  try {
-    const parsed = new URL(input.trim());
-    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
-      return parsed.toString();
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function parseDateOrNow(input?: string | null) {
-  if (!input) return new Date().toISOString();
-  const parsed = new Date(input);
-  if (Number.isNaN(parsed.getTime())) return new Date().toISOString();
-  return parsed.toISOString();
-}
-
 function trimText(value: unknown, max = 320) {
   if (typeof value !== "string") return "";
   return value.replace(/\s+/g, " ").trim().slice(0, max);
-}
-
-function extractJsonPayload(raw: string) {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  const withoutFence = trimmed
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/```$/i, "")
-    .trim();
-
-  try {
-    return JSON.parse(withoutFence) as PersonalizedNewsPayload;
-  } catch {
-    return null;
-  }
-}
-
-function keywordSet(parts: Array<string | null | undefined>) {
-  const values = parts
-    .flatMap((entry) => String(entry ?? "").toLowerCase().split(/[^a-z0-9]+/g))
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length >= 3);
-  return new Set(values);
-}
-
-function keywordOverlap(a: Set<string>, b: Set<string>) {
-  let matches = 0;
-  for (const value of a) {
-    if (b.has(value)) matches += 1;
-  }
-  return matches;
-}
-
-function scoreNewsStory(story: PersonalizedNewsStory, context: LearnerNewsContext) {
-  let score = clampNumber(Number(story.relevanceScore || 0), 10, 100);
-  const situation = context.onboarding?.situation ?? null;
-  const userGoals = new Set(context.user.goals);
-  const userKeywords = keywordSet([
-    context.user.headline,
-    context.user.bio,
-    ...context.user.tools,
-    ...context.user.skills.map((entry) => entry.skill),
-    ...context.projects.map((project) => project.title),
-  ]);
-  const storyKeywords = keywordSet([story.title, story.summary, story.whyRelevant, story.recommendedAction]);
-  const overlap = keywordOverlap(userKeywords, storyKeywords);
-
-  score += Math.min(12, overlap * 2);
-
-  if (story.category === "tools" && context.user.tools.length > 0) {
-    score += 8;
-  }
-  if (story.category === "job_displacement" && (situation === "unemployed" || situation === "career_switcher" || situation === "student")) {
-    score += 12;
-  }
-  if (story.category === "capabilities" && (context.user.careerPathId === "software-engineering" || context.user.careerPathId === "quality-assurance")) {
-    score += 6;
-  }
-  if (story.category === "workflow" && context.projects.some((entry) => entry.state === "building" || entry.state === "built")) {
-    score += 5;
-  }
-  if (story.category === "policy" && (userGoals.has("showcase_for_job") || userGoals.has("find_new_role"))) {
-    score += 4;
-  }
-
-  return clampNumber(score, 1, 100);
-}
-
-function buildFallbackPersonalizedStories(context: LearnerNewsContext, count: number) {
-  const now = new Date().toISOString();
-  const base: PersonalizedNewsStory[] = [
-    {
-      title: "AI capabilities: teams are adopting stricter eval gates before deployment",
-      url: "https://openai.com/news/",
-      summary: "Organizations are pairing better model quality with regression testing to keep AI workflows stable.",
-      category: "capabilities",
-      relevanceScore: 82,
-      rankingScore: 82,
-      whyRelevant: `This supports your ${context.user.careerPathId} path by reducing production risk while shipping faster.`,
-      recommendedAction: "Create a simple pre-release eval checklist for your next project update.",
-      impact: "high",
-      source: "OpenAI News",
-      publishedAt: now,
-    },
-    {
-      title: "AI tools: automation platforms now ship agent-first workflow builders",
-      url: "https://www.anthropic.com/news",
-      summary: "AI-native automation is lowering setup overhead for multi-step personal and team workflows.",
-      category: "tools",
-      relevanceScore: 80,
-      rankingScore: 80,
-      whyRelevant: context.user.tools.length
-        ? `You already use ${context.user.tools.slice(0, 3).join(", ")}, so this trend can compound your current stack.`
-        : "This can reduce build time and improve experimentation speed for your projects.",
-      recommendedAction: "Automate one recurring task end-to-end and measure weekly time saved.",
-      impact: "medium",
-      source: "Anthropic News",
-      publishedAt: now,
-    },
-    {
-      title: "Job displacement signal: hiring is shifting toward AI-augmented execution proof",
-      url: "https://www.weforum.org/stories/",
-      summary: "Employers are emphasizing practical AI delivery evidence over generic tool familiarity.",
-      category: "job_displacement",
-      relevanceScore: 85,
-      rankingScore: 85,
-      whyRelevant: "This directly impacts your career resilience and positioning in AI-assisted roles.",
-      recommendedAction: "Publish one measurable project artifact to strengthen your portfolio signal.",
-      impact: "high",
-      source: "World Economic Forum",
-      publishedAt: now,
-    },
-    {
-      title: "Workflow pattern: lightweight copilots are replacing manual status reporting",
-      url: "https://ai.google/discover/blog/",
-      summary: "Teams are using AI summaries and automated context assembly to reduce coordination overhead.",
-      category: "workflow",
-      relevanceScore: 76,
-      rankingScore: 76,
-      whyRelevant: "Your ongoing projects can benefit from less manual status work and faster iteration loops.",
-      recommendedAction: "Set up an automated weekly project summary from your build logs and notes.",
-      impact: "medium",
-      source: "Google AI Blog",
-      publishedAt: now,
-    },
-  ];
-
-  return base.slice(0, Math.max(1, Math.min(8, count)));
 }
 
 function extractMissionAndMemory(rows: Array<{ key: string; value: unknown }>) {
@@ -4253,173 +4046,6 @@ async function assembleLearnerNewsContext(input: {
     focusSignals,
     careerPathIds,
   } satisfies LearnerNewsContext;
-}
-
-async function generateNewsFromOpenAi(input: {
-  context: LearnerNewsContext;
-  count: number;
-}): Promise<{ source: "llm_web" | "fallback"; focusSummary: string; selectionRationale: string; stories: PersonalizedNewsStory[] }> {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) {
-    return {
-      source: "fallback",
-      focusSummary: "Fallback stories generated from local learner context.",
-      selectionRationale: "OpenAI API key missing; using deterministic context-based recommendations.",
-      stories: buildFallbackPersonalizedStories(input.context, input.count),
-    };
-  }
-
-  const model = process.env.OPENAI_NEWS_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || "gpt-4.1";
-  const contextForPrompt = {
-    profile: {
-      name: input.context.user.name,
-      headline: input.context.user.headline,
-      bio: input.context.user.bio,
-      careerPathId: input.context.user.careerPathId,
-      goals: input.context.user.goals,
-      tools: input.context.user.tools,
-      topSkills: input.context.user.skills
-        .slice(0, 6)
-        .map((entry) => ({ skill: entry.skill, score: Number(entry.score ?? 0), status: entry.status })),
-    },
-    onboarding: input.context.onboarding
-      ? {
-          situation: input.context.onboarding.situation,
-          goals: input.context.onboarding.goals,
-          aiKnowledgeScore: input.context.onboarding.aiKnowledgeScore,
-          careerPathId: input.context.onboarding.careerPathId,
-        }
-      : null,
-    assessment: input.context.assessment,
-    projects: input.context.projects.slice(0, 5).map((project) => ({
-      title: project.title,
-      description: project.description,
-      state: project.state,
-      recentLog: project.buildLog.slice(-2).map((entry) => entry.message).join(" | "),
-    })),
-    recentEvents: input.context.latestEvents.slice(0, 8).map((event) => event.message),
-    missionSnapshot: input.context.missionSnapshot,
-    memorySnapshot: input.context.memorySnapshot,
-    focusSignals: input.context.focusSignals,
-  };
-
-  const prompt = [
-    "You are an AI news curator for a specific user. Identify the most relevant recent AI stories for this person.",
-    "Prioritize these themes: capabilities, tools, job displacement, policy, and workflow changes.",
-    "Use reliable sources and prefer recent stories (last 90 days when possible).",
-    `Return STRICT JSON only with this exact shape:`,
-    "{",
-    '  "focusSummary": "short summary of what this user should watch",',
-    '  "selectionRationale": "why these stories were selected for this user",',
-    '  "stories": [',
-    "    {",
-    '      "title": "story headline",',
-    '      "url": "https://...",',
-    '      "source": "publisher name",',
-    '      "publishedAt": "ISO date or YYYY-MM-DD",',
-    '      "summary": "2-3 sentence summary",',
-    '      "category": "capabilities|tools|job_displacement|policy|workflow",',
-    '      "relevanceScore": 0-100,',
-    '      "whyRelevant": "personal relevance explanation",',
-    '      "actionForUser": "specific next action",',
-    '      "impact": "high|medium|low"',
-    "    }",
-    "  ]",
-    "}",
-    `Return ${input.count} stories.`,
-    "Avoid generic advice. Tie each story directly to user context.",
-    `User context JSON:\n${JSON.stringify(contextForPrompt, null, 2)}`,
-  ].join("\n");
-
-  try {
-    const timeoutMs = Math.max(4000, Math.min(20000, Number(process.env.OPENAI_NEWS_TIMEOUT_MS ?? 12000)));
-    const controller = new AbortController();
-    const timeoutHandle = setTimeout(() => controller.abort(new Error("OPENAI_NEWS_TIMEOUT")), timeoutMs);
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        "content-type": "application/json",
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model,
-        input: prompt,
-        temperature: 0.2,
-        tools: [{ type: "web_search_preview" }],
-      }),
-    }).finally(() => clearTimeout(timeoutHandle));
-
-    if (!response.ok) {
-      throw new Error(`OPENAI_RESPONSE_FAILED:${response.status}`);
-    }
-
-    const payload = (await response.json()) as {
-      output_text?: string;
-      output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
-    };
-    const outputText = extractOpenAiOutputText(payload);
-    const parsed = extractJsonPayload(outputText);
-    if (!parsed || !Array.isArray(parsed.stories) || parsed.stories.length === 0) {
-      throw new Error("OPENAI_NEWS_PARSE_FAILED");
-    }
-
-    const normalized: PersonalizedNewsStory[] = parsed.stories
-      .map((story) => {
-        const url = sanitizeHttpUrl(trimText(story.url, 500));
-        if (!url) return null;
-        const title = trimText(story.title, 220);
-        const summary = trimText(story.summary, 520);
-        if (!title || !summary) return null;
-
-        return {
-          title,
-          url,
-          summary,
-          category: normalizeStoryCategory(story.category),
-          relevanceScore: clampNumber(Number(story.relevanceScore ?? 0), 0, 100),
-          rankingScore: 0,
-          whyRelevant: trimText(story.whyRelevant, 360) || "Relevant to your current learning and project priorities.",
-          recommendedAction: trimText(story.actionForUser, 300) || "Review this story and map one concrete application to your current project.",
-          impact: normalizeImpact(story.impact),
-          source: trimText(story.source, 120) || null,
-          publishedAt: parseDateOrNow(story.publishedAt),
-        } satisfies PersonalizedNewsStory;
-      })
-      .filter((entry): entry is PersonalizedNewsStory => Boolean(entry));
-
-    if (!normalized.length) {
-      throw new Error("OPENAI_NEWS_NORMALIZATION_EMPTY");
-    }
-
-    const ranked = normalized
-      .map((story) => ({
-        ...story,
-        rankingScore: scoreNewsStory(story, input.context),
-      }))
-      .sort((a, b) => b.rankingScore - a.rankingScore)
-      .slice(0, Math.max(1, Math.min(8, input.count)));
-
-    return {
-      source: "llm_web",
-      focusSummary: trimText(parsed.focusSummary, 260) || "Latest AI shifts matched to your goals, tools, and active projects.",
-      selectionRationale:
-        trimText(parsed.selectionRationale, 360) ||
-        "Selected for relevance across your goals, onboarding context, and current build activity.",
-      stories: ranked,
-    };
-  } catch {
-    const fallbackStories = buildFallbackPersonalizedStories(input.context, input.count).map((story) => ({
-      ...story,
-      rankingScore: scoreNewsStory(story, input.context),
-    }));
-    return {
-      source: "fallback",
-      focusSummary: "Fallback stories generated from local learner context.",
-      selectionRationale: "Web-enabled generation was unavailable, so recommendations were assembled from stored user context.",
-      stories: fallbackStories,
-    };
-  }
 }
 
 async function preferredNewsIdsForUser(userId: string, limit = 3) {
@@ -5121,18 +4747,22 @@ export async function runtimeRefreshRelevantNews(options?: {
     }
   }
 
-  const generated = await generateNewsFromOpenAi({
-    context,
-    count: maxStories,
+  // Phase 3.2: the daily AI news is the ported MDD briefing engine — today's
+  // guardrail-validated briefing for the user's career path (generated on
+  // demand on a store miss). No fabricated-story fallback exists anymore.
+  const generated = await briefingNewsForPath({
+    careerPathId: context.user.careerPathId,
+    recommendedPathIds: context.assessment?.recommendedCareerPathIds ?? [],
+    maxStories,
   });
 
-  if (generated.source === "fallback") {
+  if (!generated.ok) {
     if (hasPersonalizedRows) {
       return rowsToResponse(cachedPersonalizedRows ?? [], {
         source: "stale_cache",
         contextSignals: context.focusSignals,
         focusSummary: "Showing your latest stored AI news while a fresh briefing catches up.",
-        selectionRationale: "Fresh generation timed out, so the most recent personalized AI news was returned.",
+        selectionRationale: "Fresh briefing generation failed, so the most recent personalized AI news was returned.",
       });
     }
     if (hasGlobalRows) {
@@ -5140,9 +4770,10 @@ export async function runtimeRefreshRelevantNews(options?: {
         source: newestGlobalDay === todayUtc ? "global_cache" : "global_stale_cache",
         contextSignals: context.focusSignals,
         focusSummary: "Showing the latest available AI stories matched to your current goals and projects.",
-        selectionRationale: "Fresh generation timed out, so the latest stored global AI briefing was returned.",
+        selectionRationale: "Fresh briefing generation failed, so the latest stored global AI briefing was returned.",
       });
     }
+    return { ok: false as const, errorCode: generated.errorCode || "NEWS_BRIEFING_UNAVAILABLE", insights: [] };
   }
 
   const now = new Date().toISOString();

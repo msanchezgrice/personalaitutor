@@ -34,6 +34,9 @@ const isPublicRoute = createRouteMatcher([
   "/api/analytics/funnel(.*)",
   "/api/email/resend/webhook(.*)",
   "/api/billing/webhook(.*)",
+  // Vercel cron invocations carry no Clerk session; the route handlers
+  // themselves enforce CRON_SECRET (see lib/cron-auth.ts).
+  "/api/scheduler/(.*)",
   "/api/og/(.*)",
   "/api/employers/talent(.*)",
   "/robots.txt",

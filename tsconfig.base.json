@@ -12,7 +12,9 @@
     "paths": {
       "@/*": ["apps/web/*"],
       "@aitutor/shared": ["packages/shared/src/index.ts"],
-      "@aitutor/shared/*": ["packages/shared/src/*"]
+      "@aitutor/shared/*": ["packages/shared/src/*"],
+      "@aitutor/daily-content": ["packages/daily-content/src/index.ts"],
+      "@aitutor/daily-content/*": ["packages/daily-content/src/*"]
     }
   }
 }

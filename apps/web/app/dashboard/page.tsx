@@ -4,8 +4,10 @@ import { DashboardShell } from "@/components/dashboard-runtime-shell";
 import { BillingGateOverlay } from "@/components/billing-gate-overlay";
 import { DashboardEntryTracking } from "@/components/dashboard-entry-tracking";
 import { FbCompleteRegistrationOnDashboard } from "@/components/fb-complete-registration-on-dashboard";
+import { DailyActionCard } from "@/components/daily-action-card";
 import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
 import { buildOnboardingReportReturnUrl, sanitizeDashboardReturnTo } from "@/lib/billing";
+import { getDailyActionWithStreak } from "@/lib/daily-action";
 
 function summarize(value: string | null | undefined, fallback: string, maxChars = 180) {
   const cleaned = String(value || "").replace(/\s+/g, " ").trim();
@@ -94,6 +96,12 @@ export default async function DashboardPage({
       })) ?? []);
   const hasAnyStartedStep = Boolean(summary?.projects.some((project) => project.moduleSteps.some((step) => step.status !== "not_started")));
   const shouldShowFtue = readQueryParam(params.welcome) === "1" || !hasAnyStartedStep;
+  // Today's action + streak (Phase 3.3/3.5) — read-only here; generation and
+  // completion go through /api/daily-action from the client card.
+  const dailyActionView =
+    state.billing.accessAllowed && user?.id
+      ? await getDailyActionWithStreak({ learnerProfileId: user.id }).catch(() => null)
+      : null;
   return (
     <>
       <Suspense fallback={null}>
@@ -169,6 +177,25 @@ export default async function DashboardPage({
               Start Recommended Work
             </a>
           </div>
+
+          {dailyActionView ? (
+            <DailyActionCard
+              initialAction={
+                dailyActionView.action
+                  ? {
+                      title: dailyActionView.action.title,
+                      minutes: dailyActionView.action.minutes,
+                      gapRef: dailyActionView.action.gapRef,
+                      artifactRef: dailyActionView.action.artifactRef,
+                      status: dailyActionView.action.status,
+                      scoreDelta: dailyActionView.action.scoreDelta,
+                      scoreDeltaReason: dailyActionView.action.scoreDeltaReason,
+                    }
+                  : null
+              }
+              initialStreak={dailyActionView.streak}
+            />
+          ) : null}
 
           {shouldShowFtue ? (
             <section className="glass-panel p-6 rounded-2xl mb-8 border border-white/10">

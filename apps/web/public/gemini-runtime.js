@@ -2160,7 +2160,14 @@
   async function hydrateDashboardHome() {
     captureEvent("dashboard_tab_viewed", { tab: "home" });
     var summary = await getDashboardSummary();
-    var summaryUserId = summary && summary.user && summary.user.id ? String(summary.user.id) : null;
+    // A brand-new account (no onboarding yet) has no summary; normalize so the
+    // home tab renders its empty states instead of crashing the module.
+    summary = summary || {};
+    summary.user = summary.user || { goals: [], skills: [] };
+    summary.projects = summary.projects || [];
+    summary.latestEvents = summary.latestEvents || [];
+    summary.moduleRecommendations = summary.moduleRecommendations || [];
+    var summaryUserId = summary.user.id ? String(summary.user.id) : null;
     updateSharedUserUi(summary);
     var topRecommendation = Array.isArray(summary.moduleRecommendations) && summary.moduleRecommendations.length
       ? summary.moduleRecommendations[0]

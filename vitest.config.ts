@@ -7,6 +7,8 @@ export default defineConfig({
       "@": path.resolve(__dirname, "apps/web"),
       "@aitutor/shared": path.resolve(__dirname, "packages/shared/src/index.ts"),
       "@aitutor/shared/": `${path.resolve(__dirname, "packages/shared/src")}/`,
+      "@aitutor/daily-content": path.resolve(__dirname, "packages/daily-content/src/index.ts"),
+      "@aitutor/daily-content/": `${path.resolve(__dirname, "packages/daily-content/src")}/`,
       react: path.resolve(__dirname, "apps/web/node_modules/react/index.js"),
       "react-dom": path.resolve(__dirname, "apps/web/node_modules/react-dom/index.js"),
       "react-dom/server": path.resolve(__dirname, "apps/web/node_modules/react-dom/server.node.js"),
