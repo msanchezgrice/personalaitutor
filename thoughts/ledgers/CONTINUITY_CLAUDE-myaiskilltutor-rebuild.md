@@ -85,3 +85,8 @@ NEW FINDINGS (fix batch queued):
 2. [ ] Spine implementation phases 1-4 per thoughts/shared/plans/2026-07-08-thirty-day-plan-spine.md (sequential agent AFTER 6-fix lands; TDD; suite 414+ stays green; no migrations except optional daily_actions.plan_week)
 3. [ ] Spine phase 5 (7 remaining paths' playbooks) — separate later batch
 Ship discipline unchanged: verify independently → commit on rebuild/core-product → ff main via ship worktree (/private/tmp/.../scratchpad/ship-phase1) → vercel deploy --prod → live E2E.
+
+## SPINE PHASES 1-4 (2026-07-08 early am): implemented + shipping
+501/501 unit + 3/3 integration; verify-commit-ship running (background task). Plan weeks name real modules; plan-progress.ts computes current week (earliest-history-row anchor); modules[0] dead — workbench/tutor/artifact/starter follow plan week; weekly-focus-card on Home; daily action + weekly email plan-aware. Backward compatible (old reports = old behavior until retake). Week-transition UX reuses F5 restart banner (copy says "playbook updated" — cosmetic follow-up). Report page doesn't yet show per-week module names (trivial follow-up). PHASE 5 (7 paths' rich playbooks) still open.
+6-fix batch + news clobber fix SHIPPED+LIVE-VERIFIED earlier: AI News shows real briefing ("Tool Tuesday... 611 stories, 34 feeds", briefing_stale during UTC window); self-healing render with ai_news_rerendered_after_clobber telemetry.
+NEXT: confirm spine deploy Ready + quick live check (Home shows focus card for Miguel after his retake); tomorrow 10:00 UTC auto-cron = last rebuild checkbox; then demand gate.
