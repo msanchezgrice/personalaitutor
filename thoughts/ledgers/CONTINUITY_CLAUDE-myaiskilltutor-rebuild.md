@@ -79,3 +79,9 @@ NEW FINDINGS (fix batch queued):
 4. 🟠 Skip-ahead artifact OVERPROMISES: PDF claimed "all five interview transcripts included" when only step 1 evidence existed. Generation prompt must ground strictly in actual evidence/steps completed (grounded-only constraint on skip_ahead path).
 5. 🟡 Tool Launchers card renders one-word-per-line (squeezed columns).
 6. 🟡 Old generic chat replies ("install pandas") persist in chat history above new session messages.
+
+## APPROVED QUEUE (2026-07-08, Miguel: "this plan looks good proceed")
+1. [→] 6-fix batch (agent running; findings in PAID-DASHBOARD LIVE E2E section) → verify → ship
+2. [ ] Spine implementation phases 1-4 per thoughts/shared/plans/2026-07-08-thirty-day-plan-spine.md (sequential agent AFTER 6-fix lands; TDD; suite 414+ stays green; no migrations except optional daily_actions.plan_week)
+3. [ ] Spine phase 5 (7 remaining paths' playbooks) — separate later batch
+Ship discipline unchanged: verify independently → commit on rebuild/core-product → ff main via ship worktree (/private/tmp/.../scratchpad/ship-phase1) → vercel deploy --prod → live E2E.
