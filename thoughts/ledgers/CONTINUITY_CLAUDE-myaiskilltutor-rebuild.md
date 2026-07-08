@@ -52,6 +52,9 @@ lessons behind the paywall, retention loops past week 1. Done = the verification
   - [ ] Miguel unblock: one real-card prod conversion; OK to point mydailydownload.com hubs at myaiskilltutor.com
 - Demand gate (spend, not build): ≥25 completed assessments + ≥40% email capture within 14d of Phase 1 ship → ad spend unlocked
 
+- UX OVERHAUL (F1-F8) SHIPPED + LIVE-VERIFIED (2026-07-07 late): 414/414 + builds + deletion spot-checks; committed 6f94785, deployed Ready. LIVE E2E WALK PASSED: sign-up copy ("Your score is saved") ✓, employers example-labels ✓, created linked assessment via prod API for test-user email (score 60) → onboarding collapsed to "Confirm Your Details" with full prefill ✓ → resume step says "no re-scoring" ✓ → finale shows readiness score 60 + headline + report link (risk framework GONE) ✓. No new console errors. API note: /api/assessment/anonymous/submit requires full profile payload + answers as {questionId,value}[] (quiz IDs: ai_tool_frequency, prompt_skill, workflow_automation, ai_judgment, ai_artifacts).
+- STILL PENDING: paid-dashboard live walk (score card, single-spine workbench, session restart banner, artifact E2E) — needs billing row for test user e6b9c983... or Miguel's paid account.
+
 ## Open Questions
 - UNCONFIRMED: Stripe vars actually set in Vercel prod (Phase 0.3 proves it).
 - UNCONFIRMED: subscription price (lives in Stripe, not repo).
@@ -66,3 +69,13 @@ lessons behind the paywall, retention loops past week 1. Done = the verification
   apps/worker/src/index.ts:2035 (artifact job); apps/web/app/generated/[...slug]/route.ts (writers);
   packages/shared/src/{module-playbooks,matrix,gamification,lifecycle-email,email-campaigns}.ts
 - Prod: Vercel project "personalaitutor", myaiskilltutor.com
+
+## PAID-DASHBOARD LIVE E2E (2026-07-07 night, Miguel's real account via Claude-in-Chrome)
+VERIFIED WORKING: score-card CTA variant + Today's Action graceful "finish your assessment first" (his account has no linked assessment — email mismatch with his earlier scan); Projects = single-spine workbench; drift banner → Restart Session → new 5-step ICP playbook; step 1 evidence → Mark Complete → step 2; skip-ahead → REAL PDF artifact generated in prod (grounded, personalized — verified by extracting PDF text); Recent Proof 1 total; chat session banner "Step 2 of 5 … carry your playbook/profile/assessment context"; XP moved Level 1→3 live during session; Social Drafts gone from nav.
+NEW FINDINGS (fix batch queued):
+1. 🔴 AI News served "Source: global_cache" legacy generic stories (no real URLs) instead of today's briefing. Likely UTC date-boundary bug: at ~9pm CT the briefing_date computes to next UTC day → no row → on-demand path failed/slow → global-cache fallback. FIX: serve latest available briefing when today's missing (while generating in background); consider product timezone for date math.
+2. 🔴 /dashboard/news (unknown dashboard path) = INFINITE first-paint spinner; real route is /dashboard/ai-news. Unknown /dashboard/* should 404 or redirect to /dashboard.
+3. 🟠 Home hero leaks raw event text: "Based on your answers, start here: AI Tutor reply generated for: hey" (latestEvents message used as todayUpdate copy — sanitizeDashboardCopy misses this pattern).
+4. 🟠 Skip-ahead artifact OVERPROMISES: PDF claimed "all five interview transcripts included" when only step 1 evidence existed. Generation prompt must ground strictly in actual evidence/steps completed (grounded-only constraint on skip_ahead path).
+5. 🟡 Tool Launchers card renders one-word-per-line (squeezed columns).
+6. 🟡 Old generic chat replies ("install pandas") persist in chat history above new session messages.
