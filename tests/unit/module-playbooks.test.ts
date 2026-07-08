@@ -124,3 +124,50 @@ describe("rewritten AI-tool playbooks (product-management, marketing-seo)", () =
     expect(guide.stepDefinitions[2].proofRequirement.key).toBe("visible-proof");
   });
 });
+
+describe("persona label scrub (F7)", () => {
+  test("resolveLearnerRoleLabel prefers a real headline", async () => {
+    const { resolveLearnerRoleLabel } = await import("@aitutor/shared");
+    expect(resolveLearnerRoleLabel({ headline: "Senior Product Manager", careerPathId: "product-management" })).toBe(
+      "Senior Product Manager",
+    );
+  });
+
+  test("resolveLearnerRoleLabel maps the legacy 'AI Builder' persona to the career path name", async () => {
+    const { resolveLearnerRoleLabel } = await import("@aitutor/shared");
+    expect(resolveLearnerRoleLabel({ headline: "AI Builder", careerPathId: "product-management" })).toBe(
+      "Product Management",
+    );
+    expect(resolveLearnerRoleLabel({ headline: "  ai builder ", careerPathId: "marketing-seo" })).toBe(
+      "Marketing & SEO",
+    );
+  });
+
+  test("resolveLearnerRoleLabel falls back to a neutral label without a career path", () => {
+    return import("@aitutor/shared").then(({ resolveLearnerRoleLabel }) => {
+      expect(resolveLearnerRoleLabel({ headline: "AI Builder", careerPathId: null })).toBe("Learner");
+      expect(resolveLearnerRoleLabel({ headline: null, careerPathId: undefined })).toBe("Learner");
+    });
+  });
+
+  test("module guides never render 'For AI Builder' when the legacy persona headline leaks in as jobTitle", () => {
+    const guide = buildRecommendedModuleGuide({
+      careerPathId: "product-management",
+      moduleTitle: "PRD Generation",
+      jobTitle: "AI Builder",
+      primaryGoal: "upskill_current_job",
+    });
+    expect(guide.whyThisModule).not.toContain("AI Builder");
+    expect(guide.whyThisModule).toContain("Product Management");
+  });
+
+  test("fallback guides also scrub the legacy persona", () => {
+    const guide = buildRecommendedModuleGuide({
+      careerPathId: "operations",
+      moduleTitle: "Workflow Automation",
+      jobTitle: "AI Builder",
+      primaryGoal: null,
+    });
+    expect(guide.whyThisModule).not.toContain("AI Builder");
+  });
+});

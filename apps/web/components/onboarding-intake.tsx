@@ -69,6 +69,7 @@ type OnboardingCompletePayload = {
   ok: boolean;
   session?: { id: string; userId: string };
   assessment?: { id: string; score: number; recommendedCareerPathIds: string[] };
+  readiness?: OnboardingReadiness | null;
   signedIn?: boolean;
   claimed?: boolean;
   user?: { id: string; handle: string; name: string; avatarUrl?: string | null } | null;
@@ -108,29 +109,52 @@ type OnboardingReportSnapshot = OnboardingDraft & {
   sessionToken: string | null;
   assessmentScore: number;
   recommendedPaths: string[];
+  readiness: OnboardingReadiness | null;
   nextRedirectHref: string;
   nextRedirectLabel: string;
 };
 
-type RiskSeverity = "Low" | "Medium" | "High";
+/**
+ * Internal-only band over the deterministic signal — kept for analytics
+ * continuity (`risk_band` event property). Never rendered (UX audit F1).
+ */
 type RiskBand = "Low" | "Moderate" | "High";
 
-type CareerAssessmentTemplate = {
-  title: string;
-  description: string;
-  riskAreas: Array<{ label: string; level: RiskSeverity }>;
-  recommendedActions: string[];
-  aiToolAnalysis: string;
-  careerStrategies: string;
-  actionPlan: string[];
+/** Readiness summary returned by /api/onboarding/complete (UX audit F1). */
+type OnboardingReadiness = {
+  source: "linked" | "generated";
+  readinessScore: number;
+  headline: string;
+  reportPath: string;
+};
+
+/** Prefill context from a linked anonymous assessment (UX audit F2). */
+type AssessmentContextPayload = {
+  ok: boolean;
+  linked?: boolean;
+  assessment?: {
+    careerPathId: string | null;
+    careerCategoryLabel: string | null;
+    jobTitle: string | null;
+    yearsExperience: string | null;
+    companySize: string | null;
+    situation: string | null;
+    goals: string[];
+    aiComfort: number | null;
+    linkedinUrl: string | null;
+  };
+  report?: {
+    readinessScore: number;
+    headline: string;
+    reportPath: string;
+  };
 };
 
 const analysisSteps = [
-  "Analyzing your professional profile",
-  "Researching AI trends in your field",
-  "Evaluating automation risk factors",
-  "Generating personalized insights",
-  "Finalizing your career assessment",
+  "Reviewing your role and goals",
+  "Scoring your AI readiness for your role",
+  "Ranking your skill gaps by market impact",
+  "Drafting your 30-day plan",
   "Preparing your personalized tutor setup",
 ];
 
@@ -247,273 +271,6 @@ const careerQuestionContent: Record<
   },
 };
 
-const assessmentTemplates: Record<(typeof careerCategoryOptions)[number]["value"], CareerAssessmentTemplate> = {
-  "product-manager": {
-    title: "Product Manager Assessment",
-    description:
-      "Analysis of AI automation impact on product management, with focus on planning, documentation, and stakeholder execution.",
-    riskAreas: [
-      { label: "PRD drafting and requirement formatting", level: "High" },
-      { label: "Status reporting and routine updates", level: "Medium" },
-      { label: "Strategic prioritization and tradeoff decisions", level: "Low" },
-    ],
-    recommendedActions: [
-      "Shift more time into strategy and cross-functional alignment",
-      "Build stronger experimentation and analytics interpretation skills",
-      "Publish proof of AI-assisted product operations wins",
-    ],
-    aiToolAnalysis:
-      "Use AI copilots for PRD scaffolding, synthesis from interviews, and release-note generation; keep human ownership for prioritization and narrative.",
-    careerStrategies:
-      "Position yourself as an AI-native PM who converts ambiguous goals into execution systems with measurable business outcomes.",
-    actionPlan: [
-      "Automate one weekly reporting workflow in your stack",
-      "Create a repeatable AI prompt pack for discovery + planning",
-      "Ship a public project card showing before/after cycle-time impact",
-    ],
-  },
-  sales: {
-    title: "Sales Assessment",
-    description:
-      "Analysis of AI automation impact on prospecting, pipeline workflow, and revenue execution.",
-    riskAreas: [
-      { label: "Outbound message drafting and sequence personalization", level: "High" },
-      { label: "CRM updates, pipeline hygiene, and status tracking", level: "High" },
-      { label: "Discovery strategy and complex deal navigation", level: "Low" },
-    ],
-    recommendedActions: [
-      "Use AI to speed top-of-funnel tasks while you own deal strategy and relationship quality",
-      "Tighten qualification frameworks and objection handling playbooks",
-      "Publish proof tied to booked meetings, conversion lift, or cycle-time wins",
-    ],
-    aiToolAnalysis:
-      "AI can compress prospecting and CRM work, but trust-building and high-stakes deal judgment remain human-led.",
-    careerStrategies:
-      "Position yourself as the seller who combines AI operating speed with stronger close quality and predictable pipeline execution.",
-    actionPlan: [
-      "Automate one repetitive pipeline workflow and track time saved",
-      "Build an AI-assisted outbound sequence with clear quality checks",
-      "Publish one proof card tied to pipeline or meeting lift",
-    ],
-  },
-  "customer-service": {
-    title: "Customer Service Assessment",
-    description:
-      "Analysis of AI automation impact on support workflows, ticket triage, and customer resolution quality.",
-    riskAreas: [
-      { label: "Tier 1 reply drafting and repetitive support responses", level: "High" },
-      { label: "Ticket tagging, routing, and SLA monitoring", level: "Medium" },
-      { label: "Escalation strategy and high-empathy customer recovery", level: "Low" },
-    ],
-    recommendedActions: [
-      "Use AI for first drafts and triage while you own final customer judgment",
-      "Build stronger playbooks for escalation and high-risk customer moments",
-      "Track and publish response-time and resolution-quality improvements",
-    ],
-    aiToolAnalysis:
-      "AI can accelerate triage and response suggestions, but customer trust and escalation quality still depend on human ownership.",
-    careerStrategies:
-      "Position yourself as the support operator who blends AI speed with strong customer outcomes and measurable service quality.",
-    actionPlan: [
-      "Automate one repetitive support flow and measure time saved",
-      "Create a human-review checklist for AI-generated customer responses",
-      "Publish one proof card showing improved CSAT or faster resolution time",
-    ],
-  },
-  operations: {
-    title: "Operations Assessment",
-    description:
-      "Analysis of AI automation impact on operational handoffs, process quality, and reporting execution.",
-    riskAreas: [
-      { label: "Manual status updates, recurring reports, and data consolidation", level: "High" },
-      { label: "Cross-team handoff orchestration and workflow routing", level: "Medium" },
-      { label: "Exception handling, prioritization, and process redesign", level: "Low" },
-    ],
-    recommendedActions: [
-      "Automate repetitive reporting while keeping human ownership of critical exceptions",
-      "Design cleaner operating playbooks for cross-functional handoffs",
-      "Publish proof tied to cycle-time reduction or error-rate improvement",
-    ],
-    aiToolAnalysis:
-      "AI accelerates status generation and workflow automation, while operational judgment and exception triage remain high-leverage human work.",
-    careerStrategies:
-      "Become the operator who can turn messy handoffs into reliable AI-assisted systems with measurable throughput gains.",
-    actionPlan: [
-      "Automate one weekly operations report end to end",
-      "Create a checklist for exception and escalation handling",
-      "Publish one proof card with time or quality improvement metrics",
-    ],
-  },
-  hr: {
-    title: "Human Resources Assessment",
-    description:
-      "Analysis of AI automation impact on hiring operations, people workflows, and HR service delivery.",
-    riskAreas: [
-      { label: "Job description drafting and first-pass candidate screening", level: "High" },
-      { label: "Interview coordination and policy FAQ responses", level: "Medium" },
-      { label: "Candidate experience, manager coaching, and employee trust", level: "Low" },
-    ],
-    recommendedActions: [
-      "Use AI to reduce admin load while preserving human accountability in people decisions",
-      "Strengthen interview rubric quality and decision transparency",
-      "Publish proof tied to hiring speed, quality, or people-ops efficiency gains",
-    ],
-    aiToolAnalysis:
-      "AI can streamline hiring admin and policy support, but relationship trust and decision quality remain human-critical.",
-    careerStrategies:
-      "Position yourself as a people operator who uses AI for throughput while improving hiring quality and employee experience.",
-    actionPlan: [
-      "Automate one interview or screening coordination workflow",
-      "Create a human-review rubric for AI-assisted candidate summaries",
-      "Publish one proof card showing measurable hiring or people-ops improvement",
-    ],
-  },
-  designer: {
-    title: "Design Assessment",
-    description:
-      "Analysis of AI impact on design roles across ideation, production assets, and quality review workflows.",
-    riskAreas: [
-      { label: "Rapid concept generation and variation production", level: "High" },
-      { label: "UI copy and basic component layout drafting", level: "Medium" },
-      { label: "System-level UX strategy and taste leadership", level: "Low" },
-    ],
-    recommendedActions: [
-      "Double down on research-backed design rationale and storytelling",
-      "Lead design systems and interaction architecture decisions",
-      "Use AI to accelerate iterations while preserving quality standards",
-    ],
-    aiToolAnalysis:
-      "AI tools are strongest for drafts and exploration, while brand judgment, accessibility nuance, and product coherence remain designer-led.",
-    careerStrategies:
-      "Become the designer who can run high-volume exploration and still ship polished, conversion-driven experiences.",
-    actionPlan: [
-      "Create an AI-assisted exploration workflow for 3 concept directions",
-      "Define a review rubric for quality and accessibility checks",
-      "Publish a build log showing AI draft-to-final design evolution",
-    ],
-  },
-  marketing: {
-    title: "Marketing Assessment",
-    description:
-      "Evaluation of AI impact on marketing roles, including content creation, campaign management, and data analysis.",
-    riskAreas: [
-      { label: "Content writing and copy generation", level: "High" },
-      { label: "Social media scheduling and performance summaries", level: "High" },
-      { label: "Brand strategy and campaign positioning", level: "Low" },
-    ],
-    recommendedActions: [
-      "Develop stronger strategic brand thinking",
-      "Focus on creative campaign concepts and channel orchestration",
-      "Improve advanced data interpretation and narrative reporting",
-    ],
-    aiToolAnalysis:
-      "AI can generate variants quickly for ads, posts, and emails; strongest leverage comes from rapid testing loops and human-led messaging decisions.",
-    careerStrategies:
-      "Lead with experimentation frameworks and audience insight synthesis so AI output is tied to measurable growth outcomes.",
-    actionPlan: [
-      "Build a reusable AI content pipeline for one campaign",
-      "Define test hypotheses and reporting templates by funnel stage",
-      "Publish a public proof card with lift metrics from an AI-assisted sprint",
-    ],
-  },
-  accounting: {
-    title: "Accounting Assessment",
-    description:
-      "Analysis of AI automation in accounting, focusing on bookkeeping, reporting workflows, and advisory services.",
-    riskAreas: [
-      { label: "Data entry and bookkeeping", level: "High" },
-      { label: "Basic financial reporting and reconciliations", level: "High" },
-      { label: "Strategic financial advisory", level: "Low" },
-    ],
-    recommendedActions: [
-      "Transition toward advisory and strategic planning functions",
-      "Strengthen client communication and scenario planning skills",
-      "Focus on complex compliance and exception-handling workflows",
-    ],
-    aiToolAnalysis:
-      "AI handles repetitive categorization and first-pass summaries; accountants retain leverage in controls, risk judgment, and decision-grade interpretation.",
-    careerStrategies:
-      "Move upmarket by combining AI-enabled speed with trusted financial judgment and strategic advisory depth.",
-    actionPlan: [
-      "Automate one reconciliation or categorization workflow",
-      "Build a monthly advisory insights template for stakeholders",
-      "Document AI control checks and exception-handling process publicly",
-    ],
-  },
-  legal: {
-    title: "Legal Assessment",
-    description:
-      "Assessment of AI impact in legal workflows, including drafting support, research acceleration, and review operations.",
-    riskAreas: [
-      { label: "First-draft clause generation and summarization", level: "High" },
-      { label: "Legal research triage and precedent clustering", level: "Medium" },
-      { label: "Negotiation strategy and case judgment", level: "Low" },
-    ],
-    recommendedActions: [
-      "Specialize in high-context advisory and negotiation outcomes",
-      "Develop AI quality-control and citation validation workflows",
-      "Use AI to accelerate drafting while retaining legal accountability",
-    ],
-    aiToolAnalysis:
-      "AI improves speed for draft and research prep, but legal reliability depends on robust human review, source validation, and risk ownership.",
-    careerStrategies:
-      "Stand out as counsel who can deploy AI safely with defensible review frameworks and client-ready decision support.",
-    actionPlan: [
-      "Create a vetted prompt + citation-check checklist",
-      "Pilot AI-assisted drafting on low-risk template documents",
-      "Publish a build log on legal AI quality-control practices",
-    ],
-  },
-  "software-engineering": {
-    title: "Software Engineering Assessment",
-    description:
-      "Assessment of AI impact across coding productivity, debugging, architecture decisions, and operational reliability.",
-    riskAreas: [
-      { label: "Boilerplate implementation and unit test generation", level: "High" },
-      { label: "Debugging and code review assistance", level: "Medium" },
-      { label: "System architecture and reliability tradeoffs", level: "Low" },
-    ],
-    recommendedActions: [
-      "Increase depth in architecture and distributed systems fundamentals",
-      "Strengthen production debugging and observability workflows",
-      "Use AI for speed while maintaining rigorous validation and testing",
-    ],
-    aiToolAnalysis:
-      "AI accelerates implementation velocity; senior leverage remains in design decisions, runtime reliability, and shipping resilient systems.",
-    careerStrategies:
-      "Build a profile as an engineer who ships faster with AI and still raises quality bars through automation and testing discipline.",
-    actionPlan: [
-      "Create an AI-assisted code-generation + validation pipeline",
-      "Instrument one project with stronger observability and alerts",
-      "Publish a project card with latency, reliability, or dev-time gains",
-    ],
-  },
-  other: {
-    title: "Career Assessment",
-    description:
-      "General assessment of AI automation exposure in your current workflow with recommendations to build durable advantage.",
-    riskAreas: [
-      { label: "Repetitive documentation and routine communication tasks", level: "High" },
-      { label: "Standardized analysis and report generation", level: "Medium" },
-      { label: "Relationship management and strategic decision-making", level: "Low" },
-    ],
-    recommendedActions: [
-      "Map high-frequency repetitive tasks and automate the first layer",
-      "Strengthen domain-specific judgment and decision frameworks",
-      "Show public proof of AI-enabled process improvements",
-    ],
-    aiToolAnalysis:
-      "AI can handle repeatable workflows quickly; your leverage grows by owning context, edge-case handling, and cross-functional execution.",
-    careerStrategies:
-      "Adopt an operator mindset: automate repetitive work, reinvest time in high-judgment problems, and document measurable outcomes.",
-    actionPlan: [
-      "Identify top 3 repetitive workflows to automate this month",
-      "Create one AI-assisted process with clear KPI improvements",
-      "Publish the process and results in your public build log",
-    ],
-  },
-};
-
 const yearsExperienceOptions = [
   { value: "0-1", label: "Less than 1 year", score: 1 },
   { value: "1-3", label: "1-3 years", score: 2 },
@@ -564,10 +321,23 @@ function getRiskBand(score: number): RiskBand {
   return "Low";
 }
 
-function getTimeline(score: number): string {
-  if (score >= 70) return "1-2 years";
-  if (score >= 45) return "1-3 years";
-  return "3-5 years";
+/** Same bands as the tokenized report page — one score, one framing. */
+function readinessBand(score: number) {
+  if (score >= 70) return { label: "AI-Ready", color: "#10b981" };
+  if (score >= 45) return { label: "Building", color: "#f59e0b" };
+  return { label: "At Risk", color: "#ef4444" };
+}
+
+async function getJson<T>(url: string): Promise<T> {
+  const res = await fetch(url, {
+    headers: { "cache-control": "no-store" },
+    credentials: "same-origin",
+  });
+  const data = (await res.json().catch(() => ({}))) as T & { ok?: boolean };
+  if (!res.ok || !data || (typeof data === "object" && "ok" in data && !data.ok)) {
+    throw new Error("Request failed");
+  }
+  return data;
 }
 
 function readSignUpIntent() {
@@ -612,6 +382,26 @@ async function postJson<T>(url: string, body: Record<string, unknown>): Promise<
   return data;
 }
 
+/** Maps a linked assessment's career path/label back to a category option (F2 prefill). */
+function categoryForAssessment(
+  careerPathId: string | null,
+  label: string | null,
+): { value: (typeof careerCategoryOptions)[number]["value"]; custom: string } {
+  const normalizedLabel = label?.trim().toLowerCase() ?? "";
+  const byLabel = careerCategoryOptions.find((option) => option.label.toLowerCase() === normalizedLabel);
+  if (byLabel) return { value: byLabel.value, custom: "" };
+  const byPath = careerCategoryOptions.find((option) => option.path === careerPathId);
+  if (byPath && byPath.value !== "other") return { value: byPath.value, custom: "" };
+  return { value: "other", custom: label?.trim() || "" };
+}
+
+function comfortOptionFor(aiComfort: number | null): number | null {
+  if (aiComfort === null || Number.isNaN(aiComfort)) return null;
+  if (aiComfort <= 2) return 2;
+  if (aiComfort >= 5) return 5;
+  return 3;
+}
+
 export function OnboardingIntake() {
   const { isLoaded: authLoaded, userId: authUserId } = useAuth();
   const { user } = useUser();
@@ -640,6 +430,10 @@ export function OnboardingIntake() {
   const lastRemoteDraftSignature = useRef<string | null>(null);
 
   const [careerCategory, setCareerCategory] = useState<(typeof careerCategoryOptions)[number]["value"]>("product-manager");
+  // Readiness finale (UX audit F1) + linked-assessment collapse (F2).
+  const [readiness, setReadiness] = useState<OnboardingReadiness | null>(null);
+  const [linkedContext, setLinkedContext] = useState<AssessmentContextPayload | null>(null);
+  const assessmentContextFetched = useRef(false);
   const [fullName, setFullName] = useState("");
   const [customCareerCategory, setCustomCareerCategory] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -669,22 +463,19 @@ export function OnboardingIntake() {
     () => careerQuestionContent[careerCategory] ?? careerQuestionContent.other,
     [careerCategory],
   );
-  const activeAssessmentTemplate = useMemo(
-    () => assessmentTemplates[careerCategory] ?? assessmentTemplates.other,
-    [careerCategory],
-  );
   const normalizedScore = useMemo(() => {
     if (assessmentScore === null || Number.isNaN(assessmentScore)) return 0;
     const raw = assessmentScore <= 1 ? assessmentScore * 100 : assessmentScore;
     return Math.max(0, Math.min(100, Math.round(raw)));
   }, [assessmentScore]);
+  // Analytics-only band over the deterministic signal — never rendered (F1).
   const riskBand = useMemo(() => getRiskBand(normalizedScore), [normalizedScore]);
-  const riskTimeline = useMemo(() => getTimeline(normalizedScore), [normalizedScore]);
-  const riskColor = useMemo(() => {
-    if (riskBand === "High") return "#dc2626";
-    if (riskBand === "Moderate") return "#d97706";
-    return "#16a34a";
-  }, [riskBand]);
+  // Collapsed flow (F2): a linked assessment removes the re-asking steps.
+  const collapsed = Boolean(linkedContext?.linked && linkedContext.report);
+  const readinessScoreBand = useMemo(
+    () => readinessBand(readiness?.readinessScore ?? 0),
+    [readiness?.readinessScore],
+  );
   const recommendedPathDetails = useMemo(() => {
     const pathIds = recommendedPaths.length ? recommendedPaths : [selectedCareer.path];
     return pathIds
@@ -856,6 +647,9 @@ export function OnboardingIntake() {
     if (
       wantsReportView
       && reportSnapshot
+      // Old snapshots (pre-F1) carry no readiness payload — the risk view
+      // they described no longer exists, so they cannot be restored.
+      && reportSnapshot.readiness
       && (!maybeSessionId || reportSnapshot.sessionId === maybeSessionId)
     ) {
       setSessionId(reportSnapshot.sessionId);
@@ -874,6 +668,7 @@ export function OnboardingIntake() {
       setUploadedResumeName(reportSnapshot.uploadedResumeName);
       setAssessmentScore(reportSnapshot.assessmentScore);
       setRecommendedPaths(reportSnapshot.recommendedPaths);
+      setReadiness(reportSnapshot.readiness);
       setNextRedirectHref(reportSnapshot.nextRedirectHref);
       setNextRedirectLabel(reportSnapshot.nextRedirectLabel || "Go to Dashboard");
       onboardingCompleteFired.current = true;
@@ -934,6 +729,44 @@ export function OnboardingIntake() {
     if (!candidateName) return;
     setFullName((prev) => (prev.trim() ? prev : candidateName));
   }, [user?.fullName, user?.firstName, user?.lastName]);
+
+  // UX audit F2: signed-in users who already completed the anonymous
+  // assessment get their basics + goals prefilled and the flow collapses to
+  // confirm → optional resume → finale (which reuses THEIR score, F1).
+  useEffect(() => {
+    if (!isSignedIn || assessmentContextFetched.current) return;
+    assessmentContextFetched.current = true;
+    void getJson<AssessmentContextPayload>("/api/onboarding/assessment-context")
+      .then((payload) => {
+        if (!payload?.linked || !payload.assessment || !payload.report) return;
+        setLinkedContext(payload);
+        trackPosthog("onboarding_linked_assessment_prefilled", {
+          readiness_score: payload.report.readinessScore,
+          career_path_id: payload.assessment.careerPathId,
+        });
+
+        const linked = payload.assessment;
+        const category = categoryForAssessment(linked.careerPathId, linked.careerCategoryLabel);
+        setCareerCategory(category.value);
+        if (category.custom) setCustomCareerCategory((prev) => (prev.trim() ? prev : category.custom));
+        if (linked.jobTitle) setJobTitle((prev) => (prev.trim() ? prev : linked.jobTitle ?? ""));
+        if (linked.yearsExperience && yearsExperienceOptions.some((option) => option.value === linked.yearsExperience)) {
+          setYearsExperience(linked.yearsExperience as (typeof yearsExperienceOptions)[number]["value"]);
+        }
+        if (linked.companySize) setCompanySize((prev) => (prev.trim() ? prev : linked.companySize ?? ""));
+        if (linked.situation) setSituation(linked.situation as SituationStatus);
+        if (linked.linkedinUrl) setLinkedinUrl((prev) => (prev.trim() ? prev : linked.linkedinUrl ?? ""));
+        const goals = (linked.goals ?? []).filter((goal): goal is GoalType =>
+          goalOptions.some((option) => option.value === goal),
+        );
+        if (goals.length) setSelectedGoals(goals);
+        const comfort = comfortOptionFor(linked.aiComfort);
+        if (comfort !== null) setAiComfort(comfort);
+      })
+      .catch(() => {
+        // No linked assessment (or fetch failed): run the standard flow.
+      });
+  }, [isSignedIn]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1363,17 +1196,21 @@ export function OnboardingIntake() {
 
       const score = completed.assessment?.score ?? 0;
       const recommended = completed.assessment?.recommendedCareerPathIds ?? [];
+      const completedReadiness = completed.readiness ?? null;
       trackPosthog("assessment_completed", {
         ...onboardingAnalyticsContext,
         session_id: session.id,
         career_path_id: selectedCareer.path,
         score,
+        readiness_score: completedReadiness?.readinessScore ?? null,
+        readiness_source: completedReadiness?.source ?? null,
         recommended_paths: recommended.join(","),
       });
       const redirectPath = `/dashboard/?welcome=1&onboardingSessionId=${encodeURIComponent(session.id)}`;
       const redirectLabel = completed.signedIn ? "Go to Dashboard" : "Create Account to Continue";
       setAssessmentScore(score);
       setRecommendedPaths(recommended);
+      setReadiness(completedReadiness);
       if (!quizCompleteFired.current) {
         quizCompleteFired.current = true;
         trackAdLead({
@@ -1405,6 +1242,7 @@ export function OnboardingIntake() {
             sessionToken: session.token,
             assessmentScore: score,
             recommendedPaths: recommended,
+            readiness: completedReadiness,
             nextRedirectHref: redirectPath,
             nextRedirectLabel: redirectLabel,
           } satisfies OnboardingReportSnapshot),
@@ -1472,9 +1310,10 @@ export function OnboardingIntake() {
             </a>
           </div>
           <div className="bg-white p-8 md:p-10 rounded-2xl border border-slate-200 shadow-sm">
-            <h2 className="text-3xl font-[Outfit] font-semibold text-[#0f172a]">Create your account first</h2>
+            <h2 className="text-3xl font-[Outfit] font-semibold text-[#0f172a]">Sign in to set up your tutor</h2>
             <p className="mt-3 text-slate-600">
-              Start with {recommendedAuthSource} for the fastest setup, then finish your personalized assessment.
+              Use {recommendedAuthSource} to open your workspace. Already took the free assessment? Your score and
+              report will be waiting inside — no re-entering your answers.
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
               <SignUpButton mode="modal" forceRedirectUrl="/onboarding/?post_signup=1" fallbackRedirectUrl="/onboarding/?post_signup=1">
@@ -1539,22 +1378,18 @@ export function OnboardingIntake() {
         <div className="bg-white p-8 md:p-10 rounded-2xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-3xl font-[Outfit] font-semibold text-[#0f172a]">
-              {step === 1 && "Basic Information"}
+              {step === 1 && (collapsed ? "Confirm Your Details" : "Basic Information")}
               {step === 2 && "Goals & Setup"}
               {step === 3 && "Resume & Review"}
-              {step === 4 && "AI Analysis"}
-              {step === 5 && "Assessment Complete"}
+              {step === 4 && "Your Readiness Report"}
+              {step === 5 && "Your AI-Readiness Score"}
             </h2>
             <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map((index) => (
+              {(collapsed ? [1, 3, 4, 5] : [1, 2, 3, 4, 5]).map((index) => (
                 <span
                   key={index}
                   className={`inline-block h-4 w-4 rounded-full ${
-                    index < step
-                      ? "bg-emerald-500"
-                      : index === step
-                        ? "bg-emerald-500"
-                        : "bg-slate-200"
+                    index <= step ? "bg-emerald-500" : "bg-slate-200"
                   }`}
                 />
               ))}
@@ -1573,6 +1408,13 @@ export function OnboardingIntake() {
 
           {step === 1 ? (
             <div className="space-y-5">
+              {collapsed ? (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  <i className="fa-solid fa-circle-check mr-2" />
+                  We pulled this from your assessment — confirm or edit anything below. Your readiness score is already
+                  saved.
+                </div>
+              ) : null}
               <div>
                 <label className="block text-sm font-medium mb-2 text-[#334155]">Full Name</label>
                 <input
@@ -1659,11 +1501,14 @@ export function OnboardingIntake() {
             </div>
           ) : null}
 
-          {step === 2 ? (
-            <div className="space-y-5">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                Quick setup: choose your current situation, goals, and AI comfort level. This helps us build your first dashboard plan.
-              </div>
+          {/* Collapsed flow (F2): the goals/situation fields join the confirm screen. */}
+          {step === 2 || (step === 1 && collapsed) ? (
+            <div className={`space-y-5 ${collapsed ? "mt-5" : ""}`}>
+              {!collapsed ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  Quick setup: choose your current situation, goals, and AI comfort level. This helps us build your first dashboard plan.
+                </div>
+              ) : null}
 
               <div>
                 <label className="block text-sm font-medium mb-2 text-[#334155]">
@@ -1780,10 +1625,20 @@ export function OnboardingIntake() {
               </div>
 
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-                <h4 className="text-xl font-semibold text-[#0f172a] mb-2">Ready for AI Analysis</h4>
+                <h4 className="text-xl font-semibold text-[#0f172a] mb-2">What happens next</h4>
                 <ul className="space-y-2 text-slate-500">
+                  {collapsed ? (
+                    <li>
+                      <i className="fa-solid fa-gauge-high mr-2 text-emerald-600" />
+                      Your saved readiness score and report get attached to your workspace — no re-scoring.
+                    </li>
+                  ) : (
+                    <li>
+                      <i className="fa-solid fa-gauge-high mr-2 text-emerald-600" />
+                      Your answers become your AI-readiness report: a 0-100 score, your top skill gaps, and a 30-day plan.
+                    </li>
+                  )}
                   <li><i className="fa-solid fa-robot mr-2 text-emerald-600" />Your responses personalize your tutor path.</li>
-                  <li><i className="fa-regular fa-clock mr-2 text-emerald-600" />Analysis typically takes 30-60 seconds.</li>
                   <li><i className="fa-solid fa-shield mr-2 text-emerald-600" />LinkedIn and resume context improves recommendations.</li>
                 </ul>
               </div>
@@ -1791,7 +1646,7 @@ export function OnboardingIntake() {
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <h4 className="text-xl font-semibold text-[#0f172a] mb-3">Review Your Information</h4>
                 <div className="grid gap-2 text-[#0f172a]">
-                  <p><strong>Role:</strong> {jobTitle || "Not provided"} ({selectedCareerLabel})</p>
+                  <p><strong>Role:</strong> {jobTitle.trim() ? `${jobTitle.trim()} (${selectedCareerLabel})` : selectedCareerLabel}</p>
                   <p><strong>Experience:</strong> {selectedExperience.label}</p>
                   <p><strong>Company Size:</strong> {companySize || "Not specified"}</p>
                   <p><strong>Resume:</strong> {uploadedResumeName || resumeFile ? "Uploaded" : "Not provided"}</p>
@@ -1804,7 +1659,9 @@ export function OnboardingIntake() {
           {step === 4 ? (
             <div className="py-12 text-center">
               <div className="mx-auto mb-6 h-20 w-20 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin" />
-              <h3 className="text-3xl font-[Outfit] font-semibold text-[#0f172a] mb-5">AI Analysis in Progress</h3>
+              <h3 className="text-3xl font-[Outfit] font-semibold text-[#0f172a] mb-5">
+                {collapsed ? "Finishing your setup" : "Building your readiness report"}
+              </h3>
               <div className="max-w-xl mx-auto rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-lg text-[#0f172a]">
                 <i className="fa-solid fa-spinner animate-spin mr-3 text-emerald-600" />
                 {analysisSteps[analysisIndex]}
@@ -1814,132 +1671,60 @@ export function OnboardingIntake() {
 
           {step === 5 ? (
             <div className="space-y-8">
-              <div className="flex flex-wrap gap-2">
-                {careerCategoryOptions.map((option) => (
-                  <span
-                    key={option.value}
-                    className={`rounded-full border px-4 py-1 text-sm ${
-                      option.value === careerCategory
-                        ? "border-emerald-500 bg-emerald-500 text-white"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300 transition-colors"
-                    }`}
-                  >
-                    {option.label}
-                  </span>
-                ))}
-              </div>
-
-              <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-                <div className="space-y-4">
-                  <h3 className="text-3xl font-[Outfit] font-semibold text-[#0f172a]">{activeAssessmentTemplate.title}</h3>
-                  <p className="text-sm text-slate-600">
-                    Based on your answers, here is your AI impact risk and the recommended place to start.
-                  </p>
-                  <div className="flex items-center gap-3 text-sm">
-                    <span
-                      className="rounded-full px-3 py-1 font-semibold"
-                      style={{ backgroundColor: `${riskColor}1a`, color: riskColor }}
-                    >
-                      {riskBand} Risk ({normalizedScore}/100)
-                    </span>
-                    <span className="text-slate-500">Timeline: {riskTimeline}</span>
-                  </div>
-                  <p className="text-slate-500">{activeAssessmentTemplate.description}</p>
-
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                    <h4 className="text-2xl font-[Outfit] text-[#0f172a] mb-3">Key Risk Areas</h4>
-                    <ul className="space-y-2">
-                      {activeAssessmentTemplate.riskAreas.map((item) => {
-                        const dotColor =
-                          item.level === "High" ? "#dc2626" : item.level === "Medium" ? "#d97706" : "#16a34a";
-                        return (
-                          <li key={item.label} className="flex items-start gap-3 text-[#0f172a]">
-                            <span className="mt-2 inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dotColor }} />
-                            <span>
-                              {item.label} ({item.level} Risk)
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-                    <h4 className="text-2xl font-[Outfit] text-[#0f172a] mb-3">Recommended Actions</h4>
-                    <ul className="list-disc list-inside space-y-2 text-[#0f172a]">
-                      {activeAssessmentTemplate.recommendedActions.map((action) => (
-                        <li key={action}>{action}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-                  <div className="mx-auto relative h-36 w-36">
+              {/* One score, one framework: the 0-100 AI-readiness score (UX audit F1). */}
+              {readiness ? (
+                <div className="grid gap-6 md:grid-cols-[auto_1fr] md:items-center rounded-2xl border border-slate-200 bg-white shadow-sm p-6 md:p-8">
+                  <div className="mx-auto relative h-40 w-40">
                     <div
                       className="h-full w-full rounded-full"
                       style={{
-                        background: `conic-gradient(${riskColor} ${normalizedScore * 3.6}deg, #d9e1ee 0deg)`,
+                        background: `conic-gradient(${readinessScoreBand.color} ${readiness.readinessScore * 3.6}deg, #d9e1ee 0deg)`,
                       }}
                     />
                     <div className="absolute inset-3 rounded-full bg-white flex flex-col items-center justify-center">
-                      <span className="text-5xl font-bold" style={{ color: riskColor }}>
-                        {normalizedScore}
+                      <span className="text-5xl font-bold" style={{ color: readinessScoreBand.color }}>
+                        {readiness.readinessScore}
                       </span>
-                      <span className="text-sm font-semibold" style={{ color: riskColor }}>
-                        {riskBand} Risk
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mt-1">
+                        out of 100
                       </span>
                     </div>
                   </div>
-
-                  <h4 className="mt-6 text-3xl font-[Outfit] text-[#0f172a] text-center">{activeAssessmentTemplate.title}</h4>
-                  <p className="text-center text-slate-500 mb-4">Your risk snapshot</p>
-
-                  <div className="space-y-3">
-                    {activeAssessmentTemplate.riskAreas.slice(0, 2).map((item) => (
-                      <div key={item.label} className="rounded-xl border border-slate-200 p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="font-semibold text-[#0f172a]">{item.label}</p>
-                          <span
-                            className="rounded-full px-2 py-0.5 text-xs font-semibold"
-                            style={{
-                              backgroundColor:
-                                item.level === "High" ? "#fecaca" : item.level === "Medium" ? "#fde68a" : "#bbf7d0",
-                              color: item.level === "High" ? "#991b1b" : item.level === "Medium" ? "#92400e" : "#166534",
-                            }}
-                          >
-                            {item.level}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="text-center md:text-left">
+                    <span
+                      className="inline-block rounded-full border px-3 py-1 text-xs font-semibold mb-3"
+                      style={{
+                        borderColor: `${readinessScoreBand.color}66`,
+                        backgroundColor: `${readinessScoreBand.color}1a`,
+                        color: readinessScoreBand.color,
+                      }}
+                    >
+                      {readinessScoreBand.label} · AI-Readiness Score
+                    </span>
+                    <h3 className="text-2xl font-[Outfit] font-semibold text-[#0f172a] leading-snug mb-2">
+                      {readiness.headline}
+                    </h3>
+                    <p className="text-sm text-slate-600 mb-4">
+                      {readiness.source === "linked"
+                        ? `This is the score from your assessment — scored for ${selectedCareerLabel}. Everything you finish here moves it.`
+                        : `Scored for ${selectedCareerLabel}. Everything you finish here moves it.`}
+                    </p>
+                    <a
+                      href={readiness.reportPath}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-600 hover:text-emerald-500"
+                    >
+                      View your full report
+                      <i className="fa-solid fa-arrow-up-right-from-square text-xs" />
+                    </a>
                   </div>
-
-                  <p className="mt-4 text-sm text-center text-slate-500">
-                    <i className="fa-regular fa-clock mr-2" />
-                    Timeline: {riskTimeline}
-                  </p>
                 </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                  <h4 className="text-xl font-[Outfit] text-[#0f172a] mb-2">AI Impact</h4>
-                  <p className="text-slate-500">{activeAssessmentTemplate.aiToolAnalysis}</p>
+              ) : (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-600">
+                  Your readiness report is being prepared. Open your dashboard to see your score.
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                  <h4 className="text-xl font-[Outfit] text-[#0f172a] mb-2">Career Direction</h4>
-                  <p className="text-slate-500">{activeAssessmentTemplate.careerStrategies}</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                  <h4 className="text-xl font-[Outfit] text-[#0f172a] mb-2">Next 3 Moves</h4>
-                  <ul className="list-disc list-inside space-y-1 text-slate-500">
-                    {activeAssessmentTemplate.actionPlan.map((stepItem) => (
-                      <li key={stepItem}>{stepItem}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+              )}
 
               {recommendedPathDetails.length ? (
                 <div className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -2038,7 +1823,12 @@ export function OnboardingIntake() {
                     step_name: STEP_NAMES[step],
                     session_id: sessionId,
                   });
-                  setStep((prev) => (prev > 1 ? ((prev - 1) as Step) : prev));
+                  setStep((prev) => {
+                    if (prev <= 1) return prev;
+                    // Collapsed flow (F2): step 2 does not exist on its own.
+                    if (collapsed && prev === 3) return 1;
+                    return (prev - 1) as Step;
+                  });
                 }}
                 disabled={busy || resumeUploadBusy || step === 1}
               >
@@ -2052,7 +1842,7 @@ export function OnboardingIntake() {
                   onClick={() => {
                     setError(null);
                     if (step === 1) {
-                      const validation = validateStepOne();
+                      const validation = validateStepOne() ?? (collapsed ? validateStepTwo() : null);
                       if (validation) {
                         trackValidationFailure(1, validation, {
                           ...onboardingAnalyticsContext,
@@ -2072,8 +1862,22 @@ export function OnboardingIntake() {
                         step: 1,
                         step_name: "basic_information",
                         job_title: jobTitle,
+                        linked_assessment: collapsed,
                         ...onboardingAnalyticsContext,
                       });
+                      if (collapsed) {
+                        // Collapsed flow (F2): the confirm screen covered the
+                        // work-details step — go straight to resume upload.
+                        trackPosthog("onboarding_step_completed", {
+                          step: 2,
+                          step_name: "work_details",
+                          has_linkedin: !!linkedinUrl.trim(),
+                          linked_assessment: true,
+                          ...onboardingAnalyticsContext,
+                        });
+                        setStep(3);
+                        return;
+                      }
                     }
                     if (step === 2) {
                       const validation = validateStepTwo();
@@ -2106,8 +1910,8 @@ export function OnboardingIntake() {
                   }}
                   disabled={busy || resumeUploadBusy}
                 >
-                  <i className="fa-solid fa-robot mr-2" />
-                  {busy ? "Analyzing..." : "Start AI Analysis"}
+                  <i className="fa-solid fa-gauge-high mr-2" />
+                  {busy ? "Working..." : collapsed ? "Finish Setup" : "Get My Readiness Report"}
                 </button>
               )}
             </div>

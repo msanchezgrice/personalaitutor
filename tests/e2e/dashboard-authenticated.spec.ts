@@ -52,6 +52,14 @@ test.describe("authenticated dashboard flows", () => {
       sessionToken: "token_e2e_report",
       assessmentScore: 67,
       recommendedPaths: ["product-management"],
+      // UX audit F1: the finale renders the readiness score, not the legacy
+      // deterministic risk view — snapshots without it are not restorable.
+      readiness: {
+        source: "generated",
+        readinessScore: 54,
+        headline: "Strong product instincts, manual AI toolkit.",
+        reportPath: "/assessment/report/token_e2e_report",
+      },
       nextRedirectHref: "/dashboard/?welcome=1&onboardingSessionId=session_e2e_report",
       nextRedirectLabel: "Open Dashboard",
     });

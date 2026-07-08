@@ -125,7 +125,8 @@ export function DashboardShell({
   initialUser,
 }: DashboardShellProps) {
   const displayName = initialUser?.name?.trim() || "Learner";
-  const displayHeadline = initialUser?.headline?.trim() || "AI Builder";
+  // Pages resolve the role label (never the legacy "AI Builder" persona — UX audit F7).
+  const displayHeadline = initialUser?.headline?.trim() || "Learner";
   const avatarUrl = initialUser?.avatarUrl?.trim() || "/assets/avatar.png";
   const publicProfileUrl = initialUser?.publicProfileUrl?.trim() || "#";
   const levelLabel = initialUser?.levelLabel?.trim() || "Level 1";

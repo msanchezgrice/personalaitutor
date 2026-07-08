@@ -1782,9 +1782,26 @@
     return 0;
   }
 
+  // UX audit F7: "AI Builder" is the legacy default persona written into
+  // headline at profile creation — an internal string, never user-chosen.
+  // Show the career-path name instead (mirrors resolveLearnerRoleLabel).
+  var CAREER_PATH_NAMES = {
+    "product-management": "Product Management",
+    "marketing-seo": "Marketing & SEO",
+    "branding-design": "Branding & Design",
+    "quality-assurance": "Quality Assurance",
+    "sales-revops": "Sales / RevOps",
+    "customer-support": "Customer Support",
+    "operations": "Operations (Ops)",
+    "human-resources": "Human Resources",
+    "software-engineering": "Software Engineering",
+  };
+
   function headlineForUser(user) {
-    if (!user || !user.headline) return "AI Builder";
-    return user.headline;
+    var headline = user && user.headline ? String(user.headline).trim() : "";
+    if (headline && headline.toLowerCase() !== "ai builder") return headline;
+    var careerPathId = (user && user.careerPathId) || ctx.careerPathId || "";
+    return CAREER_PATH_NAMES[careerPathId] || "Learner";
   }
 
   function salutationForHour(hour) {
@@ -2744,7 +2761,13 @@
       try {
         var result = await getJson(tutorSessionUrl(projectId));
         var session = result && result.session ? result.session : null;
-        return session && session.status === "active" ? session : null;
+        if (session && session.status === "active") {
+          // UX audit F5: the route flags sessions whose playbook changed
+          // after they snapshotted their steps.
+          session.playbookDrifted = Boolean(result && result.playbookDrifted);
+          return session;
+        }
+        return null;
       } catch {
         return null;
       }
@@ -2801,6 +2824,9 @@
         var stepLine = progress.allStepsDone
           ? "All steps complete — finish the proof checklist to complete the session."
           : "Step " + progress.stepNumber + " of " + progress.totalSteps + ": " + escapeHtml(truncateChatText(progress.currentStepTitle, 110));
+        var driftLine = activeTutorSession.playbookDrifted
+          ? '<p class="text-xs text-amber-300 mt-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Playbook updated — restart this session from the workbench to get the new steps.</p>'
+          : "";
         banner.innerHTML =
           '<div class="glass-panel border border-emerald-500/30 bg-emerald-500/5 rounded-2xl p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">' +
           '<div class="min-w-0">' +
@@ -2811,6 +2837,7 @@
           '<p class="text-xs text-gray-400 mt-1">Checklist ' +
           progress.checklistDone + "/" + progress.checklistTotal +
           " done — replies here carry your playbook, profile, and assessment context.</p>" +
+          driftLine +
           "</div>" +
           '<a href="/dashboard/projects/#pack-workbench" class="text-xs text-emerald-400 hover:text-emerald-300 whitespace-nowrap">Open workbench</a>' +
           "</div>";
@@ -3113,7 +3140,7 @@
     var xLoadingNode = contentWrap.querySelector("[data-social-loading='x']");
 
     if (authorNode) {
-      authorNode.textContent = summary.user.name + " · " + (summary.user.headline || "AI Builder");
+      authorNode.textContent = summary.user.name + " · " + headlineForUser(summary.user);
     }
 
     var draftState = {
@@ -3822,7 +3849,7 @@
     }
     var profileUser = summary && summary.user ? summary.user : {};
     var resolvedName = profileInlineText(profileUser.name) || profileInlineText(ctx && ctx.name) || "New Learner";
-    var resolvedHeadline = profileInlineText(profileUser.headline) || profileInlineText(ctx && ctx.headline) || "AI Builder";
+    var resolvedHeadline = profileInlineText(headlineForUser(profileUser)) || profileInlineText(ctx && ctx.headline) || "Learner";
     var resolvedBio = profileInlineText(profileUser.bio) || "Building practical AI workflows and sharing public proof of execution.";
     var resolvedLinkedIn = profileUser.socialLinks && profileUser.socialLinks.linkedin ? profileUser.socialLinks.linkedin : "";
     var resolvedEmail = ctx.email || profileUser.email || "";
@@ -4290,7 +4317,7 @@
     var projectCount = Math.max(1, Math.round((candidate.evidenceScore || 45) / 30));
     var candidateHandle = encodeURIComponent(String(candidate.handle || ""));
     var candidateName = String(candidate.name || "Candidate");
-    var candidateRole = String(candidate.role || "AI Builder");
+    var candidateRole = String(candidate.role || "AI-native professional");
     var candidateAvatar = sanitizeImageUrl(candidate.avatarUrl) || "/assets/avatar.png";
     var card = document.createElement("a");
     card.setAttribute("href", "/employers/talent/" + candidateHandle);

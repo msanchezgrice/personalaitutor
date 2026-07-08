@@ -39,40 +39,41 @@ export default async function SignUpPage({
       <div className="mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-6xl items-center gap-6 sm:gap-10 lg:min-h-[calc(100vh-5rem)] lg:grid-cols-[minmax(0,1fr),auto]">
         <section className="max-w-xl space-y-4 sm:space-y-6">
           <span className="inline-flex items-center rounded-full border border-emerald-200 bg-white/80 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 shadow-sm sm:px-4 sm:py-2 sm:text-xs">
-            Personalized assessment
+            AI-readiness score
           </span>
           <div className="space-y-3 sm:space-y-4">
             <h1 className="font-[Outfit] text-3xl font-semibold leading-[1.05] tracking-tight text-slate-950 sm:text-5xl">
-              <span className="sm:hidden">Get your AI assessment report by email.</span>
-              <span className="hidden sm:inline">Sign up to get your personalized AI assessment report sent to your inbox when complete.</span>
+              <span className="sm:hidden">Your score is saved. Now raise it.</span>
+              <span className="hidden sm:inline">Your score is saved. Create your account to start raising it.</span>
             </h1>
             <p className="max-w-lg text-sm leading-6 text-slate-600 sm:text-lg sm:leading-7">
-              Create your account first so we can save your answers, email your results, and keep your progress tied to one profile.
+              Tutor sessions that close one skill gap per week, real proof artifacts you can show, and your score
+              trend over time — all attached to one profile.
             </p>
           </div>
           <div className="space-y-2 text-sm text-slate-700 sm:hidden">
             <div className="rounded-xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm">
-              <span className="font-semibold text-slate-900">Saved:</span> Your assessment progress stays attached to your account.
+              <span className="font-semibold text-slate-900">Tutor sessions:</span> Work each module step-by-step and close your top gaps.
             </div>
             <div className="rounded-xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm">
-              <span className="font-semibold text-slate-900">Delivered:</span> Your finished report lands in your inbox when it is ready.
+              <span className="font-semibold text-slate-900">Proof artifacts:</span> Turn every session into work you can actually show.
             </div>
             <div className="rounded-xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm">
-              <span className="font-semibold text-slate-900">Personalized:</span> Your recommendations and next steps are tailored to you.
+              <span className="font-semibold text-slate-900">Score trend:</span> Watch your AI-readiness score move as you ship.
             </div>
           </div>
           <div className="hidden gap-3 text-sm text-slate-700 sm:grid sm:grid-cols-3">
             <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Saved</div>
-              <div className="mt-2 font-medium text-slate-900">Your assessment progress stays attached to your account.</div>
+              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Tutor sessions</div>
+              <div className="mt-2 font-medium text-slate-900">Work each module step-by-step and close your top gaps.</div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Delivered</div>
-              <div className="mt-2 font-medium text-slate-900">Your finished report lands in your inbox when it is ready.</div>
+              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Proof artifacts</div>
+              <div className="mt-2 font-medium text-slate-900">Turn every session into work you can actually show.</div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Personalized</div>
-              <div className="mt-2 font-medium text-slate-900">Your recommendations and next steps are tailored to you.</div>
+              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Score trend</div>
+              <div className="mt-2 font-medium text-slate-900">Watch your AI-readiness score move as you ship.</div>
             </div>
           </div>
         </section>

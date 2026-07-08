@@ -132,6 +132,10 @@ export default async function TalentPage({
             </Link>
             <h1 className="mb-3 text-5xl font-[Outfit] text-white">Browse Talent Pool</h1>
             <p className="max-w-3xl text-lg text-gray-400">Filter public proof profiles by role, toolset, and verified skill signals.</p>
+            {/* UX audit F6: the pool is currently seeded with example profiles. */}
+            <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-300">
+              <i className="fa-solid fa-flask"></i> Example candidates — the live talent pool is opening soon
+            </p>
           </div>
         </div>
 

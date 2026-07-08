@@ -176,7 +176,11 @@ export async function getTutorSessionForProject(input: {
         (session) =>
           session.projectId === input.projectId &&
           session.learnerProfileId === input.learnerProfileId &&
-          (input.includeCompleted ? true : session.status === "active"),
+          // Archived sessions (completed with no completedAt) are never
+          // resumed or displayed — they only exist as history.
+          (input.includeCompleted
+            ? session.status === "active" || Boolean(session.completedAt)
+            : session.status === "active"),
       )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return sessions.length ? { ...sessions[0] } : null;
@@ -192,6 +196,9 @@ export async function getTutorSessionForProject(input: {
     .limit(1);
   if (!input.includeCompleted) {
     query = query.eq("status", "active");
+  } else {
+    // Exclude archived rows (status completed + completed_at null).
+    query = query.or("status.eq.active,completed_at.not.is.null");
   }
   const { data } = await query.maybeSingle();
   return data ? sessionFromRow(data as TutorSessionRow) : null;
@@ -270,6 +277,66 @@ export async function startTutorSession(input: {
     throw new Error(`TUTOR_SESSION_CREATE_FAILED:${error?.message ?? "NO_ROW"}`);
   }
   return sessionFromRow(data as TutorSessionRow);
+}
+
+/**
+ * True when the module playbook changed after this session snapshotted its
+ * steps (UX audit F5). Sessions intentionally snapshot for resumability;
+ * drift means the workbench should offer "Playbook updated — restart".
+ * Detection compares the stored step titles and checklist labels against the
+ * current guide — no schema change needed.
+ */
+export function tutorSessionPlaybookDrifted(session: TutorSessionRecord, guide: RecommendedModuleGuide): boolean {
+  const sessionSteps = session.steps.map((step) => step.title);
+  const sessionChecklist = session.checklist.map((item) => item.label);
+  if (sessionSteps.length !== guide.steps.length) return true;
+  if (sessionChecklist.length !== guide.proofChecklist.length) return true;
+  if (sessionSteps.some((title, index) => title !== guide.steps[index])) return true;
+  if (sessionChecklist.some((label, index) => label !== guide.proofChecklist[index])) return true;
+  return false;
+}
+
+/**
+ * Archived = status "completed" WITHOUT a `completedAt`. The status CHECK
+ * constraint only allows 'active' | 'completed' (migration 20260707191000),
+ * so archiving reuses 'completed' and the null completed_at distinguishes
+ * "replaced by a restart" from "actually finished". `completeTutorSession`
+ * always stamps completedAt, so the two states never collide.
+ */
+export function isTutorSessionArchived(session: TutorSessionRecord): boolean {
+  return session.status === "completed" && !session.completedAt;
+}
+
+async function archiveTutorSession(session: TutorSessionRecord): Promise<TutorSessionRecord | null> {
+  return persistSessionPatch({
+    ...session,
+    status: "completed",
+    completedAt: null,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+/**
+ * Restart after a playbook update (UX audit F5): archives the current active
+ * session (its evidence stays queryable) and starts a fresh session from the
+ * current playbook. With no active session it simply starts one.
+ */
+export async function restartTutorSession(input: {
+  projectId: string;
+  learnerProfileId: string;
+  guide: RecommendedModuleGuide;
+}): Promise<TutorSessionRecord> {
+  const active = await getTutorSessionForProject({
+    projectId: input.projectId,
+    learnerProfileId: input.learnerProfileId,
+  });
+  if (active) {
+    const archived = await archiveTutorSession(active);
+    if (!archived) {
+      throw new Error("TUTOR_SESSION_ARCHIVE_FAILED");
+    }
+  }
+  return startTutorSession(input);
 }
 
 export async function completeTutorSessionStep(input: {
@@ -363,7 +430,9 @@ export async function countTutorSessionMilestones(learnerProfileId: string): Pro
       .sort();
     return {
       started: sessions.length,
-      completed: sessions.filter((session) => session.status === "completed").length,
+      // Archived sessions (completed + no completedAt) never count as
+      // completed — restarting after a playbook update must not grant XP.
+      completed: sessions.filter((session) => session.status === "completed" && session.completedAt).length,
       firstCompletedAt: completedAts[0] ?? null,
     };
   }
@@ -381,7 +450,7 @@ export async function countTutorSessionMilestones(learnerProfileId: string): Pro
     .sort();
   return {
     started: rows.length,
-    completed: rows.filter((row) => row.status === "completed").length,
+    completed: rows.filter((row) => row.status === "completed" && row.completed_at).length,
     firstCompletedAt: completedAts[0] ?? null,
   };
 }

@@ -1,11 +1,12 @@
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
+import { resolveLearnerRoleLabel } from "@aitutor/shared";
 import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
 
 export default async function DashboardProfilePage() {
   const state = await getDashboardServerState();
   const user = state.user;
   const displayName = user?.name?.trim() || state.seed?.name?.trim() || "New Learner";
-  const displayHeadline = user?.headline?.trim() || "AI Builder";
+  const displayHeadline = resolveLearnerRoleLabel({ headline: user?.headline, careerPathId: user?.careerPathId });
   const displayBio = user?.bio?.trim() || "Building practical AI workflows and sharing public proof of execution.";
   const linkedInUrl = user?.socialLinks?.linkedin?.trim() || "";
   const avatarUrl = user?.avatarUrl?.trim() || state.seed?.avatarUrl?.trim() || "/assets/avatar.png";

@@ -1,4 +1,4 @@
-import { getCareerPath } from "./matrix";
+import { getCareerPath, isLegacyPersonaHeadline } from "./matrix";
 import type { OAuthConnection } from "./types";
 import type { ArtifactKind, GoalType } from "./types";
 
@@ -758,7 +758,11 @@ export function buildRecommendedModuleGuide(input: {
   const careerPathId = careerPath?.id ?? "general";
   const careerPathName = careerPath?.name ?? "Current path";
   const moduleTitle = input.moduleTitle.trim() || "Starter AI Pack";
-  const roleLabel = input.jobTitle?.trim() || careerPathName;
+  // UX audit F7: never surface the legacy "AI Builder" persona string —
+  // callers historically passed profile.headline (defaulted to "AI Builder")
+  // through jobTitle. Fall back to the career-path name instead.
+  const realJobTitle = !isLegacyPersonaHeadline(input.jobTitle) ? input.jobTitle?.trim() : "";
+  const roleLabel = realJobTitle || careerPathName;
   const goalLabel = firstGoalLabel(input.primaryGoal ?? null);
 
   if (!template) {

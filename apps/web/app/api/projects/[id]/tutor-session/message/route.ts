@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { resolveLearnerRoleLabel } from "@aitutor/shared";
 import { z } from "zod";
 import { appendBuildLog, jsonError, jsonOk, runtimeFindProjectById, runtimeFindUserById } from "@/lib/runtime";
 import { getUserId } from "@/lib/api";
@@ -45,7 +46,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       guide,
       learner: {
         name: profile.name,
-        headline: profile.headline || null,
+        // Never leak the legacy 'AI Builder' persona into tutor prompts (F7).
+        headline: resolveLearnerRoleLabel({ headline: profile.headline, careerPathId: profile.careerPathId }),
         goals: (profile.goals ?? []).map((goal) => String(goal)),
       },
       assessment: report

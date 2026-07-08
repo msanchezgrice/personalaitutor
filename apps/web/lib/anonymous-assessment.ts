@@ -280,6 +280,35 @@ export async function findAnonymousAssessmentByToken(token: string): Promise<Ano
   return data ? assessmentFromRow(data as AnonymousAssessmentRow) : null;
 }
 
+/**
+ * Latest assessment whose captured email matches (normalized). Used by
+ * onboarding (UX audit F1/F2) to reuse the readiness report a signed-in user
+ * already earned anonymously — works even before profile linking has run.
+ */
+export async function findLatestAnonymousAssessmentByEmail(
+  email: string | null | undefined,
+): Promise<AnonymousAssessment | null> {
+  const normalized = normalizeEmailAddress(email);
+  if (!normalized) return null;
+
+  if (mode() === "memory") {
+    const matches = Array.from(memoryAssessments.values())
+      .filter((entry) => entry.email === normalized)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return matches.length ? { ...matches[matches.length - 1] } : null;
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data } = await supabase
+    .from("anonymous_assessments")
+    .select(ASSESSMENT_SELECT_FIELDS)
+    .eq("email", normalized)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data ? assessmentFromRow(data as AnonymousAssessmentRow) : null;
+}
+
 export async function submitAnonymousAssessment(input: {
   sessionToken: string;
   careerPathId?: string | null;

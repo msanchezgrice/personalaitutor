@@ -1,4 +1,5 @@
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
+import { resolveLearnerRoleLabel } from "@aitutor/shared";
 import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
 
 export default async function DashboardChatPage() {
@@ -19,7 +20,7 @@ export default async function DashboardChatPage() {
       runtimeBootstrap={buildDashboardRuntimeBootstrap(state)}
       initialUser={{
         name: user?.name ?? state.seed?.name ?? "Learner",
-        headline: user?.headline ?? "AI Builder",
+        headline: resolveLearnerRoleLabel({ headline: user?.headline, careerPathId: user?.careerPathId }),
         avatarUrl: user?.avatarUrl ?? state.seed?.avatarUrl ?? null,
         publicProfileUrl: state.publicProfileUrl,
         levelLabel: state.sidebarLevel.label,

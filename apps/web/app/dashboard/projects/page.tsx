@@ -2,8 +2,8 @@ import { DashboardShell } from "@/components/dashboard-runtime-shell";
 import { DashboardProjectWorkbench, type TutorSessionView } from "@/components/dashboard-project-workbench";
 import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
 import { runtimeListOAuthConnections, runtimeSyncProjectModuleSteps } from "@/lib/runtime";
-import { getTutorSessionForProject } from "@/lib/tutor-session";
-import { buildRecommendedModuleGuide, getCareerPath } from "@aitutor/shared";
+import { getTutorSessionForProject, tutorSessionPlaybookDrifted } from "@/lib/tutor-session";
+import { buildRecommendedModuleGuide, getCareerPath, resolveLearnerRoleLabel } from "@aitutor/shared";
 
 function summarize(value: string | null | undefined, fallback: string, maxChars = 160) {
   const cleaned = String(value || "").replace(/\s+/g, " ").trim();
@@ -54,6 +54,12 @@ export default async function DashboardProjectsPage() {
         completedAt: tutorSessionRecord.completedAt,
       }
     : null;
+  // UX audit F5: flag active sessions whose playbook changed after snapshot.
+  const initialPlaybookDrifted = Boolean(
+    tutorSessionRecord &&
+      tutorSessionRecord.status === "active" &&
+      tutorSessionPlaybookDrifted(tutorSessionRecord, guide),
+  );
   return (
     <DashboardShell
       activeTab="projects"
@@ -69,7 +75,7 @@ export default async function DashboardProjectsPage() {
       runtimeBootstrap={buildDashboardRuntimeBootstrap(state)}
       initialUser={{
         name: user?.name ?? state.seed?.name ?? "Learner",
-        headline: user?.headline ?? "AI Builder",
+        headline: resolveLearnerRoleLabel({ headline: user?.headline, careerPathId: user?.careerPathId }),
         avatarUrl: user?.avatarUrl ?? state.seed?.avatarUrl ?? null,
         publicProfileUrl: state.publicProfileUrl,
         levelLabel: state.sidebarLevel.label,
@@ -169,6 +175,7 @@ export default async function DashboardProjectsPage() {
           oauthConnections={oauthConnections}
           publicProfileUrl={state.publicProfileUrl}
           initialTutorSession={initialTutorSession}
+          initialPlaybookDrifted={initialPlaybookDrifted}
         />
 
         <section>

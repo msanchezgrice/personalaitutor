@@ -211,3 +211,29 @@ describe("anonymous assessment lifecycle", () => {
     expect(await linkAnonymousAssessmentsToProfile({ learnerProfileId: "p", email: "bad" })).toBe(0);
   });
 });
+
+describe("findLatestAnonymousAssessmentByEmail (F1/F2 onboarding reuse)", () => {
+  beforeEach(() => {
+    resetAnonymousAssessmentStateForTests();
+  });
+
+  test("returns the latest email-matched assessment, normalized", async () => {
+    const { findLatestAnonymousAssessmentByEmail } = await import("@/lib/anonymous-assessment");
+
+    const older = await createAnonymousAssessment({ careerPathId: "product-management" });
+    await captureAssessmentEmail({ sessionToken: older.sessionToken, email: "MIGS@Example.com" });
+
+    const newer = await createAnonymousAssessment({ careerPathId: "marketing-seo" });
+    await captureAssessmentEmail({ sessionToken: newer.sessionToken, email: "migs@example.com" });
+
+    const found = await findLatestAnonymousAssessmentByEmail("  Migs@Example.COM ");
+    expect(found?.id).toBe(newer.id);
+  });
+
+  test("returns null for unknown or invalid emails", async () => {
+    const { findLatestAnonymousAssessmentByEmail } = await import("@/lib/anonymous-assessment");
+    expect(await findLatestAnonymousAssessmentByEmail("nobody@example.com")).toBeNull();
+    expect(await findLatestAnonymousAssessmentByEmail("not-an-email")).toBeNull();
+    expect(await findLatestAnonymousAssessmentByEmail(null)).toBeNull();
+  });
+});

@@ -13,6 +13,8 @@ import {
   runtimeUpdateOnboardingSituation,
 } from "@/lib/runtime";
 import { verifyOnboardingSessionToken } from "@/lib/onboarding-session-token";
+import { computeDeterministicAssessmentScore } from "@/lib/assessment-report";
+import { resolveOnboardingReadiness } from "@/lib/onboarding-readiness";
 
 const goalEnum = z.enum([
   "build_business",
@@ -150,9 +152,43 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // UX audit F1: the deterministic score above is an internal signal only.
+    // The user-facing finale shows the 0-100 AI-readiness score — reused from
+    // a linked anonymous assessment when one exists, generated fresh (same
+    // Phase 1 LLM report, same score spine) when none does. HARD FAILURE: a
+    // failed generation fails loudly, never a placeholder.
+    let readiness;
+    try {
+      readiness = await resolveOnboardingReadiness({
+        email: seed?.email ?? null,
+        learnerProfileId: claimedUser?.id ?? null,
+        role: {
+          careerPathId: payload.careerPathId,
+          careerCategoryLabel: payload.careerCategoryLabel ?? null,
+          jobTitle: payload.jobTitle ?? null,
+          yearsExperience: payload.yearsExperience ?? null,
+          companySize: payload.companySize ?? null,
+          situation: payload.situation,
+        },
+        goals: payload.goals,
+        aiComfort: payload.aiComfort ?? null,
+        linkedinUrl: payload.linkedinUrl ?? null,
+        answers: payload.answers,
+        deterministicScore: computeDeterministicAssessmentScore(payload.answers),
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "UNKNOWN";
+      const code = reason.startsWith("OPENAI_CONFIG_MISSING") ? "OPENAI_CONFIG_MISSING" : "READINESS_REPORT_FAILED";
+      return jsonError(code, "Unable to generate your readiness report right now", 502, {
+        reason: reason.slice(0, 300),
+        recoveryAction: "Retry in a minute — your answers are saved",
+      });
+    }
+
     return jsonOk({
       session: updatedSituation,
       assessment: assessmentSubmit,
+      readiness,
       signedIn: Boolean(seed?.userId),
       claimed,
       user: claimedUser,

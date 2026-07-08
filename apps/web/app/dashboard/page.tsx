@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { resolveLearnerRoleLabel } from "@aitutor/shared";
 import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
 import { BillingGateOverlay } from "@/components/billing-gate-overlay";
@@ -145,7 +146,7 @@ export default async function DashboardPage({
         ) : null}
         initialUser={{
           name: user?.name ?? state.seed?.name ?? "Learner",
-          headline: user?.headline ?? "AI Builder",
+          headline: resolveLearnerRoleLabel({ headline: user?.headline, careerPathId: user?.careerPathId }),
           avatarUrl: user?.avatarUrl ?? state.seed?.avatarUrl ?? null,
           publicProfileUrl: state.publicProfileUrl,
           levelLabel: state.sidebarLevel.label,

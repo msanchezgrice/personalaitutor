@@ -90,12 +90,16 @@ export default async function EmployersPage() {
               <Link href="/employers/talent" className="btn btn-primary px-8 py-4 text-lg">Browse Talent Pool</Link>
               <a href="#how" className="btn btn-secondary px-8 py-4 text-lg">See How It Works</a>
             </div>
-            <div className="flex items-center gap-4 text-sm text-gray-500">
-              <div className="flex -space-x-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-gray-900 bg-emerald-600 text-xs font-bold text-white">{featuredTalent.length}</div>
-                <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-gray-900 bg-cyan-600 text-xs font-bold text-white">24/7</div>
-              </div>
-              <p>Verified candidates live now · proof pages available instantly</p>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500">
+              <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
+                <i className="fa-solid fa-flask"></i> Example preview
+              </span>
+              <p>
+                The talent pool is opening soon.{" "}
+                <Link href="/assessment" className="text-emerald-400 hover:text-emerald-300">
+                  Join as a candidate →
+                </Link>
+              </p>
             </div>
           </div>
 
@@ -108,8 +112,8 @@ export default async function EmployersPage() {
                 <i className="fa-solid fa-shield-check"></i>
               </div>
               <div>
-                <p className="text-sm font-bold text-white">System Verified</p>
-                <p className="text-xs font-semibold text-emerald-400">Proof-backed skills</p>
+                <p className="text-sm font-bold text-white">Example preview</p>
+                <p className="text-xs font-semibold text-emerald-400">What a verified profile shows</p>
               </div>
             </div>
           </div>
@@ -177,17 +181,24 @@ export default async function EmployersPage() {
           <div className="container">
             <div className="mb-10 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
-                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-400">Featured talent</div>
-                <h2 className="text-4xl text-white">Browse proof-backed AI builders</h2>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-amber-400">Example candidates</div>
+                <h2 className="text-4xl text-white">What proof-backed profiles look like</h2>
+                <p className="mt-3 max-w-xl text-sm text-gray-400">
+                  These are example profiles showing what employers will see. The live talent pool is opening soon —
+                  candidates are earning verified proof right now.
+                </p>
               </div>
-              <Link href="/employers/talent" className="text-sm font-medium text-emerald-400 hover:text-emerald-300">Open full talent pool →</Link>
+              <Link href="/employers/talent" className="text-sm font-medium text-emerald-400 hover:text-emerald-300">See more examples →</Link>
             </div>
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
               {featuredTalent.map((candidate) => (
                 <a key={candidate.handle} href={`/u/${candidate.handle}/`} className="glass group rounded-2xl border border-white/10 p-5 transition hover:bg-white/5 hover:border-emerald-500/40">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <img src={candidate.avatarUrl || "/assets/avatar.png"} alt={candidate.name} className="h-14 w-14 rounded-full border border-white/20 object-cover" />
-                    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${scoreTone(candidate.evidenceScore)}`}>{candidate.evidenceScore}% proof</span>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-300">Example</span>
+                      <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${scoreTone(candidate.evidenceScore)}`}>{candidate.evidenceScore}% proof</span>
+                    </div>
                   </div>
                   <h3 className="mb-1 text-xl font-medium text-white transition group-hover:text-emerald-400">{candidate.name}</h3>
                   <p className="mb-2 text-sm text-emerald-400">{candidate.role}</p>

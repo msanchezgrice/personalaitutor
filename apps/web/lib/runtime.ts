@@ -36,6 +36,7 @@ import {
   publishProfile as memPublishProfile,
   publishSocialDraft as memPublishSocialDraft,
   refreshRelevantNews as memRefreshRelevantNews,
+  resolveLearnerRoleLabel,
   startAssessment as memStartAssessment,
   submitAssessment as memSubmitAssessment,
   syncProjectModuleSteps as memSyncProjectModuleSteps,
@@ -2623,7 +2624,7 @@ async function generateTutorReply(input: {
   const prompt = [
     `You are ${BRAND_NAME}, a practical coding tutor.`,
     `Learner name: ${input.profile.name}`,
-    `Learner role: ${input.profile.headline || "AI Builder"}`,
+    `Learner role: ${resolveLearnerRoleLabel({ headline: input.profile.headline, careerPathId: input.profile.careerPathId })}`,
     `Project: ${input.project.title}`,
     `Project description: ${input.project.description}`,
     "Respond in <= 6 sentences with concrete next steps and one verification check.",
@@ -2995,7 +2996,7 @@ export async function runtimeGenerateProjectToolAction(input: {
     `Requested output: ${actionConfig.title}`,
     ...actionConfig.instructions,
     "Return only the final draft. Do not wrap it in code fences. Do not add commentary before or after the draft.",
-    `Learner role: ${profile.headline || "AI Builder"}`,
+    `Learner role: ${resolveLearnerRoleLabel({ headline: profile.headline, careerPathId: profile.careerPathId })}`,
     `Career path: ${guide.careerPathName}`,
     `Module title: ${guide.moduleTitle}`,
     `Why this module: ${guide.whyThisModule}`,
@@ -4168,7 +4169,7 @@ export async function runtimeGenerateSocialIdeas(input: {
     "- contextLabel: short 2-5 word label.",
     `- include this URL exactly once in each post: ${targetUrl}`,
     `Learner name: ${summary.user.name}`,
-    `Learner headline: ${summary.user.headline || "AI Builder"}`,
+    `Learner headline: ${resolveLearnerRoleLabel({ headline: summary.user.headline, careerPathId: summary.user.careerPathId })}`,
     `Learner goals: ${summary.user.goals.join(", ") || "none"}`,
     `Learner tools: ${summary.user.tools.join(", ") || "none"}`,
     `Top skills: ${summary.user.skills
@@ -4979,8 +4980,7 @@ export async function runtimeListTalent(filters?: RuntimeTalentFilters) {
         ? sortedSkills.reduce((sum, entry) => sum + Number(entry.score ?? 0), 0) / sortedSkills.length
         : 0;
 
-      const careerPathName = getCatalogData().careerPaths.find((path) => path.id === profile.career_path_id)?.name;
-      const role = profile.headline?.trim() || careerPathName || "AI Builder";
+      const role = resolveLearnerRoleLabel({ headline: profile.headline, careerPathId: profile.career_path_id });
       const situation = situationMap.get(profile.id);
 
       return {
@@ -5047,7 +5047,7 @@ export async function runtimeGetTalentByHandle(handle: string) {
       name: profile.name,
       avatarUrl: profile.avatarUrl ?? null,
       careerType: profile.goals.includes("showcase_for_job") || profile.goals.includes("find_new_role") ? "Job Seeker" : "Employed",
-      role: profile.headline || "AI Builder",
+      role: resolveLearnerRoleLabel({ headline: profile.headline, careerPathId: profile.careerPathId }),
       status,
       topSkills: topSkills.length ? topSkills : ["AI Foundations"],
       topTools: profile.tools.length ? profile.tools.slice(0, 3) : [BRAND_NAME],

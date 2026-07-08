@@ -29,7 +29,7 @@ export function DashboardSidebar() {
         <img className="dash-avatar" src="/assets/avatar.png" alt="Learner" style={{ objectFit: "cover" }} />
         <div>
           <h4>Learner</h4>
-          <p>AI Builder</p>
+          <p>Learner</p>
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { resolveLearnerRoleLabel } from "@aitutor/shared";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getAuthSeed } from "@/lib/auth";
@@ -193,7 +194,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                     {previewLabel}
                   </div>
                   <h1 className="mb-2 text-4xl font-[Outfit] text-white md:text-5xl">{profile.name}</h1>
-                  <p className="mb-5 text-lg font-medium text-emerald-400">{profile.headline || "AI Builder"}</p>
+                  <p className="mb-5 text-lg font-medium text-emerald-400">{resolveLearnerRoleLabel({ headline: profile.headline, careerPathId: profile.careerPathId })}</p>
                   <p className="max-w-2xl border-l-2 border-white/10 py-1 pl-4 text-sm leading-relaxed text-gray-300 md:text-base">
                     {isWarmupPreview
                       ? "Your public proof site is connected, but the portfolio is still warming up. Ship the first real milestone or artifact from the dashboard and these sections will swap from starter scaffolding into verified public proof."

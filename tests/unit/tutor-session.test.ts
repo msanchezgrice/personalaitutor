@@ -216,3 +216,68 @@ describe("tutor session reply", () => {
     expect(reply).toContain("Q3 campaign");
   });
 });
+
+describe("playbook drift + restart (F5)", () => {
+  beforeEach(() => {
+    resetTutorSessionStateForTests();
+  });
+
+  test("a fresh session is not drifted against its own guide", async () => {
+    const { tutorSessionPlaybookDrifted } = await import("@/lib/tutor-session");
+    const session = await startSession();
+    expect(tutorSessionPlaybookDrifted(session, guide)).toBe(false);
+  });
+
+  test("drift is detected when the playbook steps or checklist change", async () => {
+    const { tutorSessionPlaybookDrifted } = await import("@/lib/tutor-session");
+    const session = await startSession();
+
+    const changedSteps = {
+      ...guide,
+      steps: [...guide.steps.slice(0, -1), "A brand new final step (10 min)."],
+    };
+    expect(tutorSessionPlaybookDrifted(session, changedSteps)).toBe(true);
+
+    const changedChecklist = {
+      ...guide,
+      proofChecklist: [...guide.proofChecklist, "Paste one more thing."],
+    };
+    expect(tutorSessionPlaybookDrifted(session, changedChecklist)).toBe(true);
+
+    const changedCount = { ...guide, steps: guide.steps.slice(0, 2) };
+    expect(tutorSessionPlaybookDrifted(session, changedCount)).toBe(true);
+  });
+
+  test("restart archives the old session and creates a fresh one from the new playbook", async () => {
+    const { restartTutorSession, isTutorSessionArchived } = await import("@/lib/tutor-session");
+    const first = await startSession();
+    await completeTutorSessionStep({ sessionId: first.id, learnerProfileId, stepIndex: 0, evidenceNote: "old work" });
+
+    const fresh = await restartTutorSession({ projectId, learnerProfileId, guide });
+    expect(fresh.id).not.toBe(first.id);
+    expect(fresh.status).toBe("active");
+    expect(fresh.steps.every((step) => step.status === "pending")).toBe(true);
+
+    // The active session for the project is now the fresh one.
+    const active = await getTutorSessionForProject({ projectId, learnerProfileId });
+    expect(active?.id).toBe(fresh.id);
+
+    // Restart with no prior active session simply starts one.
+    resetTutorSessionStateForTests();
+    const started = await restartTutorSession({ projectId, learnerProfileId, guide });
+    expect(started.status).toBe("active");
+    expect(isTutorSessionArchived(started)).toBe(false);
+  });
+
+  test("archived sessions never count as completed milestones (no false XP)", async () => {
+    const { restartTutorSession, countTutorSessionMilestones } = await import("@/lib/tutor-session");
+    const first = await startSession();
+    await completeTutorSessionStep({ sessionId: first.id, learnerProfileId, stepIndex: 0 });
+    await restartTutorSession({ projectId, learnerProfileId, guide });
+
+    const milestones = await countTutorSessionMilestones(learnerProfileId);
+    expect(milestones.completed).toBe(0);
+    expect(milestones.firstCompletedAt).toBeNull();
+    expect(milestones.started).toBe(2);
+  });
+});

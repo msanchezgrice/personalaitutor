@@ -115,3 +115,29 @@ export function getEmployerFilterFacets() {
 export function getModuleTracksForCareerPath(careerPathId: string) {
   return MODULE_TRACKS.filter((track) => track.careerPathId === careerPathId);
 }
+
+/**
+ * "AI Builder" was the legacy default persona written into `headline` at
+ * profile creation. It is an internal string, not something the user chose —
+ * UX audit F7 (2026-07-07): never show it. Treat it as "no headline".
+ */
+export const LEGACY_PERSONA_HEADLINE = "AI Builder";
+
+export function isLegacyPersonaHeadline(headline: string | null | undefined) {
+  return (headline ?? "").trim().toLowerCase() === LEGACY_PERSONA_HEADLINE.toLowerCase();
+}
+
+/**
+ * User-facing role label: the learner's real headline when they set one,
+ * otherwise their career-path name (e.g. "Product Management"), never the
+ * legacy "AI Builder" persona string.
+ */
+export function resolveLearnerRoleLabel(input: {
+  headline?: string | null;
+  careerPathId?: string | null;
+}): string {
+  const headline = input.headline?.trim();
+  if (headline && !isLegacyPersonaHeadline(headline)) return headline;
+  const careerPath = input.careerPathId ? getCareerPath(input.careerPathId) : null;
+  return careerPath?.name ?? "Learner";
+}

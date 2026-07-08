@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { resolveLearnerRoleLabel } from "@aitutor/shared";
 import { notFound, redirect } from "next/navigation";
 import { getAuthSeed } from "@/lib/auth";
 import { runtimeFindUserByHandle, runtimeFindUserById, runtimeListProjectsByUser } from "@/lib/runtime";
@@ -170,7 +171,7 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
                   <div>
                     <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Builder</div>
                     <h2 className="font-[Outfit] text-2xl text-white">{profile.name}</h2>
-                    <p className="text-emerald-400">{profile.headline || "AI Builder"}</p>
+                    <p className="text-emerald-400">{resolveLearnerRoleLabel({ headline: profile.headline, careerPathId: profile.careerPathId })}</p>
                   </div>
                 </div>
                 <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
