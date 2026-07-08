@@ -3728,10 +3728,47 @@
 
   async function hydrateAiNewsPage() {
     captureEvent("dashboard_tab_viewed", { tab: "ai_news" });
-    var contentWrap = document.querySelector("main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-4");
+    var AI_NEWS_WRAP_SELECTOR = "main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-4";
+    var contentWrap = document.querySelector(AI_NEWS_WRAP_SELECTOR);
     if (!contentWrap) return;
 
+    // Live regression fix (2026-07-08): React's hydration fallback (e.g.
+    // mid-deploy HTML/chunk skew) can replace the route subtree AFTER this
+    // hydration wrote the stories, leaving our output detached and the server
+    // skeleton visible — with no error and no re-hydration (the RouteHydrator
+    // skip-guard sees the path as already hydrated). Render into the LIVE
+    // container every time, keep the last payload in memory, and re-render
+    // once if a later check finds our output gone. No network involved.
+    var lastNewsResult = null;
+    var clobberRecheckScheduled = false;
+
+    function liveContentWrap() {
+      var node = document.querySelector(AI_NEWS_WRAP_SELECTOR);
+      if (node && node.isConnected) return node;
+      return contentWrap && contentWrap.isConnected ? contentWrap : null;
+    }
+
+    function scheduleClobberRecheck() {
+      if (clobberRecheckScheduled) return;
+      clobberRecheckScheduled = true;
+      [1500, 4000].forEach(function (delayMs) {
+        window.setTimeout(function () {
+          if (!lastNewsResult) return;
+          // The user may have navigated away before the timer fired — never
+          // write news into another page's container.
+          if (currentPath !== "/dashboard/ai-news") return;
+          var target = liveContentWrap();
+          if (!target) return;
+          if (target.querySelector("[data-ai-news-rendered='1']")) return;
+          captureEvent("ai_news_rerendered_after_clobber", { delay_ms: delayMs });
+          renderNews(lastNewsResult);
+        }, delayMs);
+      });
+    }
+
     function renderLoading(message) {
+      var loadingTarget = liveContentWrap();
+      if (loadingTarget) contentWrap = loadingTarget;
       contentWrap.innerHTML =
         '<section class="glass p-6 rounded-xl border border-sky-300 bg-sky-50 runtime-loading-panel">' +
         '<div class="flex items-center gap-3 text-sky-900 mb-4">' +
@@ -3768,6 +3805,9 @@
     }
 
     function renderNews(result) {
+      lastNewsResult = result;
+      var liveTarget = liveContentWrap();
+      if (liveTarget) contentWrap = liveTarget;
       var insights = Array.isArray(result && result.insights) ? result.insights : [];
       var focusSummary = result && result.focusSummary ? escapeHtml(result.focusSummary) : "Here are relevant AI news stories so you stay current on developments impacting your role.";
       var source = result && result.source ? escapeHtml(String(result.source)) : "personalized";
@@ -3825,7 +3865,7 @@
         .join("");
 
       contentWrap.innerHTML =
-        '<div class="runtime-content-fade-in space-y-4">' +
+        '<div class="runtime-content-fade-in space-y-4" data-ai-news-rendered="1">' +
         '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">' +
         '<div class="min-w-0">' +
         '<p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">Personalized briefing</p>' +
@@ -3874,6 +3914,8 @@
           }
         });
       }
+
+      scheduleClobberRecheck();
     }
 
     var cachedNews = readHomeNewsCache(summaryUserId);
