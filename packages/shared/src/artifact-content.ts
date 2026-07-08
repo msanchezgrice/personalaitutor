@@ -232,6 +232,38 @@ function contextLines(context: ArtifactGenerationContext) {
   return lines;
 }
 
+/**
+ * Skip-ahead / incomplete-evidence guard (live E2E fix 2026-07-07, finding
+ * #4): a skip-ahead PDF with only step-1 evidence claimed "all five interview
+ * transcripts included". When completed steps do not cover the full playbook,
+ * the prompt carries a hard grounded-only constraint naming exactly which
+ * steps are NOT done, so the artifact can never assert deliverables that do
+ * not exist yet.
+ */
+function incompleteEvidenceConstraintLines(context: ArtifactGenerationContext): string[] {
+  const totalSteps = context.module.steps.length;
+  const completedTitles = new Set(
+    context.evidence.completedSteps.map((step) => step.title.trim().toLowerCase()),
+  );
+  const remainingSteps = context.module.steps.filter(
+    (step) => !completedTitles.has(step.trim().toLowerCase()),
+  );
+  const completedCount = Math.min(context.evidence.completedSteps.length, totalSteps);
+  if (totalSteps === 0 || (completedCount >= totalSteps && remainingSteps.length === 0)) {
+    return [];
+  }
+
+  return [
+    "",
+    "## GROUNDING CONSTRAINT — INCOMPLETE EVIDENCE (skip-ahead generation)",
+    `Only ${completedCount} of ${totalSteps} playbook steps are complete. The remaining steps have NOT been done:`,
+    ...remainingSteps.map((step) => `- ${step}`),
+    "Do NOT claim, imply, or include deliverables from steps that are not complete — no interview transcripts, recordings, datasets, launches, published outputs, or metrics that do not appear verbatim in the completed-module evidence above.",
+    "Describe ONLY what the completed steps, attached proof, and learner build notes actually contain.",
+    "If unfinished playbook work is mentioned at all, frame it explicitly as planned next steps — never as completed work or existing artifacts.",
+  ];
+}
+
 export function buildArtifactContentPrompt(input: {
   kind: ArtifactKind | string;
   context: ArtifactGenerationContext;
@@ -243,6 +275,7 @@ export function buildArtifactContentPrompt(input: {
     "The artifact must be something the learner could genuinely show an employer: specific, grounded in their real work, free of filler.",
     "",
     ...contextLines(input.context),
+    ...incompleteEvidenceConstraintLines(input.context),
     "",
     "## Output requirements",
     ...OUTPUT_SPECS[contentKind],

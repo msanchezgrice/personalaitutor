@@ -1,7 +1,10 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { beforeEach, describe, expect, test } from "vitest";
 import type { DailyBriefing } from "@aitutor/daily-content";
 import {
   getDailyBriefing,
+  getLatestDailyBriefing,
   listDailyBriefingsSince,
   persistDailyBriefing,
   resetDailyBriefingStateForTests,
@@ -12,6 +15,7 @@ import {
   briefingToNewsStories,
   getOrGenerateDailyBriefing,
   resolveBriefingPathId,
+  waitForBackgroundBriefingBuilds,
 } from "../../apps/web/lib/daily-briefing";
 
 function fixtureBriefing(overrides: Partial<DailyBriefing> = {}): DailyBriefing {
@@ -197,5 +201,179 @@ describe("briefing news service", () => {
   test("todayBriefingDate uses the UTC calendar date", () => {
     expect(todayBriefingDate(new Date("2026-07-07T23:59:59Z"))).toBe("2026-07-07");
     expect(todayBriefingDate(new Date("2026-07-08T00:00:01Z"))).toBe("2026-07-08");
+  });
+});
+
+/**
+ * Live E2E fix (2026-07-07 night, finding #1): Miguel's dashboard served
+ * legacy "global_cache" stories at ~02:00 UTC on 07-08 even though a real
+ * briefing row dated 2026-07-07 existed for his path. Root cause: the news
+ * path only ever looked up TODAY'S UTC date in the store (exact-match miss
+ * just past midnight) and the cache-first short-circuit returned legacy
+ * global rows before the briefing engine was ever consulted. The serving
+ * chain is now: today's row → latest row (background regen if stale >24h) →
+ * on-demand generation → global cache as last resort.
+ */
+describe("briefing serving fallback chain (UTC date boundary)", () => {
+  beforeEach(() => {
+    resetDailyBriefingStateForTests();
+  });
+
+  test("getLatestDailyBriefing returns the newest row for the path", async () => {
+    for (const date of ["2026-07-03", "2026-07-07", "2026-07-05"]) {
+      await persistDailyBriefing({
+        careerPathId: "marketing-seo",
+        briefingDate: date,
+        briefing: fixtureBriefing({ date }),
+      });
+    }
+    const latest = await getLatestDailyBriefing({ careerPathId: "marketing-seo" });
+    expect(latest?.briefingDate).toBe("2026-07-07");
+    expect(await getLatestDailyBriefing({ careerPathId: "operations" })).toBeNull();
+  });
+
+  test("today's row still wins when present (source 'briefing')", async () => {
+    await persistDailyBriefing({
+      careerPathId: "marketing-seo",
+      briefingDate: "2026-07-07",
+      briefing: fixtureBriefing(),
+    });
+    let built = 0;
+    const result = await briefingNewsForPath({
+      careerPathId: "marketing-seo",
+      maxStories: 5,
+      now: new Date("2026-07-07T22:00:00Z"),
+      build: async () => {
+        built += 1;
+        return fixtureBriefing();
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.source).toBe("briefing");
+      expect(result.briefingDate).toBe("2026-07-07");
+    }
+    await waitForBackgroundBriefingBuilds();
+    expect(built).toBe(0);
+  });
+
+  test("date boundary: when today's row is missing, the LATEST row is served immediately", async () => {
+    // Miguel's live case: product-management briefing dated 2026-07-07
+    // exists; the dashboard loads at ~02:00 UTC on 2026-07-08.
+    await persistDailyBriefing({
+      careerPathId: "product-management",
+      briefingDate: "2026-07-07",
+      briefing: fixtureBriefing({
+        careerPathId: "product-management",
+        careerPathName: "Product Management",
+      }),
+    });
+    let built = 0;
+    const result = await briefingNewsForPath({
+      careerPathId: "product-management",
+      maxStories: 5,
+      now: new Date("2026-07-08T02:00:00Z"),
+      build: async () => {
+        built += 1;
+        return fixtureBriefing({ careerPathId: "product-management", date: "2026-07-08" });
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.source).toBe("briefing_stale");
+      expect(result.briefingDate).toBe("2026-07-07");
+      // Real, grounded stories from the stored briefing — never global cache.
+      expect(result.stories[0].url).toBe("https://real.example.com/top");
+    }
+    // Yesterday's briefing is <24h old — the daily cron owns its refresh, so
+    // no on-demand rebuild fires for a night-owl dashboard load.
+    await waitForBackgroundBriefingBuilds();
+    expect(built).toBe(0);
+  });
+
+  test("stale >24h: latest row served immediately AND today's regenerated in the background", async () => {
+    await persistDailyBriefing({
+      careerPathId: "marketing-seo",
+      briefingDate: "2026-07-05",
+      briefing: fixtureBriefing({ date: "2026-07-05" }),
+    });
+    let built = 0;
+    const result = await briefingNewsForPath({
+      careerPathId: "marketing-seo",
+      maxStories: 5,
+      now: new Date("2026-07-08T02:00:00Z"),
+      build: async () => {
+        built += 1;
+        return fixtureBriefing({ date: "2026-07-08" });
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // Served instantly from the stale row — generation happens off-path.
+      expect(result.source).toBe("briefing_stale");
+      expect(result.briefingDate).toBe("2026-07-05");
+    }
+    await waitForBackgroundBriefingBuilds();
+    expect(built).toBe(1);
+    const refreshed = await getDailyBriefing({ careerPathId: "marketing-seo", briefingDate: "2026-07-08" });
+    expect(refreshed?.briefing.date).toBe("2026-07-08");
+  });
+
+  test("background regeneration failure never breaks serving the stale briefing", async () => {
+    await persistDailyBriefing({
+      careerPathId: "marketing-seo",
+      briefingDate: "2026-07-01",
+      briefing: fixtureBriefing({ date: "2026-07-01" }),
+    });
+    const result = await briefingNewsForPath({
+      careerPathId: "marketing-seo",
+      maxStories: 5,
+      now: new Date("2026-07-08T02:00:00Z"),
+      build: async () => {
+        throw new Error("BRIEFING_TOP_STORY_MISSING");
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.source).toBe("briefing_stale");
+      expect(result.briefingDate).toBe("2026-07-01");
+    }
+    await expect(waitForBackgroundBriefingBuilds()).resolves.not.toThrow();
+  });
+
+  test("no rows at all: on-demand generation still runs (blocking) and persists today's row", async () => {
+    let built = 0;
+    const result = await briefingNewsForPath({
+      careerPathId: "operations",
+      maxStories: 5,
+      now: new Date("2026-07-08T02:00:00Z"),
+      build: async () => {
+        built += 1;
+        return fixtureBriefing({ careerPathId: "operations", date: "2026-07-08" });
+      },
+    });
+    expect(built).toBe(1);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.source).toBe("briefing");
+      expect(result.briefingDate).toBe("2026-07-08");
+    }
+    const persisted = await getDailyBriefing({ careerPathId: "operations", briefingDate: "2026-07-08" });
+    expect(persisted).not.toBeNull();
+  });
+
+  test("runtime news path consults the briefing chain BEFORE any global_cache fallback", () => {
+    const runtimeSource = readFileSync(path.resolve(process.cwd(), "apps/web/lib/runtime.ts"), "utf8");
+    const fnStart = runtimeSource.indexOf("export async function runtimeRefreshRelevantNews");
+    const fnEnd = runtimeSource.indexOf("export async function runtimeCreateDailyUpdate");
+    expect(fnStart).toBeGreaterThan(-1);
+    const fnSlice = runtimeSource.slice(fnStart, fnEnd);
+    const briefingCallAt = fnSlice.indexOf("briefingNewsForPath(");
+    const firstGlobalCacheAt = fnSlice.indexOf('"global_cache"');
+    expect(briefingCallAt).toBeGreaterThan(-1);
+    expect(firstGlobalCacheAt).toBeGreaterThan(-1);
+    // global_cache is a LAST resort after the briefing chain fails, never a
+    // pre-emptive short-circuit.
+    expect(briefingCallAt).toBeLessThan(firstGlobalCacheAt);
   });
 });

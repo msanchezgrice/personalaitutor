@@ -11,6 +11,7 @@ import {
 import { resolveOpenAiModel } from "@aitutor/shared";
 import {
   getDailyBriefing,
+  getLatestDailyBriefing,
   persistDailyBriefing,
   todayBriefingDate,
   type DailyBriefingRecord,
@@ -34,11 +35,21 @@ export function resolveBriefingPathId(candidates: Array<string | null | undefine
   return DEFAULT_BRIEFING_PATH;
 }
 
+type BriefingBuildFn = (careerPathId: string, now: Date) => Promise<DailyBriefing>;
+
+function defaultBriefingBuild(): BriefingBuildFn {
+  return (careerPathId: string, at: Date) => buildBriefing({ careerPathId, now: at });
+}
+
+function briefingModel(): string | null {
+  return process.env.OPENAI_API_KEY?.trim() ? resolveOpenAiModel() : null;
+}
+
 export async function getOrGenerateDailyBriefing(input: {
   careerPathId: string;
   now?: Date;
   /** Injectable for tests; defaults to the real engine (network fetch). */
-  build?: (careerPathId: string, now: Date) => Promise<DailyBriefing>;
+  build?: BriefingBuildFn;
 }): Promise<DailyBriefingRecord> {
   const now = input.now ?? new Date();
   const briefingDate = todayBriefingDate(now);
@@ -46,15 +57,113 @@ export async function getOrGenerateDailyBriefing(input: {
   const cached = await getDailyBriefing({ careerPathId: input.careerPathId, briefingDate });
   if (cached) return cached;
 
-  const build = input.build ?? ((careerPathId: string, at: Date) => buildBriefing({ careerPathId, now: at }));
+  const build = input.build ?? defaultBriefingBuild();
   const briefing = await build(input.careerPathId, now);
 
   return persistDailyBriefing({
     careerPathId: input.careerPathId,
     briefingDate,
     briefing,
-    model: process.env.OPENAI_API_KEY?.trim() ? resolveOpenAiModel() : null,
+    model: briefingModel(),
   });
+}
+
+// --- serving chain (live E2E finding #1, 2026-07-07) ---------------------------
+//
+// Root cause of the "global_cache" regression: briefings are keyed by UTC
+// calendar date, so just past UTC midnight (e.g. ~9pm CT) the exact-match
+// lookup for "today" misses even though yesterday's perfectly good briefing
+// exists — and the caller then fell back to legacy global stories. Serving
+// order is now: today's row → latest row (with a background regeneration when
+// it is stale >24h) → blocking on-demand generation only when the path has no
+// rows at all.
+
+const STALE_BRIEFING_MS = 24 * 60 * 60 * 1000;
+
+/** In-flight background regenerations keyed by `${path}:${date}` (idempotent). */
+const backgroundBriefingBuilds = new Map<string, Promise<void>>();
+
+/** Test hook: awaits all in-flight background regenerations. Never rejects. */
+export async function waitForBackgroundBriefingBuilds(): Promise<void> {
+  await Promise.all(Array.from(backgroundBriefingBuilds.values()));
+}
+
+function briefingIsStale(record: DailyBriefingRecord, now: Date): boolean {
+  const createdAtMs = Date.parse(record.createdAt);
+  if (Number.isFinite(createdAtMs) && now.getTime() - createdAtMs > STALE_BRIEFING_MS) {
+    return true;
+  }
+  // Date heuristic: a row 2+ calendar days behind is always >24h old.
+  const yesterday = todayBriefingDate(new Date(now.getTime() - STALE_BRIEFING_MS));
+  return record.briefingDate < yesterday;
+}
+
+function triggerBackgroundBriefingRefresh(input: {
+  careerPathId: string;
+  briefingDate: string;
+  now: Date;
+  build: BriefingBuildFn;
+}): void {
+  const key = `${input.careerPathId}:${input.briefingDate}`;
+  if (backgroundBriefingBuilds.has(key)) return;
+  const task = (async () => {
+    try {
+      const briefing = await input.build(input.careerPathId, input.now);
+      await persistDailyBriefing({
+        careerPathId: input.careerPathId,
+        briefingDate: input.briefingDate,
+        briefing,
+        model: briefingModel(),
+      });
+    } catch (error) {
+      // Background refresh is best-effort: the caller already served the
+      // latest stored briefing; the daily cron remains the durable refresher.
+      console.warn(
+        `[daily-briefing] background refresh failed for ${key}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    } finally {
+      backgroundBriefingBuilds.delete(key);
+    }
+  })();
+  backgroundBriefingBuilds.set(key, task);
+}
+
+/**
+ * Resolve the briefing to serve right now: today's row → latest row →
+ * blocking on-demand generation (only when the path has no rows at all).
+ * Serving a non-today row that is stale >24h kicks a background regeneration
+ * of today's briefing without blocking the response.
+ */
+export async function resolveServableDailyBriefing(input: {
+  careerPathId: string;
+  now?: Date;
+  build?: BriefingBuildFn;
+}): Promise<{ record: DailyBriefingRecord; isToday: boolean }> {
+  const now = input.now ?? new Date();
+  const briefingDate = todayBriefingDate(now);
+  const build = input.build ?? defaultBriefingBuild();
+
+  const today = await getDailyBriefing({ careerPathId: input.careerPathId, briefingDate });
+  if (today) return { record: today, isToday: true };
+
+  const latest = await getLatestDailyBriefing({ careerPathId: input.careerPathId });
+  if (latest) {
+    if (briefingIsStale(latest, now)) {
+      triggerBackgroundBriefingRefresh({ careerPathId: input.careerPathId, briefingDate, now, build });
+    }
+    return { record: latest, isToday: latest.briefingDate === briefingDate };
+  }
+
+  const briefing = await build(input.careerPathId, now);
+  const record = await persistDailyBriefing({
+    careerPathId: input.careerPathId,
+    briefingDate,
+    briefing,
+    model: briefingModel(),
+  });
+  return { record, isToday: true };
 }
 
 /**
@@ -162,10 +271,12 @@ export function briefingToNewsStories(briefing: DailyBriefing, maxStories: numbe
 }
 
 /**
- * The dashboard entry point (replaces `generateNewsFromOpenAi`): read today's
- * briefing for the user's path (generate on demand if missing) and return
- * grounded stories. Failure is explicit — there is NO fabricated-story
- * fallback.
+ * The dashboard entry point (replaces `generateNewsFromOpenAi`): serve the
+ * user's path briefing via the chain today's row → latest row → on-demand
+ * generation, and return grounded stories. A non-today row is served
+ * immediately (source `briefing_stale`) — real fetched stories always beat
+ * an empty state or the legacy global cache. Failure is explicit — there is
+ * NO fabricated-story fallback.
  */
 export async function briefingNewsForPath(input: {
   careerPathId: string | null | undefined;
@@ -176,8 +287,9 @@ export async function briefingNewsForPath(input: {
 }): Promise<
   | {
       ok: true;
-      source: "briefing";
+      source: "briefing" | "briefing_stale";
       careerPathId: string;
+      briefingDate: string;
       focusSummary: string;
       selectionRationale: string;
       stories: BriefingNewsStory[];
@@ -186,16 +298,23 @@ export async function briefingNewsForPath(input: {
 > {
   const careerPathId = resolveBriefingPathId([input.careerPathId, ...(input.recommendedPathIds ?? [])]);
   try {
-    const record = await getOrGenerateDailyBriefing({ careerPathId, now: input.now, build: input.build });
+    const { record, isToday } = await resolveServableDailyBriefing({
+      careerPathId,
+      now: input.now,
+      build: input.build,
+    });
     const stories = briefingToNewsStories(record.briefing, input.maxStories);
     if (!stories.length) {
       return { ok: false, errorCode: "BRIEFING_EMPTY" };
     }
     return {
       ok: true,
-      source: "briefing",
+      source: isToday ? "briefing" : "briefing_stale",
       careerPathId,
-      focusSummary: `${record.briefing.dowTheme}: today's AI landscape briefing for ${record.briefing.careerPathName}, built from ${record.briefing.fetchedCount} fetched stories across ${record.briefing.feedsOk} live feeds.`,
+      briefingDate: record.briefingDate,
+      focusSummary: `${record.briefing.dowTheme}: ${
+        isToday ? "today's" : `the latest (${record.briefingDate})`
+      } AI landscape briefing for ${record.briefing.careerPathName}, built from ${record.briefing.fetchedCount} fetched stories across ${record.briefing.feedsOk} live feeds.`,
       selectionRationale:
         "Stories are ranked by keyword relevance to your career path, cross-feed trending, source trust tier, and recency. Every URL comes from a real fetched feed item.",
       stories,

@@ -43,3 +43,51 @@ describe("session-aware chat tutor hydration", () => {
     expect(chatSection).toContain("/dashboard/projects/#pack-workbench");
   });
 });
+
+/**
+ * Live E2E fix (2026-07-07 night, finding #6): old generic chat replies
+ * ("install pandas") persisted above new tutor-session messages with nothing
+ * marking the boundary. A subtle divider now marks where the session starts.
+ * History is NEVER deleted — the divider is additive context only.
+ */
+describe("tutor session divider in chat history", () => {
+  test("a divider element marks where the tutor session starts", () => {
+    expect(chatSection).toContain("data-chat-session-divider");
+    expect(chatSection).toContain("earlier messages are from generic chat");
+  });
+
+  test("the divider is a persisted history entry so it survives reloads", () => {
+    // Divider entries round-trip through the cached history with their own role.
+    expect(chatSection).toContain('"divider"');
+    expect(chatSection).toMatch(/hasSessionDivider\(/);
+  });
+
+  test("starting a session from chat inserts the divider before the first session message", () => {
+    const startFn = chatSection.slice(
+      chatSection.indexOf("async function startTutorSessionFromChat"),
+      chatSection.indexOf("function persistChatHistory"),
+    );
+    expect(startFn).toMatch(/divider/i);
+  });
+
+  test("hydrating with an active session and restored history adds the divider once", () => {
+    // The restore path inserts the divider through the once-guard (which
+    // checks hasSessionDivider before appending).
+    const restoreSection = chatSection.slice(
+      chatSection.indexOf("var cachedMessages"),
+      chatSection.indexOf("async function sendMessage"),
+    );
+    expect(restoreSection).toMatch(/insertSessionDividerOnce\(/);
+    const onceGuard = chatSection.slice(
+      chatSection.indexOf("function insertSessionDividerOnce"),
+      chatSection.indexOf("function renderMessage"),
+    );
+    expect(onceGuard).toMatch(/hasSessionDivider\(/);
+  });
+
+  test("history is never cleared when a session is active (divider is additive)", () => {
+    // The only history reset is the initial hydration blank — no session-mode
+    // cache clearing exists.
+    expect(chatSection).not.toContain("clearChatHistoryCache");
+  });
+});

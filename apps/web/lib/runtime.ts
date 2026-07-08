@@ -4713,7 +4713,7 @@ export async function runtimeRefreshRelevantNews(options?: {
     newestCached && typeof newestCached.published_at === "string" ? newestCached.published_at.slice(0, 10) : "";
   const hasPersonalizedRows = (cachedPersonalizedRows?.length ?? 0) >= 3;
 
-  if (hasPersonalizedRows && newestCachedDay === todayUtc) {
+  if (!preferFresh && hasPersonalizedRows && newestCachedDay === todayUtc) {
     return rowsToResponse(cachedPersonalizedRows ?? [], {
       source: "cache",
       contextSignals: context.focusSignals,
@@ -4722,40 +4722,14 @@ export async function runtimeRefreshRelevantNews(options?: {
     });
   }
 
-  const { data: cachedGlobalRows } = await supabase
-    .from("news_insights")
-    .select("id,title,url,summary,career_path_ids,published_at,learner_profile_id,metadata")
-    .is("learner_profile_id", null)
-    .order("published_at", { ascending: false })
-    .limit(maxStories);
-
-  const newestGlobal = (cachedGlobalRows ?? [])[0];
-  const newestGlobalDay =
-    newestGlobal && typeof newestGlobal.published_at === "string" ? newestGlobal.published_at.slice(0, 10) : "";
-  const hasGlobalRows = (cachedGlobalRows?.length ?? 0) >= 3;
-
-  if (!preferFresh) {
-    if (hasPersonalizedRows) {
-      return rowsToResponse(cachedPersonalizedRows ?? [], {
-        source: "stale_cache",
-        contextSignals: context.focusSignals,
-        focusSummary: "Showing your latest stored AI news while a fresh briefing catches up.",
-        selectionRationale: "Returned the most recent personalized AI news to avoid an empty state.",
-      });
-    }
-    if (hasGlobalRows) {
-      return rowsToResponse(cachedGlobalRows ?? [], {
-        source: newestGlobalDay === todayUtc ? "global_cache" : "global_stale_cache",
-        contextSignals: context.focusSignals,
-        focusSummary: "Showing the latest available AI stories matched to your current goals and projects.",
-        selectionRationale: "Returned the latest stored global AI briefing to keep the feed warm.",
-      });
-    }
-  }
-
-  // Phase 3.2: the daily AI news is the ported MDD briefing engine — today's
-  // guardrail-validated briefing for the user's career path (generated on
-  // demand on a store miss). No fabricated-story fallback exists anymore.
+  // Phase 3.2 + live E2E fix (2026-07-07 finding #1): the briefing engine is
+  // authoritative and is consulted BEFORE any legacy cache. Its serving chain
+  // is today's briefing row → latest available row (background regeneration
+  // when stale >24h) → blocking on-demand generation only when the path has
+  // no rows at all. The legacy global news_insights rows are a LAST resort
+  // after that whole chain fails — they must never pre-empt a real briefing
+  // (that is exactly the UTC date-boundary bug that served legacy global
+  // generic stories over an existing briefing).
   const generated = await briefingNewsForPath({
     careerPathId: context.user.careerPathId,
     recommendedPathIds: context.assessment?.recommendedCareerPathIds ?? [],
@@ -4763,6 +4737,18 @@ export async function runtimeRefreshRelevantNews(options?: {
   });
 
   if (!generated.ok) {
+    const { data: cachedGlobalRows } = await supabase
+      .from("news_insights")
+      .select("id,title,url,summary,career_path_ids,published_at,learner_profile_id,metadata")
+      .is("learner_profile_id", null)
+      .order("published_at", { ascending: false })
+      .limit(maxStories);
+
+    const newestGlobal = (cachedGlobalRows ?? [])[0];
+    const newestGlobalDay =
+      newestGlobal && typeof newestGlobal.published_at === "string" ? newestGlobal.published_at.slice(0, 10) : "";
+    const hasGlobalRows = (cachedGlobalRows?.length ?? 0) >= 3;
+
     if (hasPersonalizedRows) {
       return rowsToResponse(cachedPersonalizedRows ?? [], {
         source: "stale_cache",
@@ -4780,6 +4766,26 @@ export async function runtimeRefreshRelevantNews(options?: {
       });
     }
     return { ok: false as const, errorCode: generated.errorCode || "NEWS_BRIEFING_UNAVAILABLE", insights: [] };
+  }
+
+  // Same-briefing churn guard: if this user's cached rows already reflect the
+  // exact briefing being served, return them without a delete+insert cycle.
+  const newestCachedMetadata = (newestCached?.metadata ?? {}) as Record<string, unknown>;
+  if (
+    !preferFresh &&
+    hasPersonalizedRows &&
+    typeof newestCachedMetadata.briefing_date === "string" &&
+    newestCachedMetadata.briefing_date === generated.briefingDate
+  ) {
+    return {
+      ...rowsToResponse(cachedPersonalizedRows ?? [], {
+        source: generated.source,
+        contextSignals: context.focusSignals,
+        focusSummary: generated.focusSummary,
+        selectionRationale: generated.selectionRationale,
+      }),
+      source: generated.source,
+    };
   }
 
   const now = new Date().toISOString();
@@ -4803,6 +4809,7 @@ export async function runtimeRefreshRelevantNews(options?: {
       focus_summary: generated.focusSummary,
       selection_rationale: generated.selectionRationale,
       generated_source: generated.source,
+      briefing_date: generated.briefingDate,
     },
   }));
 

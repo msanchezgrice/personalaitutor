@@ -161,6 +161,33 @@ export async function getDailyBriefing(input: {
   return data ? recordFromRow(data as DailyBriefingRow) : null;
 }
 
+/**
+ * Newest stored briefing for a path regardless of date. Serving fallback for
+ * the UTC date-boundary window where today's row does not exist yet (live
+ * E2E finding #1, 2026-07-07): the latest real briefing always beats the
+ * legacy global cache.
+ */
+export async function getLatestDailyBriefing(input: {
+  careerPathId: string;
+}): Promise<DailyBriefingRecord | null> {
+  if (mode() === "memory") {
+    const records = Array.from(memoryBriefings.values())
+      .filter((record) => record.careerPathId === input.careerPathId)
+      .sort((a, b) => b.briefingDate.localeCompare(a.briefingDate));
+    return records.length ? { ...records[0] } : null;
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data } = await supabase
+    .from("daily_briefings")
+    .select(BRIEFING_SELECT_FIELDS)
+    .eq("career_path_id", input.careerPathId)
+    .order("briefing_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data ? recordFromRow(data as DailyBriefingRow) : null;
+}
+
 /** Briefings for a path since a date (inclusive), newest first. */
 export async function listDailyBriefingsSince(input: {
   careerPathId: string;

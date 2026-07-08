@@ -955,7 +955,11 @@ export function DashboardProjectWorkbench({
                 {guide.toolLaunches.length} launchers
               </span>
             </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {/* Live E2E fix (2026-07-07 finding #5): fixed 2/3-column tracks
+                squeezed these cards to one word per line inside the split
+                workbench grid. auto-fill + minmax keeps every card at a
+                readable minimum width and wraps the count instead. */}
+            <div className="mt-4 grid gap-3 grid-cols-[repeat(auto-fill,minmax(230px,1fr))]">
               {guide.toolLaunches.map((tool) => {
                 const connection = tool.platform ? oauthByPlatform.get(tool.platform) ?? null : null;
                 const connected = Boolean(connection?.connected);
@@ -966,7 +970,7 @@ export function DashboardProjectWorkbench({
                 return (
                   <div
                     key={tool.key}
-                    className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition"
+                    className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">

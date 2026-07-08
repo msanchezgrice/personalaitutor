@@ -186,6 +186,51 @@ describe("buildArtifactContentPrompt", () => {
     expect(buildArtifactContentPrompt({ kind: "website", context: baseContext() })).toContain('"sections"');
     expect(buildArtifactContentPrompt({ kind: "pptx", context: baseContext() })).toContain("speakerNotes");
   });
+
+  /**
+   * Live E2E fix (2026-07-07 night, finding #4): a skip-ahead artifact with
+   * only step-1 evidence claimed "all five interview transcripts included".
+   * When the generation context has incomplete steps, the prompt must carry a
+   * hard grounded-only constraint: claim ONLY what the evidence contains and
+   * never assert deliverables (transcripts, outputs) from unfinished steps.
+   */
+  test("only-step-1 evidence (skip-ahead) adds a hard grounded-only constraint", () => {
+    const context = baseContext(); // 3 playbook steps, only step 1 completed
+    const prompt = buildArtifactContentPrompt({ kind: "pdf", context });
+    expect(prompt).toContain("INCOMPLETE EVIDENCE");
+    expect(prompt).toContain("Only 1 of 3 playbook steps");
+    // The unfinished steps are named so the model knows what NOT to claim.
+    expect(prompt).toContain("Run the module on a real workflow.");
+    expect(prompt).toContain("Package the result.");
+    // Explicit prohibitions on inventing non-existent deliverables.
+    expect(prompt.toLowerCase()).toContain("do not claim");
+    expect(prompt.toLowerCase()).toContain("transcripts");
+    expect(prompt.toLowerCase()).toContain("planned next steps");
+  });
+
+  test("the grounded-only constraint applies to every generatable kind", () => {
+    for (const kind of ["website", "resume_pdf", "resume_docx", "pptx", "pdf"]) {
+      expect(buildArtifactContentPrompt({ kind, context: baseContext() })).toContain("INCOMPLETE EVIDENCE");
+    }
+  });
+
+  test("no evidence at all still triggers the incomplete-evidence constraint", () => {
+    const context = baseContext();
+    context.evidence.completedSteps = [];
+    const prompt = buildArtifactContentPrompt({ kind: "pdf", context });
+    expect(prompt).toContain("INCOMPLETE EVIDENCE");
+    expect(prompt).toContain("Only 0 of 3 playbook steps");
+  });
+
+  test("complete evidence does NOT add the incomplete-evidence constraint", () => {
+    const context = baseContext();
+    context.evidence.completedSteps = context.module.steps.map((title) => ({
+      title,
+      completedAt: "2026-07-07T00:00:00.000Z",
+    }));
+    const prompt = buildArtifactContentPrompt({ kind: "pdf", context });
+    expect(prompt).not.toContain("INCOMPLETE EVIDENCE");
+  });
 });
 
 describe("generateArtifactContent", () => {

@@ -2230,6 +2230,19 @@
       return cleaned.slice(0, Math.max(0, maxChars - 3)).trim() + "...";
     }
 
+    // Chat/event-log bookkeeping must never surface as hero copy (live E2E
+    // fix 2026-07-07 finding #3: "start here: AI Tutor reply generated for:
+    // hey"). Mirrors sanitizeDashboardCopy in apps/web/lib/dashboard-copy.ts.
+    function isDashboardCopyNoise(value) {
+      var lowered = normalizeInlineText(value).toLowerCase();
+      if (!lowered) return false;
+      return (
+        lowered.indexOf("memory.refresh") !== -1 ||
+        lowered.indexOf("ai tutor reply generated") !== -1 ||
+        lowered.indexOf("reply generated for") !== -1
+      );
+    }
+
     function latestEventMessage(events) {
       if (!Array.isArray(events) || !events.length) return "";
       var bestMessage = "";
@@ -2237,7 +2250,7 @@
       events.forEach(function (event) {
         var message = normalizeInlineText(event && event.message);
         if (!message) return;
-        if (message.toLowerCase().indexOf("memory.refresh") !== -1) return;
+        if (isDashboardCopyNoise(message)) return;
         var parsed = Date.parse(event && event.createdAt ? String(event.createdAt) : "");
         var ts = Number.isFinite(parsed) ? parsed : 0;
         if (ts >= bestTs) {
@@ -2253,7 +2266,7 @@
       for (var index = project.buildLog.length - 1; index >= 0; index -= 1) {
         var entry = project.buildLog[index];
         var message = normalizeInlineText(entry && entry.message);
-        if (!message) continue;
+        if (!message || isDashboardCopyNoise(message)) continue;
         return message;
       }
       return "";
@@ -2265,8 +2278,9 @@
       if (!Array.isArray(cachedHistory) || !cachedHistory.length) return "";
       for (var index = cachedHistory.length - 1; index >= 0; index -= 1) {
         var item = cachedHistory[index] || {};
+        if (item.role === "divider") continue;
         var text = normalizeInlineText(item.text);
-        if (!text) continue;
+        if (!text || isDashboardCopyNoise(text)) continue;
         return text;
       }
       return "";
@@ -2275,7 +2289,7 @@
     var narrowViewport = isNarrowViewport();
 
     var todayUpdateText = summarizeText(
-      (summary.dailyUpdate && summary.dailyUpdate.summary) ||
+      (summary.dailyUpdate && !isDashboardCopyNoise(summary.dailyUpdate.summary) && summary.dailyUpdate.summary) ||
       latestEventMessage(summary.latestEvents) ||
       "You are set up for focused progress today. Pick one concrete task and ship it.",
       narrowViewport ? 96 : 180,
@@ -2886,6 +2900,8 @@
             project_id: project.id,
             module_title: activeTutorSession.moduleTitle || null,
           });
+          // Divider first: everything above this point is generic chat.
+          insertSessionDividerOnce(activeTutorSession);
           var progress = sessionProgress(activeTutorSession);
           var startedText =
             "Tutor session started: " + (activeTutorSession.moduleTitle || "your module") +
@@ -2908,11 +2924,12 @@
       writeChatHistoryCache(cacheProjectId, chatHistoryState.slice(-80));
     }
 
-    function appendAndPersist(role, text) {
+    function appendAndPersist(role, text, sessionId) {
       chatHistoryState.push({
         role: role,
         text: String(text || ""),
         ts: Date.now(),
+        sessionId: sessionId || null,
       });
       if (chatHistoryState.length > 80) {
         chatHistoryState = chatHistoryState.slice(-80);
@@ -2920,7 +2937,55 @@
       persistChatHistory();
     }
 
+    // Live E2E fix (2026-07-07 finding #6): old generic chat replies persist
+    // above tutor-session messages by design (history is never deleted), so a
+    // subtle divider marks where the session starts.
+    function renderSessionDivider(text) {
+      var divider = document.createElement("div");
+      divider.setAttribute("data-chat-session-divider", "1");
+      divider.className = "flex items-center gap-3 my-4 px-2";
+      divider.innerHTML =
+        '<span class="flex-1 border-t border-white/10"></span>' +
+        '<span class="text-[10px] uppercase tracking-widest text-gray-500 text-center">' +
+        escapeHtml(text) +
+        "</span>" +
+        '<span class="flex-1 border-t border-white/10"></span>';
+      history.appendChild(divider);
+      history.scrollTop = history.scrollHeight;
+    }
+
+    function sessionDividerText(session) {
+      var moduleTitle = session && session.moduleTitle ? String(session.moduleTitle) : "";
+      return (
+        "Tutor session started" +
+        (moduleTitle ? ": " + truncateChatText(moduleTitle, 60) : "") +
+        " — earlier messages are from generic chat."
+      );
+    }
+
+    function hasSessionDivider(sessionId) {
+      return chatHistoryState.some(function (entry) {
+        if (!entry || entry.role !== "divider") return false;
+        if (!sessionId) return true;
+        return !entry.sessionId || entry.sessionId === sessionId;
+      });
+    }
+
+    function insertSessionDividerOnce(session) {
+      if (!session) return;
+      if (!chatHistoryState.length) return;
+      var sessionId = session.id ? String(session.id) : null;
+      if (hasSessionDivider(sessionId)) return;
+      var text = sessionDividerText(session);
+      renderMessage("divider", text);
+      appendAndPersist("divider", text, sessionId);
+    }
+
     function renderMessage(role, text) {
+      if (role === "divider") {
+        renderSessionDivider(text);
+        return;
+      }
       var bubble = createBubble(text, role === "user");
       history.appendChild(bubble);
       history.scrollTop = history.scrollHeight;
@@ -2943,15 +3008,22 @@
 
     if (Array.isArray(cachedMessages) && cachedMessages.length) {
       chatHistoryState = cachedMessages.slice(-80).map(function (entry) {
+        var role = "assistant";
+        if (entry && entry.role === "user") role = "user";
+        if (entry && entry.role === "divider") role = "divider";
         return {
-          role: entry && entry.role === "user" ? "user" : "assistant",
+          role: role,
           text: String(entry && entry.text ? entry.text : ""),
           ts: entry && entry.ts ? Number(entry.ts) : Date.now(),
+          sessionId: entry && entry.sessionId ? String(entry.sessionId) : null,
         };
       });
       chatHistoryState.forEach(function (entry) {
         renderMessage(entry.role, entry.text);
       });
+      // A session started elsewhere (e.g. the workbench) with restored generic
+      // history gets its divider here — exactly once per session.
+      insertSessionDividerOnce(activeTutorSession);
     } else {
       var introText = "Welcome! Let’s get started. I’m your AI Skill Tutor. I help you learn faster, build projects, and turn your work into proof you can show.";
       if (activeTutorSession) {
@@ -4970,6 +5042,20 @@
     if (currentPath === "/employers/talent") {
       captureEvent("employer_talent_viewed", { source: "page_load" });
       captureEvent("app_route_hydrate_completed", { path: currentPath });
+      return;
+    }
+
+    if (
+      currentPath.indexOf("/dashboard/") === 0 &&
+      currentPath.indexOf("/dashboard/admin") !== 0
+    ) {
+      // Unknown /dashboard/* path (e.g. /dashboard/news): nothing hydrates it,
+      // so the first-paint hold would never release. Mark the runtime ready
+      // and send the user to the dashboard home instead of an infinite
+      // spinner. Admin pages hydrate server-side and are excluded.
+      captureEvent("app_route_unknown_dashboard_redirected", { path: currentPath });
+      document.documentElement.setAttribute("data-runtime-ready", "1");
+      window.location.replace("/dashboard/");
       return;
     }
   }

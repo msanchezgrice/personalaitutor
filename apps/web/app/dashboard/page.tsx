@@ -11,19 +11,15 @@ import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/d
 import { buildOnboardingReportReturnUrl, sanitizeDashboardReturnTo } from "@/lib/billing";
 import { getDailyActionWithStreak } from "@/lib/daily-action";
 import { getReadinessScoreCard } from "@/lib/readiness-score";
+// Live E2E fix (2026-07-07 finding #3): shared sanitizer excludes chat/event
+// bookkeeping ("AI Tutor reply generated for: ...") from hero copy.
+import { sanitizeDashboardCopy } from "@/lib/dashboard-copy";
 
 function summarize(value: string | null | undefined, fallback: string, maxChars = 180) {
   const cleaned = String(value || "").replace(/\s+/g, " ").trim();
   const base = cleaned || fallback;
   if (base.length <= maxChars) return base;
   return `${base.slice(0, Math.max(0, maxChars - 3)).trim()}...`;
-}
-
-function sanitizeDashboardCopy(value: string | null | undefined) {
-  const normalized = String(value || "").trim();
-  if (!normalized) return "";
-  if (normalized.toLowerCase().includes("memory.refresh")) return "";
-  return normalized;
 }
 
 function readQueryParam(value: string | string[] | undefined) {
@@ -79,7 +75,7 @@ export default async function DashboardPage({
     "You are set up for focused progress today. Pick one concrete task and ship it.",
   );
   const continuationText = summarize(
-    activeProject?.buildLog?.at(-1)?.message,
+    sanitizeDashboardCopy(activeProject?.buildLog?.at(-1)?.message),
     "Open your module workbench, finish the checklist in order, and use Chat Tutor when you get blocked.",
     200,
   );
