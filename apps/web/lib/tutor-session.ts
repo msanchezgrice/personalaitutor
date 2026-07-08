@@ -455,6 +455,37 @@ export async function countTutorSessionMilestones(learnerProfileId: string): Pro
   };
 }
 
+/**
+ * Distinct module titles the learner has ACTUALLY completed a tutor session
+ * for (spine phase 1). Archived sessions (status completed, completedAt null)
+ * never count — restarting after a playbook update is not module completion.
+ * Feeds the current-plan-week helper and the dashboard week tracker.
+ */
+export async function listCompletedTutorSessionModuleTitles(learnerProfileId: string): Promise<string[]> {
+  if (mode() === "memory") {
+    const titles = Array.from(memorySessions.values())
+      .filter(
+        (session) =>
+          session.learnerProfileId === learnerProfileId &&
+          session.status === "completed" &&
+          Boolean(session.completedAt),
+      )
+      .map((session) => session.moduleTitle);
+    return Array.from(new Set(titles));
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data } = await supabase
+    .from("module_tutor_sessions")
+    .select("module_title,completed_at")
+    .eq("learner_profile_id", learnerProfileId)
+    .eq("status", "completed")
+    .not("completed_at", "is", null);
+
+  const rows = (data ?? []) as Array<{ module_title: string }>;
+  return Array.from(new Set(rows.map((row) => String(row.module_title))));
+}
+
 export function tutorSessionChecklistComplete(session: TutorSessionRecord) {
   return (
     session.steps.length > 0 &&

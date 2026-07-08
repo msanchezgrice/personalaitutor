@@ -60,12 +60,26 @@ export type RescoreReportInput = {
   gaps: Array<{ title: string; whyItMatters: string; marketImpact: "high" | "medium" | "low" }>;
 };
 
+/** The learner's current 30-day-plan week (spine phase 4). */
+export type RescorePlanWeekInput = {
+  week: number;
+  totalWeeks?: number;
+  focus: string;
+  moduleTitle?: string | null;
+};
+
 export type BriefingRescoreInput = {
   briefing: RescoreBriefingInput;
   report: RescoreReportInput;
   careerPathName: string;
   /** Optional: artifact/module titles in flight, so the action can point at one. */
   activeArtifactTitles?: string[];
+  /**
+   * Optional: the week of the learner's 30-day plan they are in right now, so
+   * the daily action can advance the plan instead of floating free of it.
+   * Prompt-side only — the OUTPUT schema stays strict and unchanged.
+   */
+  currentPlanWeek?: RescorePlanWeekInput | null;
 };
 
 export function buildBriefingRescorePrompt(input: BriefingRescoreInput) {
@@ -87,6 +101,17 @@ export function buildBriefingRescorePrompt(input: BriefingRescoreInput) {
       (gap, index) => `${index + 1}. "${gap.title}" (${gap.marketImpact} impact) — ${gap.whyItMatters}`,
     ),
     "",
+    ...(input.currentPlanWeek
+      ? [
+          `## Learner's 30-day plan — current week (week ${input.currentPlanWeek.week}${
+            input.currentPlanWeek.totalWeeks ? ` of ${input.currentPlanWeek.totalWeeks}` : ""
+          })`,
+          `Focus: ${input.currentPlanWeek.focus}`,
+          ...(input.currentPlanWeek.moduleTitle ? [`Module in flight: ${input.currentPlanWeek.moduleTitle}`] : []),
+          "When today's briefing allows, prefer a dailyAction that advances this week's focus — it must still close one of the learner's open gaps above.",
+          "",
+        ]
+      : []),
     ...(input.activeArtifactTitles?.length
       ? ["## Artifacts/modules currently in flight", ...input.activeArtifactTitles.map((title) => `- ${title}`), ""]
       : []),

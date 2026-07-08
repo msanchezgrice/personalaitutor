@@ -5,6 +5,7 @@ import {
   MODULE_TRACKS,
   type AcquisitionAttribution,
   buildRecommendedModuleGuide,
+  orderModuleTracksByPlan,
   buildDashboardGamification,
   addProjectChatMessage as memAddProjectChatMessage,
   connectOAuth as memConnectOAuth,
@@ -68,6 +69,9 @@ import {
 } from "@aitutor/shared";
 import { BRAND_NAME, getSiteUrl } from "./site";
 import { collectGamificationActivitySignalsSafe } from "./gamification-signals";
+// Spine phase 2: the 30-day plan drives the starter project seed and the
+// module-recommendation order (logic lives in plan-progress, not here).
+import { getPlanModuleTitlesForProfile, getStarterProjectSeedForProfile } from "./plan-progress";
 import { callOpenAiResponses, extractOpenAiOutputText } from "./openai-responses";
 import { briefingNewsForPath } from "./daily-briefing";
 import { mergeAttribution } from "./attribution";
@@ -3119,7 +3123,11 @@ export async function runtimeGetDashboardSummary(
   },
 ): Promise<DashboardSummary | null> {
   if (mode() === "memory") {
-    return memGetDashboardSummary(userId, await collectGamificationActivitySignalsSafe(userId));
+    const [activity, planModuleTitles] = await Promise.all([
+      collectGamificationActivitySignalsSafe(userId),
+      getPlanModuleTitlesForProfile(userId),
+    ]);
+    return memGetDashboardSummary(userId, activity, planModuleTitles);
   }
 
   let profile = await runtimeFindUserById(userId);
@@ -3146,15 +3154,17 @@ export async function runtimeGetDashboardSummary(
   let projects = await runtimeListProjectsByUser(profile.id);
   if (!projects.length) {
     const career = CAREER_PATHS.find((path) => path.id === profile.careerPathId);
-    const starterTitle = career ? `${career.name} Starter Build` : "AI Starter Build";
-    const starterDescription = career
-      ? `Starter project generated from your ${career.name} path to begin collecting proof artifacts.`
-      : "Starter project generated from onboarding to begin collecting proof artifacts.";
+    // Seeded from plan week 1 + top gap when a linked report exists;
+    // otherwise the pre-spine generic starter copy (spine phase 2).
+    const starter = await getStarterProjectSeedForProfile({
+      learnerProfileId: profile.id,
+      careerPathName: career?.name ?? null,
+    });
 
     await runtimeCreateProject({
       userId: profile.id,
-      title: starterTitle,
-      description: starterDescription,
+      title: starter.title,
+      description: starter.description,
       slug: "starter-build",
     });
 
@@ -3268,7 +3278,10 @@ export async function runtimeGetDashboardSummary(
       lastErrorCode: job.last_error_code,
     })),
     latestEvents,
-    moduleRecommendations: MODULE_TRACKS.filter((track) => track.careerPathId === profile.careerPathId),
+    moduleRecommendations: orderModuleTracksByPlan(
+      MODULE_TRACKS.filter((track) => track.careerPathId === profile.careerPathId),
+      await getPlanModuleTitlesForProfile(profile.id),
+    ),
     dailyUpdate: daily,
     gamification,
   };

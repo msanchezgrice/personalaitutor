@@ -19,6 +19,7 @@ import {
 import { getStreak, listCompletedDailyActionsSince } from "@/lib/daily-action";
 import { resolveBriefingPathId } from "@/lib/daily-briefing";
 import { listDailyBriefingsSince, todayBriefingDate } from "@/lib/daily-briefing-store";
+import { getPlanProgressForProfile, type PlanProgress } from "@/lib/plan-progress";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 import { getSiteUrl } from "@/lib/site";
 
@@ -59,6 +60,30 @@ function weekStartIso(now: Date): string {
 
 function weekStartDate(now: Date): string {
   return todayBriefingDate(new Date(now.getTime() - 7 * 86_400_000));
+}
+
+/**
+ * Next step for the weekly email (spine phase 4): anchored to the learner's
+ * CURRENT 30-day-plan week (focus + module tutor session) when a plan exists;
+ * otherwise the pre-spine gap-based / generic copy, unchanged.
+ */
+export function deriveWeeklyNextStep(input: {
+  planProgress: Pick<PlanProgress, "currentWeek" | "totalWeeks" | "currentEntry" | "moduleTitle"> | null;
+  topOpenGapTitle: string | null;
+}): string {
+  const plan = input.planProgress;
+  if (plan) {
+    const anchor = `Week ${plan.currentWeek} of ${plan.totalWeeks} in your 30-day plan: ${plan.currentEntry.focus}.`;
+    if (plan.moduleTitle) {
+      return `${anchor} Run the "${plan.moduleTitle}" tutor session and finish with a generated artifact.`;
+    }
+    const firstAction = plan.currentEntry.actions[0];
+    return firstAction ? `${anchor} Start with: ${firstAction}` : anchor;
+  }
+  if (input.topOpenGapTitle) {
+    return `Close "${input.topOpenGapTitle}" — start its tutor session and finish with a generated artifact.`;
+  }
+  return "Pick the next module in your path and run its tutor session to keep the score climbing.";
 }
 
 // --- real data collectors (supabase) --------------------------------------------
@@ -119,9 +144,10 @@ export async function computeWeeklyReportContext(
 
   const closedTitles = new Set(gapsClosed.map((title) => title.toLowerCase()));
   const topOpenGap = latestReport?.report.gaps.find((gap) => !closedTitles.has(gap.title.toLowerCase())) ?? null;
-  const nextStep = topOpenGap
-    ? `Close "${topOpenGap.title}" — start its tutor session and finish with a generated artifact.`
-    : "Pick the next module in your path and run its tutor session to keep the score climbing.";
+  // Spine phase 4: anchor nextStep to the current 30-day-plan week; fall back
+  // to the gap-based copy for learners without a plan.
+  const planProgress = await getPlanProgressForProfile(candidate.learnerProfileId, now).catch(() => null);
+  const nextStep = deriveWeeklyNextStep({ planProgress, topOpenGapTitle: topOpenGap?.title ?? null });
 
   return {
     baseUrl,

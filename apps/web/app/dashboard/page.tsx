@@ -7,9 +7,11 @@ import { DashboardEntryTracking } from "@/components/dashboard-entry-tracking";
 import { FbCompleteRegistrationOnDashboard } from "@/components/fb-complete-registration-on-dashboard";
 import { DailyActionCard } from "@/components/daily-action-card";
 import { ReadinessScoreCard } from "@/components/readiness-score-card";
+import { WeeklyFocusCard } from "@/components/weekly-focus-card";
 import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
 import { buildOnboardingReportReturnUrl, sanitizeDashboardReturnTo } from "@/lib/billing";
 import { getDailyActionWithStreak } from "@/lib/daily-action";
+import { getWeeklyFocusCard } from "@/lib/plan-progress";
 import { getReadinessScoreCard } from "@/lib/readiness-score";
 // Live E2E fix (2026-07-07 finding #3): shared sanitizer excludes chat/event
 // bookkeeping ("AI Tutor reply generated for: ...") from hero copy.
@@ -108,6 +110,13 @@ export default async function DashboardPage({
     state.billing.accessAllowed && user?.id
       ? await getReadinessScoreCard(user.id).catch(() => ({ hasReport: false as const }))
       : null;
+  // "This week's focus" card (spine phase 3): the learner's current 30-day
+  // plan week. Null (card hidden) for users without a linked plan — failure
+  // degrades to hidden, never a crash.
+  const weeklyFocusCard =
+    state.billing.accessAllowed && user?.id
+      ? await getWeeklyFocusCard(user.id).catch(() => null)
+      : null;
   return (
     <>
       <Suspense fallback={null}>
@@ -185,6 +194,8 @@ export default async function DashboardPage({
           </div>
 
           {readinessCard ? <ReadinessScoreCard card={readinessCard} /> : null}
+
+          {weeklyFocusCard ? <WeeklyFocusCard card={weeklyFocusCard} /> : null}
 
           {dailyActionView ? (
             <DailyActionCard

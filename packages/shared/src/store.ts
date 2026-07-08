@@ -4,6 +4,7 @@ import {
   getEmployerFilterFacets,
   getModuleTracksForCareerPath,
   MODULE_TRACKS,
+  orderModuleTracksByPlan,
 } from "./matrix";
 import { buildDashboardGamification, type GamificationActivitySignals } from "./gamification";
 import { canMarkProjectBuilt } from "./verification-gating";
@@ -1534,6 +1535,8 @@ export function latestDailyUpdate(userId: string) {
 export function getDashboardSummary(
   userId: string,
   activity?: Partial<GamificationActivitySignals> | null,
+  /** Spine phase 2: the learner's plan module sequence (from the web layer). */
+  planModuleTitles?: Array<string | null | undefined> | null,
 ): DashboardSummary | null {
   const user = findUserById(userId);
   if (!user) return null;
@@ -1554,7 +1557,10 @@ export function getDashboardSummary(
     projects,
     pendingJobs: state.jobs.filter((job) => job.userId === userId && ["queued", "claimed", "running"].includes(job.status)),
     latestEvents,
-    moduleRecommendations: getModuleTracksForCareerPath(user.careerPathId),
+    moduleRecommendations: orderModuleTracksByPlan(
+      getModuleTracksForCareerPath(user.careerPathId),
+      planModuleTitles ?? [],
+    ),
     dailyUpdate: latestDailyUpdate(userId),
     gamification: buildDashboardGamification({
       user,

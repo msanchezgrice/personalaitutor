@@ -64,6 +64,27 @@ describe("briefing rescore prompt", () => {
     expect(prompt).toContain("[QUICK HIT]");
     expect(prompt).toContain('"scoreDelta": integer between -3 and 3');
   });
+
+  test("prompt carries the learner's current 30-day-plan week when provided (spine phase 4)", () => {
+    const prompt = buildBriefingRescorePrompt({
+      ...INPUT,
+      currentPlanWeek: {
+        week: 2,
+        totalWeeks: 4,
+        focus: "Automate one programmatic page",
+        moduleTitle: "Programmatic SEO",
+      },
+    });
+    expect(prompt).toContain("30-day plan");
+    expect(prompt).toContain("week 2 of 4");
+    expect(prompt).toContain("Automate one programmatic page");
+    expect(prompt).toContain("Programmatic SEO");
+  });
+
+  test("prompt omits the plan section when no plan week is provided (backward compatible)", () => {
+    const prompt = buildBriefingRescorePrompt(INPUT);
+    expect(prompt).not.toContain("30-day plan");
+  });
 });
 
 describe("briefing rescore schema", () => {

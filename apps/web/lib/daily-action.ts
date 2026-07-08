@@ -15,6 +15,7 @@ import {
 } from "@/lib/anonymous-assessment";
 import { getOrGenerateDailyBriefing, resolveBriefingPathId } from "@/lib/daily-briefing";
 import { todayBriefingDate } from "@/lib/daily-briefing-store";
+import { getPlanProgressForProfile } from "@/lib/plan-progress";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 
 /**
@@ -351,6 +352,11 @@ export async function runDailyRescoreForUser(input: {
     });
     const briefing = briefingRecord.briefing;
 
+    // Spine phase 4: the daily action knows which plan week the learner is
+    // in. Optional context — a missing/legacy plan degrades to the pre-spine
+    // gap-only prompt, never a failure.
+    const planProgress = await getPlanProgressForProfile(input.learnerProfileId, now).catch(() => null);
+
     const generate = input.deps?.generateRescore ?? generateBriefingRescore;
     const { rescore, model } = await generate({
       briefing: {
@@ -365,6 +371,15 @@ export async function runDailyRescoreForUser(input: {
         gaps: latestReport.report.gaps,
       },
       careerPathName: briefing.careerPathName,
+      activeArtifactTitles: planProgress?.moduleTitle ? [planProgress.moduleTitle] : undefined,
+      currentPlanWeek: planProgress
+        ? {
+            week: planProgress.currentWeek,
+            totalWeeks: planProgress.totalWeeks,
+            focus: planProgress.currentEntry.focus,
+            moduleTitle: planProgress.moduleTitle,
+          }
+        : undefined,
     });
 
     // Score deltas append to the report history — the score's append-only spine.

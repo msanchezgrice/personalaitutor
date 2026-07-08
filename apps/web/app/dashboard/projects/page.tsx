@@ -1,6 +1,7 @@
 import { DashboardShell } from "@/components/dashboard-runtime-shell";
 import { DashboardProjectWorkbench, type TutorSessionView } from "@/components/dashboard-project-workbench";
 import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
+import { getPlanProgressForProfile } from "@/lib/plan-progress";
 import { runtimeListOAuthConnections, runtimeSyncProjectModuleSteps } from "@/lib/runtime";
 import { getTutorSessionForProject, tutorSessionPlaybookDrifted } from "@/lib/tutor-session";
 import { buildRecommendedModuleGuide, getCareerPath, resolveLearnerRoleLabel } from "@aitutor/shared";
@@ -19,7 +20,14 @@ export default async function DashboardProjectsPage() {
   const activeProject = state.activeProject;
   const completedProject = state.completedProject;
   const primaryCareerPath = getCareerPath(user?.careerPathId ?? summary?.gamification.primaryTrackId ?? "");
-  const recommendedModuleTitle = summary?.moduleRecommendations?.[0]?.title ?? primaryCareerPath?.modules[0] ?? "Starter AI Pack";
+  // Spine phase 2: the active module is the learner's current 30-day-plan
+  // week module; users without a linked report keep the pre-spine fallback.
+  const planProgress = user ? await getPlanProgressForProfile(user.id).catch(() => null) : null;
+  const recommendedModuleTitle =
+    planProgress?.moduleTitle ??
+    summary?.moduleRecommendations?.[0]?.title ??
+    primaryCareerPath?.modules[0] ??
+    "Starter AI Pack";
   const guide = buildRecommendedModuleGuide({
     careerPathId: user?.careerPathId ?? summary?.gamification.primaryTrackId ?? null,
     moduleTitle: recommendedModuleTitle,

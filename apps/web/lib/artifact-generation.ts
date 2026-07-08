@@ -35,6 +35,7 @@ import {
 } from "@/lib/runtime";
 import { getLatestAssessmentReportForProfile } from "@/lib/anonymous-assessment";
 import { persistArtifactContent } from "@/lib/artifact-content-store";
+import { getCurrentPlanModuleTitleForProfile } from "@/lib/plan-progress";
 
 /**
  * Real artifact generation pipeline (Phase 2.1), extracted from `runtime.ts`.
@@ -95,12 +96,24 @@ export function resolveModuleGuideForProfile(profile: UserProfile, moduleTitle?:
   });
 }
 
+/**
+ * Spine phase 2: the ACTIVE module comes from the learner's 30-day plan —
+ * `thirtyDayPlan[currentWeek].moduleTitle` — and falls back to the career
+ * path's first module for users without a linked report / plan module.
+ * The plan lookup never throws, so this is a strict superset of the old
+ * static `modules[0]` behavior.
+ */
+export async function resolveActiveModuleGuideForProfile(profile: UserProfile): Promise<RecommendedModuleGuide> {
+  const planModuleTitle = await getCurrentPlanModuleTitleForProfile(profile.id);
+  return resolveModuleGuideForProfile(profile, planModuleTitle);
+}
+
 export async function buildArtifactGenerationContext(input: {
   profile: UserProfile;
   project: Project;
   guide?: RecommendedModuleGuide;
 }): Promise<ArtifactGenerationContext> {
-  const guide = input.guide ?? resolveModuleGuideForProfile(input.profile);
+  const guide = input.guide ?? (await resolveActiveModuleGuideForProfile(input.profile));
   const careerPath = getCareerPath(input.profile.careerPathId);
   const report = await getLatestAssessmentReportForProfile(input.profile.id).catch(() => null);
 

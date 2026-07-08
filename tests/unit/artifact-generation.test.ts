@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   createProject,
@@ -6,13 +7,51 @@ import {
   resetStateForTests,
   upsertBillingSubscription,
 } from "@aitutor/shared";
-import { runtimeRequestArtifactGeneration } from "@/lib/artifact-generation";
+import {
+  buildArtifactGenerationContext,
+  resolveActiveModuleGuideForProfile,
+  runtimeRequestArtifactGeneration,
+} from "@/lib/artifact-generation";
 import {
   getArtifactContentByUrl,
   resetArtifactContentStateForTests,
 } from "@/lib/artifact-content-store";
+import {
+  appendAssessmentReport,
+  resetAnonymousAssessmentStateForTests,
+} from "@/lib/anonymous-assessment";
+import { resetTutorSessionStateForTests } from "@/lib/tutor-session";
+import type { AssessmentReport } from "@/lib/assessment-report";
 
 const userId = "user_test_0001";
+
+function pmPlanReport(): AssessmentReport {
+  return {
+    readinessScore: 55,
+    headline: "Strong PM instincts, thin AI reps",
+    summary: "Summary.",
+    strengths: [{ title: "Role depth", detail: "Knows the craft." }],
+    gaps: [{ title: "No automated PRD workflow", whyItMatters: "Expected now.", marketImpact: "high" }],
+    recommendedPath: { careerPathId: "product-management", reason: "Fit." },
+    thirtyDayPlan: [
+      { week: 1, focus: "PRD automation", moduleTitle: "PRD Generation", actions: ["Automate one doc"] },
+      { week: 2, focus: "Research reps", moduleTitle: "Synthetic User Research", actions: ["One synthesis"] },
+      { week: 3, focus: "Wireframes", moduleTitle: "AI Wireframing", actions: ["One flow"] },
+      { week: 4, focus: "Proof", moduleTitle: "Sentiment Analysis", actions: ["One case study"] },
+    ],
+  };
+}
+
+async function seedPlanReport() {
+  await appendAssessmentReport({
+    anonymousAssessmentId: randomUUID(),
+    learnerProfileId: userId,
+    readinessScore: 55,
+    deterministicScore: 0.5,
+    model: "gpt-4.1-mini",
+    report: pmPlanReport(),
+  });
+}
 
 const validWebsiteContent = {
   title: "Test User — AI Workflow Proof",
@@ -69,9 +108,45 @@ function makeProject() {
   return project;
 }
 
+describe("active module selection follows the 30-day plan (spine phase 2)", () => {
+  beforeEach(() => {
+    resetStateForTests();
+    resetAnonymousAssessmentStateForTests();
+    resetTutorSessionStateForTests();
+  });
+
+  test("no linked report -> falls back to the career path's first module", async () => {
+    const profile = findUserById(userId);
+    if (!profile) throw new Error("TEST_PROFILE_MISSING");
+    const guide = await resolveActiveModuleGuideForProfile(profile);
+    expect(guide.moduleTitle).toBe("Synthetic User Research");
+  });
+
+  test("linked report -> current week's plan module becomes the active module", async () => {
+    await seedPlanReport();
+    const profile = findUserById(userId);
+    if (!profile) throw new Error("TEST_PROFILE_MISSING");
+    const guide = await resolveActiveModuleGuideForProfile(profile);
+    // Fresh report => week 1 => the plan's week-1 module, not catalog [0].
+    expect(guide.moduleTitle).toBe("PRD Generation");
+  });
+
+  test("artifact generation context uses the plan module when no guide is supplied", async () => {
+    await seedPlanReport();
+    const profile = findUserById(userId);
+    const project = createProject({ userId, title: "CTX_TEST", description: "Context module test" });
+    if (!profile || !project) throw new Error("TEST_FIXTURE_MISSING");
+
+    const context = await buildArtifactGenerationContext({ profile, project });
+    expect(context.module.moduleTitle).toBe("PRD Generation");
+  });
+});
+
 describe("runtimeRequestArtifactGeneration (memory mode)", () => {
   beforeEach(() => {
     resetStateForTests();
+    resetAnonymousAssessmentStateForTests();
+    resetTutorSessionStateForTests();
     resetArtifactContentStateForTests();
     enableBilling();
     vi.stubEnv("OPENAI_API_KEY", "test-key");

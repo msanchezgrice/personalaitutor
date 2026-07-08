@@ -9,6 +9,7 @@ import {
   failArtifactGeneration,
   findProjectById,
   findUserById,
+  getDashboardSummary,
   publishSocialDraft,
   refreshRelevantNews,
   requestArtifactGeneration,
@@ -192,5 +193,26 @@ describe("store workflows", () => {
     expect(user.id).toBeTruthy();
     expect(session.userId).toBe(user.id);
     expect(session.status).toBe("started");
+  });
+
+  test("dashboard summary orders module recommendations by the learner's plan sequence", () => {
+    // Default user is on product-management; catalog order starts with
+    // "Synthetic User Research". A plan sequence must override it.
+    const planned = getDashboardSummary(defaultUser, null, ["PRD Generation", "AI Wireframing"]);
+    expect(planned?.moduleRecommendations.map((track) => track.title)).toEqual([
+      "PRD Generation",
+      "AI Wireframing",
+      "Synthetic User Research",
+      "Sentiment Analysis",
+    ]);
+
+    // No plan (old reports / no report) -> untouched catalog order.
+    const unplanned = getDashboardSummary(defaultUser);
+    expect(unplanned?.moduleRecommendations.map((track) => track.title)).toEqual([
+      "Synthetic User Research",
+      "AI Wireframing",
+      "PRD Generation",
+      "Sentiment Analysis",
+    ]);
   });
 });

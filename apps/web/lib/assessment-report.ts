@@ -1,7 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
-import { CAREER_PATHS } from "@aitutor/shared";
+import { CAREER_PATHS, getCareerPath } from "@aitutor/shared";
 import { callOpenAiResponses, resolveOpenAiModel } from "@/lib/openai-responses";
 
 /**
@@ -78,6 +78,14 @@ export const assessmentReportSchema = z.object({
         week: z.number().int().min(1).max(5),
         focus: z.string().min(1),
         actions: z.array(z.string().min(1)).min(1).max(6),
+        /**
+         * Spine phase 1: the catalog module this week advances — the plan is
+         * the learner's per-user module ORDERING. Optional so reports
+         * generated before this field keep parsing (backward compatible).
+         * Normalized to an exact catalog string in `parseAssessmentReport`;
+         * unmatched titles are dropped, never invented.
+         */
+        moduleTitle: z.string().min(1).max(160).optional(),
       }),
     )
     .min(1)
@@ -155,7 +163,7 @@ export function buildAssessmentReportPrompt(input: AssessmentReportInput) {
     '- "strengths": 2-4 items, each { "title": short phrase, "detail": one sentence grounded in their answers/resume }.',
     '- "gaps": 3-5 items RANKED by market impact (highest first), each { "title": short phrase, "whyItMatters": one sentence tied to their role\'s market, "marketImpact": "high" | "medium" | "low" }.',
     '- "recommendedPath": { "careerPathId": one id from the catalog above, "reason": one sentence }.',
-    '- "thirtyDayPlan": exactly 4 items, one per week, each { "week": 1-4, "focus": short phrase, "actions": 2-3 concrete actions doable in under an hour each }.',
+    '- "thirtyDayPlan": exactly 4 items, one per week, each { "week": 1-4, "focus": short phrase, "moduleTitle": one module name COPIED EXACTLY from the modules list of the career path you chose in recommendedPath, "actions": 2-3 concrete actions doable in under an hour each }. Sequence the four moduleTitles so they close this learner\'s highest-impact gaps first — this becomes their personal module order.',
     "Ground every claim in the provided context. Never invent employers, tools, or history the learner did not mention.",
   ].join("\n");
 }
@@ -164,6 +172,55 @@ function stripCodeFences(raw: string) {
   const trimmed = raw.trim();
   const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
   return fenced ? fenced[1].trim() : trimmed;
+}
+
+function moduleTitleKey(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/**
+ * Normalize a model-emitted plan module title to an EXACT catalog string
+ * (spine phase 1). Accepts case/whitespace/punctuation near-misses and
+ * unambiguous containment (e.g. "AI Wireframing module" -> "AI Wireframing").
+ * Returns undefined when nothing matches or the match is ambiguous — a plan
+ * week never points at a module that does not exist.
+ */
+export function normalizePlanModuleTitle(
+  raw: string | null | undefined,
+  catalogModuleTitles: string[],
+): string | undefined {
+  const key = moduleTitleKey(String(raw ?? ""));
+  if (!key) return undefined;
+
+  const exact = catalogModuleTitles.find((title) => moduleTitleKey(title) === key);
+  if (exact) return exact;
+
+  const candidates = catalogModuleTitles.filter((title) => {
+    const catalogKey = moduleTitleKey(title);
+    if (catalogKey.length < 4 || key.length < 4) return false;
+    return key.includes(catalogKey) || catalogKey.includes(key);
+  });
+  return candidates.length === 1 ? candidates[0] : undefined;
+}
+
+/**
+ * Normalize every plan week's moduleTitle against the recommended path's
+ * module catalog. Unmatched titles are removed (the week keeps its focus and
+ * actions), so downstream consumers only ever see exact catalog strings.
+ */
+export function normalizeReportPlanModuleTitles(report: AssessmentReport): AssessmentReport {
+  const catalog = getCareerPath(report.recommendedPath.careerPathId)?.modules ?? [];
+  return {
+    ...report,
+    thirtyDayPlan: report.thirtyDayPlan.map((week) => {
+      const { moduleTitle, ...rest } = week;
+      const normalized = normalizePlanModuleTitle(moduleTitle, catalog);
+      return normalized ? { ...rest, moduleTitle: normalized } : rest;
+    }),
+  };
 }
 
 export function parseAssessmentReport(raw: string): AssessmentReport {
@@ -180,7 +237,7 @@ export function parseAssessmentReport(raw: string): AssessmentReport {
     const where = firstIssue ? firstIssue.path.join(".") || "root" : "root";
     throw new Error(`ASSESSMENT_REPORT_INVALID_OUTPUT:${where}`);
   }
-  return parsed.data;
+  return normalizeReportPlanModuleTitles(parsed.data);
 }
 
 export async function generateAssessmentReport(input: AssessmentReportInput): Promise<{

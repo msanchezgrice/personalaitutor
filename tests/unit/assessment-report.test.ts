@@ -5,6 +5,8 @@ import {
   buildAssessmentReportPrompt,
   computeDeterministicAssessmentScore,
   generateAssessmentReport,
+  normalizePlanModuleTitle,
+  parseAssessmentReport,
   type AssessmentReportInput,
 } from "@/lib/assessment-report";
 import { CAREER_PATHS } from "@aitutor/shared";
@@ -125,6 +127,59 @@ describe("assessment report schema", () => {
     const result = assessmentReportSchema.safeParse({ ...validReportPayload, gaps: [] });
     expect(result.success).toBe(false);
   });
+
+  test("accepts an optional moduleTitle per plan week (spine phase 1)", () => {
+    const withModules = {
+      ...validReportPayload,
+      thirtyDayPlan: validReportPayload.thirtyDayPlan.map((week, index) => ({
+        ...week,
+        ...(index === 0 ? { moduleTitle: "PRD Generation" } : {}),
+      })),
+    };
+    const parsed = assessmentReportSchema.parse(withModules);
+    expect(parsed.thirtyDayPlan[0].moduleTitle).toBe("PRD Generation");
+    expect(parsed.thirtyDayPlan[1].moduleTitle).toBeUndefined();
+  });
+});
+
+describe("plan module title normalization (spine phase 1)", () => {
+  const PM_MODULES = ["Synthetic User Research", "AI Wireframing", "PRD Generation", "Sentiment Analysis"];
+
+  test("exact and case/punctuation near-miss titles normalize to catalog strings", () => {
+    expect(normalizePlanModuleTitle("PRD Generation", PM_MODULES)).toBe("PRD Generation");
+    expect(normalizePlanModuleTitle("prd generation", PM_MODULES)).toBe("PRD Generation");
+    expect(normalizePlanModuleTitle("  Synthetic User Research  ", PM_MODULES)).toBe("Synthetic User Research");
+    expect(normalizePlanModuleTitle("AI Wireframing module", PM_MODULES)).toBe("AI Wireframing");
+  });
+
+  test("unmatched or ambiguous titles resolve to undefined", () => {
+    expect(normalizePlanModuleTitle("Quantum Basket Weaving", PM_MODULES)).toBeUndefined();
+    expect(normalizePlanModuleTitle("", PM_MODULES)).toBeUndefined();
+    expect(normalizePlanModuleTitle(null, PM_MODULES)).toBeUndefined();
+    // Two catalog entries match by containment -> ambiguous -> undefined.
+    expect(
+      normalizePlanModuleTitle("AI Wireframing Pro Max", ["AI Wireframing", "AI Wireframing Pro"]),
+    ).toBeUndefined();
+  });
+
+  test("parseAssessmentReport normalizes plan modules against the recommended path's catalog", () => {
+    const raw = JSON.stringify({
+      ...validReportPayload,
+      thirtyDayPlan: [
+        { week: 1, focus: "PRD automation", actions: ["Do it"], moduleTitle: "prd generation" },
+        { week: 2, focus: "Research", actions: ["Do it"], moduleTitle: "Synthetic User Research module" },
+        { week: 3, focus: "Verification", actions: ["Do it"], moduleTitle: "Quantum Basket Weaving" },
+        { week: 4, focus: "Proof", actions: ["Do it"], moduleTitle: "AI Wireframing" },
+      ],
+    });
+    const report = parseAssessmentReport(raw);
+    expect(report.thirtyDayPlan.map((week) => week.moduleTitle)).toEqual([
+      "PRD Generation",
+      "Synthetic User Research",
+      undefined,
+      "AI Wireframing",
+    ]);
+  });
 });
 
 describe("generateAssessmentReport", () => {
@@ -221,5 +276,11 @@ describe("generateAssessmentReport", () => {
     expect(prompt).toContain("ai_tool_frequency");
     expect(prompt).toContain("ship_ai_projects");
     expect(prompt).toContain("0-100");
+  });
+
+  test("prompt instructs the model to name a catalog module per plan week", () => {
+    const prompt = buildAssessmentReportPrompt(baseInput());
+    expect(prompt).toContain("moduleTitle");
+    expect(prompt.toLowerCase()).toContain("copied exactly");
   });
 });

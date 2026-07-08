@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { randomUUID } from "node:crypto";
 import type { DailyBriefing } from "@aitutor/daily-content";
-import type { BriefingRescore } from "@aitutor/shared";
+import type { BriefingRescore, BriefingRescoreInput } from "@aitutor/shared";
 import type { AssessmentReport } from "../../apps/web/lib/assessment-report";
 import {
   appendAssessmentReport,
@@ -190,6 +190,77 @@ describe("daily re-scoring + daily action (memory mode)", () => {
     expect(llmCalls).toBe(1);
     // History was appended exactly once.
     expect(await listAssessmentReportsForProfile(PROFILE_ID)).toHaveLength(2);
+  });
+
+  test("rescore input carries the current plan week's module + focus (spine phase 4)", async () => {
+    const anonymousAssessmentId = randomUUID();
+    await appendAssessmentReport({
+      anonymousAssessmentId,
+      learnerProfileId: PROFILE_ID,
+      readinessScore: 52,
+      deterministicScore: 0.6,
+      model: "gpt-4.1-mini",
+      report: {
+        ...REPORT,
+        thirtyDayPlan: [
+          {
+            week: 1,
+            focus: "Automate one page",
+            moduleTitle: "Programmatic SEO",
+            actions: ["Ship one programmatic page"],
+          },
+          { week: 2, focus: "Scale the system", moduleTitle: "Bulk Content Generation", actions: ["Batch 10 pages"] },
+        ],
+      },
+    });
+
+    let seenInput: BriefingRescoreInput | null = null;
+    const result = await runDailyRescoreForUser({
+      learnerProfileId: PROFILE_ID,
+      careerPathId: "marketing-seo",
+      now: new Date("2026-07-07T11:00:00Z"),
+      deps: {
+        buildBriefing: async () => fixtureBriefing(),
+        generateRescore: async (input) => {
+          seenInput = input;
+          return { rescore: fixtureRescore({ scoreDelta: 0, scoreDeltaReason: "" }), model: "gpt-4.1-mini" };
+        },
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    const captured = seenInput as BriefingRescoreInput | null;
+    expect(captured?.currentPlanWeek).toMatchObject({
+      week: 1,
+      totalWeeks: 2,
+      focus: "Automate one page",
+      moduleTitle: "Programmatic SEO",
+    });
+    expect(captured?.activeArtifactTitles).toEqual(["Programmatic SEO"]);
+  });
+
+  test("legacy plans without moduleTitle still pass the week focus, with no artifact titles", async () => {
+    await seedReport(); // REPORT's plan has no moduleTitle entries.
+
+    let seenInput: BriefingRescoreInput | null = null;
+    const result = await runDailyRescoreForUser({
+      learnerProfileId: PROFILE_ID,
+      careerPathId: "marketing-seo",
+      now: new Date("2026-07-07T11:00:00Z"),
+      deps: {
+        buildBriefing: async () => fixtureBriefing(),
+        generateRescore: async (input) => {
+          seenInput = input;
+          return { rescore: fixtureRescore({ scoreDelta: 0, scoreDeltaReason: "" }), model: "gpt-4.1-mini" };
+        },
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    const captured = seenInput as BriefingRescoreInput | null;
+    expect(captured?.currentPlanWeek).toMatchObject({ week: 1, focus: "Automate one page" });
+    expect(captured?.currentPlanWeek?.moduleTitle ?? null).toBeNull();
+    expect(captured?.activeArtifactTitles).toBeUndefined();
   });
 
   test("LLM failure -> explicit error, nothing persisted (hard-failure contract)", async () => {

@@ -117,6 +117,33 @@ export function getModuleTracksForCareerPath(careerPathId: string) {
 }
 
 /**
+ * Order module tracks by the learner's 30-day-plan module sequence (spine
+ * phase 2). Tracks named by the plan come first, in plan order; the rest keep
+ * catalog order. An empty/unknown plan leaves the catalog order untouched, so
+ * users without a plan see exactly the pre-spine sequence. Never mutates.
+ */
+export function orderModuleTracksByPlan<T extends { title: string }>(
+  tracks: T[],
+  planModuleTitles: Array<string | null | undefined>,
+): T[] {
+  const rank = new Map<string, number>();
+  for (const title of planModuleTitles) {
+    const key = (title ?? "").trim().toLowerCase();
+    if (key && !rank.has(key)) rank.set(key, rank.size);
+  }
+  if (!rank.size) return [...tracks];
+
+  return [...tracks].sort((a, b) => {
+    const rankA = rank.get(a.title.trim().toLowerCase());
+    const rankB = rank.get(b.title.trim().toLowerCase());
+    if (rankA !== undefined && rankB !== undefined) return rankA - rankB;
+    if (rankA !== undefined) return -1;
+    if (rankB !== undefined) return 1;
+    return 0; // stable sort keeps catalog order for the rest
+  });
+}
+
+/**
  * "AI Builder" was the legacy default persona written into `headline` at
  * profile creation. It is an internal string, not something the user chose —
  * UX audit F7 (2026-07-07): never show it. Treat it as "no headline".

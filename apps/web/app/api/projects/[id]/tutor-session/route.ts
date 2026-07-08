@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { jsonError, jsonOk, runtimeFindProjectById, runtimeFindUserById } from "@/lib/runtime";
 import { getUserId } from "@/lib/api";
 import { requireBillingAccess } from "@/lib/billing-access";
-import { resolveModuleGuideForProfile } from "@/lib/artifact-generation";
+import { resolveActiveModuleGuideForProfile } from "@/lib/artifact-generation";
 import {
   getTutorSessionForProject,
   restartTutorSession,
@@ -44,9 +44,11 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
   });
   // UX audit F5: surface playbook drift so the workbench/chat can offer
   // "Playbook updated — restart" on sessions that snapshot stale steps.
+  // Spine phase 2: compared against the plan-aware ACTIVE module, so an
+  // advanced plan week also surfaces the restart hatch onto the new module.
   const playbookDrifted =
     session && session.status === "active"
-      ? tutorSessionPlaybookDrifted(session, resolveModuleGuideForProfile(loaded.profile))
+      ? tutorSessionPlaybookDrifted(session, await resolveActiveModuleGuideForProfile(loaded.profile))
       : false;
   return jsonOk({ session, playbookDrifted });
 }
@@ -58,7 +60,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   const body = (await req.json().catch(() => ({}))) as { restart?: boolean };
 
   try {
-    const guide = resolveModuleGuideForProfile(loaded.profile);
+    const guide = await resolveActiveModuleGuideForProfile(loaded.profile);
     const session = body?.restart === true
       ? // Restart after a playbook update: archives the stale session and
         // starts a fresh one from the current playbook (UX audit F5).
