@@ -1,9 +1,12 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { jsonError, jsonOk } from "@/lib/runtime";
+import { getAuthSeed } from "@/lib/auth";
+import { jsonError, jsonOk, runtimeGetBillingAccessState } from "@/lib/runtime";
 import {
   appendAssessmentReport,
+  captureAssessmentEmail,
   findAnonymousAssessmentByToken,
+  linkAnonymousAssessmentsToProfile,
   submitAnonymousAssessment,
 } from "@/lib/anonymous-assessment";
 import {
@@ -104,9 +107,46 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Signed-in retake: attach the report to the account directly — the
+    // finale skips email capture for authenticated users, so the email-match
+    // linking that normally runs on dashboard load must happen here instead.
+    // Failure is non-fatal: the report is still generated and returned, and
+    // dashboard-load linking will heal the association once the email is set.
+    let linkedLearnerProfileId = submitted.learnerProfileId ?? null;
+    try {
+      const seed = await getAuthSeed(req).catch(() => null);
+      if (seed?.userId && seed.email) {
+        await captureAssessmentEmail({
+          sessionToken: payload.sessionToken,
+          email: seed.email,
+        });
+        const billing = await runtimeGetBillingAccessState({
+          userId: seed.userId,
+          seed: {
+            name: seed.name,
+            email: seed.email,
+            avatarUrl: seed.avatarUrl ?? null,
+            handleBase: seed.handleBase,
+          },
+        });
+        if (billing.profile?.id) {
+          await linkAnonymousAssessmentsToProfile({
+            learnerProfileId: billing.profile.id,
+            email: seed.email,
+          });
+          linkedLearnerProfileId = billing.profile.id;
+        }
+      }
+    } catch (error) {
+      console.warn(
+        "[assessment] authed retake linking failed",
+        error instanceof Error ? error.message : "unknown",
+      );
+    }
+
     const reportRecord = await appendAssessmentReport({
       anonymousAssessmentId: submitted.id,
-      learnerProfileId: submitted.learnerProfileId,
+      learnerProfileId: linkedLearnerProfileId,
       readinessScore: generated.report.readinessScore,
       deterministicScore,
       model: generated.model,

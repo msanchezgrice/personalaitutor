@@ -137,8 +137,16 @@ export function fbInitiateCheckout(value?: number, currency = "USD", eventId?: s
 }
 
 /** Future: Subscription purchased. */
-export function fbSubscribe(value: number, currency = "USD", planId?: string, eventId?: string) {
-  fbEvent("Subscribe", { value, currency, predicted_ltv: value, content_name: planId }, eventId);
+export function fbSubscribe(value?: number, currency?: string, planId?: string, eventId?: string) {
+  // Value-less Subscribe (free-trial start): report the event without
+  // fabricating revenue — value/currency/predicted_ltv only when billed.
+  const params: Record<string, unknown> = { content_name: planId };
+  if (typeof value === "number" && Number.isFinite(value)) {
+    params.value = value;
+    params.currency = currency || "USD";
+    params.predicted_ltv = value;
+  }
+  fbEvent("Subscribe", params, eventId);
 }
 
 /** Future: One-time purchase. */

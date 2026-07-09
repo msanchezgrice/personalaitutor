@@ -2631,7 +2631,8 @@ async function generateTutorReply(input: {
     `Learner role: ${resolveLearnerRoleLabel({ headline: input.profile.headline, careerPathId: input.profile.careerPathId })}`,
     `Project: ${input.project.title}`,
     `Project description: ${input.project.description}`,
-    "Respond in <= 6 sentences with concrete next steps and one verification check.",
+    'If the learner\'s message is only a greeting or short opener (e.g. "hey", "hi"), reply in 1-2 sentences: greet them back and ask what they want to work on — never answer a greeting with instructions or step lists.',
+    "Otherwise respond in <= 6 sentences with concrete next steps and one verification check.",
     `Learner message: ${input.message}`,
   ].join("\n");
 

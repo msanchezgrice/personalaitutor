@@ -319,6 +319,9 @@ export function buildDashboardGamification(input: GamificationSignals): Dashboar
 
   return {
     xpTotal,
+    // Surfaced so the dashboard can show a total that visibly reconciles:
+    // badge/achievement XP + activity XP (daily actions, tutor sessions).
+    xpBreakdown: { achievements: achievementXp, activity: activityXp },
     level: levelMeta.level,
     levelLabel: `Level ${levelMeta.level}`,
     levelSubtitle: subtitleForLevel(levelMeta.level),

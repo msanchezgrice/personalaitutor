@@ -4,6 +4,7 @@ import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/d
 import { getPlanProgressForProfile } from "@/lib/plan-progress";
 import { runtimeListOAuthConnections, runtimeSyncProjectModuleSteps } from "@/lib/runtime";
 import { getTutorSessionForProject, tutorSessionPlaybookDrifted } from "@/lib/tutor-session";
+import { prettyProjectState } from "@/app/u/public-profile-utils";
 import { buildRecommendedModuleGuide, getCareerPath, resolveLearnerRoleLabel } from "@aitutor/shared";
 
 function summarize(value: string | null | undefined, fallback: string, maxChars = 160) {
@@ -19,6 +20,13 @@ export default async function DashboardProjectsPage() {
   const summary = state.summary;
   const activeProject = state.activeProject;
   const completedProject = state.completedProject;
+  // "View Public Page" must open the actual public page. Only possible when
+  // the profile is published; otherwise the button honestly says where it
+  // goes (publish settings live under Profile Settings).
+  const publicProjectUrl =
+    state.publicProfileUrl && completedProject
+      ? `${state.publicProfileUrl}projects/${completedProject.slug}/`
+      : null;
   const primaryCareerPath = getCareerPath(user?.careerPathId ?? summary?.gamification.primaryTrackId ?? "");
   // Spine phase 2: the active module is the learner's current 30-day-plan
   // week module; users without a linked report keep the pre-spine fallback.
@@ -47,6 +55,23 @@ export default async function DashboardProjectsPage() {
     syncedActiveProject && user
       ? await getTutorSessionForProject({
           projectId: syncedActiveProject.id,
+          learnerProfileId: user.id,
+          includeCompleted: true,
+        }).catch(() => null)
+      : null;
+  // Cross-surface coherence (finding B): status text comes from the real
+  // project state (the same field the public profile prints) and progress
+  // derives from module-step completion — never hard-coded percentages.
+  const workbenchModuleSteps = syncedActiveProject?.moduleSteps ?? [];
+  const workbenchStepsDone = workbenchModuleSteps.filter((step) => step.status === "completed").length;
+  const activeProgressPct = workbenchModuleSteps.length
+    ? Math.round((workbenchStepsDone / workbenchModuleSteps.length) * 100)
+    : 0;
+  // Module chip for the completed/published card (naming clarity, finding A).
+  const completedTutorSession =
+    completedProject && user
+      ? await getTutorSessionForProject({
+          projectId: completedProject.id,
           learnerProfileId: user.id,
           includeCompleted: true,
         }).catch(() => null)
@@ -138,9 +163,14 @@ export default async function DashboardProjectsPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-col sm:flex-row gap-2 sm:items-center mb-1">
-                  <h3 className="text-xl font-medium text-white">{activeProject?.title || guide.moduleTitle}</h3>
+                  <h3 className="text-xl font-medium text-white">
+                    {syncedActiveProject?.title || `Module: ${guide.moduleTitle}`}
+                  </h3>
                   <span className="text-[10px] bg-amber-500/20 text-amber-500 font-bold uppercase px-2 py-0.5 rounded border border-amber-500/30">
-                    {activeProject ? "Active" : "Planned"}
+                    {syncedActiveProject ? prettyProjectState(syncedActiveProject.state) : "Planned"}
+                  </span>
+                  <span className="text-[10px] bg-white/5 text-gray-400 font-bold uppercase px-2 py-0.5 rounded border border-white/10">
+                    Module: {initialTutorSession?.moduleTitle ?? guide.moduleTitle}
                   </span>
                 </div>
                 <p className="text-sm text-gray-400 max-w-xl">
@@ -149,12 +179,12 @@ export default async function DashboardProjectsPage() {
                 <div className="mt-4 md:hidden">
                   <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-amber-400 mb-2">
                     <span>Progress</span>
-                    <span>{activeProject ? "20%" : "10%"}</span>
+                    <span>{activeProgressPct}%</span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-black/10 overflow-hidden">
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-500"
-                      style={{ width: activeProject ? "20%" : "10%" }}
+                      style={{ width: `${activeProgressPct}%` }}
                     ></div>
                   </div>
                 </div>
@@ -163,10 +193,10 @@ export default async function DashboardProjectsPage() {
             <div className="relative w-16 h-16 md:mr-4 flex-shrink-0 items-center justify-center self-center md:self-auto hidden md:flex">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="18" cy="18" r="16" fill="none" className="stroke-current text-white/10" strokeWidth="2"></circle>
-                <circle cx="18" cy="18" r="16" fill="none" className="stroke-current text-amber-400" strokeWidth="2" strokeDasharray="100" strokeDashoffset="80"></circle>
+                <circle cx="18" cy="18" r="16" fill="none" className="stroke-current text-amber-400" strokeWidth="2" strokeDasharray="100" strokeDashoffset={100 - activeProgressPct}></circle>
               </svg>
               <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-amber-400">
-                {activeProject ? "20%" : "10%"}
+                {activeProgressPct}%
               </div>
             </div>
           </a>
@@ -209,8 +239,13 @@ export default async function DashboardProjectsPage() {
                 </div>
               </div>
               <h3 className="text-lg font-medium text-white mb-2 relative z-10">
-                {completedProject?.title || guide.moduleTitle}
+                {completedProject?.title || `Module: ${guide.moduleTitle}`}
               </h3>
+              {completedProject && completedTutorSession?.moduleTitle ? (
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 relative z-10">
+                  Module: {completedTutorSession.moduleTitle}
+                </p>
+              ) : null}
               <p className="text-sm text-gray-400 mb-6 flex-grow relative z-10">
                 {summarize(
                   completedProject?.description || guide.whyThisModule,
@@ -221,13 +256,14 @@ export default async function DashboardProjectsPage() {
                 {completedProject ? (
                   <>
                     <a
-                      href={state.publicProfileUrl || "/dashboard/profile"}
+                      href={publicProjectUrl || "/dashboard/profile"}
                       className="btn btn-secondary text-xs px-3 py-1.5 flex-1 text-center"
                       data-analytics-event="public_profile_clicked"
                       data-analytics-location="projects_page"
-                      data-analytics-destination={state.publicProfileUrl || "/dashboard/profile"}
+                      data-analytics-destination={publicProjectUrl || "/dashboard/profile"}
                     >
-                      <i className="fa-solid fa-globe mr-1"></i> View Public Page
+                      <i className="fa-solid fa-globe mr-1"></i>{" "}
+                      {publicProjectUrl ? "View Public Page" : "Publish Settings"}
                     </a>
                     <button
                       className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 transition"

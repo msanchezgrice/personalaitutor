@@ -593,7 +593,8 @@ export function buildTutorSessionPrompt(input: {
     `Checklist progress: ${doneChecklist}/${session.checklist.length}`,
     ...(currentStep ? [`Focus the learner on: ${currentStep.title} — ${currentStep.whyThisStep}`] : ["All steps are complete — help the learner finish the proof checklist and generate their artifact."]),
     "",
-    "Respond in <= 6 sentences. End with exactly one concrete action and the proof to capture for it.",
+    'If the learner\'s message is only a greeting or short opener (e.g. "hey", "hi", "what\'s up"), reply in 1-2 sentences: greet them back, name the current step, and ask what they\'re working on — no step-dump, no unsolicited instructions.',
+    "Otherwise respond in <= 6 sentences. End with exactly one concrete action and the proof to capture for it.",
     `Learner message: ${input.message}`,
   ].join("\n");
 }

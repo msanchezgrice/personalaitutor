@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ASSESSMENT_QUIZ_QUESTIONS } from "@/lib/assessment-quiz";
 import { captureAnalyticsEvent, getOrCreateFunnelVisitorId } from "@/lib/analytics";
 
@@ -112,7 +112,12 @@ async function postJson<T>(url: string, body: Record<string, unknown>): Promise<
   return data;
 }
 
-export function AnonymousAssessment() {
+export type AssessmentViewer = {
+  name: string | null;
+  email: string | null;
+};
+
+export function AnonymousAssessment({ viewer = null }: { viewer?: AssessmentViewer | null }) {
   const [step, setStep] = useState<Step>("role");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -310,7 +315,9 @@ export function AnonymousAssessment() {
             <span className="font-[Outfit] font-bold text-3xl tracking-tight text-white">My AI Skill Tutor</span>
           </a>
           <p className="text-sm text-gray-400">
-            Free AI-readiness assessment · No account required · ~2 minutes
+            {viewer
+              ? `Signed in as ${viewer.email ?? viewer.name ?? "your account"} · Retakes update your saved score · ~2 minutes`
+              : "Free AI-readiness assessment · No account required · ~2 minutes"}
           </p>
         </div>
 
@@ -547,36 +554,61 @@ export function AnonymousAssessment() {
                   Your AI-readiness score is {score ?? "ready"}.
                 </h2>
                 <p className="mt-2 text-sm text-gray-400 max-w-md mx-auto">
-                  Your full report — strengths, skill gaps ranked by market impact, and a 30-day plan — is ready.
-                  Enter your email and we&apos;ll send you the link so you can come back to it any time.
+                  {viewer
+                    ? "Your full report — strengths, skill gaps ranked by market impact, and a 30-day plan — is saved to your account."
+                    : "Your full report — strengths, skill gaps ranked by market impact, and a 30-day plan — is ready. Enter your email and we'll send you the link so you can come back to it any time."}
                 </p>
               </div>
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void submitEmail();
-                }}
-                className="mx-auto flex max-w-md flex-col gap-3 sm:flex-row"
-              >
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="you@work-email.com"
-                  className={inputClass}
-                />
-                <button
-                  type="submit"
-                  disabled={emailBusy}
-                  className="whitespace-nowrap rounded-xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:opacity-60"
-                >
-                  {emailBusy ? "Opening…" : "See Your Full Report"}
-                </button>
-              </form>
-              <p className="text-center text-xs text-gray-500">
-                No spam — one email with your report link. Creating an account is optional.
-              </p>
+              {viewer ? (
+                <>
+                  <div className="mx-auto flex max-w-md flex-col gap-3 sm:flex-row">
+                    <a
+                      href={reportPath ?? "/dashboard/"}
+                      className="flex-1 whitespace-nowrap rounded-xl bg-emerald-500 px-6 py-3 text-center text-sm font-semibold text-white transition hover:bg-emerald-400"
+                    >
+                      View Full Report
+                    </a>
+                    <a
+                      href="/dashboard/"
+                      className="flex-1 whitespace-nowrap rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-center text-sm font-semibold text-gray-200 transition hover:border-white/25"
+                    >
+                      Back to Dashboard
+                    </a>
+                  </div>
+                  <p className="text-center text-xs text-gray-500">
+                    Retakes append to your score history and re-anchor your 30-day plan to this week.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void submitEmail();
+                    }}
+                    className="mx-auto flex max-w-md flex-col gap-3 sm:flex-row"
+                  >
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      placeholder="you@work-email.com"
+                      className={inputClass}
+                    />
+                    <button
+                      type="submit"
+                      disabled={emailBusy}
+                      className="whitespace-nowrap rounded-xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:opacity-60"
+                    >
+                      {emailBusy ? "Opening…" : "See Your Full Report"}
+                    </button>
+                  </form>
+                  <p className="text-center text-xs text-gray-500">
+                    No spam — one email with your report link. Creating an account is optional.
+                  </p>
+                </>
+              )}
             </div>
           ) : null}
 
@@ -626,12 +658,14 @@ export function AnonymousAssessment() {
           ) : null}
         </div>
 
-        <p className="mt-6 text-center text-xs text-gray-500">
-          Already have an account?{" "}
-          <a href="/sign-in?redirect_url=/dashboard/" className="text-emerald-400 hover:text-emerald-300">
-            Sign in
-          </a>
-        </p>
+        {viewer ? null : (
+          <p className="mt-6 text-center text-xs text-gray-500">
+            Already have an account?{" "}
+            <a href="/sign-in?redirect_url=/dashboard/" className="text-emerald-400 hover:text-emerald-300">
+              Sign in
+            </a>
+          </p>
+        )}
       </div>
     </div>
   );

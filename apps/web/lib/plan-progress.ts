@@ -221,6 +221,21 @@ export function buildStarterProjectSeed(input: {
 
   const topGap = input.report?.gaps?.[0] ?? null;
   const focus = weekOne.focus.trim();
+  // Naming-collision guard (external QA finding A): a project must never be
+  // titled identically to — or as a superset of — one of its module names,
+  // or dashboard/profile surfaces show near-identical module vs project
+  // labels. When the plan week's focus collides with a module title, fall
+  // back to outcome phrasing built from the report's top gap.
+  const planModuleTitles = sortedPlan(input.report?.thirtyDayPlan ?? [])
+    .map((week) => week.moduleTitle?.trim().toLowerCase())
+    .filter((title): title is string => Boolean(title));
+  const normalizedFocus = focus.toLowerCase();
+  const collidesWithModuleName = planModuleTitles.some(
+    (title) => normalizedFocus === title || normalizedFocus.includes(title),
+  );
+  const title = collidesWithModuleName
+    ? `Week 1: Close your top gap${topGap ? ` — ${topGap.title}` : ""}`
+    : `Week 1: ${focus}`;
   const descriptionParts = [
     `Week 1 of your 30-day plan: ${focus}.`,
     topGap ? `This build attacks your top gap — ${topGap.title}.` : null,
@@ -230,7 +245,7 @@ export function buildStarterProjectSeed(input: {
   ].filter(Boolean);
 
   return {
-    title: `Week 1: ${focus}`.slice(0, 140),
+    title: title.slice(0, 140),
     description: descriptionParts.join(" "),
   };
 }

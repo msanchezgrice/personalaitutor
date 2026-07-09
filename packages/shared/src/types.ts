@@ -343,6 +343,8 @@ export type DashboardBadge = {
 
 export type DashboardGamification = {
   xpTotal: number;
+  /** Visible reconciliation of xpTotal: achievements + activity == xpTotal. */
+  xpBreakdown: { achievements: number; activity: number };
   level: number;
   levelLabel: string;
   levelSubtitle: string;

@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getAuthSeed } from "@/lib/auth";
 import { runtimeFindUserByHandle, runtimeFindUserById, runtimeListProjectsByUser } from "@/lib/runtime";
+import { getTutorSessionForProject } from "@/lib/tutor-session";
 import {
   getPublicProfileProof,
   isPublicArtifact,
@@ -145,6 +146,23 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   const proof: PublicProfileProof = view.isExample
     ? exampleProfileProof()
     : await getPublicProfileProof(profile, projects);
+
+  // Module chip per project card (naming clarity, external QA finding A):
+  // the module a project ran comes from its tutor-session snapshot. Missing
+  // session = no chip — never guessed.
+  const projectModuleTitles = new Map<string, string>();
+  if (!view.isExample) {
+    await Promise.all(
+      projects.map(async (project) => {
+        const session = await getTutorSessionForProject({
+          projectId: project.id,
+          learnerProfileId: profile.id,
+          includeCompleted: true,
+        }).catch(() => null);
+        if (session?.moduleTitle) projectModuleTitles.set(project.id, session.moduleTitle);
+      }),
+    );
+  }
 
   const avatarUrl = safeHttpUrl(profile.avatarUrl ?? undefined) || profile.avatarUrl || "/assets/avatar.png";
   const linkedInUrl = safeHttpUrl(profile.socialLinks.linkedin);
@@ -556,6 +574,11 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                                 : project.description}
                             </p>
                             <div className="flex flex-wrap gap-2 text-[10px]">
+                              {projectModuleTitles.get(project.id) ? (
+                                <span className="rounded border border-emerald-500/20 bg-emerald-500/5 px-2 py-0.5 text-emerald-300/90">
+                                  Module: {projectModuleTitles.get(project.id)}
+                                </span>
+                              ) : null}
                               <span className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-gray-400">{projectProofCount} proof artifact{projectProofCount === 1 ? "" : "s"}</span>
                               <span className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-gray-400">{project.buildLog.length} build log entr{project.buildLog.length === 1 ? "y" : "ies"}</span>
                             </div>

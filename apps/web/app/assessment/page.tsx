@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AnonymousAssessment } from "@/components/anonymous-assessment";
+import { getAuthSeed } from "@/lib/auth";
 import {
   BRAND_NAME,
   BRAND_X_HANDLE,
@@ -40,6 +41,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function AssessmentPage() {
-  return <AnonymousAssessment />;
+export default async function AssessmentPage() {
+  // Signed-in users retake without the lead-gen funnel: the flow adapts its
+  // copy and skips email capture; the submit route links the report to their
+  // account. Anonymous visitors get the unchanged flow.
+  const seed = await getAuthSeed().catch(() => null);
+  const viewer = seed?.userId
+    ? { name: seed.name ?? null, email: seed.email ?? null }
+    : null;
+  return <AnonymousAssessment viewer={viewer} />;
 }

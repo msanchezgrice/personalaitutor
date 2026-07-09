@@ -62,15 +62,24 @@ export default async function DashboardPage({
   const unlockedBadges = gamification?.badges.filter((badge) => badge.unlocked).slice(0, 4) ?? [];
   const hasVerifiedSkills = Boolean(user?.skills?.some((skill) => skill.status === "verified"));
   const hasBuiltOrVerifiedSkills = Boolean(user?.skills?.some((skill) => skill.status === "built" || skill.status === "verified"));
+  // Module names get an explicit qualifier wherever they could read as a
+  // project title (naming-collision fix, external QA finding A).
   const activeCard = activeProject || (topRecommendation
     ? {
-        title: topRecommendation.title,
+        title: `Module: ${topRecommendation.title}`,
         description: topRecommendation.summary,
       }
     : {
-        title: "Introduction to LLMs",
+        title: "Module: Introduction to LLMs",
         description: "Start this module to build LLM fundamentals and ship your first practical artifact.",
       });
+  // Progress derives from the same module-step state the workbench shows —
+  // never a hard-coded percent (cross-surface coherence, finding B).
+  const activeModuleSteps = activeProject?.moduleSteps ?? [];
+  const activeStepsDone = activeModuleSteps.filter((step) => step.status === "completed").length;
+  const activeProgressPct = activeModuleSteps.length
+    ? Math.round((activeStepsDone / activeModuleSteps.length) * 100)
+    : 0;
   const latestEventMessage = sanitizeDashboardCopy(summary?.latestEvents?.[0]?.message);
   const todayUpdateText = summarize(
     sanitizeDashboardCopy(summary?.dailyUpdate?.summary) || latestEventMessage,
@@ -93,7 +102,7 @@ export default async function DashboardPage({
     : (summary?.moduleRecommendations?.slice(0, 3).map((track, index) => ({
         label: track.title,
         accent: index === 0,
-        suffix: index === 0 ? " (Start here)" : " (Next)",
+        suffix: index === 0 ? " · Module (Start here)" : " · Module (Next)",
       })) ?? []);
   const hasAnyStartedStep = Boolean(summary?.projects.some((project) => project.moduleSteps.some((step) => step.status !== "not_started")));
   const shouldShowFtue = readQueryParam(params.welcome) === "1" || !hasAnyStartedStep;
@@ -303,7 +312,9 @@ export default async function DashboardPage({
                         <i className="fa-solid fa-layer-group"></i>
                       </div>
                       <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-500 px-2 py-1 rounded">
-                        {activeProject ? "In Progress" : "Planned"}
+                        {activeProject
+                          ? activeProject.state === "building" ? "In Progress" : "Planned"
+                          : "Planned"}
                       </span>
                     </div>
                     <h3 className="font-medium text-white mb-1 group-hover:text-emerald-400 transition-colors">
@@ -313,7 +324,7 @@ export default async function DashboardPage({
                       {summarize(activeCard.description, "Start this module to build LLM fundamentals and ship your first practical artifact.", 120)}
                     </p>
                     <div className="w-full bg-black/40 h-1.5 rounded-full">
-                      <div className="bg-emerald-500 w-[20%] h-full rounded-full"></div>
+                      <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${activeProgressPct}%` }}></div>
                     </div>
                   </a>
                   <a
@@ -334,7 +345,7 @@ export default async function DashboardPage({
                       </span>
                     </div>
                     <h3 className="font-medium text-white mb-1 relative z-10">
-                      {completedProject?.title || topRecommendation?.title || "Starter AI Pack"}
+                      {completedProject?.title || (topRecommendation ? `Module: ${topRecommendation.title}` : "Starter AI Pack")}
                     </h3>
                     <p className="text-xs text-gray-400 mb-4 line-clamp-2 relative z-10">
                       {summarize(
@@ -392,6 +403,11 @@ export default async function DashboardPage({
                       <div className="text-right">
                         <p className="text-xs uppercase tracking-[0.2em] text-gray-500">XP</p>
                         <p className="text-xl font-[Outfit] text-white">{gamification?.xpTotal ?? state.sidebarLevel.xpTotal}</p>
+                        {gamification?.xpBreakdown ? (
+                          <p className="text-[10px] text-gray-500 mt-0.5 whitespace-nowrap">
+                            {gamification.xpBreakdown.achievements} achievements · {gamification.xpBreakdown.activity} actions &amp; sessions
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                     <div className="w-full bg-black/40 h-1.5 rounded-full">
@@ -417,7 +433,9 @@ export default async function DashboardPage({
                         </span>
                       )) : (
                         <span className="text-xs text-gray-400">
-                          Finish the assessment and start your first pack to unlock your first badge.
+                          {unlockedAchievements.length
+                            ? "No badges yet — badges unlock at bigger milestones. Your achievements below already earn XP."
+                            : "Finish the assessment and start your first pack to unlock your first badge."}
                         </span>
                       )}
                     </div>

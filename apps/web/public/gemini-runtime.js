@@ -2164,11 +2164,12 @@
     var recommendation = summary && Array.isArray(summary.moduleRecommendations) && summary.moduleRecommendations.length
       ? summary.moduleRecommendations[0]
       : null;
-    var title = recommendation && recommendation.title
-      ? recommendation.title + " Starter Build"
-      : "Starter AI Build";
+    // Naming-collision guard (external QA finding A): a project title must
+    // never be a module name (or a superset of one) — module identity lives
+    // in the description, the title stays plan/outcome-oriented.
+    var title = "Starter AI Build";
     var description = recommendation && recommendation.title
-      ? "Starter project generated from your " + recommendation.title + " path to begin collecting proof artifacts."
+      ? "Starter project for the " + recommendation.title + " module — collect proof artifacts as you go."
       : "Starter project generated from your onboarding path to begin collecting proof artifacts.";
 
     var created = await postJson("/api/projects", {
@@ -2211,7 +2212,7 @@
     if (!activeCard && topRecommendation) {
       activeCard = {
         id: null,
-        title: topRecommendation.title,
+        title: "Module: " + topRecommendation.title,
         description: topRecommendation.summary,
         buildLog: [],
       };
@@ -2219,7 +2220,7 @@
     if (!activeCard) {
       activeCard = {
         id: null,
-        title: "Introduction to LLMs",
+        title: "Module: Introduction to LLMs",
         description: "Start this module to build LLM fundamentals and ship your first practical artifact.",
         buildLog: [],
       };
@@ -2390,22 +2391,31 @@
       skillHeading.innerHTML = '<i class="fa-solid fa-layer-group text-teal-400"></i> ' + (hasVerifiedSkills ? "Verified Skill Stack" : "Starter Skill Plan");
     }
 
-    if (skillStack && summary.user && Array.isArray(summary.user.skills) && summary.user.skills.length) {
+    // Cross-surface coherence (external QA finding B): the home skill pills
+    // mirror the server render — only BUILT/VERIFIED skills show (the states
+    // the workbench's verification gating actually awards). The old static
+    // skill.score percent implied module progress it never measured.
+    var provenSkills = summary.user && Array.isArray(summary.user.skills)
+      ? summary.user.skills.filter(function (skill) {
+          return skill && (skill.status === "verified" || skill.status === "built");
+        })
+      : [];
+    if (skillStack && provenSkills.length) {
       var addTarget = Array.prototype.find.call(skillStack.children, function (child) {
         return (child.textContent || "").indexOf("Add Target Skill") !== -1;
       });
       skillStack.innerHTML = "";
-      summary.user.skills.slice(0, 3).forEach(function (skill, index) {
+      provenSkills.slice(0, 3).forEach(function (skill, index) {
         var pill = document.createElement("div");
         if (index === 0 && skill.status === "verified") {
           pill.className = "flex border border-emerald-500/30 bg-emerald-500/10 rounded-full items-center pl-1 pr-3 py-1";
           pill.innerHTML = '<img src="/assets/badge.png" class="w-6 h-6 mr-1" alt="verified"><span class="text-xs font-medium text-emerald-400"></span>';
           var label = pill.querySelector("span");
-          setText(label, skill.skill);
+          setText(label, skill.skill + " (Verified)");
         } else {
           pill.className = "flex border border-white/10 bg-white/5 rounded-full items-center px-3 py-1.5";
           pill.innerHTML = '<span class="text-xs text-gray-300"></span>';
-          var text = skill.skill + " (" + Math.round((skill.score || 0) * 100) + "%)";
+          var text = skill.skill + (skill.status === "verified" ? " (Verified)" : " (Built)");
           setText(pill.querySelector("span"), text);
         }
         skillStack.appendChild(pill);
@@ -2423,7 +2433,7 @@
           ? "flex border border-emerald-500/30 bg-emerald-500/10 rounded-full items-center px-3 py-1.5"
           : "flex border border-white/10 bg-white/5 rounded-full items-center px-3 py-1.5";
         fallback.innerHTML = '<span class="text-xs ' + (index === 0 ? "text-emerald-400" : "text-gray-300") + '"></span>';
-        setText(fallback.querySelector("span"), track.title + (index === 0 ? " (Start here)" : " (Next)"));
+        setText(fallback.querySelector("span"), track.title + (index === 0 ? " · Module (Start here)" : " · Module (Next)"));
         skillStack.appendChild(fallback);
       });
       if (addTargetSkill) skillStack.appendChild(addTargetSkill);
@@ -2657,8 +2667,16 @@
       setText(desc, active.description);
       var pct = activeBanner.querySelector(".absolute.inset-0.flex.items-center.justify-center");
       if (pct) {
-        var progress = Math.min(95, Math.max(20, active.buildLog ? active.buildLog.length * 12 : 40));
-        setText(pct, progress + "%");
+        // Same module-step derivation the server render uses — never a
+        // build-log heuristic (cross-surface coherence, finding B).
+        var bannerSteps = Array.isArray(active.moduleSteps) ? active.moduleSteps : [];
+        var bannerStepsDone = bannerSteps.filter(function (step) {
+          return step && step.status === "completed";
+        }).length;
+        var moduleStepProgressPct = bannerSteps.length
+          ? Math.round((bannerStepsDone / bannerSteps.length) * 100)
+          : 0;
+        setText(pct, moduleStepProgressPct + "%");
       }
     }
 
@@ -2689,7 +2707,7 @@
           return (
             '<article class="glass flex flex-col p-6 rounded-xl border border-amber-400/20 bg-amber-500/5">' +
             '<div class="flex items-center justify-between gap-2 mb-3">' +
-            '<span class="text-[10px] uppercase tracking-wider text-amber-300">' + (index === 0 ? "Start here" : "Recommended") + "</span>" +
+            '<span class="text-[10px] uppercase tracking-wider text-amber-300">' + (index === 0 ? "Module · Start here" : "Module · Recommended") + "</span>" +
             '<i class="fa-solid fa-compass text-amber-400"></i>' +
             "</div>" +
             '<h3 class="text-lg font-medium text-white mb-2">' + title + "</h3>" +

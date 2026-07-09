@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 /**
  * "Today, 15 min: ..." card (rebuild Phase 3.3/3.5). Server-rendered with the
@@ -32,8 +32,17 @@ export function DailyActionCard(props: {
   const [streak, setStreak] = useState<StreakView>(props.initialStreak);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Until React hydrates, a click on this card would be silently dropped
+  // (the dashboard shell paints before the island is interactive). Render
+  // the buttons disabled until hydration so the first *possible* click
+  // always produces immediate feedback.
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    setReady(true);
+  }, []);
 
   async function generateAction() {
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -59,6 +68,7 @@ export function DailyActionCard(props: {
   }
 
   async function completeAction() {
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -141,7 +151,8 @@ export function DailyActionCard(props: {
               <button
                 type="button"
                 onClick={completeAction}
-                disabled={busy}
+                disabled={!ready || busy}
+                aria-busy={busy}
                 className="btn btn-primary whitespace-nowrap disabled:opacity-50"
                 data-analytics-event="daily_action_completed_clicked"
                 data-analytics-location="dashboard_home"
@@ -153,7 +164,8 @@ export function DailyActionCard(props: {
             <button
               type="button"
               onClick={generateAction}
-              disabled={busy}
+              disabled={!ready || busy}
+              aria-busy={busy}
               className="btn btn-primary whitespace-nowrap disabled:opacity-50"
               data-analytics-event="daily_action_generate_clicked"
               data-analytics-location="dashboard_home"

@@ -214,10 +214,25 @@ function relayPersistedFunnelEvent(event: string, properties: PosthogCaptureProp
   });
 }
 
+function forwardEventToGoogleAnalytics(event: string, properties: PosthogCaptureProperties) {
+  // Best-effort GA4 mirror of funnel events. Only fires when GA is configured
+  // AND the gtag bootstrap has loaded; never blocks the primary capture path.
+  try {
+    const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
+    if (!measurementId) return false;
+    if (typeof window === "undefined" || typeof window.gtag !== "function") return false;
+    window.gtag("event", event, properties);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function captureAnalyticsEvent(event: string, properties?: PosthogCaptureProperties) {
   const client = posthogClient();
   const eventProps = buildAnalyticsEventProps(properties);
   relayPersistedFunnelEvent(event, eventProps);
+  forwardEventToGoogleAnalytics(event, eventProps);
   if (!client) return false;
 
   try {

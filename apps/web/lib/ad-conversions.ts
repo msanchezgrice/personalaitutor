@@ -25,6 +25,20 @@ const googleAdsCheckoutCompletedConversionLabel =
   process.env.NEXT_PUBLIC_GOOGLE_ADS_CHECKOUT_COMPLETED_CONVERSION_LABEL?.trim() || "";
 const DEFAULT_CHECKOUT_VALUE = 49.99;
 
+export function resolveCheckoutStartedConversionValue(value?: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : DEFAULT_CHECKOUT_VALUE;
+}
+
+/**
+ * checkout_completed fires when the FREE TRIAL starts — no money has moved,
+ * so it reports no conversion value by default (trials are not revenue).
+ * Real revenue reaches ad networks via the first-paid-invoice relay
+ * (billing-conversion-relay). An explicit finite override is still honored.
+ */
+export function resolveCheckoutCompletedConversionValue(value?: number): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
 function hasWindow() {
   return typeof window !== "undefined";
 }
@@ -393,9 +407,7 @@ export function trackAdCheckoutStarted(input: {
   const eventId = input.sessionId?.trim()
     ? `checkout_started_${input.sessionId.trim()}`
     : createAnalyticsEventId("checkout_started");
-  const value = typeof input.value === "number" && Number.isFinite(input.value)
-    ? input.value
-    : DEFAULT_CHECKOUT_VALUE;
+  const value = resolveCheckoutStartedConversionValue(input.value);
   const currency = input.currency?.trim() || "USD";
 
   fbInitiateCheckout(value, currency, eventId);
@@ -430,10 +442,8 @@ export function trackAdCheckoutCompleted(input: {
   const eventId = input.sessionId?.trim()
     ? `checkout_completed_${input.sessionId.trim()}`
     : createAnalyticsEventId("checkout_completed");
-  const value = typeof input.value === "number" && Number.isFinite(input.value)
-    ? input.value
-    : DEFAULT_CHECKOUT_VALUE;
-  const currency = input.currency?.trim() || "USD";
+  const value = resolveCheckoutCompletedConversionValue(input.value);
+  const currency = value === undefined ? undefined : input.currency?.trim() || "USD";
 
   fbSubscribe(value, currency, input.planId ?? "monthly_subscription", eventId);
   trackGoogleAdsConversion(googleAdsCheckoutCompletedConversionLabel, {

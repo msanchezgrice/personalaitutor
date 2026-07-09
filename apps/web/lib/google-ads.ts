@@ -75,9 +75,11 @@ export function trackGoogleAdsConversion(
 
   if (typeof input?.value === "number" && Number.isFinite(input.value)) {
     payload.value = input.value;
-  }
-  if (cleanText(input?.currency)) {
-    payload.currency = cleanText(input?.currency);
+    // Currency is only meaningful alongside a billed value: a value-less
+    // conversion (e.g. free-trial start) must not claim a currency either.
+    if (cleanText(input?.currency)) {
+      payload.currency = cleanText(input?.currency);
+    }
   }
   if (cleanText(input?.transactionId)) {
     payload.transaction_id = cleanText(input?.transactionId);
