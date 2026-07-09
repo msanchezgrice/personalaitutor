@@ -1,9 +1,15 @@
+import React from "react";
 import Link from "next/link";
 import { resolveLearnerRoleLabel } from "@aitutor/shared";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getAuthSeed } from "@/lib/auth";
 import { runtimeFindUserByHandle, runtimeFindUserById, runtimeListProjectsByUser } from "@/lib/runtime";
+import {
+  getPublicProfileProof,
+  isPublicArtifact,
+  type PublicProfileProof,
+} from "@/lib/public-profile-proof";
 import {
   BRAND_NAME,
   BRAND_X_HANDLE,
@@ -16,6 +22,7 @@ import {
 import {
   EXAMPLE_PROFILE_HANDLE,
   exampleProfile,
+  exampleProfileProof,
   exampleProjects,
   prettyProjectState,
   safeHttpUrl,
@@ -109,6 +116,20 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   };
 }
 
+function formatDate(value: string | null | undefined) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function readinessDeltaText(readiness: NonNullable<PublicProfileProof["readiness"]>) {
+  if (readiness.delta === null) return "First assessment on record";
+  if (readiness.delta > 0) return `+${readiness.delta} since first assessment`;
+  if (readiness.delta < 0) return `${readiness.delta} since first assessment`;
+  return "Holding steady since first assessment";
+}
+
 export default async function PublicProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
   const view = await resolveProfileView(handle);
@@ -118,19 +139,28 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   }
 
   const projects = view.projects;
+  // Every proof number is assembled from real tables (or, for the labeled
+  // example profile, through the same gated assembly) — nothing on this page
+  // is fabricated at render time.
+  const proof: PublicProfileProof = view.isExample
+    ? exampleProfileProof()
+    : await getPublicProfileProof(profile, projects);
+
   const avatarUrl = safeHttpUrl(profile.avatarUrl ?? undefined) || profile.avatarUrl || "/assets/avatar.png";
   const linkedInUrl = safeHttpUrl(profile.socialLinks.linkedin);
   const websiteUrl = safeHttpUrl(profile.socialLinks.website);
   const githubUrl = safeHttpUrl(profile.socialLinks.github);
   const xUrl = safeHttpUrl(profile.socialLinks.x);
-  const sortedSkills = [...profile.skills].sort((a, b) => b.score - a.score || b.evidenceCount - a.evidenceCount);
   const isWarmupPreview = !profile.published
     && projects.length <= 1
     && projects.every((project) => project.slug === "starter-build" && project.state === "planned" && !project.artifacts.length && !project.buildLog.length)
-    && sortedSkills.every((entry) => entry.status === "in_progress");
+    && profile.skills.every((entry) => entry.status === "in_progress" || entry.status === "not_started");
   const projectCount = isWarmupPreview ? 0 : projects.length;
-  const proofCount = isWarmupPreview ? 0 : sortedSkills.reduce((sum, entry) => sum + entry.evidenceCount, 0);
-  const verifiedCount = sortedSkills.filter((entry) => entry.status === "verified").length;
+  const verifiedCount = isWarmupPreview ? 0 : proof.skills.filter((entry) => entry.status === "verified").length;
+  const proofCount = isWarmupPreview ? 0 : proof.artifacts.length;
+  const readiness = isWarmupPreview ? null : proof.readiness;
+  const plan = isWarmupPreview ? null : proof.plan;
+  const showMomentum = !isWarmupPreview && Boolean(proof.level || proof.streak || proof.activity);
   const personLd = {
     "@context": "https://schema.org",
     "@type": "Person",
@@ -138,7 +168,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     description: profile.headline,
     url: `${getSiteUrl()}/u/${profile.handle}`,
     sameAs: [linkedInUrl, websiteUrl, githubUrl, xUrl].filter(Boolean),
-    knowsAbout: sortedSkills.map((entry) => entry.skill),
+    knowsAbout: proof.skills.map((entry) => entry.skill),
   };
 
   const previewLabel = view.isExample
@@ -226,10 +256,23 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
               </div>
 
               <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-                <div className="glass p-6 rounded-2xl border border-white/10 bg-black/30">
-                  <p className="mb-2 text-sm text-gray-400">{isWarmupPreview ? "Published projects" : "Projects"}</p>
-                  <div className="text-4xl font-[Outfit] text-white">{projectCount}</div>
-                </div>
+                {readiness ? (
+                  <div className="glass p-6 rounded-2xl border border-emerald-500/20 bg-black/30">
+                    <p className="mb-2 text-sm text-gray-400">AI-readiness score</p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-4xl font-[Outfit] text-white">{readiness.score}</span>
+                      <span className="text-sm text-gray-500">/ 100</span>
+                    </div>
+                    <p className={`mt-1 text-xs ${readiness.delta && readiness.delta > 0 ? "text-emerald-400" : "text-gray-400"}`}>
+                      {readinessDeltaText(readiness)}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="glass p-6 rounded-2xl border border-white/10 bg-black/30">
+                    <p className="mb-2 text-sm text-gray-400">{isWarmupPreview ? "Published projects" : "Projects"}</p>
+                    <div className="text-4xl font-[Outfit] text-white">{projectCount}</div>
+                  </div>
+                )}
                 <div className="glass p-6 rounded-2xl border border-white/10 bg-black/30">
                   <p className="mb-2 text-sm text-gray-400">Verified skills</p>
                   <div className="text-4xl font-[Outfit] text-white">{verifiedCount}</div>
@@ -244,7 +287,46 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
           <div className="grid gap-8 lg:grid-cols-3">
             <div className="space-y-8">
-              <section className="glass sticky top-28 rounded-2xl p-6">
+              {plan ? (
+                <section className="glass rounded-2xl p-6">
+                  <h2 className="mb-6 flex items-center gap-2 border-b border-white/10 pb-3 text-lg font-[Outfit] text-white">
+                    <i className="fa-solid fa-route text-emerald-400"></i>
+                    30-Day Plan
+                  </h2>
+                  <div className="mb-4 flex items-baseline justify-between">
+                    <span className="text-2xl font-[Outfit] text-white">
+                      Week {plan.currentWeek} <span className="text-base text-gray-500">of {plan.totalWeeks}</span>
+                    </span>
+                  </div>
+                  <div className="mb-4 flex gap-2">
+                    {plan.weeks.map((week) => (
+                      <div
+                        key={week.week}
+                        title={`Week ${week.week}`}
+                        className={`h-1.5 flex-1 rounded-full ${
+                          week.completed
+                            ? "bg-emerald-500"
+                            : week.isCurrent
+                              ? "bg-gradient-to-r from-emerald-500 to-cyan-400"
+                              : "bg-white/10"
+                        }`}
+                      ></div>
+                    ))}
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">This week&apos;s focus</div>
+                    <p className="text-sm leading-6 text-white">{plan.focus}</p>
+                    {plan.moduleTitle ? (
+                      <p className="mt-2 text-xs text-gray-400">
+                        <i className="fa-solid fa-graduation-cap mr-1 text-emerald-400"></i>
+                        Module: {plan.moduleTitle}
+                      </p>
+                    ) : null}
+                  </div>
+                </section>
+              ) : null}
+
+              <section className="glass rounded-2xl p-6">
                 <h2 className="mb-6 flex items-center gap-2 border-b border-white/10 pb-3 text-lg font-[Outfit] text-white">
                   <i className="fa-solid fa-layer-group text-teal-400"></i>
                   {isWarmupPreview ? "Proof status" : "Verified Skill Stack"}
@@ -275,18 +357,28 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                   ) : (
                     <>
                       <div>
-                        <div className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">Core competencies</div>
-                        <div className="flex flex-wrap gap-2">
-                          {sortedSkills.length ? sortedSkills.map((entry) => (
-                            <div key={entry.skill} className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5">
-                              <i className={`fa-solid ${entry.status === "verified" ? "fa-award" : entry.status === "built" ? "fa-check-double" : "fa-wave-square"} text-xs text-emerald-400`}></i>
-                              <span className="text-sm font-medium text-white">{entry.skill}</span>
-                              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${skillTone(entry.status)}`}>
-                                {Math.round(entry.score * 100)}%
-                              </span>
-                            </div>
-                          )) : <span className="text-sm text-gray-400">No verified skills yet.</span>}
-                        </div>
+                        <div className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">Verified and built skills</div>
+                        {proof.skills.length ? (
+                          <div className="flex flex-wrap gap-2">
+                            {proof.skills.map((entry) => (
+                              <div key={entry.skill} className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5">
+                                <i className={`fa-solid ${entry.status === "verified" ? "fa-award" : "fa-check-double"} text-xs text-emerald-400`}></i>
+                                <span className="text-sm font-medium text-white">{entry.skill}</span>
+                                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${skillTone(entry.status)}`}>
+                                  {entry.status === "verified" ? "Verified" : "Built"}
+                                </span>
+                                <span className="text-[10px] text-gray-400">
+                                  {entry.evidenceCount} proof{entry.evidenceCount === 1 ? "" : "s"}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm leading-6 text-gray-400">
+                            No verified skills yet. Skills appear here only after tutor-session proof and real
+                            generated artifacts back them — nothing on this page is self-reported.
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -300,12 +392,70 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
                       <div className="rounded-xl border border-white/5 bg-black/30 p-4 text-center">
                         <i className="fa-solid fa-shield-halved mb-2 text-2xl text-gray-500"></i>
-                        <p className="text-xs text-gray-400">Skills and proof signals are grounded in shipped work, artifacts, and build telemetry.</p>
+                        <p className="text-xs text-gray-400">
+                          Verified requires a completed tutor session plus a real generated artifact or submitted
+                          proof. Built requires the artifact or proof. Unverified claims never render here.
+                        </p>
                       </div>
                     </>
                   )}
                 </div>
               </section>
+
+              {showMomentum ? (
+                <section className="glass rounded-2xl p-6">
+                  <h2 className="mb-6 flex items-center gap-2 border-b border-white/10 pb-3 text-lg font-[Outfit] text-white">
+                    <i className="fa-solid fa-bolt text-amber-400"></i>
+                    Momentum
+                  </h2>
+                  <div className="space-y-3 text-sm text-gray-300">
+                    {proof.level ? (
+                      <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 p-4">
+                        <div>
+                          <div className="text-sm font-medium text-white">{proof.level.label}</div>
+                          <div className="text-xs text-gray-400">{proof.level.subtitle}</div>
+                        </div>
+                        <div className="text-right text-xs text-gray-400">{proof.level.xpTotal.toLocaleString("en-US")} XP</div>
+                      </div>
+                    ) : null}
+                    {proof.streak ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">Current streak</div>
+                          <div className="text-2xl font-[Outfit] text-white">
+                            {proof.streak.current}
+                            <span className="ml-1 text-xs text-gray-400">day{proof.streak.current === 1 ? "" : "s"}</span>
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">Longest streak</div>
+                          <div className="text-2xl font-[Outfit] text-white">
+                            {proof.streak.longest}
+                            <span className="ml-1 text-xs text-gray-400">day{proof.streak.longest === 1 ? "" : "s"}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                    {proof.activity ? (
+                      <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                        <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">Tutor-session build activity</div>
+                        <p className="text-sm text-white">
+                          {proof.activity.sessionsCompleted} tutor session{proof.activity.sessionsCompleted === 1 ? "" : "s"} completed
+                        </p>
+                        {proof.activity.completedModules.length ? (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {proof.activity.completedModules.map((moduleTitle) => (
+                              <span key={moduleTitle} className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-gray-300">
+                                {moduleTitle}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+              ) : null}
 
               <section className="glass rounded-2xl p-6">
                 <h2 className="mb-6 flex items-center gap-2 border-b border-white/10 pb-3 text-lg font-[Outfit] text-white">
@@ -330,54 +480,97 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
               </section>
             </div>
 
-            <section className="space-y-8 lg:col-span-2">
-              <h2 className="flex items-center gap-3 text-2xl font-[Outfit] text-white">
-                <i className="fa-solid fa-folder-tree text-amber-400"></i>
-                {isWarmupPreview ? "Project pipeline" : "Project Portfolio"}
-              </h2>
-
-              {projects.length ? (
-                projects.map((project) => (
-                  <a
-                    key={project.id}
-                    href={`/u/${profile.handle}/projects/${project.slug}/`}
-                    className="group relative block overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8 transition hover:bg-white/10 hover:border-emerald-500/40 glass"
-                  >
-                    <div className="pointer-events-none absolute right-0 top-0 h-full w-64 bg-gradient-to-l from-emerald-500/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
-                    <div className="flex flex-col gap-6 sm:flex-row">
-                      <div className="relative h-32 w-full shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/50 sm:w-48">
-                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/40 to-teal-900/40 opacity-80 transition duration-500 group-hover:scale-105"></div>
-                        <div className="relative flex h-full w-full items-center justify-center">
-                          <i className={`fa-solid ${project.state === "building" ? "fa-headset" : project.state === "built" || project.state === "showcased" ? "fa-spider" : "fa-diagram-project"} text-3xl ${project.state === "building" ? "text-amber-400" : "text-emerald-400"}`}></i>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-1 flex-col justify-center">
-                        <div className="mb-2 flex items-start justify-between gap-4">
-                          <h3 className="text-xl font-medium text-white transition group-hover:text-emerald-400">{project.title}</h3>
-                          <span className={`hidden whitespace-nowrap rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-wider sm:block ${stateTone(project.state)}`}>
-                            {prettyProjectState(project.state)}
+            <div className="space-y-8 lg:col-span-2">
+              {!isWarmupPreview && proof.artifacts.length ? (
+                <section className="space-y-4">
+                  <h2 className="flex items-center gap-3 text-2xl font-[Outfit] text-white">
+                    <i className="fa-solid fa-file-shield text-emerald-400"></i>
+                    Proof Artifacts
+                  </h2>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {proof.artifacts.map((artifact, index) => (
+                      <a
+                        key={`${artifact.url}-${index}`}
+                        href={artifact.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="glass block rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:border-emerald-500/40 hover:bg-white/10"
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                            {artifact.source === "generated" ? "Generated artifact" : "Submitted proof"}
                           </span>
+                          {formatDate(artifact.createdAt) ? (
+                            <span className="text-xs text-gray-500">{formatDate(artifact.createdAt)}</span>
+                          ) : null}
                         </div>
-                        <p className="mb-4 line-clamp-3 text-sm text-gray-400">
-                          {isWarmupPreview
-                            ? "Starter build detected. Public proof cards activate after the first real milestone, artifact, or shipped workflow is recorded."
-                            : project.description}
+                        <div className="mb-1 text-base font-medium text-white">{artifact.label}</div>
+                        <p className="text-xs text-gray-400">
+                          {artifact.projectTitle}
+                          <i className="fa-solid fa-arrow-up-right-from-square ml-2 text-[10px] text-gray-500"></i>
                         </p>
-                        <div className="flex flex-wrap gap-2 text-[10px]">
-                          <span className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-gray-400">{project.artifacts.length} artifact{project.artifacts.length === 1 ? "" : "s"}</span>
-                          <span className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-gray-400">{project.buildLog.length} build log entr{project.buildLog.length === 1 ? "y" : "ies"}</span>
+                      </a>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Every artifact above opens the real output. Artifacts without stored generated content never
+                    appear on this page.
+                  </p>
+                </section>
+              ) : null}
+
+              <section className="space-y-8">
+                <h2 className="flex items-center gap-3 text-2xl font-[Outfit] text-white">
+                  <i className="fa-solid fa-folder-tree text-amber-400"></i>
+                  {isWarmupPreview ? "Project pipeline" : "Project Portfolio"}
+                </h2>
+
+                {projects.length ? (
+                  projects.map((project) => {
+                    const projectProofCount = project.artifacts.filter(isPublicArtifact).length;
+                    return (
+                      <a
+                        key={project.id}
+                        href={`/u/${profile.handle}/projects/${project.slug}/`}
+                        className="group relative block overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8 transition hover:bg-white/10 hover:border-emerald-500/40 glass"
+                      >
+                        <div className="pointer-events-none absolute right-0 top-0 h-full w-64 bg-gradient-to-l from-emerald-500/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+                        <div className="flex flex-col gap-6 sm:flex-row">
+                          <div className="relative h-32 w-full shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/50 sm:w-48">
+                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/40 to-teal-900/40 opacity-80 transition duration-500 group-hover:scale-105"></div>
+                            <div className="relative flex h-full w-full items-center justify-center">
+                              <i className={`fa-solid ${project.state === "building" ? "fa-headset" : project.state === "built" || project.state === "showcased" ? "fa-spider" : "fa-diagram-project"} text-3xl ${project.state === "building" ? "text-amber-400" : "text-emerald-400"}`}></i>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-1 flex-col justify-center">
+                            <div className="mb-2 flex items-start justify-between gap-4">
+                              <h3 className="text-xl font-medium text-white transition group-hover:text-emerald-400">{project.title}</h3>
+                              <span className={`hidden whitespace-nowrap rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-wider sm:block ${stateTone(project.state)}`}>
+                                {prettyProjectState(project.state)}
+                              </span>
+                            </div>
+                            <p className="mb-4 line-clamp-3 text-sm text-gray-400">
+                              {isWarmupPreview
+                                ? "Starter build detected. Public proof cards activate after the first real milestone, artifact, or shipped workflow is recorded."
+                                : project.description}
+                            </p>
+                            <div className="flex flex-wrap gap-2 text-[10px]">
+                              <span className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-gray-400">{projectProofCount} proof artifact{projectProofCount === 1 ? "" : "s"}</span>
+                              <span className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-gray-400">{project.buildLog.length} build log entr{project.buildLog.length === 1 ? "y" : "ies"}</span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  </a>
-                ))
-              ) : (
-                <div className="glass rounded-2xl p-6 text-gray-400">
-                  No public projects are attached to this profile yet.
-                </div>
-              )}
-            </section>
+                      </a>
+                    );
+                  })
+                ) : (
+                  <div className="glass rounded-2xl p-6 text-gray-400">
+                    No public projects are attached to this profile yet.
+                  </div>
+                )}
+              </section>
+            </div>
           </div>
         </div>
       </main>

@@ -1,7 +1,9 @@
+import React from "react";
 import type { Metadata } from "next";
 import { resolveLearnerRoleLabel } from "@aitutor/shared";
 import { notFound, redirect } from "next/navigation";
 import { getAuthSeed } from "@/lib/auth";
+import { artifactKindLabel, isPublicArtifact } from "@/lib/public-profile-proof";
 import { runtimeFindUserByHandle, runtimeFindUserById, runtimeListProjectsByUser } from "@/lib/runtime";
 import {
   BRAND_NAME,
@@ -114,6 +116,9 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
 
   const profile = view.profile;
   const project = view.project;
+  // Trust surface: only artifacts with persisted generated content or
+  // user-submitted proof render publicly — placeholder-era rows are dropped.
+  const publicArtifacts = project.artifacts.filter(isPublicArtifact);
   const avatarUrl = safeHttpUrl(profile.avatarUrl ?? undefined) || profile.avatarUrl || "/assets/avatar.png";
   const creativeWorkLd = {
     "@context": "https://schema.org",
@@ -176,8 +181,8 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
                 </div>
                 <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
                   <div className="rounded-xl border border-white/10 bg-black/30 p-4">
-                    <div className="mb-1 text-xs uppercase tracking-[0.16em] text-gray-500">Artifacts</div>
-                    <div className="text-3xl font-[Outfit] text-white">{project.artifacts.length}</div>
+                    <div className="mb-1 text-xs uppercase tracking-[0.16em] text-gray-500">Proof artifacts</div>
+                    <div className="text-3xl font-[Outfit] text-white">{publicArtifacts.length}</div>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-black/30 p-4">
                     <div className="mb-1 text-xs uppercase tracking-[0.16em] text-gray-500">Build log</div>
@@ -222,9 +227,9 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
                 <i className="fa-solid fa-paperclip text-amber-400"></i>
                 Attached outputs
               </h2>
-              {project.artifacts.length ? (
+              {publicArtifacts.length ? (
                 <div className="space-y-3">
-                  {project.artifacts.map((artifact, index) => (
+                  {publicArtifacts.map((artifact, index) => (
                     <a
                       key={`${artifact.kind}-${artifact.url}-${index}`}
                       href={artifact.url}
@@ -232,13 +237,16 @@ export default async function PublicProjectPage({ params }: { params: Promise<{ 
                       rel="noreferrer"
                       className="block rounded-xl border border-white/10 bg-black/30 p-4 transition hover:bg-white/5 hover:border-emerald-500/30"
                     >
-                      <div className="mb-1 text-xs uppercase tracking-[0.18em] text-gray-500">{artifact.kind}</div>
+                      <div className="mb-1 text-xs uppercase tracking-[0.18em] text-gray-500">{artifactKindLabel(String(artifact.kind))}</div>
                       <div className="break-all text-sm text-gray-300">{artifact.url}</div>
                     </a>
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl border border-white/10 bg-black/30 p-5 text-gray-400">No public artifacts are attached yet.</div>
+                <div className="rounded-xl border border-white/10 bg-black/30 p-5 text-gray-400">
+                  No verified outputs yet. Outputs appear here once an artifact is generated with real content or
+                  proof is submitted — placeholders never render.
+                </div>
               )}
             </section>
           </div>
