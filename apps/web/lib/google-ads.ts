@@ -1,4 +1,6 @@
-"use client";
+// Shared Google tag helpers. No "use client" directive: the module is plain
+// utilities (window access is guarded), and the server layout imports
+// buildGoogleTagInitScript to render the gtag bootstrap inline.
 
 function cleanText(value: string | null | undefined) {
   if (typeof value !== "string") return null;
@@ -22,6 +24,37 @@ export function buildGoogleAdsSendTo(label: string | null | undefined) {
   const cleanLabel = cleanText(label);
   if (!tagId || !cleanLabel) return null;
   return `${tagId}/${cleanLabel}`;
+}
+
+/**
+ * Inline bootstrap for the Google tag (gtag.js). Configures every provided
+ * destination — the GT container (if any), the Google Ads tag (AW-…), and the
+ * GA4 measurement id (G-…) — so Ads conversion tracking and GA4 both fire
+ * from the single gtag.js loader in the app layout.
+ */
+export function buildGoogleTagInitScript(input: {
+  bootstrapId?: string | null;
+  adsId?: string | null;
+  gaMeasurementId?: string | null;
+}) {
+  const configIds = [
+    cleanText(input.bootstrapId),
+    cleanText(input.adsId),
+    cleanText(input.gaMeasurementId),
+  ].filter((value, index, all): value is string => Boolean(value) && all.indexOf(value) === index);
+  if (!configIds.length) return "";
+
+  const configLines = configIds
+    .map((id) => `gtag('config', ${JSON.stringify(id)});`)
+    .join("\n");
+
+  return `
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+window.gtag = window.gtag || gtag;
+gtag('js', new Date());
+${configLines}
+`;
 }
 
 export function trackGoogleAdsConversion(

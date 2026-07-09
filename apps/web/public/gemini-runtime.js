@@ -207,6 +207,14 @@
   var lastPosthogIdentifiedUserId = null;
   var routeHydrateInFlight = null;
   var lastHydratedPath = null;
+  // Self-healing render probe for the active route (live regression
+  // 2026-07-08, first seen on /dashboard/ai-news): React's hydration fallback
+  // (mid-deploy HTML/chunk skew) can replace the route subtree AFTER a
+  // hydrator wrote into it, so the page silently shows the server skeleton
+  // while the skip-guard believes the route is hydrated. Each hydrator
+  // registers { path, isStillRendered } after writing output so the guard can
+  // detect the clobber and allow re-hydration.
+  var lastRouteRenderProbe = null;
 
   if (typeof window !== "undefined") {
     window.__AITUTOR_LAST_HYDRATED_PATH = null;
@@ -2302,6 +2310,24 @@
       narrowViewport ? 116 : 200,
     );
 
+    // Self-healing render (same pattern as hydrateAiNewsPage): every DOM
+    // write lives in renderHome(), which re-queries the LIVE nodes each run.
+    // The payload (summary-derived copy above + the async tweet/news results
+    // below) stays in memory so a clobbered subtree re-renders without any
+    // network call.
+    var homeRenderState = {
+      tweetText: null,
+      newsInsights: null,
+      newsUnavailableReason: null,
+      clobberRecheckScheduled: false,
+    };
+
+    function homeOutputStillRendered() {
+      var marker = document.querySelector("[data-dashboard-home-rendered='1']");
+      return Boolean(marker && marker.isConnected);
+    }
+
+    function renderHome() {
     var tutorBanner = document.querySelector("[data-dashboard-home-hero='1']") || document.querySelector("div.glass-panel.p-6.rounded-2xl.mb-8");
     if (tutorBanner) {
       var bannerTitle = tutorBanner.querySelector("h3");
@@ -2424,20 +2450,28 @@
       if (!normalizeInlineText(tweetIdea)) {
         throw new Error("Tweet draft not returned");
       }
+      // Memory first: a clobber recovery re-applies this without refetching.
+      homeRenderState.tweetText = tweetIdea;
       applySocialQuote(tweetIdea);
     }
 
     if (socialQuote) {
       var socialProjectId = activeProject && activeProject.id ? activeProject.id : null;
-      var cachedDrafts = readSocialDraftCache(socialProjectId);
-      var cachedTweet = cachedDrafts && typeof cachedDrafts.x === "string" ? cachedDrafts.x : "";
-      if (normalizeInlineText(cachedTweet)) {
-        applySocialQuote(cachedTweet);
+      if (normalizeInlineText(homeRenderState.tweetText || "")) {
+        // Re-render after clobber: the tweet is already in memory.
+        applySocialQuote(homeRenderState.tweetText);
       } else {
-        applySocialQuote("Generating today's tweet draft from your latest project context.");
-        void loadHomeTweetDraft(socialProjectId).catch(function () {
-          applySocialQuote("Social drafts are unavailable right now. Open Social Drafts to regenerate.");
-        });
+        var cachedDrafts = readSocialDraftCache(socialProjectId);
+        var cachedTweet = cachedDrafts && typeof cachedDrafts.x === "string" ? cachedDrafts.x : "";
+        if (normalizeInlineText(cachedTweet)) {
+          homeRenderState.tweetText = cachedTweet;
+          applySocialQuote(cachedTweet);
+        } else {
+          applySocialQuote("Generating today's tweet draft from your latest project context.");
+          void loadHomeTweetDraft(socialProjectId).catch(function () {
+            applySocialQuote("Social drafts are unavailable right now. Open Social Drafts to regenerate.");
+          });
+        }
       }
     }
 
@@ -2478,6 +2512,9 @@
         }
 
         function renderHomeNews(insights, unavailableReason) {
+          // Memory first: a clobber recovery re-renders these stories as-is.
+          homeRenderState.newsInsights = Array.isArray(insights) ? insights : [];
+          homeRenderState.newsUnavailableReason = unavailableReason || null;
           var rows = normalizeHomeNews(insights);
           var isLoading = unavailableReason && unavailableReason.toLowerCase().indexOf("generating") !== -1;
           if (isLoading && !rows.length) {
@@ -2531,24 +2568,29 @@
           });
         }
 
-        var cachedNews = readHomeNewsCache(summaryUserId);
-        if (cachedNews && Array.isArray(cachedNews.insights) && cachedNews.insights.length) {
-          renderHomeNews(cachedNews.insights);
-          captureEvent("ai_news_loaded", {
-            location: "dashboard_home",
-            source: "cache",
-            stories_count: cachedNews.insights.length,
-          });
+        if (Array.isArray(homeRenderState.newsInsights) && homeRenderState.newsInsights.length) {
+          // Re-render after clobber: stories are already in memory, no network.
+          renderHomeNews(homeRenderState.newsInsights, homeRenderState.newsUnavailableReason);
         } else {
-          renderHomeNews([], "Generating today's AI news briefing. Open AI News for live status.");
-          void refreshHomeNews().catch(function (err) {
-            captureEvent("ai_news_load_failed", {
+          var cachedNews = readHomeNewsCache(summaryUserId);
+          if (cachedNews && Array.isArray(cachedNews.insights) && cachedNews.insights.length) {
+            renderHomeNews(cachedNews.insights);
+            captureEvent("ai_news_loaded", {
               location: "dashboard_home",
-              source: "network",
-              reason: err && err.message ? String(err.message) : "unknown_error",
+              source: "cache",
+              stories_count: cachedNews.insights.length,
             });
-            renderHomeNews([], err && err.message ? String(err.message) : "Unable to load AI News.");
-          });
+          } else {
+            renderHomeNews([], "Generating today's AI news briefing. Open AI News for live status.");
+            void refreshHomeNews().catch(function (err) {
+              captureEvent("ai_news_load_failed", {
+                location: "dashboard_home",
+                source: "network",
+                reason: err && err.message ? String(err.message) : "unknown_error",
+              });
+              renderHomeNews([], err && err.message ? String(err.message) : "Unable to load AI News.");
+            });
+          }
         }
       }
     }
@@ -2559,6 +2601,23 @@
         node.remove();
       }
     });
+
+    // Mark the rendered output so a React hydration-fallback clobber (which
+    // replaces these nodes with unmarked server markup) is detectable.
+    var homeRenderedMarker = tutorBanner || cards[0] || skillStack || updatesSection || null;
+    if (homeRenderedMarker && homeRenderedMarker.setAttribute) {
+      homeRenderedMarker.setAttribute("data-dashboard-home-rendered", "1");
+      scheduleRouteClobberRecovery({
+        page: "home",
+        path: "/dashboard",
+        state: homeRenderState,
+        isStillRendered: homeOutputStillRendered,
+        rerender: renderHome,
+      });
+    }
+    }
+
+    renderHome();
   }
 
   async function hydrateProjectsPage() {
@@ -2566,15 +2625,29 @@
     var summary = await getDashboardSummary();
     updateSharedUserUi(summary);
 
-    var newProjectButton = document.querySelector("header a.btn.btn-primary");
-    if (newProjectButton && isNarrowViewport()) {
-      newProjectButton.innerHTML = '<i class="fa-solid fa-plus mr-1"></i> New Project';
-    }
-
     var projects = (summary.projects || []).slice();
     var active = projects.find(function (project) {
       return project.state === "building" || project.state === "planned" || project.state === "idea";
     }) || projects[0] || null;
+    var completed = projects.filter(function (project) {
+      return project.state === "built" || project.state === "showcased";
+    });
+
+    // Self-healing render (pattern from hydrateAiNewsPage): the payload lives
+    // in memory above; renderProjects() re-queries live nodes on every run so
+    // a React hydration-fallback clobber re-renders without any network call.
+    var projectsRenderState = { clobberRecheckScheduled: false };
+
+    function projectsOutputStillRendered() {
+      var marker = document.querySelector("[data-projects-rendered='1']");
+      return Boolean(marker && marker.isConnected);
+    }
+
+    function renderProjects() {
+    var newProjectButton = document.querySelector("header a.btn.btn-primary");
+    if (newProjectButton && isNarrowViewport()) {
+      newProjectButton.innerHTML = '<i class="fa-solid fa-plus mr-1"></i> New Project';
+    }
 
     var activeBanner = document.querySelector("a[href='/dashboard/chat/'].glass-panel");
     if (activeBanner && active) {
@@ -2588,10 +2661,6 @@
         setText(pct, progress + "%");
       }
     }
-
-    var completed = projects.filter(function (project) {
-      return project.state === "built" || project.state === "showcased";
-    });
 
     var proofHeading = Array.prototype.find.call(document.querySelectorAll("section h2"), function (node) {
       var text = (node.textContent || "").toLowerCase();
@@ -2687,6 +2756,22 @@
         }
       });
     });
+
+    // Mark the rendered output so a hydration-fallback clobber is detectable.
+    var projectsRenderedMarker = grid || activeBanner || newProjectButton || null;
+    if (projectsRenderedMarker && projectsRenderedMarker.setAttribute) {
+      projectsRenderedMarker.setAttribute("data-projects-rendered", "1");
+      scheduleRouteClobberRecovery({
+        page: "projects",
+        path: "/dashboard/projects",
+        state: projectsRenderState,
+        isStillRendered: projectsOutputStillRendered,
+        rerender: renderProjects,
+      });
+    }
+    }
+
+    renderProjects();
   }
 
   function createBubble(text, isUser) {
@@ -2761,6 +2846,11 @@
     var sending = false;
     var chatHistoryState = [];
     var cacheProjectId = null;
+    // Self-healing render state (pattern from hydrateAiNewsPage): the whole
+    // transcript already lives in memory (chatHistoryState), so a React
+    // hydration-fallback clobber re-renders it into the live container and
+    // re-binds the composer without any network call.
+    var chatRenderState = { clobberRecheckScheduled: false };
     // Session-aware chat (rebuild dashboard batch item 2): when the active
     // project's module has a running tutor session, messages route through
     // the session-aware endpoint so replies carry playbook + profile +
@@ -2811,6 +2901,8 @@
     }
 
     function updateChatSubtitle(project) {
+      var liveSubtitle = document.querySelector("header .text-xs.text-gray-400");
+      if (liveSubtitle && liveSubtitle.isConnected) subtitle = liveSubtitle;
       if (!subtitle) return;
       if (activeTutorSession) {
         var progress = sessionProgress(activeTutorSession);
@@ -3092,15 +3184,64 @@
       }
     }
 
-    sendBtn.addEventListener("click", function () {
-      void sendMessage();
-    });
-
-    textarea.addEventListener("keydown", function (event) {
-      if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
+    function bindChatComposer() {
+      sendBtn.addEventListener("click", function () {
         void sendMessage();
+      });
+
+      textarea.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          void sendMessage();
+        }
+      });
+    }
+
+    function markChatRendered() {
+      if (history && history.setAttribute) {
+        history.setAttribute("data-chat-rendered", "1");
       }
+    }
+
+    function chatOutputStillRendered() {
+      var marker = document.querySelector("main .flex-1.overflow-y-auto[data-chat-rendered='1']");
+      return Boolean(marker && marker.isConnected);
+    }
+
+    // Clobber recovery: re-query the live chat surface, re-render the
+    // in-memory transcript, and re-bind the composer only if its nodes were
+    // replaced (idempotent — never double-binds surviving nodes).
+    function recoverChatSurface() {
+      var liveHistory = document.querySelector("main .flex-1.overflow-y-auto");
+      var liveTextarea = document.querySelector("textarea");
+      var liveSendBtn = Array.prototype.find.call(document.querySelectorAll("button"), function (btn) {
+        return btn.querySelector(".fa-paper-plane");
+      });
+      if (!liveHistory || !liveTextarea || !liveSendBtn) return;
+      var composerChanged = liveTextarea !== textarea || liveSendBtn !== sendBtn;
+      history = liveHistory;
+      textarea = liveTextarea;
+      sendBtn = liveSendBtn;
+      history.innerHTML = "";
+      chatHistoryState.forEach(function (entry) {
+        renderMessage(entry.role, entry.text);
+      });
+      renderTutorSessionBanner(project);
+      updateChatSubtitle(project);
+      if (composerChanged) {
+        bindChatComposer();
+      }
+      markChatRendered();
+    }
+
+    bindChatComposer();
+    markChatRendered();
+    scheduleRouteClobberRecovery({
+      page: "chat",
+      path: "/dashboard/chat",
+      state: chatRenderState,
+      isStillRendered: chatOutputStillRendered,
+      rerender: recoverChatSurface,
     });
   }
 
@@ -3109,14 +3250,6 @@
 
     renameSocialNavLabels();
 
-    var socialHeading = document.querySelector("header h1");
-    if (socialHeading) {
-      socialHeading.innerHTML = '<i class="fa-solid fa-share-nodes text-[#0077b5]"></i> Social Drafts';
-    }
-    var socialSubheading = document.querySelector("header p.text-xs.text-gray-400");
-    if (socialSubheading) {
-      socialSubheading.textContent = "This tab gives you ready-to-edit first-person LinkedIn and X drafts from your latest work.";
-    }
     if (typeof document.title === "string") {
       document.title = document.title.replace(/Social Hooks/g, "Social Drafts");
       document.title = document.title.replace(/Social Media/g, "Social Drafts");
@@ -3146,8 +3279,61 @@
       primaryProject = null;
     }
 
-    contentWrap.innerHTML =
-      '<section class="glass runtime-social-shell p-6 md:p-8 rounded-2xl border border-white/10 bg-white/5">' +
+    // Self-healing render (pattern from hydrateAiNewsPage): the drafts live
+    // in draftState; renderSocialShell() re-queries the LIVE container each
+    // run, rebuilds the shell, re-binds its controls, and re-applies the
+    // in-memory drafts — so a React hydration-fallback clobber recovers
+    // without any network call.
+    var socialRenderState = { clobberRecheckScheduled: false };
+    var linkedInInput = null;
+    var xInput = null;
+    var linkedInEditButton = null;
+    var xEditButton = null;
+    var linkedInShareButton = null;
+    var xShareButton = null;
+    var refreshButton = null;
+    var contextNode = null;
+    var sourceNode = null;
+    var authorNode = null;
+    var linkedInLoadingNode = null;
+    var xLoadingNode = null;
+
+    function liveSocialContentWrap() {
+      var liveRouteRoot = document.querySelector("[data-dashboard-route='1']");
+      var node = liveRouteRoot && liveRouteRoot.firstElementChild ? liveRouteRoot.firstElementChild : document.querySelector(
+        "main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-8, main .p-6.md\\:p-10.max-w-5xl.mx-auto.w-full.pb-24",
+      );
+      if (node && node.isConnected) return node;
+      return contentWrap && contentWrap.isConnected ? contentWrap : null;
+    }
+
+    function socialOutputStillRendered() {
+      var marker = document.querySelector("[data-social-rendered='1']");
+      return Boolean(marker && marker.isConnected);
+    }
+
+    function setSourceLabel(text) {
+      // Memory first: clobber recovery re-applies the label with the drafts.
+      draftState.sourceLabel = String(text || "");
+      if (sourceNode) sourceNode.textContent = draftState.sourceLabel;
+    }
+
+    function renderSocialShell() {
+      var liveWrap = liveSocialContentWrap();
+      if (liveWrap) contentWrap = liveWrap;
+      if (!contentWrap || !contentWrap.isConnected) return;
+
+      var socialHeading = document.querySelector("header h1");
+      if (socialHeading) {
+        socialHeading.innerHTML = '<i class="fa-solid fa-share-nodes text-[#0077b5]"></i> Social Drafts';
+      }
+      var socialSubheading = document.querySelector("header p.text-xs.text-gray-400");
+      if (socialSubheading) {
+        socialSubheading.textContent = "This tab gives you ready-to-edit first-person LinkedIn and X drafts from your latest work.";
+      }
+
+      contentWrap.innerHTML =
+      '<section data-social-rendered="1" class="glass runtime-social-shell p-6 md:p-8 rounded-2xl border border-white/10 bg-white/5">' +
       '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">' +
       '<div><h2 class="text-lg font-[Outfit] font-semibold text-slate-900">Social Drafts</h2>' +
       '<p class="text-xs text-slate-600">Use this tab to post quick updates about what you built today.</p>' +
@@ -3198,27 +3384,44 @@
       "</div>" +
       "</section>";
 
-    var linkedInInput = contentWrap.querySelector("textarea[data-social-input='linkedin']");
-    var xInput = contentWrap.querySelector("textarea[data-social-input='x']");
-    var linkedInEditButton = contentWrap.querySelector("button[data-social-edit='linkedin']");
-    var xEditButton = contentWrap.querySelector("button[data-social-edit='x']");
-    var linkedInShareButton = contentWrap.querySelector("button[data-social-share='linkedin']");
-    var xShareButton = contentWrap.querySelector("button[data-social-share='x']");
-    var refreshButton = contentWrap.querySelector("button[data-social-refresh='1']");
-    var contextNode = contentWrap.querySelector("[data-social-context='1']");
-    var sourceNode = contentWrap.querySelector("[data-social-source='1']");
-    var authorNode = contentWrap.querySelector("[data-social-author='1']");
-    var linkedInLoadingNode = contentWrap.querySelector("[data-social-loading='linkedin']");
-    var xLoadingNode = contentWrap.querySelector("[data-social-loading='x']");
+      linkedInInput = contentWrap.querySelector("textarea[data-social-input='linkedin']");
+      xInput = contentWrap.querySelector("textarea[data-social-input='x']");
+      linkedInEditButton = contentWrap.querySelector("button[data-social-edit='linkedin']");
+      xEditButton = contentWrap.querySelector("button[data-social-edit='x']");
+      linkedInShareButton = contentWrap.querySelector("button[data-social-share='linkedin']");
+      xShareButton = contentWrap.querySelector("button[data-social-share='x']");
+      refreshButton = contentWrap.querySelector("button[data-social-refresh='1']");
+      contextNode = contentWrap.querySelector("[data-social-context='1']");
+      sourceNode = contentWrap.querySelector("[data-social-source='1']");
+      authorNode = contentWrap.querySelector("[data-social-author='1']");
+      linkedInLoadingNode = contentWrap.querySelector("[data-social-loading='linkedin']");
+      xLoadingNode = contentWrap.querySelector("[data-social-loading='x']");
 
-    if (authorNode) {
-      authorNode.textContent = summary.user.name + " · " + headlineForUser(summary.user);
+      if (authorNode) {
+        authorNode.textContent = summary.user.name + " · " + headlineForUser(summary.user);
+      }
+
+      bindSocialControls();
+      lockAllEdits();
+      updateDraftInputs();
+      if (sourceNode && draftState.sourceLabel) {
+        sourceNode.textContent = draftState.sourceLabel;
+      }
+
+      scheduleRouteClobberRecovery({
+        page: "social",
+        path: "/dashboard/social",
+        state: socialRenderState,
+        isStillRendered: socialOutputStillRendered,
+        rerender: renderSocialShell,
+      });
     }
 
     var draftState = {
       linkedin: "",
       x: "",
       contextLabel: primaryProject ? "Project: " + primaryProject.title : "Profile momentum",
+      sourceLabel: "",
     };
 
     function enforceFirstPerson(text) {
@@ -3325,9 +3528,7 @@
         throw new Error("Social idea generator returned an empty response.");
       }
       updateDraftInputs();
-      if (sourceNode) {
-        sourceNode.textContent = ideas && ideas.source === "llm" ? "Personalized with user memory" : "Generated from profile context";
-      }
+      setSourceLabel(ideas && ideas.source === "llm" ? "Personalized with user memory" : "Generated from profile context");
       if (showToastOnSuccess) {
         toast("Fresh social ideas ready.", false);
       }
@@ -3337,6 +3538,7 @@
       });
     }
 
+    function bindSocialControls() {
     if (linkedInEditButton) {
       linkedInEditButton.addEventListener("click", function () {
         var editing = linkedInEditButton.getAttribute("data-editing") === "1";
@@ -3409,15 +3611,16 @@
         }
       });
     }
+    }
 
-    lockAllEdits();
+    renderSocialShell();
     var cachedDrafts = readSocialDraftCache(primaryProject ? primaryProject.id : null);
     if (cachedDrafts && (hasMeaningfulDraftText(cachedDrafts.linkedin) || hasMeaningfulDraftText(cachedDrafts.x))) {
       draftState.linkedin = normalizeDraftText(cachedDrafts.linkedin || "");
       draftState.x = normalizeDraftText(cachedDrafts.x || "");
       draftState.contextLabel = String(cachedDrafts.contextLabel || draftState.contextLabel || "Fresh ideas").trim();
       updateDraftInputs();
-      if (sourceNode) sourceNode.textContent = cachedDrafts.source === "llm" ? "Cached personalized ideas" : "Cached draft ideas";
+      setSourceLabel(cachedDrafts.source === "llm" ? "Cached personalized ideas" : "Cached draft ideas");
       captureEvent("social_ideas_cache_hit", { source: cachedDrafts.source || "cached" });
     } else {
       try {
@@ -3430,7 +3633,7 @@
         updateDraftInputs();
         setAllDraftsLoading(false);
         if (contextNode) contextNode.textContent = "Context: unavailable";
-        if (sourceNode) sourceNode.textContent = "Generator unavailable (no fallback)";
+        setSourceLabel("Generator unavailable (no fallback)");
         captureEvent("social_ideas_failed", { reason: err && err.message ? err.message : "unknown_error" });
         toast(err instanceof Error ? err.message : "Unable to generate social ideas", true);
       }
@@ -3448,7 +3651,8 @@
     captureEvent("dashboard_tab_viewed", { tab: "activity" });
     var summary = await getDashboardSummary();
     updateSharedUserUi(summary);
-    var contentWrap = document.querySelector("main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-4");
+    var UPDATES_WRAP_SELECTOR = "main .p-10.max-w-4xl.mx-auto.w-full.pb-24.space-y-4";
+    var contentWrap = document.querySelector(UPDATES_WRAP_SELECTOR);
     if (!contentWrap) return;
 
     var updates = Array.isArray(summary.latestEvents) ? summary.latestEvents.slice(0, 30) : [];
@@ -3697,33 +3901,67 @@
       })
       .join("");
 
-    contentWrap.innerHTML =
-      '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">' +
-      '<div><h2 class="text-lg font-[Outfit] font-semibold text-slate-900">Recent user activity</h2>' +
-      '<p class="text-xs text-slate-500 mt-1">Sign-up and build actions only.</p></div>' +
-      '<button type="button" data-updates-refresh="1" class="btn btn-secondary text-xs"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh Activity</button>' +
-      "</div>" +
-      (eventsHtml || '<div class="glass p-5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700">No user actions yet. Start a pack or message Chat Tutor to populate this feed.</div>');
+    // Self-healing render (pattern from hydrateAiNewsPage): the feed HTML is
+    // derived from the in-memory summary above, so a React hydration-fallback
+    // clobber re-renders into the LIVE container without any network call.
+    var updatesRenderState = { clobberRecheckScheduled: false };
 
-    var refreshButton = contentWrap.querySelector("button[data-updates-refresh='1']");
-    if (refreshButton) {
-      refreshButton.addEventListener("click", async function () {
-        var original = refreshButton.innerHTML;
-        refreshButton.setAttribute("disabled", "true");
-        refreshButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Refreshing';
-        try {
-          var summaryKey = dashboardSummaryCacheKey();
-          if (summaryKey) removeSessionObject(summaryKey);
-          toast("Activity refreshed.", false);
-          await hydrateUpdatesPage();
-        } catch (err) {
-          toast(err instanceof Error ? err.message : "Unable to refresh activity", true);
-        } finally {
-          refreshButton.removeAttribute("disabled");
-          refreshButton.innerHTML = original;
-        }
+    function liveUpdatesContentWrap() {
+      var node = document.querySelector(UPDATES_WRAP_SELECTOR);
+      if (node && node.isConnected) return node;
+      return contentWrap && contentWrap.isConnected ? contentWrap : null;
+    }
+
+    function updatesOutputStillRendered() {
+      var marker = document.querySelector("[data-updates-rendered='1']");
+      return Boolean(marker && marker.isConnected);
+    }
+
+    function renderActivity() {
+      var liveWrap = liveUpdatesContentWrap();
+      if (liveWrap) contentWrap = liveWrap;
+      if (!contentWrap || !contentWrap.isConnected) return;
+
+      contentWrap.innerHTML =
+        '<div class="space-y-4" data-updates-rendered="1">' +
+        '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">' +
+        '<div><h2 class="text-lg font-[Outfit] font-semibold text-slate-900">Recent user activity</h2>' +
+        '<p class="text-xs text-slate-500 mt-1">Sign-up and build actions only.</p></div>' +
+        '<button type="button" data-updates-refresh="1" class="btn btn-secondary text-xs"><i class="fa-solid fa-rotate-right mr-2"></i>Refresh Activity</button>' +
+        "</div>" +
+        (eventsHtml || '<div class="glass p-5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700">No user actions yet. Start a pack or message Chat Tutor to populate this feed.</div>') +
+        "</div>";
+
+      var refreshButton = contentWrap.querySelector("button[data-updates-refresh='1']");
+      if (refreshButton) {
+        refreshButton.addEventListener("click", async function () {
+          var original = refreshButton.innerHTML;
+          refreshButton.setAttribute("disabled", "true");
+          refreshButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Refreshing';
+          try {
+            var summaryKey = dashboardSummaryCacheKey();
+            if (summaryKey) removeSessionObject(summaryKey);
+            toast("Activity refreshed.", false);
+            await hydrateUpdatesPage();
+          } catch (err) {
+            toast(err instanceof Error ? err.message : "Unable to refresh activity", true);
+          } finally {
+            refreshButton.removeAttribute("disabled");
+            refreshButton.innerHTML = original;
+          }
+        });
+      }
+
+      scheduleRouteClobberRecovery({
+        page: "activity",
+        path: "/dashboard/updates",
+        state: updatesRenderState,
+        isStillRendered: updatesOutputStillRendered,
+        rerender: renderActivity,
       });
     }
+
+    renderActivity();
   }
 
   async function hydrateAiNewsPage() {
@@ -3748,9 +3986,16 @@
       return contentWrap && contentWrap.isConnected ? contentWrap : null;
     }
 
+    function aiNewsOutputStillRendered() {
+      var target = liveContentWrap();
+      return Boolean(target && target.querySelector("[data-ai-news-rendered='1']"));
+    }
+
     function scheduleClobberRecheck() {
       if (clobberRecheckScheduled) return;
       clobberRecheckScheduled = true;
+      // Also let the RouteHydrator skip-guard see a clobber on this route.
+      registerRouteRenderProbe("/dashboard/ai-news", aiNewsOutputStillRendered);
       [1500, 4000].forEach(function (delayMs) {
         window.setTimeout(function () {
           if (!lastNewsResult) return;
@@ -3760,6 +4005,7 @@
           var target = liveContentWrap();
           if (!target) return;
           if (target.querySelector("[data-ai-news-rendered='1']")) return;
+          clearRouteHydratedGuard();
           captureEvent("ai_news_rerendered_after_clobber", { delay_ms: delayMs });
           renderNews(lastNewsResult);
         }, delayMs);
@@ -3968,6 +4214,18 @@
     var resolvedLinkedIn = profileUser.socialLinks && profileUser.socialLinks.linkedin ? profileUser.socialLinks.linkedin : "";
     var resolvedEmail = ctx.email || profileUser.email || "";
 
+    // Self-healing render (pattern from hydrateAiNewsPage): the resolved
+    // profile payload above stays in memory; renderProfile() re-queries the
+    // LIVE form nodes on every run and re-binds its controls, so a React
+    // hydration-fallback clobber recovers without any network call.
+    var profileRenderState = { clobberRecheckScheduled: false };
+
+    function profileOutputStillRendered() {
+      var marker = document.querySelector("form[data-profile-rendered='1']");
+      return Boolean(marker && marker.isConnected);
+    }
+
+    function renderProfile() {
     var profileForm = document.querySelector("form");
     var inputs = profileForm ? profileForm.querySelectorAll("input[type='text']") : [];
     var nameInput = inputs[0] || null;
@@ -4423,6 +4681,22 @@
         openAvatarPicker();
       });
     });
+
+    // Mark the rendered output so a hydration-fallback clobber (which swaps
+    // in an unmarked server-rendered form) is detectable and recoverable.
+    if (profileForm) {
+      profileForm.setAttribute("data-profile-rendered", "1");
+      scheduleRouteClobberRecovery({
+        page: "profile",
+        path: "/dashboard/profile",
+        state: profileRenderState,
+        isStillRendered: profileOutputStillRendered,
+        rerender: renderProfile,
+      });
+    }
+    }
+
+    renderProfile();
   }
 
   function buildTalentCardElement(candidate) {
@@ -5087,6 +5361,16 @@
       return;
     }
 
+    if (currentPath.indexOf("/dashboard/admin") === 0) {
+      // Admin pages are fully server-rendered: known no-op hydration. Reveal
+      // is already guaranteed by theme-script (admin paths never hold for
+      // runtime); marking ready here too is belt-and-suspenders in case the
+      // attribute was reset elsewhere.
+      document.documentElement.setAttribute("data-runtime-ready", "1");
+      captureEvent("app_route_hydrate_completed", { path: currentPath, mode: "admin_noop" });
+      return;
+    }
+
     if (
       currentPath.indexOf("/dashboard/") === 0 &&
       currentPath.indexOf("/dashboard/admin") !== 0
@@ -5119,11 +5403,77 @@
     }
   }
 
+  function clearRouteHydratedGuard() {
+    // Lets both the runtime skip-guard and the React DashboardRouteHydrator
+    // (which reads __AITUTOR_LAST_HYDRATED_PATH) re-hydrate this route.
+    lastHydratedPath = null;
+    if (typeof window !== "undefined") {
+      window.__AITUTOR_LAST_HYDRATED_PATH = null;
+    }
+  }
+
+  function registerRouteRenderProbe(pathname, isStillRendered) {
+    lastRouteRenderProbe = {
+      path: normalizedPath(pathname),
+      isStillRendered: isStillRendered,
+    };
+  }
+
+  function hydratedOutputDetached() {
+    if (!lastRouteRenderProbe || lastRouteRenderProbe.path !== currentPath) return false;
+    try {
+      return !lastRouteRenderProbe.isStillRendered();
+    } catch {
+      return false;
+    }
+  }
+
+  // Shared self-healing recheck (pattern extracted from hydrateAiNewsPage's
+  // 2026-07-08 live regression fix): after a hydrator renders, verify at
+  // 1.5s/4s that its output is still attached; if React's hydration fallback
+  // clobbered it, re-render once from the in-memory payload — no network.
+  function scheduleRouteClobberRecovery(options) {
+    var state = options.state || {};
+    if (state.clobberRecheckScheduled) return;
+    state.clobberRecheckScheduled = true;
+    var pagePath = normalizedPath(options.path);
+    registerRouteRenderProbe(pagePath, options.isStillRendered);
+    [1500, 4000].forEach(function (delayMs) {
+      window.setTimeout(function () {
+        // The user may have navigated away before the timer fired — never
+        // write this page's output into another page's container.
+        if (currentPath !== pagePath) return;
+        var stillRendered = true;
+        try {
+          stillRendered = Boolean(options.isStillRendered());
+        } catch {
+          stillRendered = true;
+        }
+        if (stillRendered) return;
+        clearRouteHydratedGuard();
+        captureEvent("dashboard_rerendered_after_clobber", {
+          page: options.page,
+          delay_ms: delayMs,
+        });
+        try {
+          options.rerender();
+        } catch {
+          // Recovery must never throw out of the timer callback.
+        }
+      }, delayMs);
+    });
+  }
+
   function routeHydrate() {
     syncPathAttributes();
     if (routeHydrateInFlight) return routeHydrateInFlight;
     if (lastHydratedPath === currentPath && document.documentElement.getAttribute("data-runtime-ready") === "1") {
-      return Promise.resolve();
+      if (!hydratedOutputDetached()) {
+        return Promise.resolve();
+      }
+      // The route looks hydrated but the rendered output was replaced by
+      // React's hydration fallback — clear the guard and hydrate again.
+      clearRouteHydratedGuard();
     }
 
     routeHydrateInFlight = (async function () {

@@ -9,7 +9,13 @@ export const themeBootScript = `
     var shouldHoldForStyles = p === "/" || isDashboardPath || isPublicProfilePath || isEmployersPath || isLearnPath;
     var revealed = false;
     var probeId = "__aitutor_style_probe__";
-    var shouldHoldForRuntime = isDashboardPath;
+    // Admin pages (/dashboard/admin/*) are fully server-rendered — the Gemini
+    // runtime has nothing to hydrate there, so their visibility must never
+    // depend on it executing (live bug 2026-07-09: /dashboard/admin/signups
+    // stayed on the first-paint hold forever when the runtime never flipped
+    // data-runtime-ready).
+    var isAdminDashboardPath = p === "/dashboard/admin" || p.indexOf("/dashboard/admin/") === 0;
+    var shouldHoldForRuntime = isDashboardPath && !isAdminDashboardPath;
 
     document.documentElement.setAttribute("data-path", p);
     document.documentElement.setAttribute("data-runtime-ready", shouldHoldForRuntime ? "0" : "1");
