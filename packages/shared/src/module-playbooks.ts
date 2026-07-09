@@ -116,8 +116,81 @@ const ANALYTICS_LAUNCH: RecommendedModuleToolLaunch = {
   verificationHint: "Reference the traffic or conversion metric you are trying to move.",
 };
 
+const HUBSPOT_LAUNCH: RecommendedModuleToolLaunch = {
+  key: "hubspot",
+  label: "HubSpot",
+  description: "Open the real pipeline, list, or sequence this session's output should land in.",
+  href: "https://app.hubspot.com/",
+  ctaLabel: "Open HubSpot",
+  kind: "external",
+  opensInNewTab: true,
+  verificationHint: "Capture the segment, list, or pipeline stage this build improves.",
+};
+
+const ZENDESK_LAUNCH: RecommendedModuleToolLaunch = {
+  key: "zendesk",
+  label: "Zendesk",
+  description: "Open the ticket queue the session's real tickets and macros come from.",
+  href: "https://www.zendesk.com/",
+  ctaLabel: "Open Zendesk",
+  kind: "external",
+  opensInNewTab: true,
+  verificationHint: "Reference the ticket class or macro flow you improved.",
+};
+
+const ZAPIER_LAUNCH: RecommendedModuleToolLaunch = {
+  key: "zapier",
+  label: "Zapier",
+  description: "Open the automation workspace where this session's blueprint will eventually run.",
+  href: "https://zapier.com/app/dashboard",
+  ctaLabel: "Open Zapier",
+  kind: "external",
+  opensInNewTab: true,
+  verificationHint: "Attach the automation map or blueprint as proof.",
+};
+
+const GREENHOUSE_LAUNCH: RecommendedModuleToolLaunch = {
+  key: "greenhouse",
+  label: "Greenhouse",
+  description: "Open the ATS where the screening or interview workflow actually happens.",
+  href: "https://app.greenhouse.io/",
+  ctaLabel: "Open Greenhouse",
+  kind: "external",
+  opensInNewTab: true,
+  verificationHint: "Capture the hiring stage, scorecard, or summary flow this module improved.",
+};
+
+const MIDJOURNEY_LAUNCH: RecommendedModuleToolLaunch = {
+  key: "midjourney",
+  label: "Midjourney",
+  description: "Open your image generation workspace to create the visual variants for this pack.",
+  href: "https://www.midjourney.com/",
+  ctaLabel: "Open Midjourney",
+  kind: "external",
+  opensInNewTab: true,
+  verificationHint: "Attach the strongest visual output or prompt set.",
+};
+
+const GITHUB_LAUNCH: RecommendedModuleToolLaunch = {
+  key: "github",
+  label: "GitHub",
+  description: "Open the repo, issue, or pull request where the implementation belongs.",
+  href: "https://github.com/",
+  ctaLabel: "Open GitHub",
+  kind: "external",
+  opensInNewTab: true,
+  verificationHint: "Link the repo, branch, or PR that contains the build.",
+};
+
 const PM_TOOL_LAUNCHES = [CHATGPT_LAUNCH, CLAUDE_LAUNCH, NOTION_LAUNCH];
 const MSEO_TOOL_LAUNCHES = [CHATGPT_LAUNCH, CLAUDE_LAUNCH, ANALYTICS_LAUNCH];
+const SALES_TOOL_LAUNCHES = [CHATGPT_LAUNCH, CLAUDE_LAUNCH, HUBSPOT_LAUNCH];
+const SUPPORT_TOOL_LAUNCHES = [CHATGPT_LAUNCH, CLAUDE_LAUNCH, ZENDESK_LAUNCH];
+const OPS_TOOL_LAUNCHES = [CHATGPT_LAUNCH, CLAUDE_LAUNCH, ZAPIER_LAUNCH];
+const HR_TOOL_LAUNCHES = [CHATGPT_LAUNCH, CLAUDE_LAUNCH, GREENHOUSE_LAUNCH];
+const DESIGN_TOOL_LAUNCHES = [CHATGPT_LAUNCH, CLAUDE_LAUNCH, MIDJOURNEY_LAUNCH];
+const SWE_TOOL_LAUNCHES = [CHATGPT_LAUNCH, CLAUDE_LAUNCH, GITHUB_LAUNCH];
+const QA_TOOL_LAUNCHES = [CHATGPT_LAUNCH, CLAUDE_LAUNCH, GITHUB_LAUNCH];
 
 /**
  * Per-module playbooks (rebuild item: AI-tool sessions). Every step is an
@@ -274,6 +347,434 @@ const MODULE_PLAYBOOKS: Record<string, Record<string, PlaybookTemplate>> = {
       toolLaunches: MSEO_TOOL_LAUNCHES,
     },
   },
+  "sales-revops": {
+    "Predictive Lead Scoring": {
+      why: "Predictive lead scoring turns gut-feel prioritization into a rubric your whole team can run: one session gets you a weighted model tested against real wins and losses.",
+      expectedOutput:
+        "A lead scoring model brief: a weighted scoring rubric, 20 real leads scored with it, and a validation pass against past closed-won and closed-lost deals.",
+      proofChecklist: [
+        "Paste the signal inventory ranked by predictive power.",
+        "Paste the weighted scoring rubric.",
+        "Paste the scored lead table and the validation notes against past deals.",
+      ],
+      steps: [
+        'Inventory your buying signals (8 min). Paste this prompt into ChatGPT or Claude: "Act as my RevOps partner. I sell [product, one line] to [buyer, one line]. List every signal we could realistically score a lead on — firmographic, behavioral, and intent — and rank the top 10 by likely predictive power for my motion. Ask me up to 3 questions about my pipeline first." Paste the ranked signal list into your evidence notes.',
+        'Build the weighted rubric (9 min). Prompt: "Turn these signals into a lead scoring rubric: [paste ranked signals]. For each signal: a weight out of 100 total, the data source, and the exact rule for awarding points (thresholds, not vibes). Flag any signal we cannot actually observe today." Copy the rubric into your evidence.',
+        'Score 20 real leads (10 min). Pull 20 leads from your CRM or a recent list export — mix obvious fits and long shots. Prompt: "Score each of these leads with the rubric: [paste rubric + the 20 leads with their known attributes]. Output a table: lead, per-signal points, total score, tier (A/B/C), and the single missing data point that would most change the score." Paste the scored table as evidence.',
+        'Validate against real outcomes (10 min). Prompt: "Here are 5 past closed-won and 5 closed-lost deals with their attributes: [paste deals]. Score them with the same rubric. Where do wins score low or losses score high? Propose specific weight changes and state the tradeoff of each." Save the validation notes and the adjusted rubric as evidence.',
+        "Generate your scoring model artifact (8 min). Ask the tutor to generate the lead scoring brief from your pasted rubric, scored table, and validation notes — it must state the rubric a rep could apply in under a minute. Attach it as your final artifact.",
+      ],
+      toolLaunches: SALES_TOOL_LAUNCHES,
+    },
+    "Deep Data Enrichment": {
+      why: "Enrichment is where outreach quality is actually won: this session builds an AI research workflow that turns a bare account list into decision-ready profiles.",
+      expectedOutput:
+        "An account enrichment pack: a field schema tied to your qualification criteria, five AI-researched account profiles, and a repeatable enrichment prompt.",
+      proofChecklist: [
+        "Paste the enrichment field schema with the qualifying question each field answers.",
+        "Paste the five enriched account profiles with sources noted.",
+        "Paste the reusable enrichment prompt and your accuracy spot-check notes.",
+      ],
+      steps: [
+        'Define the fields that matter (8 min). Paste this prompt into ChatGPT or Claude: "Act as my sales research lead. I sell [product] and qualify accounts on [criteria, one line]. Design an enrichment schema of 8-12 fields that would let a rep decide fit and angle in 60 seconds — for each field: why it matters, where it is usually findable publicly, and a confidence label (verifiable vs inferred)." Paste the schema into your evidence notes.',
+        'Build the reusable enrichment prompt (10 min). Prompt: "Write a reusable research prompt that takes a company name and domain and fills this schema: [paste schema]. It must cite where each answer came from, write UNKNOWN instead of guessing, and end with a 2-sentence fit summary against my criteria." Save the prompt — it is the core of your workflow — and copy it into your evidence.',
+        "Enrich 5 real target accounts (10 min). Run the enrichment prompt once per account in a fresh chat (use an AI tool with web access if you have one). Paste each completed profile into your evidence, keeping every UNKNOWN visible — the gaps are part of the output.",
+        'Spot-check and harden (9 min). Verify 3 fields per account against the company site or LinkedIn. Prompt: "Here are my spot-check results: [paste corrections]. Revise the enrichment prompt so the errors I found are less likely — tighten sourcing rules, add a verification step, or downgrade fields to inferred." Save the revised prompt and your check notes as evidence.',
+        "Generate your enrichment workflow artifact (8 min). Ask the tutor to generate the enrichment pack from your pasted schema, profiles, and hardened prompt — schema, prompt, and the five profiles as worked examples. Attach it as your final artifact.",
+      ],
+      toolLaunches: SALES_TOOL_LAUNCHES,
+    },
+    "Hyper-personalized Cold Outreach": {
+      why: "Personalization at depth is what gets replies, and it only scales when research and drafting run through a repeatable AI workflow — this session builds one on five real prospects.",
+      expectedOutput:
+        "An outreach pack: five researched prospects, a personalization angle for each, and a three-touch sequence per prospect that passes your own reply-worthiness bar.",
+      proofChecklist: [
+        "Paste the five prospect research digests.",
+        "Paste the personalization angles with the evidence line each one leans on.",
+        "Paste the three-touch sequences and the QA scores per message.",
+      ],
+      steps: [
+        'Pick 5 real prospects and digest them (8 min). For each prospect paste this prompt into a fresh chat: "Summarize what is publicly knowable about [name, role, company]: recent company news, likely priorities for their role, tech or process clues, and one thing they have personally published or said. Mark anything uncertain as UNVERIFIED — I will check it." Paste the five digests into your evidence notes.',
+        'Find the angle for each (9 min). Prompt: "For each prospect digest below, propose the single strongest personalization angle — a specific, verifiable observation that connects their world to [your offer, one line]. Reject generic flattery. Digests: [paste digests]. Output: prospect, angle, the evidence line it leans on, and the risk if the inference is wrong." Copy the angle table into your evidence.',
+        'Draft three-touch sequences (12 min). Prompt: "Write a 3-touch sequence (opener, value follow-up, breakup) for each prospect using their angle: [paste angles]. Rules: under 90 words per email, first line must be about them not us, one concrete proof point, one low-friction CTA, no [FIRSTNAME]-style filler." Paste all sequences as evidence.',
+        'QA against the reply bar (8 min). In a fresh chat: "You are a busy [prospect role] who deletes most cold email. Score each message 1-5 on: would you keep reading, does the personalization feel real, is the ask easy. Rewrite the two lowest scorers. Messages: [paste sequences]." Save the scores and rewrites as evidence.',
+        "Generate your outreach pack artifact (8 min). Ask the tutor to generate the outreach pack from your pasted digests, angles, and QA-scored sequences, then attach it as your final artifact.",
+      ],
+      toolLaunches: SALES_TOOL_LAUNCHES,
+    },
+  },
+  "customer-support": {
+    "RAG Document Retrieval": {
+      why: "Retrieval-grounded answers are the difference between a support bot that helps and one that invents policy: this session proves grounding on your own help content.",
+      expectedOutput:
+        "A grounded support assistant spec: a curated knowledge pack, an answer-with-citations prompt, and a test log showing grounded answers plus caught failure cases.",
+      proofChecklist: [
+        "Paste the knowledge pack inventory with the questions each document answers.",
+        "Paste the grounded answering prompt with its refusal rule.",
+        "Paste the ten-question test log including the trap questions and outcomes.",
+      ],
+      steps: [
+        'Curate the knowledge pack (8 min). Collect 5-8 real help articles, macros, or policy snippets and paste this prompt: "Here are our support documents: [paste content]. Build an inventory table: doc ID, title, the top 3 customer questions it answers, and any contradictions or gaps between documents." Paste the inventory into your evidence notes.',
+        'Build the grounded answering prompt (9 min). Prompt: "Write a system prompt for a support assistant that answers ONLY from the provided documents. Rules: quote or cite the doc ID for every claim, answer in our support voice, and if the documents do not cover the question reply that a teammate will follow up — never guess. Documents: [paste pack]." Save the prompt and copy it into your evidence.',
+        "Test with 10 real questions (10 min). Pull 10 genuine customer questions from tickets — include 2 the documents cannot answer and 1 asking the assistant to bend policy. Run each against the assistant in a fresh chat and paste the full Q&A log into your evidence.",
+        'Grade the grounding (10 min). Prompt: "Grade this support assistant test log: [paste log]. For each answer: grounded (cites a real doc correctly), hallucinated (claims beyond the docs), or correctly-refused. Then propose prompt fixes for every hallucination and one gap the knowledge pack must fill." Save the graded table and the fixed prompt as evidence.',
+        "Generate your assistant spec artifact (8 min). Ask the tutor to generate the grounded assistant spec from your pasted inventory, prompt, and graded test log — including the refusal rule and known gaps. Attach it as your final artifact.",
+      ],
+      toolLaunches: SUPPORT_TOOL_LAUNCHES,
+    },
+    "Intelligent Ticket Routing": {
+      why: "Routing is a classification problem your best triager already solves in their head — this session extracts that judgment into a prompt you can measure against real tickets.",
+      expectedOutput:
+        "A ticket routing spec: a category taxonomy, a classification prompt with confidence rules, and a measured accuracy run over 20 real tickets.",
+      proofChecklist: [
+        "Paste the routing taxonomy with owner and SLA per category.",
+        "Paste the classification prompt including the low-confidence escalation rule.",
+        "Paste the 20-ticket accuracy table with the error analysis.",
+      ],
+      steps: [
+        'Extract the taxonomy from real tickets (8 min). Copy 20 recent tickets (subject + first message, scrub names) and paste this prompt: "Here are 20 support tickets: [paste tickets]. Propose a routing taxonomy of 5-8 categories: name, definition, owning queue or team, target SLA, and 2 example tickets from the set. Flag tickets that fit no category." Paste the taxonomy into your evidence notes.',
+        'Build the classifier prompt (9 min). Prompt: "Write a classification prompt that assigns a ticket to one of these categories: [paste taxonomy]. It must output: category, urgency (low/normal/high), confidence 0-100, and a one-line reason. Below confidence 70 it must route to human triage instead of guessing." Save it and copy it into your evidence.',
+        "Run the 20-ticket eval (10 min). First write down your own answer key — the correct category and urgency per ticket. Then classify all 20 with the prompt in a fresh chat and paste the full results table next to your key as evidence.",
+        'Measure and fix (10 min). Prompt: "Compare predictions to the answer key: [paste both]. Output accuracy overall and per category, list every miss with the likely cause (ambiguous definition, missing category, prompt wording), and rewrite the category definitions that caused misses." Save the accuracy table and revised taxonomy as evidence.',
+        "Generate your routing spec artifact (8 min). Ask the tutor to generate the ticket routing spec from your pasted taxonomy, classifier prompt, and accuracy run — a support lead should be able to pilot it next week. Attach it as your final artifact.",
+      ],
+      toolLaunches: SUPPORT_TOOL_LAUNCHES,
+    },
+    "Tone & Sentiment Detection": {
+      why: "The costliest tickets are the ones where frustration goes unnoticed until churn: this session builds a detector that flags at-risk customers and rewrites replies in the right register.",
+      expectedOutput:
+        "A tone playbook: a tagged set of real customer messages, an escalation rule set keyed to emotional signals, and before/after response rewrites.",
+      proofChecklist: [
+        "Paste the tagged message table (sentiment, emotion, churn-risk).",
+        "Paste the escalation rules mapped to the signals that trigger them.",
+        "Paste the before/after response rewrites with the tone rationale.",
+      ],
+      steps: [
+        'Collect and tag 15 real messages (8 min). Copy 15 customer messages across the mood spectrum (scrub names) and paste this prompt: "Tag each message: sentiment (positive/neutral/negative), primary emotion (frustration, confusion, anger, delight, anxiety), intensity 1-5, churn-risk yes/no with the phrase that signals it. Messages: [paste them]." Paste the tagged table into your evidence notes.',
+        'Define escalation rules (9 min). Prompt: "From this tagged table: [paste table], derive escalation rules a support team could run automatically: which signal combinations page a lead, which get a priority queue, which get a standard reply. Express each rule as WHEN [signals] THEN [action] and note false-positive risk." Copy the rules into your evidence.',
+        'Stress-test the rules (10 min). Prompt: "Here are 5 new messages the rules have not seen: [paste 5 held-back messages]. Apply the escalation rules step by step and state which fire. Then write 3 adversarial messages that SHOULD escalate but would slip past the rules, and patch the rules." Save the test results and patched rules as evidence.',
+        'Rewrite responses in the right register (10 min). Pick your 3 tensest messages. Prompt: "For each message and our draft reply: [paste pairs], critique the reply tone against the customer emotional state, then rewrite it — acknowledge the emotion first, be concrete about the fix, no corporate filler. Explain each change in one line." Paste the before/after pairs as evidence.',
+        "Generate your tone playbook artifact (8 min). Ask the tutor to generate the tone playbook from your pasted tagged table, escalation rules, and rewrites, then attach it as your final artifact.",
+      ],
+      toolLaunches: SUPPORT_TOOL_LAUNCHES,
+    },
+  },
+  operations: {
+    "Cross-application Data Sync": {
+      why: "Every manual copy-paste bridge between two tools is an error factory: this session designs the sync blueprint — triggers, field maps, and failure handling — that automation can be built from.",
+      expectedOutput:
+        "An automation blueprint for one real cross-tool sync: current-state map, field mapping table, trigger and edge-case rules, ready to hand to whoever wires it up.",
+      proofChecklist: [
+        "Paste the current-state workflow map with the failure points marked.",
+        "Paste the field mapping table with transforms and conflict rules.",
+        "Paste the edge-case matrix and the dry-run walkthrough output.",
+      ],
+      steps: [
+        'Map the manual workflow (8 min). Pick one copy-paste bridge you or your team run weekly. Paste this prompt into ChatGPT or Claude: "Interview me one question at a time about a manual data transfer between [tool A] and [tool B]: what triggers it, what fields move, who touches it, where it breaks. Stop after 6 questions and output a numbered current-state map with failure points marked." Paste the map into your evidence notes.',
+        'Design the field mapping (10 min). Prompt: "Build a field mapping table for this sync: [paste map]. Columns: source field, destination field, transform (format, lookup, default), what happens when the value is missing, and which system wins on conflict. Flag any field with no clean mapping." Copy the table into your evidence.',
+        'Define triggers and edge cases (10 min). Prompt: "For this sync: [paste map + mapping], specify: the trigger event, idempotency rule (what stops a double-run creating duplicates), retry behavior on failure, and an edge-case matrix — duplicates, deletions, partial records, permission errors — each with its handling rule." Save the rules as evidence.',
+        'Dry-run the blueprint on real records (9 min). Take 3 real records (scrub sensitive values). Prompt: "Walk these records through the blueprint step by step: [paste records + blueprint]. Show the destination result per record, and state exactly where record 3 would fail if [pick a realistic edge case] happened." Paste the walkthrough output and fix anything it exposed.',
+        "Generate your automation blueprint artifact (8 min). Ask the tutor to generate the sync blueprint from your pasted map, mapping table, rules, and dry-run — precise enough for a Zapier or Make build without further questions. Attach it as your final artifact.",
+      ],
+      toolLaunches: OPS_TOOL_LAUNCHES,
+    },
+    "OCR Document Processing": {
+      why: "Documents are where ops time disappears — this session turns a stack of PDFs or scans into structured rows using an AI vision chat, with an accuracy check that tells you if you can trust it.",
+      expectedOutput:
+        "A document processing workflow spec: an extraction schema, a tested vision-extraction prompt, and a field-level accuracy log over three real documents.",
+      proofChecklist: [
+        "Paste the extraction schema with validation rules per field.",
+        "Paste the extraction prompt and the structured output for each document.",
+        "Paste the field-level accuracy log against the source documents.",
+      ],
+      steps: [
+        'Define the extraction schema (8 min). Pick one document type you handle weekly (invoice, receipt, order form). Paste this prompt: "Design an extraction schema for [document type]: every field we need downstream, its type, a validation rule (format, range, required), and where on the document it usually appears. Downstream use: [one line]." Paste the schema into your evidence notes.',
+        'Build the extraction prompt (9 min). Prompt: "Write an extraction prompt for an AI vision chat that takes a [document type] image and returns this schema as JSON: [paste schema]. Rules: never invent a value — use null with a reason field, flag totals that do not sum, include a confidence per field." Copy the prompt into your evidence.',
+        "Extract from 3 real documents (10 min). Upload each document image (scrub sensitive values) to ChatGPT or Claude with the extraction prompt and capture all three JSON outputs into your evidence, exactly as returned — warts included.",
+        'Score accuracy field by field (10 min). Check every extracted value against the source documents. Prompt: "Here are my extraction results with my corrections marked: [paste corrected outputs]. Compute per-field accuracy across the 3 documents, identify the failure patterns (layout, handwriting, ambiguous labels), and revise the extraction prompt to address the top 2 patterns." Save the accuracy log and revised prompt as evidence.',
+        "Generate your workflow spec artifact (8 min). Ask the tutor to generate the document processing spec from your pasted schema, prompt, outputs, and accuracy log — including when a human must review. Attach it as your final artifact.",
+      ],
+      toolLaunches: OPS_TOOL_LAUNCHES,
+    },
+    "Intelligent Extraction": {
+      why: "Ops teams sit on unstructured gold — emails, notes, threads — and extraction is how it becomes reportable data: this session builds and validates a schema-locked extraction prompt on your real text.",
+      expectedOutput:
+        "An extraction pipeline spec: a target schema, a tested extraction prompt with strict null-handling, and a 10-sample validation log with failure analysis.",
+      proofChecklist: [
+        "Paste the target schema with one worked example.",
+        "Paste the extraction prompt and the 10 structured outputs.",
+        "Paste the validation log with per-field accuracy and failure patterns.",
+      ],
+      steps: [
+        'Pick the messy source and define the schema (8 min). Choose one unstructured source you mine manually (order emails, meeting notes, form submissions). Paste this prompt: "Here are 2 samples of the raw text: [paste samples]. Design a target schema: fields, types, validation rules, and one fully worked example extracted from sample 1. Ask me 2 clarifying questions about downstream use first." Paste the schema and example into your evidence notes.',
+        'Build the extraction prompt (9 min). Prompt: "Write an extraction prompt that converts this raw text into the schema as JSON: [paste schema]. Rules: null plus a reason when a field is absent, never merge two records, copy values verbatim where possible, add extraction_confidence 0-100 per record." Copy the prompt into your evidence.',
+        "Run it on 10 real samples (10 min). Collect 10 raw samples including 2 ugly ones (missing data, mixed topics). Run the extraction prompt over them in a fresh chat and paste all 10 structured outputs into your evidence unedited.",
+        'Validate and harden (10 min). Mark every wrong or missed field against the source text. Prompt: "Here are 10 extraction outputs with my corrections: [paste marked outputs]. Compute per-field accuracy, name the failure patterns, and rewrite the extraction prompt to fix the two most frequent — without breaking the null rules." Save the validation log and hardened prompt as evidence.',
+        "Generate your pipeline spec artifact (8 min). Ask the tutor to generate the extraction pipeline spec from your pasted schema, prompt, outputs, and validation log — including the human-review threshold. Attach it as your final artifact.",
+      ],
+      toolLaunches: OPS_TOOL_LAUNCHES,
+    },
+  },
+  "human-resources": {
+    "Screening Workflow Automation": {
+      why: "Screening breaks when every reviewer applies a private rubric: this session turns one real job description into an explicit, bias-checked rubric and proves it on real resumes.",
+      expectedOutput:
+        "A screening workflow doc: a weighted rubric derived from one real JD, five scored sample resumes with rationales, and a consistency-and-bias check.",
+      proofChecklist: [
+        "Paste the weighted screening rubric with evidence rules per criterion.",
+        "Paste the five scored screens with per-criterion rationales.",
+        "Paste the consistency and bias-check output with the rubric changes it forced.",
+      ],
+      steps: [
+        'Turn the JD into a rubric (8 min). Paste this prompt with a real job description: "Act as my structured-hiring partner. Turn this JD into a screening rubric: 6-8 criteria, weight per criterion, and for each a rule for what counts as evidence on a resume (specific accomplishments, not keywords). JD: [paste JD]." Paste the rubric into your evidence notes.',
+        'Calibrate on a known-good profile (9 min). Prompt: "Score this resume of someone who succeeded in a similar role against the rubric: [paste resume + rubric]. Per criterion: score, the exact resume line as evidence, and what is missing. If the rubric rewards pedigree over demonstrated work, propose fixes." Save the calibration notes and any rubric changes as evidence.',
+        'Screen 5 sample resumes (10 min). Use real (scrubbed) or realistic sample resumes. In a fresh chat: "Score each resume against this rubric: [paste rubric + resumes]. Output per candidate: per-criterion scores with cited evidence lines, total, and recommend (advance / maybe / decline) with a 2-line rationale." Paste all five screens into your evidence.',
+        'Run the consistency and bias check (10 min). Prompt: "Audit these 5 screens: [paste screens]. (1) Consistency: same evidence, same score everywhere? (2) Proxy bias: did school names, company brands, or employment gaps move scores without evidence? (3) Rerun candidate 2 with the name and university removed — does the score change? Report findings and rewrite the weakest rubric rule." Save the audit output and final rubric as evidence.',
+        "Generate your screening workflow artifact (8 min). Ask the tutor to generate the screening doc from your pasted rubric, screens, and audit — including where a human must make the call. Attach it as your final artifact.",
+      ],
+      toolLaunches: HR_TOOL_LAUNCHES,
+    },
+    "Interview Signal Summaries": {
+      why: "Debrief quality decides hiring quality, and raw interview notes bury the signal: this session builds a summary format that separates observed evidence from interviewer opinion.",
+      expectedOutput:
+        "A debrief format pack: a signal summary template, two real interviews summarized with evidence-opinion separation, and a red-team pass for halo effects.",
+      proofChecklist: [
+        "Paste the signal summary template.",
+        "Paste both interview summaries with evidence tagged to quotes.",
+        "Paste the red-team output and the template fixes it forced.",
+      ],
+      steps: [
+        'Design the summary template (8 min). Paste this prompt: "Design an interview signal summary template for [role]: competencies assessed, per competency an evidence field (what the candidate actually said or did) split from an interpretation field (what the interviewer concluded), confidence per signal, and open questions for the next round. Keep it under one page." Paste the template into your evidence notes.',
+        'Summarize a real interview (9 min). Take your notes or transcript from one interview (scrub names). Prompt: "Fill the template from these notes: [paste template + notes]. Every evidence entry must quote or closely paraphrase the notes — if a competency has no evidence, write NOT ASSESSED instead of inferring." Copy the completed summary into your evidence.',
+        'Summarize a second, contrasting interview (10 min). Repeat with notes from a different candidate or interviewer in a fresh chat, then prompt: "Compare these two summaries: [paste both]. Which signals are truly comparable and which reflect different interviewer styles? List the template changes that would make round-over-round comparison cleaner." Save both the summary and comparison as evidence.',
+        'Red-team for halo and leniency (10 min). Prompt: "Audit these summaries for judgment traps: [paste summaries]. Where does one strong answer bleed into unrelated competencies (halo)? Where does interpretation exceed evidence? Where would a skeptical hiring manager push back? Rewrite the two weakest entries with evidence-only language." Save the audit and rewrites as evidence.',
+        "Generate your debrief format artifact (8 min). Ask the tutor to generate the debrief pack from your pasted template, summaries, and red-team notes — ready to run in your next hiring loop. Attach it as your final artifact.",
+      ],
+      toolLaunches: HR_TOOL_LAUNCHES,
+    },
+    "Policy Assistant Copilot": {
+      why: "HR answers the same policy questions on repeat, and a wrong answer is a liability: this session builds a copilot that answers only from your actual policies and escalates everything else.",
+      expectedOutput:
+        "A policy copilot prompt pack: a curated policy pack, a grounded answering prompt with escalation rules, and a test log across easy, tricky, and out-of-scope questions.",
+      proofChecklist: [
+        "Paste the policy pack inventory with coverage gaps flagged.",
+        "Paste the copilot system prompt with its escalation rules.",
+        "Paste the ten-question test log with the grading of each answer.",
+      ],
+      steps: [
+        'Assemble the policy pack (8 min). Collect 4-6 real policy excerpts (PTO, expenses, remote work — scrub anything confidential). Paste this prompt: "Here are our policy documents: [paste excerpts]. Build an inventory: doc ID, topic, the 3 most likely employee questions it answers, ambiguous language a copilot could misread, and topics employees ask about that no document covers." Paste the inventory into your evidence notes.',
+        'Build the copilot prompt (9 min). Prompt: "Write a system prompt for an HR policy copilot that answers ONLY from the provided documents. Rules: cite the doc ID and section for every answer, answer in plain language, and escalate to a human for anything involving medical, legal, harassment, compensation disputes, or questions the documents do not cover — with a warm handoff line. Documents: [paste pack]." Save it and copy it into your evidence.',
+        "Test with 10 employee questions (10 min). Write 10 questions: 5 straightforward, 3 tricky edge cases, 2 that MUST escalate (one out-of-scope, one sensitive). Run each against the copilot in a fresh chat and paste the full Q&A log into your evidence.",
+        'Grade and patch (10 min). Prompt: "Grade this copilot test log: [paste log]. Per answer: correct-and-cited, wrong, over-answered (gave policy advice beyond the docs), or correctly-escalated. Patch the system prompt for every failure and list the policy gaps HR should actually document." Save the graded log and patched prompt as evidence.',
+        "Generate your copilot pack artifact (8 min). Ask the tutor to generate the policy copilot pack from your pasted inventory, prompt, and graded test log — including the escalation boundary. Attach it as your final artifact.",
+      ],
+      toolLaunches: HR_TOOL_LAUNCHES,
+    },
+  },
+  "branding-design": {
+    "Image Synthesis": {
+      why: "Image generation earns its place when it runs from a real creative brief to a selected, defensible set — this session takes one campaign need through brief, prompt system, and critique.",
+      expectedOutput:
+        "A concept board for one real campaign need: a creative brief, an iterated prompt system, and the three selected images with selection rationale.",
+      proofChecklist: [
+        "Paste the creative brief.",
+        "Paste the prompt iterations with what each change fixed.",
+        "Paste or screenshot the selected images with the selection rationale.",
+      ],
+      steps: [
+        'Write the creative brief with AI (8 min). Paste this prompt into ChatGPT or Claude: "Act as my creative director. I need visuals for [brand + campaign need, one line]. Interview me with up to 4 questions, then write a one-page creative brief: audience, single-minded message, mood, color and style references, mandatories, and what to avoid." Paste the brief into your evidence notes.',
+        'Build the base prompt system (9 min). Prompt: "Translate this brief into an image-generation prompt system for Midjourney or a similar tool: [paste brief]. Output: one base prompt (subject, style, lighting, composition, mood), 3 controlled variations that change exactly one variable each, and a negative list of what must not appear." Copy the prompt set into your evidence.',
+        "Generate and iterate (12 min). Run the base prompt and variations in your image tool (Midjourney, or image generation inside ChatGPT). After each round, note what is off, revise the prompt, and run again — at least 3 rounds. Save every prompt version and screenshot the strongest output per round as evidence.",
+        'Critique against the brief (8 min). Prompt: "Here is the brief and my 6 strongest outputs (described or attached): [paste brief + images or descriptions]. Score each 1-5 on brief fit, brand safety, and craft (hands, text, artifacts). Pick the top 3 and state what a retoucher would still fix." Paste the critique table as evidence.',
+        "Generate your concept board artifact (8 min). Ask the tutor to generate the concept board write-up from your pasted brief, prompt system, and critique — the selected images with the reasoning a client could follow. Attach it as your final artifact.",
+      ],
+      toolLaunches: DESIGN_TOOL_LAUNCHES,
+    },
+    "Style-consistent Training": {
+      why: "One good image is luck; a style you can reproduce across every asset is a system — this session extracts your style into a reusable prompt block and proves it holds across subjects.",
+      expectedOutput:
+        "A style system doc: a written style profile extracted from references, a reusable style block, and a five-subject consistency test with drift scores.",
+      proofChecklist: [
+        "Paste the extracted style profile.",
+        "Paste the reusable style block and the five test prompts.",
+        "Paste or screenshot the consistency grid with the drift notes.",
+      ],
+      steps: [
+        'Extract the style profile (8 min). Pick 3-5 reference images that define the style (yours or the brand you serve). Paste this prompt with the images into ChatGPT or Claude: "Describe the shared visual style of these references as a reusable specification: palette, line and shape language, lighting, texture, composition habits, era or movement echoes, and what is conspicuously absent. Be specific enough that another artist could fake it." Paste the profile into your evidence notes.',
+        'Compress it into a style block (9 min). Prompt: "Compress this style profile into a reusable style block for image generation — a comma-separated descriptor string under 60 words plus a negative list: [paste profile]. Give me 2 variants: one strict (maximum fidelity) and one loose (style-adjacent exploration)." Copy both blocks into your evidence.',
+        "Run the five-subject consistency test (11 min). Generate 5 images with the strict block, changing ONLY the subject each time (portrait, object, landscape, interior, abstract). Keep everything else fixed. Screenshot the grid and save each exact prompt as evidence.",
+        'Score the drift (9 min). Prompt: "Here are 5 outputs meant to share one style (attached or described): [paste grid or descriptions]. Score each 1-5 on palette, line language, lighting, and mood fidelity to the profile. Where did the style drift and which descriptor failed to hold it? Revise the style block to pin down the two worst drifts." Paste the drift table and revised block as evidence.',
+        "Generate your style system artifact (8 min). Ask the tutor to generate the style system doc from your pasted profile, blocks, and consistency test — usable by anyone producing assets for this brand. Attach it as your final artifact.",
+      ],
+      toolLaunches: DESIGN_TOOL_LAUNCHES,
+    },
+    "Vector Generation": {
+      why: "Icons and marks live or die on consistency and scalability — this session gets you an AI-generated vector set with real SVG output you can inspect, not just pictures of logos.",
+      expectedOutput:
+        "An icon set pack: a geometry spec, five AI-generated SVG icons that share one construction system, and the paste-ready SVG code with usage notes.",
+      proofChecklist: [
+        "Paste the icon set brief and geometry spec.",
+        "Paste the SVG code for all five icons.",
+        "Paste the consistency review and what you regenerated in response.",
+      ],
+      steps: [
+        'Define the set and its geometry (8 min). Paste this prompt: "Act as my brand systems designer. I need a 5-icon set for [brand/product + the 5 concepts]. Define the construction system: grid size, stroke weight, corner radius, fill vs outline, allowed angles, and the metaphor style. Output as a geometry spec." Paste the spec into your evidence notes.',
+        'Generate the first icons as SVG code (9 min). Prompt: "Generate SVG code for the first 2 icons following this geometry spec exactly: [paste spec + concepts]. Requirements: single viewBox 0 0 24 24, consistent stroke width, no embedded raster, minimal paths, each under 20 elements." Paste the SVG code into your evidence and preview it (any online SVG viewer or a Figma paste).',
+        'Complete and stress the set (11 min). Generate the remaining 3 icons in the same chat so the system holds. Then prompt: "Render-check all 5 icons against the geometry spec: list any inconsistencies in stroke, corner treatment, optical weight, or metaphor style across the set, icon by icon." Save all SVG code plus the inconsistency list as evidence.',
+        'Fix and verify scalability (9 min). Prompt: "Regenerate the flagged icons with the fixes applied: [paste flags]. Then state how each icon degrades at 16px and what to simplify for a small-size variant." Paste the final SVG set and preview screenshots at large and small sizes as evidence.',
+        "Generate your icon set artifact (8 min). Ask the tutor to generate the icon set pack from your pasted spec, SVG code, and consistency review — code plus usage notes another designer could extend. Attach it as your final artifact.",
+      ],
+      toolLaunches: DESIGN_TOOL_LAUNCHES,
+    },
+    "Video AI": {
+      why: "AI video is storyboard-first work: the craft is in the shot design and prompt writing, and this session produces a directed concept — brief, storyboard, generated shots, and an edit plan.",
+      expectedOutput:
+        "A video concept pack: a 15-30 second concept brief, an AI-built storyboard with per-shot generation prompts, at least one generated clip, and an edit plan.",
+      proofChecklist: [
+        "Paste the concept brief and storyboard with per-shot prompts.",
+        "Paste or link the generated clip outputs with your iteration notes.",
+        "Paste the edit plan with music, pacing, and text overlay calls.",
+      ],
+      steps: [
+        'Write the concept brief (8 min). Paste this prompt into ChatGPT or Claude: "Act as my creative director. I need a 15-30 second video for [brand + goal, one line]. Interview me with up to 3 questions, then write the concept brief: audience, single message, emotional arc in 3 beats, visual style, and the final frame." Paste the brief into your evidence notes.',
+        'Storyboard with per-shot prompts (9 min). Prompt: "Turn this brief into a storyboard of 4-6 shots: [paste brief]. Per shot: duration, camera move, subject and action, transition, and a ready-to-run text-to-video prompt written for a tool like Runway (subject, motion, camera, lighting, style, length)." Copy the storyboard into your evidence.',
+        "Generate the hero shots (11 min). Run the 2 most important shot prompts in your video tool (Runway or similar). Iterate each at least once — note what broke (motion, morphing, coherence) and how you changed the prompt. Save the clips or screenshots and every prompt version as evidence.",
+        'Critique and plan the edit (9 min). Prompt: "Here is my storyboard and notes on the generated shots: [paste both]. Critique arc and pacing, then write the edit plan: shot order with durations, where text overlays carry the message, music mood, and the cheapest fix for the weakest shot (regenerate, trim, or replace with a still)." Paste the edit plan as evidence.',
+        "Generate your video concept artifact (8 min). Ask the tutor to generate the video concept pack from your pasted brief, storyboard, generation notes, and edit plan, then attach it as your final artifact.",
+      ],
+      toolLaunches: DESIGN_TOOL_LAUNCHES,
+    },
+  },
+  "software-engineering": {
+    "API Integration": {
+      why: "Integrations are judged by how they fail, not how they demo: this session uses an AI pair to design, implement, and red-team a third-party API client around one real call you need.",
+      expectedOutput:
+        "A reviewable integration slice: a client module with typed errors, retry and timeout policy, a red-team failure table, and AI-generated tests — all as pasteable code.",
+      proofChecklist: [
+        "Paste the integration contract (endpoints, auth, failure policy).",
+        "Paste the client module code and the failure-mode table.",
+        "Paste the generated tests and their output.",
+      ],
+      steps: [
+        'Write the integration contract (8 min). Pick one real API you need (payment, CRM, weather — anything with docs). Paste this prompt into Claude, ChatGPT, or your AI editor (Cursor, Claude Code): "Act as my integration reviewer. I need to call [API + endpoint] from [language/stack] to do [one line]. Draft the integration contract: request/response shapes, auth handling, timeout budget, retry policy with backoff, rate-limit behavior, and which errors are retryable vs fatal. Ask me 2 questions first." Paste the contract into your evidence notes.',
+        'Generate the client module (10 min). Prompt: "Implement the client module from this contract: [paste contract]. Requirements: one public function per operation, typed errors (no silent nulls), timeouts and retries per the contract, no secrets in code — read config from the runtime settings. Keep it under 120 lines and comment only the non-obvious." Copy the full code into your evidence.',
+        'Red-team the failure modes (10 min). In a fresh chat: "Review this API client like a hostile SRE: [paste code + contract]. Table every failure mode — network partition, 429 storm, malformed 200, expired credentials, slow response just under timeout — with: what the code does today, what it should do, severity. Then patch the two worst." Paste the failure table and patched code as evidence.',
+        'Generate the tests (9 min). Prompt: "Write unit tests for this client with the HTTP layer faked: [paste final code]. Cover: happy path, each typed error, retry-then-succeed, retry-exhausted, and timeout. State what each test would catch in a regression." Run them if your project is handy, or have the AI trace the expected results — paste the tests and outcome as evidence.',
+        "Generate your integration artifact (8 min). Ask the tutor to generate the integration design note from your pasted contract, code, failure table, and tests — what a reviewer needs to approve this PR. Attach it as your final artifact.",
+      ],
+      toolLaunches: SWE_TOOL_LAUNCHES,
+    },
+    "System Architecture": {
+      why: "Architecture skill shows in written tradeoffs: this session produces a real architecture decision record — options, failure analysis, and capacity math — with an AI sparring partner instead of a whiteboard.",
+      expectedOutput:
+        "An architecture decision record for one real system need: three candidate designs with tradeoffs, a failure-mode analysis, back-of-envelope capacity math, and a justified recommendation.",
+      proofChecklist: [
+        "Paste the requirements brief with load and constraint numbers.",
+        "Paste the three candidate architectures with the tradeoff table.",
+        "Paste the failure-mode analysis and capacity estimates.",
+      ],
+      steps: [
+        'Pin down the requirements (8 min). Pick one real design decision you face (queue vs cron, monolith split, cache layer). Paste this prompt: "Act as my staff engineer. Interview me one question at a time about this system need: [one line]. Cover: read/write volume, latency budget, consistency needs, team size, existing stack, and cost ceiling. Stop after 6 questions and output a requirements brief with explicit numbers — force me to estimate where I do not know." Paste the brief into your evidence notes.',
+        'Generate three candidate designs (10 min). Prompt: "Propose 3 architectures for this brief: [paste brief]. For each: component diagram in text, data flow, the strongest argument for it, the strongest argument against it, and operational burden for a team of [N]. Make them genuinely different — not one design with three names." Copy all three into your evidence.',
+        'Run the failure-mode analysis (10 min). Prompt: "For the two strongest candidates, walk through: the dependency that fails first under 10x load, behavior during a partial outage, data-loss windows, and the 3am page each design generates most. Then do back-of-envelope capacity math from the brief numbers — show the arithmetic." Paste the analysis and math as evidence.',
+        'Decide and write the ADR (9 min). Prompt: "Write the architecture decision record: context (from the brief), options considered (the three candidates, one paragraph each), decision with justification tied to the failure analysis and math, and consequences — including what becomes harder. Mark any unverified input as [ASSUMPTION]." Save the ADR draft as evidence.',
+        "Generate your ADR artifact (8 min). Ask the tutor to generate the final architecture decision record from your pasted brief, candidates, analysis, and draft — reviewable by an engineer who was not in the room. Attach it as your final artifact.",
+      ],
+      toolLaunches: SWE_TOOL_LAUNCHES,
+    },
+    "RAG Setup": {
+      why: "RAG quality is decided by chunking, retrieval, and grounding rules long before any model call: this session designs the pipeline and proves the grounding behavior on your own documents.",
+      expectedOutput:
+        "A RAG design pack: a corpus and chunking spec, retrieval configuration, a grounded answering prompt, and an eval log showing cited answers and correctly refused questions.",
+      proofChecklist: [
+        "Paste the corpus inventory and chunking spec.",
+        "Paste the grounded answering prompt and retrieval configuration.",
+        "Paste the eval log with grounded, hallucinated, and refused outcomes.",
+      ],
+      steps: [
+        'Spec the corpus and chunking (8 min). Pick a real document set (docs, wiki, runbooks). Paste this prompt: "Act as my RAG architect. My corpus is [description: doc types, count, size, update rate] serving [use case]. Recommend: chunk size and overlap with reasoning, what metadata to attach per chunk, embedding model class, and vector store choice for my scale — with the simplest option that works. Ask me 2 questions first." Paste the spec into your evidence notes.',
+        'Generate the pipeline code (10 min). Prompt: "Write the ingestion and retrieval code for this spec in [language]: [paste spec]. Two functions: ingest(documents) that chunks, embeds, and upserts with metadata; retrieve(query, k) that returns chunks with scores and source references. Use [chosen store] and keep it under 100 lines total." Copy the code into your evidence.',
+        'Write the grounding rules (10 min). Prompt: "Write the answer-generation prompt for this RAG system: it receives a question plus retrieved chunks, must cite chunk sources inline for every claim, must say the corpus does not cover it when retrieval scores are weak, and must never blend outside knowledge into corpus claims. Include the score threshold logic." Paste the prompt as evidence.',
+        "Eval the grounding (9 min). Write 8 test questions: 5 answerable from your corpus, 2 not covered, 1 adversarial (asks it to speculate). In a fresh chat, simulate the pipeline: paste real excerpt chunks plus the answering prompt per question. Grade each answer grounded / hallucinated / correctly-refused and save the eval log as evidence.",
+        "Generate your RAG design artifact (8 min). Ask the tutor to generate the RAG design pack from your pasted spec, code, grounding prompt, and eval log — including known failure modes. Attach it as your final artifact.",
+      ],
+      toolLaunches: SWE_TOOL_LAUNCHES,
+    },
+    "Prompt Engineering in Code": {
+      why: "Production prompts are code: versioned, schema-locked, and measured against an eval set — this session turns one LLM feature into a prompt module with evals instead of vibes.",
+      expectedOutput:
+        "A prompt module pack: a structured prompt template as code with output schema validation, a 10-case eval set, and two measured iterations showing the score move.",
+      proofChecklist: [
+        "Paste the prompt template code with its output schema.",
+        "Paste the 10-case eval set with expected outputs.",
+        "Paste both eval runs showing per-case results and the fixes between them.",
+      ],
+      steps: [
+        'Define the feature contract (8 min). Pick one real LLM feature (classify tickets, extract fields, summarize records). Paste this prompt: "Act as my LLM engineer. My feature: [one line], input: [shape], downstream consumer: [one line]. Define the contract: output JSON schema, edge cases the prompt must survive (empty input, wrong language, adversarial text), and the failure behavior when output does not validate." Paste the contract into your evidence notes.',
+        'Build the prompt as code (9 min). Prompt: "Write the prompt module in [language] for this contract: [paste contract]. Include: a system prompt constant with role, rules, and 2 few-shot examples; a function that builds messages from input; schema validation on the response with a typed error on mismatch. No retry loops yet — fail loudly." Copy the module into your evidence.',
+        'Build the eval set (11 min). Prompt: "Generate a 10-case eval set for this contract: [paste contract]. Cover: 5 typical inputs, 3 edge cases from the contract, 2 adversarial. Per case: input, expected output (exact or rubric), and what failure it detects." Adjust any case that does not match your real data, then save the eval set as evidence.',
+        'Run, measure, iterate (9 min). Run all 10 cases against the prompt in a fresh chat, score each pass/fail against expected outputs, then prompt: "Here are the failures: [paste failing cases + outputs]. Diagnose each (instruction gap, few-shot gap, schema ambiguity) and revise the system prompt minimally." Re-run the failures and paste both runs of scores as evidence.',
+        "Generate your prompt module artifact (8 min). Ask the tutor to generate the prompt module pack from your pasted contract, code, eval set, and both runs — including the score movement between iterations. Attach it as your final artifact.",
+      ],
+      toolLaunches: SWE_TOOL_LAUNCHES,
+    },
+  },
+  "quality-assurance": {
+    "Edge-case Discovery via LLMs": {
+      why: "The bugs that hurt ship in the gaps between happy-path tests: this session uses an LLM as an adversarial tester to enumerate, rank, and specify the edge cases your suite is missing.",
+      expectedOutput:
+        "An edge-case library for one real feature: a risk-ranked case taxonomy, adversarial input sets, and the top cases written as executable test specs.",
+      proofChecklist: [
+        "Paste the feature contract you tested against.",
+        "Paste the risk-ranked edge-case taxonomy with the adversarial inputs.",
+        "Paste the test specs for the top-priority cases.",
+      ],
+      steps: [
+        'Write the feature contract (8 min). Pick one feature whose failure is expensive. Paste this prompt into ChatGPT or Claude: "Act as my QA lead. Here is the feature: [describe inputs, outputs, rules, and what must never happen]. Restate it as a testable contract: inputs with valid ranges, invariants, and explicit out-of-scope behavior. Ask me up to 3 questions where the spec is ambiguous." Paste the contract into your evidence notes.',
+        'Enumerate the edge-case taxonomy (9 min). Prompt: "Generate an edge-case taxonomy for this contract: [paste contract]. Categories: boundary values, type and format abuse, state and timing (double-submit, stale data, concurrent edits), scale extremes, and malicious input. At least 5 concrete cases per category, each with the expected correct behavior." Copy the taxonomy into your evidence.',
+        'Rank by risk and build adversarial inputs (10 min). Prompt: "Score every case: likelihood 1-3 times blast-radius 1-3, rank by product. For the top 8, produce the exact adversarial input values — real strings, numbers, and sequences I can paste into a test, not descriptions." Save the ranked table and inputs as evidence.',
+        'Write the test specs (10 min). Prompt: "Turn the top 5 cases into test specs in [your framework, e.g. Playwright or Jest]: arrange/act/assert with the exact adversarial inputs, plus a one-line comment naming the failure it guards against. Flag any case that needs a fixture my description did not cover." Paste the runnable specs into your evidence.',
+        "Generate your edge-case library artifact (8 min). Ask the tutor to generate the edge-case library from your pasted contract, taxonomy, rankings, and specs — organized so the team can pull cases into any suite. Attach it as your final artifact.",
+      ],
+      toolLaunches: QA_TOOL_LAUNCHES,
+    },
+    "Visual Regression": {
+      why: "UI breakage that functional tests cannot see still loses users: this session builds a visual regression plan — what to snapshot, when a diff matters, and the generated test code to enforce it.",
+      expectedOutput:
+        "A visual regression plan: a prioritized screen inventory, diff-triage rules that separate real breakage from noise, and generated snapshot test code for the top screens.",
+      proofChecklist: [
+        "Paste the prioritized screen and state inventory.",
+        "Paste the diff-triage rules with the noise sources they filter.",
+        "Paste the generated snapshot test code.",
+      ],
+      steps: [
+        'Inventory the surfaces that matter (8 min). Paste this prompt into ChatGPT or Claude: "Act as my visual QA lead for [product/app, one line]. Build a screen inventory: the 10 highest-value screens and the states of each (empty, loaded, error, long-content, mobile). Rank by user impact when they silently break. Ask me 2 questions about traffic and release cadence first." Paste the ranked inventory into your evidence notes.',
+        'Define what counts as breakage (9 min). Prompt: "Write diff-triage rules for visual regression on these screens: [paste inventory]. Classify diff causes — layout shift, font fallback, color drift, animation frames, dynamic data — into always-fail, needs-human-review, and auto-ignore, with a masking strategy for dynamic regions (dates, avatars, feeds)." Copy the rules into your evidence.',
+        'Generate the snapshot tests (10 min). Prompt: "Generate Playwright visual regression tests for the top 3 screens: [paste inventory rows + rules]. Per screen: navigate, wait for stable state, mask the dynamic regions from the rules, and snapshot desktop plus mobile viewports. Include the config block that sets diff threshold and mask color." Paste the generated code into your evidence.',
+        'Dry-run the triage on real diffs (10 min). Describe or screenshot 3 recent visual changes from your product (or 3 plausible ones). Prompt: "Apply the triage rules to these diffs: [paste descriptions or images]. For each: classification, the rule that decided it, and whether a human should have been paged. Patch the rule that misfires." Save the triage walkthrough and patched rules as evidence.',
+        "Generate your regression plan artifact (8 min). Ask the tutor to generate the visual regression plan from your pasted inventory, rules, test code, and triage dry-run — ready for the team to adopt screen by screen. Attach it as your final artifact.",
+      ],
+      toolLaunches: QA_TOOL_LAUNCHES,
+    },
+    "NLP-driven Test Scripts": {
+      why: "Acceptance criteria written in English and tests written in code drift apart within a sprint: this session builds the translation layer — plain-language criteria in, runnable test scripts out.",
+      expectedOutput:
+        "A test suite pack: user stories converted into Gherkin scenarios, generated runnable test scripts, and a coverage audit showing which criteria are actually enforced.",
+      proofChecklist: [
+        "Paste the user stories and the Gherkin scenarios derived from them.",
+        "Paste the generated test scripts.",
+        "Paste the coverage audit with the gaps it exposed.",
+      ],
+      steps: [
+        'Collect the plain-language criteria (8 min). Take 3 real user stories or acceptance criteria from your tracker. Paste this prompt: "Act as my test analyst. Rewrite these stories as testable statements: [paste stories]. Flag every ambiguity a developer could interpret two ways, and ask me to resolve the 3 worst before proceeding." Paste the clarified criteria into your evidence notes.',
+        'Derive Gherkin scenarios (9 min). Prompt: "Convert the criteria into Gherkin: [paste criteria]. Per story: the happy-path scenario plus at least 2 unhappy paths (validation failure, permission denied, boundary). Given/When/Then only — no implementation details in the steps." Copy the scenarios into your evidence.',
+        'Generate the runnable scripts (11 min). Prompt: "Implement these Gherkin scenarios as [Playwright/Cypress/your framework] tests: [paste scenarios + describe the UI or paste selectors]. Use accessible selectors (roles, labels) over CSS classes, one test per scenario, shared setup extracted. Mark any selector you had to guess with TODO." Paste the generated scripts into your evidence and resolve the TODOs against your real UI.',
+        'Audit the coverage (9 min). In a fresh chat: "Audit these tests against the original stories: [paste stories + scripts]. Which acceptance criteria have no test? Which tests assert less than the criterion demands (weak assertions)? Rank the gaps by risk and write the one missing test that matters most." Save the audit and the added test as evidence.',
+        "Generate your test suite artifact (8 min). Ask the tutor to generate the test suite pack from your pasted criteria, scenarios, scripts, and audit — including the criteria-to-test traceability table. Attach it as your final artifact.",
+      ],
+      toolLaunches: QA_TOOL_LAUNCHES,
+    },
+  },
 };
 
 const PLAYBOOKS: Record<string, PlaybookTemplate> = {
@@ -312,17 +813,19 @@ const PLAYBOOKS: Record<string, PlaybookTemplate> = {
     toolLaunches: MSEO_TOOL_LAUNCHES,
   },
   "branding-design": {
-    why: "This module is the quickest route to visible creative proof because the output is immediately inspectable by other people.",
-    expectedOutput: "A style-consistent visual set, concept board, or design asset package with a clear creative brief.",
+    why: "This path's playbooks run the whole creative loop inside an AI tool: a real brand need in, pasteable prompts and outputs out, and a reviewable creative asset at the end.",
+    expectedOutput:
+      "One AI-produced creative asset (concept set, style system, or visual pack) tied to a real brand need, with the prompts and outputs that produced it.",
     proofChecklist: [
-      "Show the prompt or creative system you used.",
-      "Show the strongest visual outputs.",
-      "Explain how you kept style, quality, or iteration speed under control.",
+      "Paste the creative brief.",
+      "Paste the prompt iterations and strongest outputs.",
+      "Paste the critique pass and what you changed.",
     ],
     steps: [
-      "Start from one brand or campaign need that already exists.",
-      "Generate a first round of outputs using the module workflow.",
-      "Select the strongest variants and document the creative reasoning behind them.",
+      'Anchor {module} on one real brand need (10 min). Paste this prompt into ChatGPT or Claude: "Act as my creative director for {module}. The brand need is [one line] for [audience]. Ask me up to 4 questions about mood, references, and mandatories, then write a compact creative brief with a single-minded message." Paste the brief as evidence.',
+      'Produce the first round with AI (12 min). Prompt: "Using this brief: [paste it], produce the first working version of the {module} output — include the exact generation prompts or specifications so the work is reproducible." Run or refine the outputs in your creative tool and copy the prompts plus strongest results into your evidence.',
+      'Critique against the brief (13 min). In a fresh chat: "You are a demanding creative director reviewing this work against its brief: [paste brief + outputs or descriptions]. Score brief fit, craft, and distinctiveness 1-5, name what reads as generic AI output, and direct the two most important revisions." Save the critique and revised outputs as evidence.',
+      "Generate your artifact (10 min). Ask the tutor to generate the final artifact from your pasted brief, prompts, outputs, and critique, then attach it as proof.",
     ],
     toolLaunches: [
       {
@@ -358,17 +861,19 @@ const PLAYBOOKS: Record<string, PlaybookTemplate> = {
     ],
   },
   "quality-assurance": {
-    why: "This module helps you turn QA thinking into a concrete automation or test artifact that teams can inspect immediately.",
-    expectedOutput: "A test plan, generated test suite, or edge-case library that clearly improves coverage.",
+    why: "This path's playbooks run the whole QA loop inside an AI tool: a real feature contract in, pasteable cases and scripts out, and a reviewable test asset at the end.",
+    expectedOutput:
+      "One AI-produced QA asset (edge-case library, test plan, or generated suite) tied to a real feature, with the prompts and outputs that produced it.",
     proofChecklist: [
-      "Name the product area or workflow under test.",
-      "Show the generated cases or regression checks.",
-      "State what risk is now covered better than before.",
+      "Paste the feature contract you tested against.",
+      "Paste the AI-generated cases or scripts.",
+      "Paste the coverage critique and what you changed.",
     ],
     steps: [
-      "Choose one workflow where failures are expensive or hard to catch manually.",
-      "Use the module to generate tests, edge cases, or regression coverage.",
-      "Tighten the output and save the strongest proof artifact.",
+      'Anchor {module} on one real feature under test (10 min). Paste this prompt into ChatGPT or Claude: "Act as my QA lead for {module}. The feature under test is [one line] and the failure that scares us most is [one line]. Ask me up to 4 questions about inputs, states, and invariants, then restate the feature as a testable contract." Paste the contract as evidence.',
+      'Produce the first working output with AI (12 min). Prompt: "Using this contract: [paste it], produce the first working version of the {module} output — concrete inputs and expected behavior, not descriptions. Mark anything assumed with [ASSUMPTION]." Copy the full output into your evidence.',
+      'Attack the coverage (13 min). In a fresh chat: "You are an adversarial tester reviewing this QA work: [paste output + contract]. Name the 5 most dangerous scenarios it still misses — timing, state, scale, malice — ranked by blast radius, then add the two most important ones." Save the critique and additions as evidence.',
+      "Generate your artifact (10 min). Ask the tutor to generate the final artifact from your pasted contract, output, and coverage notes, then attach it as proof.",
     ],
     toolLaunches: [
       {
@@ -404,17 +909,19 @@ const PLAYBOOKS: Record<string, PlaybookTemplate> = {
     ],
   },
   "sales-revops": {
-    why: "This module is the highest-leverage way to show AI value in sales because it touches pipeline quality, outreach quality, or rep speed directly.",
-    expectedOutput: "A lead scoring model, enrichment workflow, or outbound sequence that a manager could review and reuse.",
+    why: "This path's playbooks run the whole revenue loop inside an AI tool: real pipeline context in, pasteable evidence out, and a reviewable sales asset at the end.",
+    expectedOutput:
+      "One AI-produced revenue asset (scoring rubric, enrichment workflow, or outreach sequence) grounded in a real pipeline motion, with the prompts and outputs that produced it.",
     proofChecklist: [
-      "Show the segment or account set you targeted.",
-      "Show the scoring, enrichment, or messaging logic.",
-      "State the rep workflow or conversion gain this should improve.",
+      "Paste the pipeline motion brief.",
+      "Paste the AI-produced working output with assumptions marked.",
+      "Paste the manager-review critique and what you changed.",
     ],
     steps: [
-      "Pick one pipeline motion that is manual, repetitive, or inconsistent today.",
-      "Run the module on a real account list, segment, or outreach workflow.",
-      "Save the output in a format you could show to a sales or RevOps lead.",
+      'Anchor {module} on one real pipeline motion (10 min). Paste this prompt into ChatGPT or Claude: "Act as my RevOps partner for {module}. The pipeline motion I want to improve is [one line] and the metric that should move is [metric]. Ask me up to 4 questions to pin down the segment, the current manual process, and what a rep would need to trust the output — then restate the target crisply." Paste the restated target as evidence.',
+      'Produce the first working output with AI (12 min). Prompt: "Using this target: [paste it], produce the first working version of the {module} output. Ground every rule and claim in what I told you — mark anything you had to assume with [ASSUMPTION]." Copy the full output into your evidence.',
+      'Red-team it like a sales manager (13 min). In a fresh chat: "You are a skeptical sales manager reviewing this work before letting reps use it: [paste output]. List the 5 biggest gaps — wrong incentives, unverifiable data, steps reps will skip — ranked by revenue risk, then fix the two worst." Save the critique and fixes as evidence.',
+      "Generate your artifact (10 min). Ask the tutor to generate the final artifact from your pasted target, output, and critique notes, then attach it as proof.",
     ],
     toolLaunches: [
       {
@@ -451,17 +958,19 @@ const PLAYBOOKS: Record<string, PlaybookTemplate> = {
     ],
   },
   "customer-support": {
-    why: "This module is the clearest way to prove AI support value because routing, retrieval, and response quality are visible quickly.",
-    expectedOutput: "A ticket routing logic, knowledge retrieval flow, or support copilot prompt set tied to a real support scenario.",
+    why: "This path's playbooks run the whole support loop inside an AI tool: real tickets and policies in, pasteable evidence out, and a reviewable support asset at the end.",
+    expectedOutput:
+      "One AI-produced support asset (routing logic, grounded answer flow, or tone playbook) tied to a real ticket class, with the prompts and outputs that produced it.",
     proofChecklist: [
-      "Show the support problem or ticket class.",
-      "Show the AI-assisted routing or response logic.",
-      "Explain how this improves speed, consistency, or customer tone.",
+      "Paste the ticket-class brief.",
+      "Paste the AI-produced working output.",
+      "Paste the failure-case test log and what you changed.",
     ],
     steps: [
-      "Choose one support issue type that repeats often.",
-      "Use the module to design the retrieval, routing, or response layer.",
-      "Record the output as a workflow another support lead could understand fast.",
+      'Anchor {module} on one real ticket class (10 min). Paste this prompt into ChatGPT or Claude: "Act as my support operations partner for {module}. The ticket class I want to improve is [one line] and it hurts because [volume, handle time, or CSAT]. Ask me up to 4 questions about the current handling, then restate the problem and the single output that would improve it." Paste the restated problem as evidence.',
+      'Produce the first working output with AI (12 min). Prompt: "Using this problem statement: [paste it], produce the first working version of the {module} output. Use only the policies and examples I gave you — mark anything assumed with [ASSUMPTION]." Copy the full output into your evidence.',
+      'Test it against hard tickets (13 min). In a fresh chat: "Here are 5 difficult real tickets (scrubbed): [paste them]. Run this support output against each: [paste output]. Show where it fails, misroutes, or strikes the wrong tone, then fix the two worst failures." Save the test log and fixes as evidence.',
+      "Generate your artifact (10 min). Ask the tutor to generate the final artifact from your pasted problem, output, and test log, then attach it as proof.",
     ],
     toolLaunches: [
       {
@@ -497,17 +1006,19 @@ const PLAYBOOKS: Record<string, PlaybookTemplate> = {
     ],
   },
   operations: {
-    why: "This module is right because operations proof is strongest when it shows a real handoff, extraction, or sync that now happens with less manual effort.",
-    expectedOutput: "An automation map, extraction workflow, or cross-tool process that clearly reduces manual work.",
+    why: "This path's playbooks run the whole ops loop inside an AI tool: a real manual workflow in, pasteable evidence out, and a reviewable process asset at the end.",
+    expectedOutput:
+      "One AI-produced operations asset (workflow map, extraction spec, or automation blueprint) grounded in a real manual process, with the prompts and outputs that produced it.",
     proofChecklist: [
-      "Name the broken or repetitive workflow.",
-      "Show the system steps or automation logic.",
-      "State the time saved, error reduction, or visibility gain.",
+      "Paste the workflow map with failure points marked.",
+      "Paste the AI-produced working output with assumptions marked.",
+      "Paste the edge-case walkthrough and what you changed.",
     ],
     steps: [
-      "Pick one workflow that still depends on copy-paste, manual review, or repeated handoffs.",
-      "Use the module to map and automate the most painful segment first.",
-      "Package the result as a process proof artifact you can show internally or publicly.",
+      'Anchor {module} on one real manual workflow (10 min). Paste this prompt into ChatGPT or Claude: "Act as my process improvement partner for {module}. The manual workflow is [one line] and it costs roughly [time per week]. Interview me one question at a time about triggers, tools, handoffs, and where it breaks. Stop after 5 questions and output a numbered current-state map." Paste the map as evidence.',
+      'Produce the first working output with AI (12 min). Prompt: "Using this workflow map: [paste it], produce the first working version of the {module} output. Every rule must trace to something in the map — mark anything assumed with [ASSUMPTION]." Copy the full output into your evidence.',
+      'Walk the edge cases (13 min). In a fresh chat: "Stress-test this process design: [paste output]. Walk through: a malformed input, a duplicate run, a missing field, and a permissions failure. Show what happens in each case today and patch the two worst gaps." Save the walkthrough and patches as evidence.',
+      "Generate your artifact (10 min). Ask the tutor to generate the final artifact from your pasted map, output, and edge-case notes, then attach it as proof.",
     ],
     toolLaunches: [
       {
@@ -543,17 +1054,19 @@ const PLAYBOOKS: Record<string, PlaybookTemplate> = {
     ],
   },
   "human-resources": {
-    why: "This module is the fastest route to HR proof because it turns people-ops judgment into a repeatable workflow other operators can inspect.",
-    expectedOutput: "A screening workflow, interview summary format, or policy support assistant tied to one HR use case.",
+    why: "This path's playbooks run the whole people-ops loop inside an AI tool: a real hiring or policy scenario in, pasteable evidence out, and a reviewable HR asset at the end.",
+    expectedOutput:
+      "One AI-produced people-ops asset (rubric, summary format, or policy workflow) tied to a real scenario, with the prompts and outputs that produced it.",
     proofChecklist: [
-      "Show the hiring or people-ops scenario.",
-      "Show the AI-assisted decision or summary workflow.",
-      "State how this improves consistency, speed, or signal quality.",
+      "Paste the scenario brief.",
+      "Paste the AI-produced working output with assumptions marked.",
+      "Paste the fairness and consistency review and what you changed.",
     ],
     steps: [
-      "Choose one recruiting or people-ops workflow that is repetitive today.",
-      "Run the module on that real scenario and keep the scope narrow.",
-      "Document the result as a process asset another HR leader would understand quickly.",
+      'Anchor {module} on one real people-ops scenario (10 min). Paste this prompt into ChatGPT or Claude: "Act as my people-ops partner for {module}. The scenario is [one line: role, process, or policy] and the outcome I need is [one line]. Ask me up to 4 questions to pin down who is affected and what consistent looks like, then restate the problem crisply." Paste the restated problem as evidence.',
+      'Produce the first working output with AI (12 min). Prompt: "Using this problem statement: [paste it], produce the first working version of the {module} output. Separate observed evidence from interpretation everywhere — mark anything assumed with [ASSUMPTION]." Copy the full output into your evidence.',
+      'Review for fairness and consistency (13 min). In a fresh chat: "Audit this HR work like an employment-practices reviewer: [paste output]. Where could it treat two similar people differently? Where does it infer beyond the evidence? Where must a human decide? Fix the two worst issues." Save the audit and fixes as evidence.',
+      "Generate your artifact (10 min). Ask the tutor to generate the final artifact from your pasted scenario, output, and review notes, then attach it as proof.",
     ],
     toolLaunches: [
       {
@@ -590,17 +1103,19 @@ const PLAYBOOKS: Record<string, PlaybookTemplate> = {
     ],
   },
   "software-engineering": {
-    why: "This module is right because engineering proof gets stronger when the output is inspectable, runnable, or clearly architectural instead of abstract.",
-    expectedOutput: "A coded integration, architecture artifact, or RAG setup that another engineer could inspect and extend.",
+    why: "This path's playbooks run the whole engineering loop inside an AI tool: a real technical need in, pasteable code and analysis out, and a reviewable engineering asset at the end.",
+    expectedOutput:
+      "One AI-produced engineering asset (code module, design record, or eval pack) grounded in a real technical need, with the prompts and outputs that produced it.",
     proofChecklist: [
-      "Show the repo, API, or system boundary you touched.",
-      "Show the code or architecture output.",
-      "Explain what became more reliable, faster, or easier to extend.",
+      "Paste the technical contract or requirements brief.",
+      "Paste the AI-produced code or design output.",
+      "Paste the red-team review and what you changed.",
     ],
     steps: [
-      "Choose one technical workflow that is blocked by repetition, glue code, or unclear context.",
-      "Use the module to build the smallest useful implementation first.",
-      "Save the code, architecture note, or artifact so the proof is reviewable.",
+      'Anchor {module} on one real technical need (10 min). Paste this prompt into Claude, ChatGPT, or your AI editor: "Act as my staff engineer for {module}. The technical need is [one line] in [stack]. Ask me up to 4 questions about constraints, scale, and failure tolerance, then restate the problem as a contract with explicit inputs, outputs, and invariants." Paste the contract as evidence.',
+      'Produce the first working output with AI (12 min). Prompt: "Implement the first working version of the {module} output from this contract: [paste it]. Fail loudly instead of silently, no invented dependencies, and mark every assumption with [ASSUMPTION]." Copy the full code or design output into your evidence.',
+      'Red-team it like a reviewer (13 min). In a fresh chat: "Review this work like a hostile senior engineer: [paste output + contract]. List the 5 most serious problems — failure modes, security holes, unstated coupling — ranked by blast radius, then patch the two worst." Save the review and patched output as evidence.',
+      "Generate your artifact (10 min). Ask the tutor to generate the final artifact from your pasted contract, output, and review notes, then attach it as proof.",
     ],
     toolLaunches: [
       {
