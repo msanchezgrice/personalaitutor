@@ -425,3 +425,10 @@ a {
 :root[data-theme="light"] a.btn.bg-white * {
   color: #0f111a !important;
 }
+
+/* Agent/accessibility: visible keyboard focus indicator */
+:focus-visible {
+  outline: 2px solid var(--accent, #00F0FF);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
