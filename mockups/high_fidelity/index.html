@@ -22,14 +22,15 @@
       <a href="/" class="flex items-center gap-2">
         <img src="/assets/branding/brand_wordmark_logo.png" alt="My AI Skill Tutor" class="h-8 w-auto object-contain" />
       </a>
-      <nav class="hidden md:flex nav-links">
+      <nav class="hidden md:flex nav-links" data-agent-nav="primary" aria-label="Primary">
         <a href="#how-it-works" class="nav-link">How it works</a>
         <a href="#features" class="nav-link">Features</a>
         <a href="/employers/" class="nav-link">For Employers</a>
       </nav>
       <div class="flex gap-4">
         <a href="/sign-in?redirect_url=/onboarding/" class="btn btn-secondary">Log In</a>
-        <a href="/assessment/" class="btn btn-primary animate-pulse-glow">Start Assessment <i
+        <a href="/assessment/" class="btn btn-primary animate-pulse-glow" data-testid="cta-start-assessment-nav"
+          data-agent-action="start-assessment">Start Assessment <i
             class="fa-solid fa-arrow-right ml-2 text-sm"></i></a>
       </div>
     </div>
@@ -58,8 +59,10 @@
           content that helps you show your progress publicly.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 mb-10">
-          <a href="/assessment/" class="btn btn-primary text-lg px-8 py-4">Take the AI Assessment</a>
-          <a href="/employers/talent/" class="btn btn-secondary text-lg px-8 py-4">See Example Profiles</a>
+          <a href="/assessment/" class="btn btn-primary text-lg px-8 py-4" data-testid="cta-take-assessment-hero"
+            data-agent-action="start-assessment">Take the AI Assessment</a>
+          <a href="/employers/talent/" class="btn btn-secondary text-lg px-8 py-4" data-testid="cta-see-profiles-hero"
+            data-agent-action="view-example-profiles">See Example Profiles</a>
         </div>
         <div class="flex items-center gap-4 text-sm text-gray-500">
           <div class="flex -space-x-2">
@@ -301,7 +304,7 @@
             <span class="text-4xl font-bold text-white">$49.99</span><span class="text-gray-500">/mo</span>
           </div>
           <p class="text-sm text-emerald-300 mb-6 relative z-10">Card required today. You will not be charged until your 7-day trial ends. Cancel anytime before renewal.</p>
-          <a href="/assessment/" class="btn btn-accent w-full text-center py-3 mb-8 relative z-10 shadow-[0_4px_14px_0_rgba(16,185,129,0.3)] bg-gradient-to-r from-emerald-500 to-teal-500">Start 7-Day Free Trial</a>
+          <a href="/assessment/" class="btn btn-accent w-full text-center py-3 mb-8 relative z-10 shadow-[0_4px_14px_0_rgba(16,185,129,0.3)] bg-gradient-to-r from-emerald-500 to-teal-500" data-testid="cta-start-trial-pricing" data-agent-action="start-free-trial" data-agent-confirm="payment-required">Start 7-Day Free Trial</a>
           <ul class="space-y-4">
             <li class="flex items-center gap-3 text-sm text-gray-300"><i
                 class="fa-solid fa-check text-emerald-400 text-xs"></i> Career-based AI skill modules</li>
@@ -326,7 +329,7 @@
       <h2 class="text-5xl font-[Outfit] text-white mb-6">Stop falling behind. Start building your AI advantage.</h2>
       <p class="text-xl text-gray-400 mb-10">Get a personalized AI learning path for your career, stay current every
         day, and show visible progress as you grow.</p>
-      <a href="/assessment/" class="btn btn-primary text-xl px-10 py-5 animate-pulse-glow shadow-2xl">Start Your AI
+      <a href="/assessment/" class="btn btn-primary text-xl px-10 py-5 animate-pulse-glow shadow-2xl" data-testid="cta-start-assessment-bottom" data-agent-action="start-assessment">Start Your AI
         Assessment</a>
     </div>
   </section>
@@ -347,6 +350,10 @@
           aria-label="My AI Skill Tutor on LinkedIn">
           <i class="fa-brands fa-linkedin text-[#0077b5] text-base"></i>
         </a>
+      </div>
+      <div class="flex items-center gap-4 text-sm text-gray-500">
+        <a href="/llms.txt" class="hover:text-white transition">llms.txt</a>
+        <a href="/agents.md" class="hover:text-white transition">agents.md</a>
       </div>
       <p class="text-sm text-gray-500">© 2026 My AI Skill Tutor. All rights reserved.</p>
     </div>

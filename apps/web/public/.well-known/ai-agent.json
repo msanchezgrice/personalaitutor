@@ -1,0 +1,36 @@
+{
+  "name": "My AI Skill Tutor",
+  "description": "AI upskilling platform for working professionals: role-based AI learning modules, a 24/7 AI tutor, daily AI news filtered to the user's field, and public proof-of-skill profiles.",
+  "url": "https://www.myaiskilltutor.com",
+  "version": "1.0.0",
+  "capabilities": [
+    "ai-skills-assessment",
+    "role-based-learning-modules",
+    "ai-tutor-chat",
+    "daily-ai-news",
+    "public-proof-of-skill-profiles",
+    "talent-directory"
+  ],
+  "guardrails": {
+    "allowed_actions": [
+      "Read and cite any public route (/, /assessment/, /learn, /learn/{slug}, /employers, /employers/talent, /u/{handle}).",
+      "Follow links listed in /sitemap.xml within robots-allowed paths.",
+      "Use data-testid and data-agent-action attributes as stable selectors for automation.",
+      "Start the anonymous assessment at /assessment/ on behalf of a user who explicitly asked."
+    ],
+    "disallowed_actions": [
+      "Do not create accounts, start paid trials, or enter payment details without explicit per-action user confirmation.",
+      "Do not access /dashboard/*, /onboarding/*, /sign-in, /sign-up, or /api/* with guessed or scripted credentials.",
+      "Do not submit forms that send messages or publish content (including social drafts) without explicit user approval.",
+      "Do not scrape at high volume; respect robots.txt and standard crawl etiquette."
+    ],
+    "payment_actions_require_confirmation": true,
+    "destructive_actions_require_confirmation": true,
+    "notes": "The subscription plan ($49.99/month) begins with a 7-day free trial; a card is required at signup but not charged until the trial ends. Any step that collects payment details must be confirmed by the human user."
+  },
+  "documentation": {
+    "llms": "https://www.myaiskilltutor.com/llms.txt",
+    "agents": "https://www.myaiskilltutor.com/agents.md",
+    "agent_card": "https://www.myaiskilltutor.com/.well-known/agent-card.json"
+  }
+}

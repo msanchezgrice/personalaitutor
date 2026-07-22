@@ -1,0 +1,29 @@
+# My AI Skill Tutor
+
+> My AI Skill Tutor (myaiskilltutor.com) is an AI upskilling platform for working professionals: it provides role-based AI learning modules, a 24/7 AI tutor, daily AI news filtered to the user's field, and public proof-of-skill profiles that employers can inspect.
+
+## Product
+
+- [Home](https://www.myaiskilltutor.com/): Product overview, how it works, features, pricing, and FAQ.
+- [AI Assessment](https://www.myaiskilltutor.com/assessment/): Anonymous skills assessment that recommends which AI skills to build first. No sign-up required to start.
+- [Learning Guides](https://www.myaiskilltutor.com/learn): Editorial guides on AI upskilling, AI portfolios, and proving skills to employers.
+- [Employers](https://www.myaiskilltutor.com/employers): Information for employers evaluating proof-based AI skill profiles.
+- [Talent Directory](https://www.myaiskilltutor.com/employers/talent): Public roster of professionals with verified skill profiles.
+- [Public Profiles](https://www.myaiskilltutor.com/u/): Per-user public proof pages at /u/{handle}, with projects at /u/{handle}/projects/{slug}.
+
+## Account & App (authenticated)
+
+- [Sign In](https://www.myaiskilltutor.com/sign-in) / [Sign Up](https://www.myaiskilltutor.com/sign-up): Authentication is handled by Clerk. Social login supported.
+- [Dashboard](https://www.myaiskilltutor.com/dashboard/): Authenticated workspace with learning modules, projects, tutor chat, daily AI news, and social draft tools. Requires an account; not crawlable.
+
+## Pricing
+
+- One plan ("Career Builder") at $49.99/month with a 7-day free trial. Card required at signup; no charge until the trial ends. Cancel anytime before renewal.
+
+## Agent Notes
+
+- Canonical domain: https://www.myaiskilltutor.com (myaiskilltutor.com redirects to the www host).
+- Agent manifest: /.well-known/agent-card.json and /.well-known/ai-agent.json (includes guardrails).
+- Agent onboarding doc: /agents.md
+- Sitemap: /sitemap.xml. Robots policy: /robots.txt (public routes allowed; /dashboard, /onboarding, /sign-in, /sign-up, and /api/ are disallowed).
+- Primary CTAs are tagged with data-testid and data-agent-action attributes for reliable automation.

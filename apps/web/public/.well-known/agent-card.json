@@ -1,0 +1,50 @@
+{
+  "name": "My AI Skill Tutor",
+  "description": "AI upskilling platform for working professionals: role-based AI learning modules, a 24/7 AI tutor, daily AI news filtered to the user's field, and public proof-of-skill profiles that employers can inspect.",
+  "url": "https://www.myaiskilltutor.com",
+  "provider": {
+    "organization": "My AI Skill Tutor",
+    "url": "https://www.myaiskilltutor.com"
+  },
+  "version": "1.0.0",
+  "capabilities": [
+    "ai-skills-assessment",
+    "role-based-learning-modules",
+    "ai-tutor-chat",
+    "daily-ai-news",
+    "public-proof-of-skill-profiles",
+    "talent-directory"
+  ],
+  "skills": [
+    {
+      "id": "ai-skills-assessment",
+      "name": "AI Skills Assessment",
+      "description": "Anonymous assessment that recommends which AI skills a professional should build first.",
+      "url": "https://www.myaiskilltutor.com/assessment/"
+    },
+    {
+      "id": "learning-guides",
+      "name": "AI Upskilling Guides",
+      "description": "Public editorial guides on building AI skills, portfolios, and career proof.",
+      "url": "https://www.myaiskilltutor.com/learn"
+    },
+    {
+      "id": "talent-directory",
+      "name": "Talent Directory",
+      "description": "Public directory of professionals with proof-based AI skill profiles.",
+      "url": "https://www.myaiskilltutor.com/employers/talent"
+    },
+    {
+      "id": "public-profiles",
+      "name": "Public Proof Profiles",
+      "description": "Per-user public pages showcasing verified skills and projects.",
+      "url": "https://www.myaiskilltutor.com/u/"
+    }
+  ],
+  "documentation": {
+    "llms": "https://www.myaiskilltutor.com/llms.txt",
+    "agents": "https://www.myaiskilltutor.com/agents.md",
+    "guardrails": "https://www.myaiskilltutor.com/.well-known/ai-agent.json",
+    "sitemap": "https://www.myaiskilltutor.com/sitemap.xml"
+  }
+}

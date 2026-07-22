@@ -141,3 +141,10 @@ html[data-runtime-ready="0"][data-path^="/dashboard"] [data-shell-loader="1"] {
 [data-billing-gate="1"] [data-billing-gate-error="1"] {
   color: #ffffff !important;
 }
+
+/* Agent/accessibility: visible keyboard focus indicator */
+:focus-visible {
+  outline: 2px solid var(--accent, #00F0FF);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
