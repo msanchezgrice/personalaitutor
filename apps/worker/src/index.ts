@@ -2653,7 +2653,16 @@ function logError(scope: string, error: unknown) {
   console.error(`[worker] ${scope} failed: ${message}`);
 }
 
+// Temporary cutover barrier: this revision must perform no work while the old
+// instance exits. The following active revision removes this barrier.
+const WORKER_CUTOVER_STANDBY = true;
+
 async function start() {
+  if (WORKER_CUTOVER_STANDBY) {
+    console.log("[worker] cutover standby: polling and schedulers disabled");
+    setInterval(() => {}, 60_000);
+    return;
+  }
   if (started) return;
   started = true;
 
