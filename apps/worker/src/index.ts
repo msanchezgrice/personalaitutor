@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { createWorkerLoops } from "./worker-loops";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   BILLING_CHECKOUT_REMINDER_KEYS,
@@ -2653,16 +2654,7 @@ function logError(scope: string, error: unknown) {
   console.error(`[worker] ${scope} failed: ${message}`);
 }
 
-// Temporary cutover barrier: this revision must perform no work while the old
-// instance exits. The following active revision removes this barrier.
-const WORKER_CUTOVER_STANDBY = true;
-
 async function start() {
-  if (WORKER_CUTOVER_STANDBY) {
-    console.log("[worker] cutover standby: polling and schedulers disabled");
-    setInterval(() => {}, 60_000);
-    return;
-  }
   if (started) return;
   started = true;
 
@@ -2673,40 +2665,24 @@ async function start() {
     return;
   }
 
-  console.log(`[worker] starting id=${workerId} pollMs=${pollMs} schedulerMs=${schedulerMs}`);
-
-  let processing = false;
-  let scheduling = false;
-
-  setInterval(async () => {
-    if (processing) return;
-    processing = true;
-    try {
-      await processClaimedJobs();
-    } catch (error) {
-      logError("process-jobs", error);
-    } finally {
-      processing = false;
-    }
-  }, pollMs);
-
-  try {
-    await runSchedulers();
-  } catch (error) {
-    logError("scheduler-initial", error);
-  }
-
-  setInterval(async () => {
-    if (scheduling) return;
-    scheduling = true;
-    try {
-      await runSchedulers();
-    } catch (error) {
-      logError("scheduler", error);
-    } finally {
-      scheduling = false;
-    }
-  }, schedulerMs);
+  console.log(`[worker] cutover active id=${workerId} pollMs=${pollMs} schedulerMs=${schedulerMs}`);
+  const loops = createWorkerLoops({
+    pollMs,
+    schedulerMs,
+    processJobs: processClaimedJobs,
+    schedule: runSchedulers,
+    onError: logError,
+  });
+  const shutdown = () => {
+    console.log("[worker] shutdown: draining in-flight work");
+    void loops.stop().then(() => {
+      console.log("[worker] shutdown: drained");
+      process.exit(0);
+    });
+  };
+  process.once("SIGTERM", shutdown);
+  process.once("SIGINT", shutdown);
+  loops.start();
 }
 
 void start();
