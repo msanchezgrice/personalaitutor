@@ -2655,6 +2655,9 @@ function logError(scope: string, error: unknown) {
 }
 
 async function start() {
+  console.log("[worker] tutor-20261028p standby: polling and schedulers disabled");
+  setInterval(() => {}, 60_000);
+  return;
   if (started) return;
   started = true;
 
