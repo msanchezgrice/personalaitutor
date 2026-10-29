@@ -303,7 +303,7 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
           {article.tool ? <CareerTools initialMode={article.tool} /> : null}
 
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr),320px]">
-            <article className="space-y-8">
+            <article className="min-w-0 space-y-8">
               {article.sections.map((section, index) => (
                 <section key={section.id} id={section.id} className="glass min-w-0 rounded-3xl border border-white/10 bg-black/20 p-5 sm:p-8">
                   <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">
