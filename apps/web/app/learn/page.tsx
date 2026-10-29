@@ -138,6 +138,9 @@ export default function LearnHubPage() {
                 <a href="#all-guides" className="btn btn-secondary px-8 py-4 text-lg">
                   Browse Guides
                 </a>
+                <Link href="/tools/career-remapping" className="btn btn-secondary px-8 py-4 text-lg">
+                  Free Career Tools
+                </Link>
               </div>
               <div className="flex items-center gap-4 text-sm text-gray-500">
                 <div className="flex -space-x-2">

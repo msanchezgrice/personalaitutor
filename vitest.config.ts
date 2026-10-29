@@ -5,6 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "apps/web"),
+      "@clerk/nextjs/server": path.resolve(__dirname, "apps/web/node_modules/@clerk/nextjs/dist/esm/server/index.js"),
       "@aitutor/shared": path.resolve(__dirname, "packages/shared/src/index.ts"),
       "@aitutor/shared/": `${path.resolve(__dirname, "packages/shared/src")}/`,
       "@aitutor/daily-content": path.resolve(__dirname, "packages/daily-content/src/index.ts"),

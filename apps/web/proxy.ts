@@ -13,6 +13,8 @@ const isPublicRoute = createRouteMatcher([
   "/chat-onboarding-prototype(.*)",
   "/employers(.*)",
   "/learn(.*)",
+  "/tools/career-remapping",
+  "/downloads/career-remapping-workbook.pdf",
   "/learning(.*)",
   "/generated/(.*)",
   "/u/(.*)",
