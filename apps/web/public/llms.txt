@@ -7,6 +7,10 @@
 - [Home](https://www.myaiskilltutor.com/): Product overview, how it works, features, pricing, and FAQ.
 - [AI Assessment](https://www.myaiskilltutor.com/assessment/): Anonymous skills assessment that recommends which AI skills to build first. No sign-up required to start.
 - [Learning Guides](https://www.myaiskilltutor.com/learn): Editorial guides on AI upskilling, AI portfolios, and proving skills to employers.
+- [AI Skills for Your Resume](https://www.myaiskilltutor.com/learn/ai-skills-for-resume): Truthful resume examples and project evidence for career changers.
+- [Career Mapping](https://www.myaiskilltutor.com/learn/career-mapping-transferable-skills): Connect past tasks to possible directions and one proof project.
+- [Getting a Job in the Age of AI](https://www.myaiskilltutor.com/learn/how-to-get-a-job-in-the-age-of-ai): A practical process for targeting work, building evidence, and explaining decisions.
+- [Career Remapping Workbook](https://www.myaiskilltutor.com/learn/career-remapping-workbook): Open worksheet with a free printable PDF; no account or resume upload needed.
 - [Employers](https://www.myaiskilltutor.com/employers): Information for employers evaluating proof-based AI skill profiles.
 - [Talent Directory](https://www.myaiskilltutor.com/employers/talent): Public roster of professionals with verified skill profiles.
 - [Public Profiles](https://www.myaiskilltutor.com/u/): Per-user public proof pages at /u/{handle}, with projects at /u/{handle}/projects/{slug}.

@@ -1,8 +1,16 @@
+import { careerLearnArticles } from "./career-learn-content";
+
+export type LearnContentBlock =
+  | { type: "paragraph" | "quote"; text: string }
+  | { type: "list"; ordered?: boolean; items: string[] }
+  | { type: "table"; columns: string[]; rows: string[][] };
+
 export type LearnArticleSection = {
   id: string;
   title: string;
   paragraphs: string[];
   bullets?: string[];
+  blocks?: LearnContentBlock[];
 };
 
 export type LearnFaq = {
@@ -14,6 +22,7 @@ export type LearnArticle = {
   slug: string;
   category: string;
   title: string;
+  metaTitle?: string;
   description: string;
   heroSummary: string;
   readingTime: string;
@@ -24,6 +33,7 @@ export type LearnArticle = {
   sections: LearnArticleSection[];
   faq: LearnFaq[];
   relatedSlugs: string[];
+  resource?: { href: string; label: string; description: string; download?: boolean };
 };
 
 export const learnArticles: LearnArticle[] = [
@@ -37,7 +47,7 @@ export const learnArticles: LearnArticle[] = [
       "The fastest path to AI upskilling is not collecting random prompts or chasing every new model release. It is choosing one career outcome, learning a small working stack, and shipping visible projects that prove you can use AI in real workflows.",
     readingTime: "9 min read",
     publishedAt: "2026-03-06",
-    updatedAt: "2026-03-06",
+    updatedAt: "2026-10-29",
     takeaways: [
       "Start with one job outcome, not a vague goal like \"learn AI.\"",
       "Learn a small core stack before adding more tools.",
@@ -128,6 +138,14 @@ export const learnArticles: LearnArticle[] = [
           "Do not start with too many tools.",
           "Do not make your first project too big.",
           "Do not leave finished work undocumented.",
+        ],
+      },
+      {
+        id: "career-change-start",
+        title: "7. Changing careers? Start with one transferable task",
+        paragraphs: [
+          "For a career transition, start with work you have actually done. Use the [career mapping guide](/learn/career-mapping-transferable-skills) to compare two directions and identify one missing capability. Complete one small project before expanding the longer roadmap. A title match alone does not establish readiness for another role.",
+          "Use the [free Career Remapping Workbook](/learn/career-remapping-workbook) to record your task evidence, constraints, and completion checks. Then use the [AI resume guide](/learn/ai-skills-for-resume) to keep historical employment separate from recent independent project work.",
         ],
       },
     ],
@@ -300,7 +318,7 @@ export const learnArticles: LearnArticle[] = [
       "Most employers do not need a perfect theory explanation of AI. They need confidence that you can use AI tools to improve work quality and ship reliable outputs. The best proof is visible, specific, and tied to real workflows.",
     readingTime: "8 min read",
     publishedAt: "2026-03-06",
-    updatedAt: "2026-03-06",
+    updatedAt: "2026-10-29",
     takeaways: [
       "Proof beats claims, especially for AI-adjacent roles.",
       "Projects, artifacts, and build logs matter more than generic course completion.",
@@ -388,12 +406,21 @@ export const learnArticles: LearnArticle[] = [
         title: "6. Stop relying on weak signals alone",
         paragraphs: [
           "Listing ChatGPT on a resume is not strong proof. Neither is a vague claim like \"familiar with AI tools.\" Those signals are too common and too hard to verify. The market is moving toward proof of execution.",
-          "You do not need a computer science degree to compete here. You need a documented pattern of useful work. If your portfolio shows practical workflows and your narratives explain them well, you can stand out in many AI-adjacent roles.",
+          "Requirements vary by role. A project can make a specific capability easier to assess, but it does not replace a degree, credential, or experience an employer explicitly requires. Check the exact current job description and describe your evidence within its actual scope.",
         ],
         bullets: [
           "Avoid generic claims without examples.",
           "Avoid portfolios with no artifacts or no context.",
           "Avoid presenting AI as novelty instead of workflow improvement.",
+        ],
+      },
+      {
+        id: "course-to-evidence",
+        title: "7. Turn a course into evidence and a truthful resume entry",
+        paragraphs: [
+          "If you learned through a free online course, apply one idea to a bounded task. Save your source files, permitted inputs, instructions, actual results, and one limitation. The course records learning; the project adds evidence of application within a specific scope.",
+          "For example, a completed local checker for synthetic support replies can support a project claim about that checker and its rules. Saved replies do not establish live-model performance or prior AI employment. Describe self-review accurately, and keep missing evidence unassessed.",
+          "Use [AI skills for your resume](/learn/ai-skills-for-resume) to write a project entry, or complete the [Career Remapping Workbook](/learn/career-remapping-workbook) to decide what evidence to build next.",
         ],
       },
     ],
@@ -418,8 +445,16 @@ export const learnArticles: LearnArticle[] = [
         answer:
           "Use specific bullets tied to business outcomes. Mention the workflow, the output, and the result. Avoid generic phrases like \"experienced with AI tools\" without concrete examples.",
       },
+      {
+        question: "How do I show AI skills learned through a free online course?",
+        answer: "Apply one concept to an independent project, save inspectable work and actual checks, and explain what you did and what remains limited. Keep the project separate from employment history. A course records learning; the project provides additional evidence of application.",
+      },
+      {
+        question: "How do certifications help prove data and AI skills to employers?",
+        answer: "A certification can document a learning or assessment milestone within the provider's stated scope. Combine it with a relevant project and an explanation of your decisions. Check the target employer's requirements; neither a certificate nor a project guarantees a hiring outcome.",
+      },
     ],
-    relatedSlugs: ["ai-upskilling-roadmap", "how-to-build-an-ai-portfolio"],
+    relatedSlugs: ["ai-skills-for-resume", "career-mapping-transferable-skills", "how-to-build-an-ai-portfolio"],
   },
   {
     slug: "ai-skills-for-product-managers",
@@ -1137,6 +1172,7 @@ export const learnArticles: LearnArticle[] = [
     ],
     relatedSlugs: ["how-to-build-an-ai-portfolio", "workflow-automation-with-ai"],
   },
+  ...careerLearnArticles,
 ];
 
 export function getLearnArticles() {

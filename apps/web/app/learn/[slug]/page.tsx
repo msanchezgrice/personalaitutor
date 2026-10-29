@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LearningFooter } from "@/components/learning-footer";
 import { LearningHeader } from "@/components/learning-header";
+import { LearnContentBlocks } from "@/components/learn-content-blocks";
 import {
   getLearnArticleBySlug,
   getLearnArticles,
@@ -81,7 +82,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     };
   }
 
-  const pageTitle = `${article.title} | ${BRAND_NAME}`;
+  const pageTitle = `${article.metaTitle ?? article.title} | ${BRAND_NAME}`;
 
   return {
     title: pageTitle,
@@ -240,6 +241,7 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
               </div>
 
               <div className="mt-8 flex flex-wrap gap-3">
+                {article.resource ? <a href={article.resource.href} download={article.resource.download || undefined} className="btn btn-primary max-w-full whitespace-normal text-center" data-testid="career-workbook-cta">{article.resource.label}</a> : null}
                 <a href="/sign-up?redirect_url=/onboarding/" className="btn btn-primary">
                   Start Assessment
                 </a>
@@ -299,16 +301,16 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr),320px]">
             <article className="space-y-8">
               {article.sections.map((section, index) => (
-                <section key={section.id} id={section.id} className="glass rounded-3xl border border-white/10 bg-black/20 p-8">
+                <section key={section.id} id={section.id} className="glass min-w-0 rounded-3xl border border-white/10 bg-black/20 p-5 sm:p-8">
                   <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">
                     Section {String(index + 1).padStart(2, "0")}
                   </div>
                   <h2 className="mb-5 text-3xl font-[Outfit] text-white">{section.title}</h2>
-                  <div className="space-y-5 text-base leading-8 text-gray-300">
+                  {section.blocks ? <LearnContentBlocks blocks={section.blocks} label={section.title} /> : <div className="space-y-5 text-base leading-8 text-gray-300">
                     {section.paragraphs.map((paragraph, paragraphIndex) => (
                       <p key={`${section.id}-paragraph-${paragraphIndex}`}>{renderInlineLinks(paragraph)}</p>
                     ))}
-                  </div>
+                  </div>}
                   {section.bullets?.length ? (
                     <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-5">
                       <ul className="space-y-3">
@@ -339,6 +341,7 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
             </article>
 
             <aside className="space-y-6">
+              {article.resource ? <section className="glass rounded-3xl border border-emerald-500/30 bg-emerald-500/5 p-6"><h2 className="mb-3 text-2xl text-slate-900">Put this into practice</h2><p className="mb-5 text-sm leading-7 text-gray-400">{article.resource.description}</p><a href={article.resource.href} download={article.resource.download || undefined} className="btn btn-primary w-full text-center">{article.resource.label}</a></section> : null}
               <section className="glass sticky top-28 rounded-3xl border border-white/10 bg-black/25 p-6">
                 <div className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">Article outline</div>
                 <div className="space-y-3">
