@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 import { getLearnArticleBySlug, getLearnArticles } from "@/lib/learn-content";
 
-const slugs = ["ai-skills-for-resume", "my-job-is-disappearing", "career-change-after-gaming-layoff", "how-to-get-a-job-in-the-age-of-ai", "career-mapping-transferable-skills", "career-remapping-workbook"];
+const slugs = ["ai-skills-for-resume", "my-job-is-disappearing", "career-change-after-gaming-layoff", "how-to-get-a-job-in-the-age-of-ai", "career-mapping-transferable-skills", "career-remapping-workbook", "transferable-skills-examples", "ai-portfolio-examples"];
 
 describe("published career guides", () => {
   test("makes all approved guides discoverable while preserving the existing library", () => {

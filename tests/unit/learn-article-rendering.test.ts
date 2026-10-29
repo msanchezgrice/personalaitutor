@@ -10,7 +10,7 @@ vi.mock("@/lib/learn-content", () => {
     metaTitle: "Career mapping examples", description: "A task-based career map.",
     heroSummary: "Map tasks, then build evidence.", readingTime: "5 min read",
     publishedAt: "2026-10-29", updatedAt: "2026-10-29", takeaways: [], keywords: [],
-    relatedSlugs: [], faq: [],
+    relatedSlugs: [], faq: [], tool: "resume",
     resource: { href: "/downloads/career-remapping-workbook.pdf", label: "Download workbook (PDF)", description: "Use your own copy.", download: true },
     sections: [{ id: "map", title: "Map your work", paragraphs: [], blocks: [
       { type: "paragraph", text: "Start with **actual tasks** and [the proof guide](/learn/prove-ai-skills-to-employers)." },
@@ -47,5 +47,13 @@ describe("structured learning guides", () => {
     const metadata = await generateMetadata({ params: Promise.resolve({ slug: "career-map-test" }) });
     expect(metadata.title).toBe("Career mapping examples | My AI Skill Tutor");
     expect(metadata.alternates?.canonical).toBe("/learn/career-map-test");
+  });
+
+  test("embeds a usable career exercise on its guide", async () => {
+    const html = renderToStaticMarkup(await LearnArticlePage({ params: Promise.resolve({ slug: "career-map-test" }) }));
+    expect(html).toContain('id="career-tool"');
+    expect(html).toContain("Resume evidence builder");
+    expect(html).toContain("What did you actually do?");
+    expect(html).toContain("ph-no-capture");
   });
 });

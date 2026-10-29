@@ -1,4 +1,5 @@
 import { careerLearnArticles } from "./career-learn-content";
+import type { CareerToolMode } from "./career-tools";
 
 export type LearnContentBlock =
   | { type: "paragraph" | "quote"; text: string }
@@ -34,6 +35,7 @@ export type LearnArticle = {
   faq: LearnFaq[];
   relatedSlugs: string[];
   resource?: { href: string; label: string; description: string; download?: boolean };
+  tool?: CareerToolMode;
 };
 
 export const learnArticles: LearnArticle[] = [
@@ -306,7 +308,7 @@ export const learnArticles: LearnArticle[] = [
           "Yes. Strong AI portfolios exist in marketing, operations, product, support, design, and sales. The key is showing useful systems, not pretending every project needs to be a full software product.",
       },
     ],
-    relatedSlugs: ["ai-upskilling-roadmap", "prove-ai-skills-to-employers"],
+    relatedSlugs: ["ai-portfolio-examples", "ai-upskilling-roadmap", "prove-ai-skills-to-employers"],
   },
   {
     slug: "prove-ai-skills-to-employers",

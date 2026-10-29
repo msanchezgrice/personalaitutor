@@ -277,6 +277,7 @@ export const careerLearnArticles: LearnArticle[] = [
       "career-mapping-transferable-skills",
       "prove-ai-skills-to-employers"
     ],
+    "tool": "resume",
     "resource": {
       "href": "/learn/career-remapping-workbook",
       "label": "Get the Career Remapping Workbook",
@@ -529,6 +530,7 @@ export const careerLearnArticles: LearnArticle[] = [
       "career-mapping-transferable-skills",
       "how-to-get-a-job-in-the-age-of-ai"
     ],
+    "tool": "reset",
     "resource": {
       "href": "/learn/career-remapping-workbook",
       "label": "Get the Career Remapping Workbook",
@@ -806,6 +808,7 @@ export const careerLearnArticles: LearnArticle[] = [
       "career-mapping-transferable-skills",
       "ai-skills-for-resume"
     ],
+    "tool": "gaming",
     "resource": {
       "href": "/learn/career-remapping-workbook",
       "label": "Get the Career Remapping Workbook",
@@ -1133,6 +1136,7 @@ export const careerLearnArticles: LearnArticle[] = [
       "ai-skills-for-resume",
       "career-mapping-transferable-skills"
     ],
+    "tool": "proof",
     "resource": {
       "href": "/learn/career-remapping-workbook",
       "label": "Get the Career Remapping Workbook",
@@ -1437,6 +1441,471 @@ export const careerLearnArticles: LearnArticle[] = [
       "ai-skills-for-resume",
       "how-to-get-a-job-in-the-age-of-ai"
     ],
+    "tool": "map",
+    "resource": {
+      "href": "/learn/career-remapping-workbook",
+      "label": "Get the Career Remapping Workbook",
+      "description": "Map five tasks, compare two directions, and choose one proof project. No resume upload required."
+    }
+  },
+  {
+    "slug": "transferable-skills-examples",
+    "category": "Career Proof",
+    "title": "12 Transferable Skills Examples You Can Back Up With Real Work",
+    "metaTitle": "Transferable Skills Examples: Turn Past Work Into Career Evidence",
+    "description": "Use 12 concrete transferable skills examples to describe your past work, compare a new role, and choose evidence to build without overstating your experience.",
+    "heroSummary": "Use 12 concrete transferable skills examples to describe your past work, compare a new role, and choose evidence to build without overstating your experience.",
+    "readingTime": "5 min read",
+    "publishedAt": "2026-10-29",
+    "updatedAt": "2026-10-29",
+    "takeaways": [
+      "Describe actions, outputs, and checks rather than broad skill labels.",
+      "Compare each capability with current role requirements.",
+      "Keep private employer work private.",
+      "Build one fresh example to investigate a gap."
+    ],
+    "keywords": [
+      "transferable skills examples",
+      "examples of transferable skills",
+      "career change skills",
+      "transferable skills resume"
+    ],
+    "sections": [
+      {
+        "id": "start-here",
+        "title": "Start here",
+        "paragraphs": [],
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "“Communication,” “problem solving,” and “leadership” can describe useful skills. On a resume, those words alone tell a hiring team very little. A stronger example explains what you did, the constraints you handled, and the output someone else could inspect."
+          },
+          {
+            "type": "paragraph",
+            "text": "Transferable skills are capabilities you can use across different jobs. [O*NET's transferable skills directory](https://www.onetonline.org/find/descriptor/browse/2.B/2.B.2) offers a broader reference for exploring them. Your next step is to connect a capability to your own tasks and the requirements of a particular role."
+          },
+          {
+            "type": "paragraph",
+            "text": "The examples below are fictional illustrations, not statements to copy as your employment history. Use the structure with work you actually performed. If you lack evidence for a claim, mark that gap and choose a way to investigate it."
+          }
+        ]
+      },
+      {
+        "id": "twelve-examples-from-task-to-capability",
+        "title": "Twelve examples, from task to capability",
+        "paragraphs": [],
+        "blocks": [
+          {
+            "type": "table",
+            "columns": [
+              "Past task",
+              "Possible transferable capability",
+              "Evidence you could describe"
+            ],
+            "rows": [
+              [
+                "Reproduced a gameplay bug and wrote the exact steps",
+                "Systematic testing",
+                "A permitted bug report, or a fresh synthetic example"
+              ],
+              [
+                "Compared a weekly dashboard with source records",
+                "Data quality checking",
+                "A reconciliation, assumptions, and corrected totals"
+              ],
+              [
+                "Turned customer questions into a help article",
+                "Clear technical communication",
+                "The questions, article, and review changes"
+              ],
+              [
+                "Chose which release issues to address first",
+                "Prioritization",
+                "Decision criteria and a tradeoff explanation"
+              ],
+              [
+                "Revised a layout after usability feedback",
+                "Iterative design",
+                "Before and after screens with reasons for changes"
+              ],
+              [
+                "Coordinated handoffs between two teams",
+                "Delivery coordination",
+                "A permitted checklist and ownership map"
+              ],
+              [
+                "Explained an unusual campaign result",
+                "Analytical reasoning",
+                "The calculation and competing explanations"
+              ],
+              [
+                "Interviewed users about a recurring problem",
+                "Discovery and listening",
+                "A consented, anonymized synthesis or synthetic practice set"
+              ],
+              [
+                "Reconciled an inventory spreadsheet",
+                "Operational accuracy",
+                "Checks for duplicates, missing records, and totals"
+              ],
+              [
+                "Wrote a brief another person could execute",
+                "Requirements communication",
+                "Acceptance criteria and a finished example"
+              ],
+              [
+                "Trained a colleague on a repeatable process",
+                "Instruction and documentation",
+                "A training guide and the feedback used to revise it"
+              ],
+              [
+                "Escalated a support question outside your authority",
+                "Judgment and boundary setting",
+                "An escalation rule and an explanation of why it applied"
+              ]
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "None of these tasks automatically qualifies someone for a new title. A game tester may bring useful habits to software quality work while still needing to learn a different product, technical stack, or testing approach. The shared capability gives you a starting point for research and practice."
+          }
+        ]
+      },
+      {
+        "id": "choose-evidence-before-choosing-impressive-words",
+        "title": "Choose evidence before choosing impressive words",
+        "paragraphs": [],
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Start with five tasks from a typical week in your former role. Write each as a verb, an object, and a constraint. “Coordinated release handoffs across three teams under a fixed launch date” gives you more to work with than “strong team player.” Only use the team count if it is true."
+          },
+          {
+            "type": "paragraph",
+            "text": "For each task, record an output and a quality check. The output might be a report, layout, test case, schedule, or decision. The check explains how you knew it was usable: reconciling totals, reproducing a failure, reviewing accessibility, or comparing the result with written requirements."
+          },
+          {
+            "type": "paragraph",
+            "text": "Keep private employer material private. If you cannot share an artifact, describe the process at a permitted level or create a new independent example with synthetic inputs. A replacement example demonstrates your current work; it does not establish what happened inside a former employer."
+          }
+        ]
+      },
+      {
+        "id": "compare-capabilities-with-a-target-role",
+        "title": "Compare capabilities with a target role",
+        "paragraphs": [],
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Take two current job descriptions from actual employers. Highlight the responsibilities rather than only the title. Then place each responsibility in one of three groups: work you have performed, work you have practiced independently, and work you have not yet demonstrated."
+          },
+          {
+            "type": "paragraph",
+            "text": "That distinction matters when AI enters the workflow. Writing good briefs may support learning an AI-assisted content process. It does not prove that you can check generated claims, manage permissions, or evaluate the final output. Those need their own examples."
+          },
+          {
+            "type": "paragraph",
+            "text": "Use the [career mapping guide](/learn/career-mapping-transferable-skills) to compare possible directions. A useful map shows both the connection and the missing evidence. It should become easier to revise as you learn more about the work."
+          }
+        ]
+      },
+      {
+        "id": "turn-one-example-into-a-resume-statement",
+        "title": "Turn one example into a resume statement",
+        "paragraphs": [],
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "A useful structure is: **action, output, quality check, supported result**. You do not need a dramatic percentage. If a result was not measured, describe the output and its use accurately."
+          },
+          {
+            "type": "paragraph",
+            "text": "For a fictional completed independent project, that might be: “Built a report from synthetic support tickets, reconciled category totals against the source rows, and documented unresolved classification errors.” The claim describes observable work and admits a limitation."
+          },
+          {
+            "type": "paragraph",
+            "text": "For employment experience, preserve your actual title and dates. For new practice, use a separate Projects section. Never rewrite earlier work to imply that you used an AI tool before you actually did. The [resume guide](/learn/ai-skills-for-resume) explains how to keep those histories clear."
+          }
+        ]
+      },
+      {
+        "id": "test-one-connection-with-a-small-project",
+        "title": "Test one connection with a small project",
+        "paragraphs": [],
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "[Get the free Career Remapping Workbook](/learn/career-remapping-workbook) and complete the exercise in your own copy."
+          },
+          {
+            "type": "paragraph",
+            "text": "Choose one important gap that is small enough to investigate this week. A former analyst could check an AI-drafted explanation against a synthetic spreadsheet. A designer could prototype a review screen and test its keyboard flow. A former games QA tester could build a small set of expected and unexpected replies and document which checks catch each error."
+          },
+          {
+            "type": "paragraph",
+            "text": "Keep the brief, inputs, steps, output, and review notes together. Write what the project demonstrates and what it does not. Self-review is useful practice, but label it as self-review. If someone else inspects the work, describe their actual feedback without turning it into a certification."
+          },
+          {
+            "type": "paragraph",
+            "text": "The free exercise on this page can suggest directions from a limited set of English task patterns. It is a prompt for reflection, not a complete skills inventory. If it misses your work, use the [workbook](/learn/career-remapping-workbook) to make the connection manually."
+          }
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "question": "What are good examples of transferable skills?",
+        "answer": "Testing, analysis, clear writing, coordination, prioritization, design iteration, and sound escalation can transfer across contexts. Support each claim with a task, an output, and a quality check from your own experience."
+      },
+      {
+        "question": "Can I list a skill if I do not have a public artifact?",
+        "answer": "You can describe work you actually did without publishing confidential material. Explain the task accurately, respect permissions, and distinguish private employment experience from any new synthetic example you create."
+      },
+      {
+        "question": "Does a transferable skill mean I qualify for a new career?",
+        "answer": "No. It identifies a possible connection. Compare current role requirements, technical prerequisites, credentials where relevant, and your actual evidence before deciding what to pursue."
+      }
+    ],
+    "relatedSlugs": [
+      "career-mapping-transferable-skills",
+      "ai-skills-for-resume"
+    ],
+    "tool": "map",
+    "resource": {
+      "href": "/learn/career-remapping-workbook",
+      "label": "Get the Career Remapping Workbook",
+      "description": "Map five tasks, compare two directions, and choose one proof project. No resume upload required."
+    }
+  },
+  {
+    "slug": "ai-portfolio-examples",
+    "category": "Career Proof",
+    "title": "AI Portfolio Examples for People Who Are Changing Careers",
+    "metaTitle": "AI Portfolio Examples for Nontechnical Career Changers",
+    "description": "Explore four AI portfolio examples for marketing, design, analytics, and QA. See what to build, how to check it, and what evidence to show an employer.",
+    "heroSummary": "Explore four AI portfolio examples for marketing, design, analytics, and QA. See what to build, how to check it, and what evidence to show an employer.",
+    "readingTime": "6 min read",
+    "publishedAt": "2026-10-29",
+    "updatedAt": "2026-10-29",
+    "takeaways": [
+      "Choose one bounded task relevant to your target work.",
+      "Keep inputs, decisions, revisions, and checks inspectable.",
+      "Label synthetic data and self-review accurately.",
+      "Preserve the difference between a plan, prototype, and completed project."
+    ],
+    "keywords": [
+      "ai portfolio examples",
+      "ai portfolio for non technical professionals",
+      "ai project portfolio examples",
+      "career change portfolio"
+    ],
+    "sections": [
+      {
+        "id": "start-here",
+        "title": "Start here",
+        "paragraphs": [],
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "An AI portfolio should help another person inspect your work. A screenshot of a polished answer cannot explain the inputs, decisions, mistakes, or checks that produced it. A useful example makes those steps visible."
+          },
+          {
+            "type": "paragraph",
+            "text": "You do not need to begin with a large application. Start with a bounded task that matters in the work you want to do. Build an output, check it against explicit criteria, and explain your role. The four examples below are fictional project briefs you can adapt; they are not real customer case studies or verified learner outcomes."
+          },
+          {
+            "type": "paragraph",
+            "text": "If you need the whole process for selecting tools and organizing your site, start with [how to build an AI portfolio](/learn/how-to-build-an-ai-portfolio). This guide focuses on what the individual work samples can contain."
+          }
+        ]
+      },
+      {
+        "id": "example-1-a-checked-content-workflow-for-a-marketer",
+        "title": "Example 1: A checked content workflow for a marketer",
+        "paragraphs": [],
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "**The brief:** Produce a short launch email and FAQ for a fictional product using a supplied product brief. Use an AI assistant to draft, then take responsibility for the final version."
+          },
+          {
+            "type": "paragraph",
+            "text": "Create the fictional brief first. Specify who the product serves, which features exist, what the price is, and which claims are prohibited. Keep it short enough that you can inspect every generated statement against it. Include one uncertainty that should remain unanswered until someone supplies more information."
+          },
+          {
+            "type": "paragraph",
+            "text": "Save the original prompt, first draft, edits, and final output. Add a claim-check table: statement, source in the brief, correction needed, and final decision. If the model invents a feature, show the mistake and how you corrected it. Explain which decisions remained yours."
+          },
+          {
+            "type": "paragraph",
+            "text": "**What this can demonstrate:** Brief writing, context preparation, editing, and fact checking within a bounded content task. It does not show campaign performance, customer demand, or a business result unless you separately ran and measured a real campaign."
+          }
+        ]
+      },
+      {
+        "id": "example-2-an-ai-review-screen-for-a-designer",
+        "title": "Example 2: An AI review screen for a designer",
+        "paragraphs": [],
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "**The brief:** Design a small interface that helps a user inspect an AI-drafted support reply before sending it. Use fictional questions and answers. Focus on the review decision, not a complete support product."
+          },
+          {
+            "type": "paragraph",
+            "text": "Sketch the normal path: source question, draft, highlighted unsupported claim, correction, and final human decision. Include an empty state, a loading or unavailable state, and a draft that should be escalated. Build the smallest prototype that makes those decisions understandable."
+          },
+          {
+            "type": "paragraph",
+            "text": "Check the flow using a keyboard and review labels, contrast, and error messages. If you ask someone to try it, obtain appropriate consent and describe the exercise accurately. A small informal walkthrough is feedback, not evidence that the design works for every user."
+          },
+          {
+            "type": "paragraph",
+            "text": "**What this can demonstrate:** Interaction design, problem framing, accessibility attention, and iteration. Include the tradeoffs and remaining problems. Do not label a static mockup as a working integrated application."
+          }
+        ]
+      },
+      {
+        "id": "example-3-a-reproducible-report-for-an-analyst",
+        "title": "Example 3: A reproducible report for an analyst",
+        "paragraphs": [],
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "**The brief:** Create a small synthetic dataset, calculate a few useful totals, and ask an AI assistant to draft an explanation. Independently verify the numbers and conclusions."
+          },
+          {
+            "type": "paragraph",
+            "text": "Use data with a simple structure, such as fictional support tickets with dates and categories. Include a missing value and a duplicate record so that data quality is part of the work. Save the dataset, cleaning decisions, formulas or code, final table, and explanation."
+          },
+          {
+            "type": "paragraph",
+            "text": "Check the totals with a second method where practical. Mark conclusions the data cannot support. A rise in tickets after a release, for example, does not by itself prove that the release caused the rise. Explain the limits rather than letting a fluent generated summary hide them."
+          },
+          {
+            "type": "paragraph",
+            "text": "**What this can demonstrate:** Data preparation, reproducibility, numerical checking, and careful communication. A synthetic report does not establish experience handling production data, operating at scale, or meeting a specific employer's technical requirements."
+          }
+        ]
+      },
+      {
+        "id": "example-4-a-reply-checking-harness-for-a-former-games-qa-tester",
+        "title": "Example 4: A reply-checking harness for a former games QA tester",
+        "paragraphs": [],
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "**The brief:** Define expected behavior for a small set of fictional support replies, then build a repeatable way to compare outputs with those expectations. Begin with fixed sample replies so the checks themselves are understandable."
+          },
+          {
+            "type": "paragraph",
+            "text": "Include an ordinary answer, a missing-information case, an unsupported promise, and an answer that should be escalated. Write an expected result for each before running the checks. A spreadsheet, script, or small interface can be enough for the first version, provided someone else can understand how to repeat it."
+          },
+          {
+            "type": "paragraph",
+            "text": "Record false positives and missed errors. A keyword check that catches one bad phrase is not a general safety guarantee. If you later add a model, document the model, date, settings you control, inputs, and observed outputs. Repeated runs may differ; preserve what you actually tested."
+          },
+          {
+            "type": "paragraph",
+            "text": "**What this can demonstrate:** Test thinking, explicit criteria, failure analysis, and reproducibility within a small scope. It does not automatically qualify you as a machine learning engineer or establish that the checker is ready for production."
+          }
+        ]
+      },
+      {
+        "id": "package-any-example-so-someone-can-inspect-it",
+        "title": "Package any example so someone can inspect it",
+        "paragraphs": [],
+        "blocks": [
+          {
+            "type": "table",
+            "columns": [
+              "Portfolio element",
+              "What to include",
+              "What to avoid"
+            ],
+            "rows": [
+              [
+                "Problem",
+                "One specific task and intended user",
+                "A vague claim to transform an industry"
+              ],
+              [
+                "Inputs",
+                "Permitted material or clearly labeled synthetic data",
+                "Private employer files or personal information"
+              ],
+              [
+                "Your role",
+                "The decisions and work you performed",
+                "Taking credit for another person's work"
+              ],
+              [
+                "Process",
+                "Prompts, steps, revisions, and relevant settings",
+                "Only the polished final screenshot"
+              ],
+              [
+                "Checks",
+                "Criteria, observed results, failures, and limitations",
+                "Calling self-review an independent certification"
+              ],
+              [
+                "Artifact",
+                "An accessible demo, document, or reproducible package",
+                "A broken link or access request with no explanation"
+              ],
+              [
+                "Next step",
+                "The change you would make and why",
+                "A claim that the example guarantees employment"
+              ]
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Use the proof project planner on this page to create a starting brief, then revise it for two current job descriptions. Keep the project small enough to complete and explain. You can add complexity after the first evidence package is coherent."
+          }
+        ]
+      },
+      {
+        "id": "explain-the-example-on-your-resume-and-in-an-interview",
+        "title": "Explain the example on your resume and in an interview",
+        "paragraphs": [],
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "[Get the free Career Remapping Workbook](/learn/career-remapping-workbook) and complete the exercise in your own copy."
+          },
+          {
+            "type": "paragraph",
+            "text": "Place independent work under Projects, with an accurate status. Describe the action, output, and checks you completed. If a project is planned or still in progress, say so. Add numbers only when your records support them; a synthetic example does not produce a real business saving."
+          },
+          {
+            "type": "paragraph",
+            "text": "Prepare to walk through one mistake. Show the original output, the check that exposed the problem, the correction, and the remaining limitation. That gives an interviewer something concrete to discuss. The [guide to proving AI skills](/learn/prove-ai-skills-to-employers) helps connect that evidence to a broader profile."
+          }
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "question": "Do I need to code to make an AI portfolio?",
+        "answer": "Some target roles require coding, and others may accept useful documents, workflows, or prototypes. Start with the responsibilities in current job descriptions. Make the artifact inspectable and describe its technical limits accurately."
+      },
+      {
+        "question": "Can I use synthetic data in a portfolio?",
+        "answer": "Yes, if you label it clearly and avoid implying it came from real customers or an employer. Explain what the synthetic example can test and what it cannot establish about real-world performance."
+      },
+      {
+        "question": "How many projects should I publish?",
+        "answer": "Begin with one coherent project that another person can inspect. Add further examples when they demonstrate distinct capabilities relevant to your target work. A project count alone does not establish competence."
+      }
+    ],
+    "relatedSlugs": [
+      "how-to-build-an-ai-portfolio",
+      "prove-ai-skills-to-employers"
+    ],
+    "tool": "proof",
     "resource": {
       "href": "/learn/career-remapping-workbook",
       "label": "Get the Career Remapping Workbook",
@@ -1933,6 +2402,7 @@ export const careerLearnArticles: LearnArticle[] = [
       "career-mapping-transferable-skills",
       "how-to-get-a-job-in-the-age-of-ai"
     ],
+    "tool": "map",
     "resource": {
       "href": "/downloads/career-remapping-workbook.pdf",
       "label": "Download workbook (PDF)",

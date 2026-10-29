@@ -24,6 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     `${appBaseUrl}/employers`,
     `${appBaseUrl}/employers/talent`,
     `${appBaseUrl}/learn`,
+    `${appBaseUrl}/tools/career-remapping`,
     `${appBaseUrl}/u/${EXAMPLE_PROFILE_HANDLE}`,
   ]);
 

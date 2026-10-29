@@ -66,6 +66,8 @@ const learningCollections: LearningCollection[] = [
     categories: ["AI Portfolio", "Career Proof", "Comparison"],
     featuredSlugs: [
       "ai-skills-for-resume",
+      "transferable-skills-examples",
+      "ai-portfolio-examples",
       "career-mapping-transferable-skills",
       "how-to-get-a-job-in-the-age-of-ai",
       "career-remapping-workbook",

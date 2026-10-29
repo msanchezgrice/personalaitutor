@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { LearningFooter } from "@/components/learning-footer";
 import { LearningHeader } from "@/components/learning-header";
 import { LearnContentBlocks } from "@/components/learn-content-blocks";
+import { CareerTools } from "@/components/career-tools";
 import {
   getLearnArticleBySlug,
   getLearnArticles,
@@ -241,8 +242,9 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
               </div>
 
               <div className="mt-8 flex flex-wrap gap-3">
+                {article.tool ? <a href="#career-tool" className="btn btn-secondary">Try the free exercise</a> : null}
                 {article.resource ? <a href={article.resource.href} download={article.resource.download || undefined} className="btn btn-primary max-w-full whitespace-normal text-center" data-testid="career-workbook-cta">{article.resource.label}</a> : null}
-                <a href="/sign-up?redirect_url=/onboarding/" className="btn btn-primary">
+                <a href={article.tool ? "/assessment/" : "/sign-up?redirect_url=/onboarding/"} className="btn btn-primary">
                   Start Assessment
                 </a>
                 <Link href="/u/alex-chen-ai" className="btn btn-secondary">
@@ -297,6 +299,8 @@ export default async function LearnArticlePage({ params }: { params: Promise<{ s
               </div>
             </div>
           </section>
+
+          {article.tool ? <CareerTools initialMode={article.tool} /> : null}
 
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr),320px]">
             <article className="space-y-8">

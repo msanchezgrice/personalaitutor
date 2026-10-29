@@ -68,6 +68,8 @@ takeaways = [
     ['Translate studio language into tasks other teams understand.', 'Compare opportunities inside games and in adjacent industries.', 'Use fresh synthetic examples when former work is confidential.', 'Restart a focused search with accurate evidence and current employer links.'],
     ['Define a target role through its actual responsibilities.', 'Build one bounded work sample with observable completion checks.', 'Show how you check AI output and own the final decisions.', 'Bring accurate evidence into applications, conversations, and interviews.'],
     ['Map actual tasks before mapping titles.', 'Compare two directions by responsibilities and constraints.', 'Make missing evidence visible instead of assigning a fit score.', 'Use one project to test the connection and revise your plan.'],
+    ['Describe actions, outputs, and checks rather than broad skill labels.', 'Compare each capability with current role requirements.', 'Keep private employer work private.', 'Build one fresh example to investigate a gap.'],
+    ['Choose one bounded task relevant to your target work.', 'Keep inputs, decisions, revisions, and checks inspectable.', 'Label synthetic data and self-review accurately.', 'Preserve the difference between a plan, prototype, and completed project.'],
 ]
 related = [
     ['career-mapping-transferable-skills', 'prove-ai-skills-to-employers'],
@@ -75,6 +77,8 @@ related = [
     ['career-mapping-transferable-skills', 'ai-skills-for-resume'],
     ['ai-skills-for-resume', 'career-mapping-transferable-skills'],
     ['ai-skills-for-resume', 'how-to-get-a-job-in-the-age-of-ai'],
+    ['career-mapping-transferable-skills', 'ai-skills-for-resume'],
+    ['how-to-build-an-ai-portfolio', 'prove-ai-skills-to-employers'],
 ]
 articles = []
 for index, file in enumerate(sorted(SOURCE.glob('0*.md'))):
@@ -91,6 +95,7 @@ for index, file in enumerate(sorted(SOURCE.glob('0*.md'))):
         'takeaways': takeaways[index],
         'keywords': [meta['primary_keyword']] + [k.strip() for k in meta['secondary_keywords'].strip('[]').split(',')],
         'sections': article_sections, 'faq': faq, 'relatedSlugs': related[index],
+        'tool': ['resume', 'reset', 'gaming', 'proof', 'map', 'map', 'proof'][index],
         'resource': {'href': '/learn/career-remapping-workbook', 'label': 'Get the Career Remapping Workbook', 'description': 'Map five tasks, compare two directions, and choose one proof project. No resume upload required.'},
     }
     articles.append(article)
@@ -109,6 +114,7 @@ articles.append({
     'sections': workbook_sections,
     'faq': [{'question': 'Do I need an account or resume upload?', 'answer': 'No. Read the worksheet here or download the PDF. Keep your answers in your own copy.'}, {'question': 'Will this workbook tell me which job I will get?', 'answer': 'No. It helps you investigate directions, compare requirements, and define a small proof project. It does not verify your history or guarantee a hiring outcome.'}],
     'relatedSlugs': ['career-mapping-transferable-skills', 'how-to-get-a-job-in-the-age-of-ai'],
+    'tool': 'map',
     'resource': {'href': '/downloads/career-remapping-workbook.pdf', 'label': 'Download workbook (PDF)', 'description': 'A free printable workbook. Print it or annotate your own copy; nothing you write is sent to us.', 'download': True},
 })
 for article in articles[:-1]:
