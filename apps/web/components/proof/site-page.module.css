@@ -376,7 +376,8 @@
 }
 .logDate {
   flex: none;
-  width: 7.5em;
+  min-width: 8.5em;
+  white-space: nowrap;
   font-size: 0.9375rem;
   color: var(--rm-muted);
 }
@@ -388,4 +389,18 @@
   font-size: 1.375rem;
   line-height: 1.2;
   color: var(--rm-ink);
+}
+
+@media (max-width: 560px) {
+  .flow,
+  .flowItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .flowLine {
+    width: 4px;
+    height: 14px;
+    margin-left: 22px;
+  }
 }
