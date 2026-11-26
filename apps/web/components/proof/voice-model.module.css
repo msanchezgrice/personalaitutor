@@ -1,0 +1,356 @@
+/* Voice model UI (public "Try my model" section and the dashboard studio).
+   Builds on the rm- system in app/remap.css; colours come from its tokens. */
+
+.section {
+  scroll-margin-top: 80px;
+}
+.inner {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding-block: clamp(48px, 7vw, 64px);
+}
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.title {
+  font-family: var(--rm-display);
+  font-weight: 700;
+  font-size: 1.75rem;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--rm-ink);
+}
+.introText {
+  margin: 0;
+  color: var(--rm-body);
+  max-width: 42em;
+}
+.model + .model {
+  border-top: 1.5px solid var(--rm-hairline);
+  padding-top: 28px;
+}
+.layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px 40px;
+}
+.tryForm {
+  flex: 1.6 1 480px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fieldLabel {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--rm-ink);
+}
+.inputRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.inputRow > input {
+  flex: 1 1 260px;
+  min-width: 0;
+  width: auto;
+}
+.fieldFoot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.8125rem;
+  color: var(--rm-muted);
+}
+.panes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.pane {
+  flex: 1 1 220px;
+  min-width: 0;
+  border: 1.5px solid var(--rm-hairline);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f8fafc;
+}
+.paneTuned {
+  border: 2.5px solid var(--rm-green);
+  background: var(--rm-surface);
+}
+.paneLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--rm-muted);
+}
+.paneLabelTuned {
+  color: var(--rm-green-deep);
+}
+.paneText {
+  margin: 0;
+  font-size: 1.0625rem;
+  color: var(--rm-muted);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.paneTextTuned {
+  font-family: var(--rm-display);
+  font-weight: 600;
+  font-size: 1.1875rem;
+  line-height: 1.35;
+  color: var(--rm-ink);
+}
+.paneEmpty {
+  margin: 0;
+  color: var(--rm-faint);
+  font-size: 0.9375rem;
+}
+.caption {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--rm-muted);
+}
+.cardWrap {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.cardList {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.cardRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1.5px solid var(--rm-hairline);
+}
+.cardRow:last-of-type {
+  border-bottom: 1.5px solid var(--rm-hairline);
+}
+.cardTerm {
+  color: var(--rm-muted);
+}
+.cardValue {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.cardNote {
+  margin: 12px 0 0;
+  font-size: 0.875rem;
+  color: var(--rm-muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pending {
+    animation: voicePulse 1.4s ease-in-out infinite;
+  }
+}
+@keyframes voicePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* --- Dashboard studio ---------------------------------------------------- */
+
+.studio {
+  max-width: 1040px;
+  margin: 0 auto;
+  width: 100%;
+  padding: clamp(20px, 4vw, 40px) clamp(16px, 3vw, 32px) 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.studioTop {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.studioTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tab {
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  border: 1.5px solid var(--rm-border);
+  background: var(--rm-surface);
+  color: var(--rm-ink);
+  border-radius: 10px;
+  padding: 8px 14px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.tab[aria-pressed="true"] {
+  border-color: var(--rm-green);
+  background: var(--rm-green-wash);
+  color: var(--rm-green-ink);
+}
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.stepHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.stepNumber {
+  color: var(--rm-green-deep);
+  margin-right: 8px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.meter {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--rm-hairline);
+  overflow: hidden;
+}
+.meterFill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--rm-green);
+}
+.meterFillShort {
+  background: var(--rm-old-1);
+}
+.sampleList {
+  list-style: none;
+  margin: 0;
+  padding: 0 4px 0 0;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.sampleItem {
+  display: flex;
+  gap: 12px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-top: 1.5px solid var(--rm-hairline);
+}
+.sampleItem:last-child {
+  border-bottom: 1.5px solid var(--rm-hairline);
+}
+.sampleText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.samplePreview {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.linkButton {
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  background: none;
+  border: 0;
+  padding: 10px 4px;
+  min-height: 44px;
+  color: var(--rm-danger);
+  cursor: pointer;
+  flex: none;
+}
+.linkButton:hover {
+  text-decoration: underline;
+}
+.progress {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.progressItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--rm-faint);
+}
+.progressItemActive {
+  color: var(--rm-ink);
+  font-weight: 600;
+}
+.progressItemDone {
+  color: var(--rm-green-ink);
+}
+.profile {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+.profileList {
+  margin: 6px 0 0;
+  padding-left: 1.1em;
+  color: var(--rm-body);
+}
+.profileList li + li {
+  margin-top: 4px;
+}
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+:global(.rm) .danger,
+:global(.rm) .danger:hover {
+  border-color: #fecaca;
+  color: var(--rm-danger);
+}
+.statusChip {
+  font-size: 0.8125rem;
+  padding: 4px 10px;
+}
