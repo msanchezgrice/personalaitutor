@@ -15,6 +15,30 @@ describe("funnel events", () => {
     expect(shouldPersistClientFunnelEvent("assessment_report_viewed")).toBe(true);
   });
 
+  test("persists the career map and Proof Studio funnel steps", () => {
+    for (const event of [
+      "career_map_started",
+      "career_map_completed",
+      "career_map_failed",
+      "career_map_viewed",
+      "career_map_email_captured",
+      "career_map_signup_clicked",
+      "proof_site_published",
+      "voice_model_tuned",
+      "voice_model_published",
+      "voice_model_public_run",
+      "build_log_published",
+      "remapped_route_viewed",
+    ]) {
+      expect(shouldPersistClientFunnelEvent(event)).toBe(true);
+    }
+  });
+
+  test("ignores names outside the registered set", () => {
+    expect(shouldPersistClientFunnelEvent("career_map_unknown")).toBe(false);
+    expect(shouldPersistClientFunnelEvent("")).toBe(false);
+  });
+
   test("keeps the pre-existing funnel events intact", () => {
     for (const event of [
       "landing_page_viewed",

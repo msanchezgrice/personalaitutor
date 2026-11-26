@@ -107,6 +107,9 @@ export function BillingGateOverlay({
         <div data-billing-gate-subcopy="1" className="mt-4 space-y-3 text-left text-base leading-7 text-slate-100">
           <p className="text-center text-slate-100">Pay to unlock features including:</p>
           <ul className="space-y-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm text-slate-100 sm:text-base">
+            <li data-billing-gate-proof-studio="1">
+              Get Proof Studio: a public site, a voice model tuned on your own writing, and a build log of what you make
+            </li>
             <li>Get career-related AI news sent to you daily</li>
             <li>Get suggested tweets that you can post to show your progress and your focus on AI</li>
             <li>Get dedicated AI skills modules based on your career</li>
