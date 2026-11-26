@@ -10,6 +10,7 @@ import {
   revalidatePublicProfile,
 } from "@/lib/proof/site-api";
 import { checkProfileHandleAvailable } from "@/lib/proof/site-profile";
+import { isProofSiteLive } from "@/lib/proof/site-publication";
 import { getProofSite, upsertProofSite } from "@/lib/proof/site-store";
 
 /** The learner's proof site settings, their profile basics and their latest career map. */
@@ -29,6 +30,10 @@ export async function GET(req: NextRequest) {
  * Saves the proof site and keeps learner_profiles in sync: handle (validated,
  * 409 when taken), headline (= new title), bio and the LinkedIn link go
  * through the existing profile update path.
+ *
+ * Saving is not publishing: for a learner whose profile was already public,
+ * visitors keep seeing the earlier page until they publish from the editor
+ * (POST /api/proof/site/publish). `siteLive` says which one visitors see.
  */
 export async function PUT(req: NextRequest) {
   try {
@@ -85,9 +90,11 @@ export async function PUT(req: NextRequest) {
     });
 
     await revalidatePublicProfile([profile.handle, updatedProfile.handle]);
+    const siteLive = await isProofSiteLive({ site, profilePublished: Boolean(updatedProfile.published) });
 
     return jsonOk({
       site,
+      siteLive,
       profile: { handle: updatedProfile.handle, name: updatedProfile.name, published: Boolean(updatedProfile.published) },
       publicUrl: `/u/${updatedProfile.handle}`,
     });

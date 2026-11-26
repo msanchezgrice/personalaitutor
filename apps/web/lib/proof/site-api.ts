@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { toCareerMapView, type CareerMapRecord, type CareerMapView, type ProofSite, type UserProfile } from "@aitutor/shared";
 import { getLatestCareerMapForProfile } from "@/lib/career-map/store";
+import { isProofSiteLive } from "@/lib/proof/site-publication";
 import { getProofSite } from "@/lib/proof/site-store";
 
 /** Body of PUT /api/proof/site. Limits match the draft schema and the learner_profiles columns. */
@@ -24,6 +25,8 @@ export type ProofSiteState = {
   site: ProofSite | null;
   profile: { handle: string; name: string; published: boolean };
   map: CareerMapView | null;
+  /** Visitors see this site (published profile + an explicit publish from the editor). */
+  siteLive: boolean;
 };
 
 /** Normalises a LinkedIn address. Returns null for empty input, "INVALID" for anything that is not linkedin.com over http(s). */
@@ -55,6 +58,7 @@ export async function buildProofSiteState(profile: UserProfile): Promise<ProofSi
     site,
     profile: { handle: profile.handle, name: profile.name, published: Boolean(profile.published) },
     map: mapRecord ? toCareerMapView(mapRecord) : null,
+    siteLive: site ? await isProofSiteLive({ site, profilePublished: Boolean(profile.published) }) : false,
   };
 }
 

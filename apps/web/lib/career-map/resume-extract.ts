@@ -186,7 +186,155 @@ async function extractPdfText(bytes: Uint8Array): Promise<string> {
   }
 }
 
+// --- zip bomb guard -----------------------------------------------------------
+// A .docx is a zip. mammoth (JSZip) inflates every part it reads in memory and
+// only checks the declared size after inflating, so a 4 MB upload could
+// unpack to gigabytes. Before mammoth sees the file we read the zip's own
+// directory and refuse anything that declares too much, and we inflate each
+// deflated entry with a hard output cap so a directory that lies about sizes
+// is caught too.
+
+/** Total declared uncompressed size we accept for a .docx. Real résumés are well under 1 MB. */
+export const DOCX_MAX_UNCOMPRESSED_BYTES = 20 * 1024 * 1024;
+/** Entries we accept in a .docx. A résumé has a few dozen at most. */
+export const DOCX_MAX_ENTRIES = 300;
+
+const ZIP_EOCD_SIGNATURE = 0x06054b50;
+const ZIP64_EOCD_LOCATOR_SIGNATURE = 0x07064b50;
+const ZIP_CENTRAL_FILE_SIGNATURE = 0x02014b50;
+const ZIP_LOCAL_FILE_SIGNATURE = 0x04034b50;
+const ZIP_EOCD_SIZE = 22;
+const ZIP_CENTRAL_FILE_SIZE = 46;
+const ZIP_LOCAL_FILE_SIZE = 30;
+const ZIP_MAX_COMMENT = 0xffff;
+
+export type ZipEntryRecord = {
+  method: number;
+  compressedSize: number;
+  uncompressedSize: number;
+  localHeaderOffset: number;
+};
+
+export type ZipInspection = {
+  entries: number;
+  uncompressedBytes: number;
+  records: ZipEntryRecord[];
+};
+
+/**
+ * Reads the End Of Central Directory record and every central directory file
+ * header. Returns null when the directory cannot be read: no EOCD, offsets
+ * outside the file, a header count that does not match the directory, a
+ * multi-disk archive, or zip64 (0xFFFF / 0xFFFFFFFF sentinels or a zip64
+ * locator), which no résumé needs. Pure: no inflating, no allocation beyond
+ * the record list.
+ */
+export function inspectZip(bytes: Uint8Array): ZipInspection | null {
+  if (bytes.byteLength < ZIP_EOCD_SIZE) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+
+  // The EOCD sits at the end, followed only by an optional comment of up to 64 KB.
+  let eocd = -1;
+  const searchFloor = Math.max(0, bytes.byteLength - ZIP_EOCD_SIZE - ZIP_MAX_COMMENT);
+  for (let index = bytes.byteLength - ZIP_EOCD_SIZE; index >= searchFloor; index -= 1) {
+    if (view.getUint32(index, true) !== ZIP_EOCD_SIGNATURE) continue;
+    const commentLength = view.getUint16(index + 20, true);
+    if (index + ZIP_EOCD_SIZE + commentLength <= bytes.byteLength) {
+      eocd = index;
+      break;
+    }
+  }
+  if (eocd < 0) return null;
+  if (eocd >= 20 && view.getUint32(eocd - 20, true) === ZIP64_EOCD_LOCATOR_SIGNATURE) return null;
+
+  const diskNumber = view.getUint16(eocd + 4, true);
+  const directoryDisk = view.getUint16(eocd + 6, true);
+  const entriesOnDisk = view.getUint16(eocd + 8, true);
+  const totalEntries = view.getUint16(eocd + 10, true);
+  const directorySize = view.getUint32(eocd + 12, true);
+  const directoryOffset = view.getUint32(eocd + 16, true);
+  if (
+    diskNumber === 0xffff ||
+    directoryDisk === 0xffff ||
+    entriesOnDisk === 0xffff ||
+    totalEntries === 0xffff ||
+    directorySize === 0xffffffff ||
+    directoryOffset === 0xffffffff
+  ) {
+    return null;
+  }
+  if (diskNumber !== 0 || directoryDisk !== 0 || entriesOnDisk !== totalEntries) return null;
+  const directoryEnd = directoryOffset + directorySize;
+  if (directoryEnd > eocd) return null;
+
+  const records: ZipEntryRecord[] = [];
+  let uncompressedBytes = 0;
+  let position = directoryOffset;
+  for (let entry = 0; entry < totalEntries; entry += 1) {
+    if (position + ZIP_CENTRAL_FILE_SIZE > directoryEnd) return null;
+    if (view.getUint32(position, true) !== ZIP_CENTRAL_FILE_SIGNATURE) return null;
+    const method = view.getUint16(position + 10, true);
+    const compressedSize = view.getUint32(position + 20, true);
+    const uncompressedSize = view.getUint32(position + 24, true);
+    const nameLength = view.getUint16(position + 28, true);
+    const extraLength = view.getUint16(position + 30, true);
+    const commentLength = view.getUint16(position + 32, true);
+    const localHeaderOffset = view.getUint32(position + 42, true);
+    if (compressedSize === 0xffffffff || uncompressedSize === 0xffffffff || localHeaderOffset === 0xffffffff) return null;
+    records.push({ method, compressedSize, uncompressedSize, localHeaderOffset });
+    uncompressedBytes += uncompressedSize;
+    position += ZIP_CENTRAL_FILE_SIZE + nameLength + extraLength + commentLength;
+  }
+  // The headers must fill the directory exactly: a reader that walks
+  // signatures (JSZip does) must not find entries we did not count.
+  if (position !== directoryEnd) return null;
+
+  return { entries: totalEntries, uncompressedBytes, records };
+}
+
+async function assertDocxWithinLimits(bytes: Uint8Array): Promise<void> {
+  const tooBig = () =>
+    new ResumeExtractError(
+      "RESUME_FILE_UNSUPPORTED",
+      "This Word file unpacks to far more than a résumé needs, so we did not open it. Save it as PDF, or paste the text.",
+    );
+  const unreadable = () =>
+    new ResumeExtractError(
+      "RESUME_FILE_UNSUPPORTED",
+      "We could not read the structure of this Word file. Save it again as .docx or PDF, or paste the text.",
+    );
+
+  const inspection = inspectZip(bytes);
+  if (!inspection) throw unreadable();
+  if (inspection.entries > DOCX_MAX_ENTRIES || inspection.uncompressedBytes > DOCX_MAX_UNCOMPRESSED_BYTES) throw tooBig();
+
+  // The directory could under-declare sizes. Inflate each deflated entry with
+  // its declared size as a hard cap; going past it throws before any large
+  // buffer exists. Stored entries cannot grow, and JSZip rejects other methods.
+  const { inflateRawSync } = await import("node:zlib");
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  for (const record of inspection.records) {
+    if (record.method !== 8) continue;
+    const local = record.localHeaderOffset;
+    if (local + ZIP_LOCAL_FILE_SIZE > bytes.byteLength || view.getUint32(local, true) !== ZIP_LOCAL_FILE_SIGNATURE) throw unreadable();
+    const dataStart = local + ZIP_LOCAL_FILE_SIZE + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
+    const dataEnd = dataStart + record.compressedSize;
+    if (dataEnd > bytes.byteLength) throw unreadable();
+    try {
+      inflateRawSync(bytes.subarray(dataStart, dataEnd), { maxOutputLength: Math.max(1, record.uncompressedSize) });
+    } catch (error) {
+      if (error instanceof RangeError || (error as { code?: string } | null)?.code === "ERR_BUFFER_TOO_LARGE") throw tooBig();
+      // Corrupt deflate data: the same answer mammoth would give.
+      throw new ResumeExtractError(
+        "RESUME_TEXT_NOT_FOUND",
+        "We could not read this Word file. Try saving it again as .docx or PDF, or paste the text.",
+      );
+    }
+  }
+}
+
 async function extractDocxText(bytes: Uint8Array): Promise<string> {
+  await assertDocxWithinLimits(bytes);
   const mammothModule = await import("mammoth");
   const mammoth = (mammothModule as unknown as { default?: typeof mammothModule }).default ?? mammothModule;
   try {

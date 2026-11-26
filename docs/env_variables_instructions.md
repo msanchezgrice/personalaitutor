@@ -29,6 +29,9 @@ This document lists every environment variable required or recommended for `myai
 | `X_CLIENT_SECRET` | Yes for X OAuth | X callback token exchange | Secret string | X Developer Portal |
 | `X_REDIRECT_URI` | Yes for X OAuth | X callback validation | `https://<domain>/api/auth/x/callback` | Must exactly match X app redirect URI |
 | `ONBOARDING_SESSION_SECRET` | Yes in production | Onboarding session token signing/verification | High-entropy secret string | Generate with password manager/`openssl rand -base64 48` |
+| `VOICE_MODEL_HASH_SECRET` | Yes in production | Voice model public runs: sha256 of visitor IPs for rate limits, and HMAC signatures on saved demos (`apps/web/lib/voice-model/rate-limit.ts`). Falls back to `IP_HASH_SECRET`. Without either in production it logs an error and derives a stable secret from `SUPABASE_SERVICE_ROLE_KEY`; outside production it uses a random per-process secret | High-entropy secret string, same value on every instance | Generate with `openssl rand -base64 48` |
+| `CAREER_MAP_IP_SALT` | Recommended | Hashing visitor IPs for the anonymous career map and résumé extract rate limits (`apps/web/lib/career-map/rate-limit.ts`). Falls back to `IP_HASH_SECRET`, then `SUPABASE_SERVICE_ROLE_KEY`, then `CLERK_SECRET_KEY` | High-entropy secret string | Generate with `openssl rand -base64 48` |
+| `VOICE_MODEL_LIMIT_IP_HOUR` / `VOICE_MODEL_LIMIT_MODEL_DAY` / `VOICE_MODEL_LIMIT_OWNER_DAY` | Optional | Public voice model run limits: per IP hash per hour (default 6), per model per day (default 80), across all of one learner's models per day (default 200) | Positive integer | Set manually |
 
 ## AI, Email, Deploy Integrations
 

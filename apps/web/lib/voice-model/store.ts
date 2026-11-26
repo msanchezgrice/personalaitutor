@@ -35,6 +35,9 @@ import { slugifyVoiceModelName, uniqueVoiceModelSlug } from "@/lib/voice-model/s
 
 export type VoiceModelRunSource = "owner" | "public";
 
+/** Models one learner may have. Each public model is a live, rate-limited LLM endpoint. */
+export const VOICE_MODEL_MAX_PER_LEARNER = 5;
+
 export type VoiceModelRun = {
   id: string;
   voiceModelId: string;
@@ -311,6 +314,9 @@ export async function createVoiceModel(input: {
   sampleType: string;
 }): Promise<VoiceModel> {
   const existing = await listVoiceModelsForProfile(input.learnerProfileId);
+  // Checked, not enforced by the schema: two creates racing at 4 could both
+  // pass. The route is owner-only and billing-gated, so that is acceptable.
+  if (existing.length >= VOICE_MODEL_MAX_PER_LEARNER) throw new Error("VOICE_MODEL_LIMIT_REACHED");
   const slug = uniqueVoiceModelSlug(
     slugifyVoiceModelName(input.name),
     existing.map((model) => model.slug),
@@ -609,6 +615,10 @@ export async function deleteVoiceModelSample(input: { voiceModelId: string; samp
 }
 
 // --- runs -------------------------------------------------------------------
+// voice_model_runs has no output columns (id, model, source, ip_hash, prompt,
+// created_at): a row is only a counter for the rate limits and is never
+// rendered anywhere public. The public run route inserts the row before it
+// calls the model, and deletes it when it rejects the run or the call fails.
 
 export async function recordVoiceModelRun(input: {
   voiceModelId: string;
@@ -644,8 +654,20 @@ export async function recordVoiceModelRun(input: {
   return runFromRow(data as VoiceModelRunRow);
 }
 
+/** Removes one run row (a rejected or failed public run). Missing rows are fine. */
+export async function deleteVoiceModelRun(id: string): Promise<void> {
+  if (mode() === "memory") {
+    const index = memoryRuns.findIndex((run) => run.id === id);
+    if (index >= 0) memoryRuns.splice(index, 1);
+    return;
+  }
+  if (!isUuid(id)) return;
+  const { error } = await getSupabaseAdminClient().from("voice_model_runs").delete().eq("id", id);
+  if (error) throw new Error(`VOICE_MODEL_RUN_DELETE_FAILED:${error.message}`);
+}
+
 /**
- * Timestamps (oldest first) of runs since `sinceIso`, filtered by model and/or
+ * Timestamps (oldest first) of runs since `sinceIso`, filtered by model(s) and/or
  * ip hash and source, at most `limit` of them. The rate limiter needs the
  * count and the oldest timestamp in the window.
  */
@@ -653,6 +675,8 @@ export async function listRecentVoiceModelRunTimes(input: {
   sinceIso: string;
   limit: number;
   voiceModelId?: string;
+  /** Any of these models (e.g. every model of one learner). */
+  voiceModelIds?: string[];
   ipHash?: string;
   source?: VoiceModelRunSource;
 }): Promise<string[]> {
@@ -662,6 +686,7 @@ export async function listRecentVoiceModelRunTimes(input: {
         (run) =>
           run.createdAt >= input.sinceIso &&
           (input.voiceModelId === undefined || run.voiceModelId === input.voiceModelId) &&
+          (input.voiceModelIds === undefined || input.voiceModelIds.includes(run.voiceModelId)) &&
           (input.ipHash === undefined || run.ipHash === input.ipHash) &&
           (input.source === undefined || run.source === input.source),
       )
@@ -674,6 +699,10 @@ export async function listRecentVoiceModelRunTimes(input: {
     .select("created_at")
     .gte("created_at", input.sinceIso);
   if (input.voiceModelId !== undefined) query = query.eq("voice_model_id", input.voiceModelId);
+  if (input.voiceModelIds !== undefined) {
+    if (input.voiceModelIds.length === 0) return [];
+    query = query.in("voice_model_id", input.voiceModelIds);
+  }
   if (input.ipHash !== undefined) query = query.eq("ip_hash", input.ipHash);
   if (input.source !== undefined) query = query.eq("source", input.source);
   const { data, error } = await query.order("created_at", { ascending: true }).limit(input.limit);

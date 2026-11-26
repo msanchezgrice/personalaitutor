@@ -3,7 +3,7 @@ import { jsonError, jsonOk } from "@aitutor/shared";
 import { readJsonBody, resolveVoiceModelOwner } from "@/lib/voice-model/access";
 import { loadVoiceModelPrefill } from "@/lib/voice-model/prefill";
 import { createVoiceModelBodySchema } from "@/lib/voice-model/schemas";
-import { createVoiceModel, listVoiceModelsForProfile } from "@/lib/voice-model/store";
+import { VOICE_MODEL_MAX_PER_LEARNER, createVoiceModel, listVoiceModelsForProfile } from "@/lib/voice-model/store";
 
 /** The learner's voice models, plus a name/sample-type suggestion from their career map. */
 export async function GET(req: NextRequest) {
@@ -45,6 +45,14 @@ export async function POST(req: NextRequest) {
     }
     return jsonOk({ model });
   } catch (error) {
+    if (error instanceof Error && error.message === "VOICE_MODEL_LIMIT_REACHED") {
+      return jsonError(
+        "VOICE_MODEL_LIMIT_REACHED",
+        `You can have up to ${VOICE_MODEL_MAX_PER_LEARNER} voice models. Delete one you no longer use to make a new one.`,
+        409,
+        { limit: VOICE_MODEL_MAX_PER_LEARNER },
+      );
+    }
     return jsonError("VOICE_MODEL_FAILED", "Could not create the model", 500, {
       reason: error instanceof Error ? error.message.slice(0, 300) : "UNKNOWN",
     });

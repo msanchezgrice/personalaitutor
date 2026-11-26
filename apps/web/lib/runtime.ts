@@ -77,6 +77,7 @@ import { briefingNewsForPath } from "./daily-briefing";
 import { mergeAttribution } from "./attribution";
 import { recordPersistedFunnelEvent } from "./funnel-events-server";
 import { billingAccessAllowed, normalizeBillingStatus } from "./billing";
+import { avoidReservedProfileHandle, isReservedProfileHandle } from "./reserved-handles";
 
 const DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -779,7 +780,7 @@ async function getOrCreateProfile(input: {
 
   while (true) {
     const { data } = await supabase.from("learner_profiles").select("id").eq("handle", handle).maybeSingle();
-    if (!data) break;
+    if (!data && !isReservedProfileHandle(handle)) break;
     handle = `${handleBase}-${suffix}`;
     suffix += 1;
   }
@@ -851,7 +852,7 @@ export async function runtimeGetOrCreateProfile(input: {
       input.handleBase?.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) ||
       existing?.name ||
       "New Learner";
-    const nextHandle = safeHandle(input.handleBase ?? existing?.handle ?? input.name ?? userId) || existing?.handle || "learner";
+    const nextHandle = avoidReservedProfileHandle(safeHandle(input.handleBase ?? existing?.handle ?? input.name ?? userId) || existing?.handle || "learner");
     const mergedLinks = {
       ...(existing?.socialLinks ?? {}),
       website: existing?.socialLinks.website ?? `${appBaseUrl()}/u/${nextHandle}`,
@@ -2150,7 +2151,7 @@ export async function runtimeUpdateProfile(userId: string, patch: Partial<UserPr
     let suffix = 2;
     while (true) {
       const { data } = await supabase.from("learner_profiles").select("id").eq("handle", candidate).maybeSingle();
-      if (!data || data.id === profile.id) {
+      if ((!data || data.id === profile.id) && !isReservedProfileHandle(candidate)) {
         handle = candidate;
         break;
       }

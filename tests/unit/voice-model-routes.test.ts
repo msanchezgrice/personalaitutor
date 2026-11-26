@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { VOICE_MODEL_MIN_SAMPLES } from "@aitutor/shared";
 
-const { mockGetAuthSeed, mockRequireBilling, mockFindUserByHandle, mockLatestMap, profiles } = vi.hoisted(() => {
+const { mockGetAuthSeed, mockRequireBilling, mockFindUserByHandle, mockLatestMap, mockBillingSubscription, profiles } = vi.hoisted(() => {
   const profiles: Record<string, { id: string; handle: string; published: boolean }> = {
     "user-a": { id: "learner-a", handle: "maya", published: true },
     "user-b": { id: "learner-b", handle: "sam", published: true },
@@ -12,6 +12,7 @@ const { mockGetAuthSeed, mockRequireBilling, mockFindUserByHandle, mockLatestMap
     mockRequireBilling: vi.fn(),
     mockFindUserByHandle: vi.fn(),
     mockLatestMap: vi.fn(),
+    mockBillingSubscription: vi.fn(),
   };
 });
 
@@ -29,7 +30,8 @@ vi.mock("@/lib/billing-access", () => ({
   billingSeedFromAuthSeed: (seed: unknown) => seed ?? undefined,
   requireBillingAccess: mockRequireBilling,
 }));
-vi.mock("@/lib/runtime", () => ({ runtimeFindUserByHandle: mockFindUserByHandle }));
+vi.mock("@/lib/runtime", () => ({ runtimeFindUserByHandle: mockFindUserByHandle, runtimeGetBillingSubscription: mockBillingSubscription }));
+vi.mock("@/lib/analytics", () => ({ captureAnalyticsEvent: vi.fn() }));
 vi.mock("@/lib/career-map/store", () => ({ getLatestCareerMapForProfile: mockLatestMap }));
 
 import { GET as listGet, POST as createPost } from "../../apps/web/app/api/voice-models/route";
@@ -41,6 +43,8 @@ import { POST as runPost } from "../../apps/web/app/api/voice-models/[id]/run/ro
 import { POST as publishPost } from "../../apps/web/app/api/voice-models/[id]/publish/route";
 import { POST as publicRunPost } from "../../apps/web/app/api/voice-models/public/[handle]/[slug]/run/route";
 import { listRecentVoiceModelRunTimes, listVoiceModelSamples, resetVoiceModelStateForTests } from "../../apps/web/lib/voice-model/store";
+import { resetVoiceModelOwnerBillingCacheForTests } from "../../apps/web/lib/voice-model/public";
+import { VOICE_MODEL_MAX_PER_LEARNER } from "../../apps/web/lib/voice-model/store";
 
 const TUNE_OUTPUT = {
   profile: {
@@ -95,8 +99,8 @@ async function addSamples(id: string, count = VOICE_MODEL_MIN_SAMPLES) {
   return response.json();
 }
 
-async function tunedPublishedModel() {
-  const model = await createModel();
+async function tunedPublishedModel(name?: string) {
+  const model = await createModel(name);
   await addSamples(model.id);
   expect((await tunePost(req(`/api/voice-models/${model.id}/tune`, { method: "POST" }), params({ id: model.id }))).status).toBe(200);
   expect((await publishPost(req(`/api/voice-models/${model.id}/publish`, { method: "POST", body: { published: true } }), params({ id: model.id }))).status).toBe(200);
@@ -127,6 +131,9 @@ beforeEach(() => {
   mockFindUserByHandle.mockImplementation(async (handle: string) => Object.values(profiles).find((profile) => profile.handle === handle) ?? null);
   mockLatestMap.mockReset();
   mockLatestMap.mockResolvedValue(null);
+  mockBillingSubscription.mockReset();
+  mockBillingSubscription.mockResolvedValue({ status: "active" });
+  resetVoiceModelOwnerBillingCacheForTests();
   profiles["user-a"]!.published = true;
   signIn("user-a");
   stubOpenAi();
@@ -370,5 +377,82 @@ describe("public run route", () => {
     const text = await response.text();
     expect(text).not.toContain("secret provider detail");
     expect(text).toContain("VOICE_MODEL_FAILED");
+  });
+});
+
+describe("hardening: model cap", () => {
+  test(`a learner can have ${VOICE_MODEL_MAX_PER_LEARNER} models; the next is 409 VOICE_MODEL_LIMIT_REACHED with a human message`, async () => {
+    expect(VOICE_MODEL_MAX_PER_LEARNER).toBe(5);
+    for (let index = 0; index < VOICE_MODEL_MAX_PER_LEARNER; index += 1) await createModel(`Voice ${index + 1}`);
+    const response = await createPost(
+      req("/api/voice-models", { method: "POST", body: { name: "One too many", purpose: "game launch announcements", sampleType: "launch emails" } }),
+    );
+    expect(response.status).toBe(409);
+    const body = await response.json();
+    expect(body.error.code).toBe("VOICE_MODEL_LIMIT_REACHED");
+    expect(body.error.message).toBe("You can have up to 5 voice models. Delete one you no longer use to make a new one.");
+    // Another learner is not affected.
+    signIn("user-b");
+    expect((await createPost(req("/api/voice-models", { method: "POST", body: { name: "Sam Voice", purpose: "patch notes", sampleType: "notes" } }))).status).toBe(200);
+
+    const { errorSentence } = await import("../../apps/web/components/proof/voice-model-studio");
+    expect(errorSentence({ status: 409, code: body.error.code, message: body.error.message }, "The model was not created. Try again.")).toBe(body.error.message);
+  });
+});
+
+describe("hardening: public run limits and race", () => {
+  const since = () => new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+  test("200 public runs a day across all of one learner's models (VOICE_MODEL_LIMIT_OWNER_DAY)", async () => {
+    vi.stubEnv("VOICE_MODEL_LIMIT_OWNER_DAY", "3");
+    const first = await tunedPublishedModel("Maya Voice v1");
+    const second = await tunedPublishedModel("Maya Voice v2");
+    expect((await publicRun("maya", first.slug, "Announce it", "192.0.2.1")).status).toBe(200);
+    expect((await publicRun("maya", second.slug, "Announce it", "192.0.2.2")).status).toBe(200);
+    expect((await publicRun("maya", first.slug, "Announce it", "192.0.2.3")).status).toBe(200);
+    const limited = await publicRun("maya", second.slug, "Announce it", "192.0.2.4");
+    expect(limited.status).toBe(429);
+    expect((await limited.json()).error).toMatchObject({ code: "VOICE_MODEL_RATE_LIMITED", scope: "owner" });
+    expect(limited.headers.get("retry-after")).toMatch(/^\d+$/);
+  });
+
+  test("the run row is recorded before the model call: concurrent runs cannot all slip under the limit", async () => {
+    vi.stubEnv("VOICE_MODEL_LIMIT_MODEL_DAY", "1");
+    const model = await tunedPublishedModel();
+    const responses = await Promise.all([
+      publicRun("maya", model.slug, "Announce it", "192.0.2.10"),
+      publicRun("maya", model.slug, "Announce it", "192.0.2.11"),
+      publicRun("maya", model.slug, "Announce it", "192.0.2.12"),
+    ]);
+    expect(responses.filter((response) => response.status === 200).length).toBeLessThanOrEqual(1);
+    // Rejected runs delete their row: what remains is at most the limit.
+    expect((await listRecentVoiceModelRunTimes({ voiceModelId: model.id, source: "public", sinceIso: since(), limit: 10 })).length).toBeLessThanOrEqual(1);
+  });
+
+  test("a rejected run does not stay counted, and a failed model call removes its row", async () => {
+    vi.stubEnv("VOICE_MODEL_LIMIT_MODEL_DAY", "2");
+    const model = await tunedPublishedModel();
+    expect((await publicRun("maya", model.slug, "Announce it", "192.0.2.20")).status).toBe(200);
+    expect((await publicRun("maya", model.slug, "Announce it", "192.0.2.21")).status).toBe(200);
+    expect((await publicRun("maya", model.slug, "Announce it", "192.0.2.22")).status).toBe(429);
+    expect(await listRecentVoiceModelRunTimes({ voiceModelId: model.id, source: "public", sinceIso: since(), limit: 10 })).toHaveLength(2);
+
+    resetVoiceModelStateForTests();
+    const fresh = await tunedPublishedModel();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({}), text: async () => "provider down" }));
+    expect((await publicRun("maya", fresh.slug, "Announce it", "192.0.2.30")).status).toBe(502);
+    expect(await listRecentVoiceModelRunTimes({ voiceModelId: fresh.id, source: "public", sinceIso: since(), limit: 10 })).toHaveLength(0);
+  });
+
+  test("public runs stop when the owner no longer has billing access", async () => {
+    const model = await tunedPublishedModel();
+    signIn(null);
+    mockBillingSubscription.mockResolvedValue({ status: "canceled" });
+    const response = await publicRun("maya", model.slug, "Announce it");
+    expect(response.status).toBe(404);
+    expect((await response.json()).error.code).toBe("VOICE_MODEL_NOT_FOUND");
+    expect(mockBillingSubscription).toHaveBeenCalledWith("learner-a");
+    // Nothing was run or counted.
+    expect(await listRecentVoiceModelRunTimes({ voiceModelId: model.id, source: "public", sinceIso: since(), limit: 10 })).toHaveLength(0);
   });
 });

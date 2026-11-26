@@ -54,8 +54,8 @@ async function callApi<T>(path: string, init?: { method?: string; body?: unknown
   }
 }
 
-/** The server's own sentence when it wrote one for people, else a mapped sentence. */
-function errorSentence(result: { status: number; code: string | null; message: string | null }, fallback: string) {
+/** The server's own sentence when it wrote one for people, else a mapped sentence. Exported for tests. */
+export function errorSentence(result: { status: number; code: string | null; message: string | null }, fallback: string) {
   const humanCodes = new Set([
     "VOICE_MODEL_SAMPLES_EMPTY",
     "VOICE_MODEL_SAMPLE_TOO_SHORT",
@@ -63,6 +63,7 @@ function errorSentence(result: { status: number; code: string | null; message: s
     "VOICE_MODEL_SAMPLE_LIMIT",
     "VOICE_MODEL_NOT_ENOUGH_SAMPLES",
     "VOICE_MODEL_DEMO_UNVERIFIED",
+    "VOICE_MODEL_LIMIT_REACHED",
     "SUBSCRIPTION_REQUIRED",
   ]);
   if (result.code && humanCodes.has(result.code) && result.message) return result.message;
