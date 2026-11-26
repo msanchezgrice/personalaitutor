@@ -73,6 +73,7 @@ export function resetVoiceModelStateForTests(): void {
   memoryModels.clear();
   memorySamples.clear();
   memoryRuns.length = 0;
+  lastSampleMs = 0;
 }
 
 // --- supabase row mapping ---------------------------------------------------
@@ -443,13 +444,17 @@ export async function saveVoiceModelTuning(
   id: string,
   input: { styleProfile: VoiceStyleProfile; baseModel: string; demo: VoiceModelDemoPatch | null },
 ): Promise<VoiceModel> {
-  const sampleCount = await countSamples(id);
+  const samples = await listVoiceModelSamples(id);
+  // tunedAt is never older than the newest sample the tune read, so the
+  // dashboard's "added since the last tune" count starts at zero.
+  const newest = samples.reduce((latest, sample) => (sample.createdAt > latest ? sample.createdAt : latest), "");
+  const now = nowIso();
   return patchVoiceModel(id, {
     status: "ready",
     styleProfile: input.styleProfile,
     baseModel: input.baseModel,
-    sampleCount,
-    tunedAt: nowIso(),
+    sampleCount: samples.length,
+    tunedAt: newest > now ? newest : now,
     ...(input.demo ?? {}),
   });
 }
@@ -544,7 +549,9 @@ export async function addVoiceModelSamples(input: {
     throw new Error("VOICE_MODEL_SAMPLE_LIMIT");
   }
   // Distinct, increasing timestamps keep the paste order stable on read.
-  const base = Math.max(Date.now(), lastSampleMs + 1);
+  // The batch ends at "now" (not after it), so a tune right after adding
+  // samples never sees them as newer than the tune.
+  const base = Math.max(Date.now() - (input.samples.length - 1), lastSampleMs + 1);
   lastSampleMs = base + input.samples.length - 1;
   const rows = input.samples.map((sample, index) => ({
     id: randomUUID(),

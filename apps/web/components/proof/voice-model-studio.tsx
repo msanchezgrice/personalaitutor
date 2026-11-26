@@ -104,7 +104,7 @@ export function VoiceModelStudio(props: VoiceModelStudioProps) {
       <div className={styles.studioTop}>
         <div className={styles.studioTitle}>
           <p className="rm-kicker">Proof Studio · Voice model</p>
-          <h2 className="rm-h2">A model tuned on your own work</h2>
+          <h2 className="rm-h3">A model tuned on your own work</h2>
           <p className="rm-p" style={{ maxWidth: "40em" }}>
             Paste writing you did. We build a profile of your voice and give it to a base model with your examples, so
             visitors can compare it with the untuned model on your page. It is tuned in context, not fine-tuned.

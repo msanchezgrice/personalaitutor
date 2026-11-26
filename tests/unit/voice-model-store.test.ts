@@ -96,6 +96,12 @@ describe("voice model store (memory mode)", () => {
     expect(stored.map((entry) => entry.content.slice(0, 15))).toEqual(["Sample number 1", "Sample number 2", "Sample number 3"]);
   });
 
+  test("samples added right before a tune are never newer than the tune", async () => {
+    const tuned = await makeTunedModel();
+    const samples = await listVoiceModelSamples(tuned.id);
+    expect(samples.filter((entry) => entry.createdAt > tuned.tunedAt!)).toEqual([]);
+  });
+
   test("refuses a batch that passes the sample cap", async () => {
     const model = await makeModel();
     await addVoiceModelSamples({
