@@ -2,6 +2,28 @@ export const ADMIN_ANALYTICS_WINDOWS = ["1d", "7d", "30d", "90d", "all"] as cons
 
 export type AdminAnalyticsWindow = (typeof ADMIN_ANALYTICS_WINDOWS)[number];
 
+/**
+ * Career Map + Proof Studio funnel (2026-11-25). Names are fixed by the plan;
+ * client code sends them with captureAnalyticsEvent and they are persisted
+ * like the other steps above.
+ */
+export const CAREER_MAP_FUNNEL_EVENTS = [
+  "career_map_started",
+  "career_map_completed",
+  "career_map_failed",
+  "career_map_viewed",
+  "career_map_email_captured",
+  "career_map_signup_clicked",
+  "proof_site_published",
+  "voice_model_tuned",
+  "voice_model_published",
+  "voice_model_public_run",
+  "build_log_published",
+  "remapped_route_viewed",
+] as const;
+
+export type CareerMapFunnelEventKey = (typeof CAREER_MAP_FUNNEL_EVENTS)[number];
+
 export const CLIENT_PERSISTED_FUNNEL_EVENTS = new Set([
   "landing_page_viewed",
   "landing_cta_clicked",
@@ -20,6 +42,18 @@ export const CLIENT_PERSISTED_FUNNEL_EVENTS = new Set([
   "assessment_report_viewed",
   "billing_hard_gate_viewed",
   "dashboard_signed_in_landed",
+  "career_map_started",
+  "career_map_completed",
+  "career_map_failed",
+  "career_map_viewed",
+  "career_map_email_captured",
+  "career_map_signup_clicked",
+  "proof_site_published",
+  "voice_model_tuned",
+  "voice_model_published",
+  "voice_model_public_run",
+  "build_log_published",
+  "remapped_route_viewed",
 ] as const);
 
 export type PersistedFunnelEventKey =
@@ -44,7 +78,19 @@ export type PersistedFunnelEventKey =
   | "billing_checkout_completed"
   | "billing_first_paid_invoice"
   | "project_created"
-  | "guest_session_claimed";
+  | "guest_session_claimed"
+  | "career_map_started"
+  | "career_map_completed"
+  | "career_map_failed"
+  | "career_map_viewed"
+  | "career_map_email_captured"
+  | "career_map_signup_clicked"
+  | "proof_site_published"
+  | "voice_model_tuned"
+  | "voice_model_published"
+  | "voice_model_public_run"
+  | "build_log_published"
+  | "remapped_route_viewed";
 
 export type PersistedFunnelEventRecord = {
   id?: string;

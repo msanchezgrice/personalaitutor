@@ -1,0 +1,152 @@
+/* Layout for the rm- content inside the dashboard shell (Career Map, Proof Studio hub, "Your route" card). */
+
+.page {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px 16px 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+@media (min-width: 768px) {
+  .page {
+    padding: 40px 40px 96px;
+  }
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.routeCard {
+  padding: clamp(12px, 2.4vw, 24px);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 20px;
+}
+
+.pieceCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pieceCard > :last-child {
+  margin-top: auto;
+}
+
+.pieceHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.stepLabel {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--rm-green-deep);
+}
+
+.chipLive {
+  background: var(--rm-green-tint);
+  border-color: var(--rm-green-tint);
+  color: var(--rm-green-ink);
+}
+
+.chipDraft {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: #78350f;
+}
+
+.chipUnavailable {
+  color: var(--rm-muted);
+  border-style: dashed;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 40px 56px;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.list > li {
+  border-top: 1.5px solid var(--rm-hairline);
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gapItem {
+  flex-direction: row !important;
+  gap: 14px !important;
+  align-items: flex-start;
+}
+
+.gapDot {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 4px;
+  border-radius: 50%;
+  border: 4px solid var(--rm-old-2);
+}
+
+.urlBox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  min-width: 0;
+}
+
+.url {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+
+.homeCard {
+  margin-bottom: 32px;
+}
+
+.homeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 20px 32px;
+  align-items: start;
+}

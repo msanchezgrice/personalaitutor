@@ -67,6 +67,19 @@ export type AdminAnalyticsTrackedSteps = {
   anonymousAssessmentCompleted: number;
   assessmentEmailCaptured: number;
   assessmentReportViewed: number;
+  // Career Map + Proof Studio funnel (2026-11-25)
+  careerMapStarted: number;
+  careerMapCompleted: number;
+  careerMapFailed: number;
+  careerMapViewed: number;
+  careerMapEmailCaptured: number;
+  careerMapSignupClicked: number;
+  proofSitePublished: number;
+  voiceModelTuned: number;
+  voiceModelPublished: number;
+  voiceModelPublicRun: number;
+  buildLogPublished: number;
+  remappedRouteViewed: number;
 };
 
 export type AdminAnalyticsReport = {
@@ -115,6 +128,18 @@ const TRACKED_STEP_KEYS = [
   "billing_checkout_completed",
   "project_created",
   "guest_session_claimed",
+  "career_map_started",
+  "career_map_completed",
+  "career_map_failed",
+  "career_map_viewed",
+  "career_map_email_captured",
+  "career_map_signup_clicked",
+  "proof_site_published",
+  "voice_model_tuned",
+  "voice_model_published",
+  "voice_model_public_run",
+  "build_log_published",
+  "remapped_route_viewed",
 ] as const;
 
 function roundRate(numerator: number, denominator: number) {
@@ -248,6 +273,18 @@ export function createEmptyAdminAnalyticsReport(window: AdminAnalyticsWindow): A
       anonymousAssessmentCompleted: 0,
       assessmentEmailCaptured: 0,
       assessmentReportViewed: 0,
+      careerMapStarted: 0,
+      careerMapCompleted: 0,
+      careerMapFailed: 0,
+      careerMapViewed: 0,
+      careerMapEmailCaptured: 0,
+      careerMapSignupClicked: 0,
+      proofSitePublished: 0,
+      voiceModelTuned: 0,
+      voiceModelPublished: 0,
+      voiceModelPublicRun: 0,
+      buildLogPublished: 0,
+      remappedRouteViewed: 0,
     },
     attributionCoverage: {
       eventsWithUtmSource: 0,
@@ -396,6 +433,18 @@ export function buildAdminAnalyticsReportFromEvents(
       anonymousAssessmentCompleted: trackedUniqueByEvent.get("anonymous_assessment_completed")?.size ?? 0,
       assessmentEmailCaptured: trackedUniqueByEvent.get("assessment_email_captured")?.size ?? 0,
       assessmentReportViewed: trackedUniqueByEvent.get("assessment_report_viewed")?.size ?? 0,
+      careerMapStarted: trackedUniqueByEvent.get("career_map_started")?.size ?? 0,
+      careerMapCompleted: trackedUniqueByEvent.get("career_map_completed")?.size ?? 0,
+      careerMapFailed: trackedUniqueByEvent.get("career_map_failed")?.size ?? 0,
+      careerMapViewed: trackedUniqueByEvent.get("career_map_viewed")?.size ?? 0,
+      careerMapEmailCaptured: trackedUniqueByEvent.get("career_map_email_captured")?.size ?? 0,
+      careerMapSignupClicked: trackedUniqueByEvent.get("career_map_signup_clicked")?.size ?? 0,
+      proofSitePublished: trackedUniqueByEvent.get("proof_site_published")?.size ?? 0,
+      voiceModelTuned: trackedUniqueByEvent.get("voice_model_tuned")?.size ?? 0,
+      voiceModelPublished: trackedUniqueByEvent.get("voice_model_published")?.size ?? 0,
+      voiceModelPublicRun: trackedUniqueByEvent.get("voice_model_public_run")?.size ?? 0,
+      buildLogPublished: trackedUniqueByEvent.get("build_log_published")?.size ?? 0,
+      remappedRouteViewed: trackedUniqueByEvent.get("remapped_route_viewed")?.size ?? 0,
     },
     attributionCoverage: {
       eventsWithUtmSource,

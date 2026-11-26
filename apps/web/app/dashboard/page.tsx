@@ -8,6 +8,8 @@ import { FbCompleteRegistrationOnDashboard } from "@/components/fb-complete-regi
 import { DailyActionCard } from "@/components/daily-action-card";
 import { ReadinessScoreCard } from "@/components/readiness-score-card";
 import { WeeklyFocusCard } from "@/components/weekly-focus-card";
+import { YourRouteCard } from "@/components/dashboard/route-card";
+import { loadYourRouteCard } from "@/components/dashboard/route-data";
 import { buildDashboardRuntimeBootstrap, getDashboardServerState } from "@/app/dashboard/_lib";
 import { buildOnboardingReportReturnUrl, sanitizeDashboardReturnTo } from "@/lib/billing";
 import { getDailyActionWithStreak } from "@/lib/daily-action";
@@ -126,6 +128,13 @@ export default async function DashboardPage({
     state.billing.accessAllowed && user?.id
       ? await getWeeklyFocusCard(user.id).catch(() => null)
       : null;
+  // "Your route" card (career map + Proof Studio, 2026-11-25): old title ->
+  // new title and the next proof step, or a prompt to draw a map. Failure
+  // degrades to hidden, never a crash.
+  const yourRouteCard =
+    state.billing.accessAllowed && user?.id
+      ? await loadYourRouteCard({ learnerProfileId: user.id, published: Boolean(user.published) }).catch(() => null)
+      : null;
   return (
     <>
       <Suspense fallback={null}>
@@ -201,6 +210,8 @@ export default async function DashboardPage({
               Start Recommended Work
             </a>
           </div>
+
+          {yourRouteCard ? <YourRouteCard data={yourRouteCard} /> : null}
 
           {readinessCard ? <ReadinessScoreCard card={readinessCard} /> : null}
 

@@ -218,6 +218,20 @@ export function AdminAnalyticsPageView({
             value={formatCount(report.trackedSteps.assessmentReportViewed)}
           />
         </div>
+        <div data-admin-analytics-career-map="1" className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+          <MetricCard label="Career map started" value={formatCount(report.trackedSteps.careerMapStarted)} />
+          <MetricCard label="Career map completed" value={formatCount(report.trackedSteps.careerMapCompleted)} />
+          <MetricCard label="Career map failed" value={formatCount(report.trackedSteps.careerMapFailed)} />
+          <MetricCard label="Career map viewed" value={formatCount(report.trackedSteps.careerMapViewed)} />
+          <MetricCard label="Map email captured" value={formatCount(report.trackedSteps.careerMapEmailCaptured)} />
+          <MetricCard label="Map sign-up clicked" value={formatCount(report.trackedSteps.careerMapSignupClicked)} />
+          <MetricCard label="Proof site published" value={formatCount(report.trackedSteps.proofSitePublished)} />
+          <MetricCard label="Voice model tuned" value={formatCount(report.trackedSteps.voiceModelTuned)} />
+          <MetricCard label="Voice model published" value={formatCount(report.trackedSteps.voiceModelPublished)} />
+          <MetricCard label="Voice model public run" value={formatCount(report.trackedSteps.voiceModelPublicRun)} />
+          <MetricCard label="Build log published" value={formatCount(report.trackedSteps.buildLogPublished)} />
+          <MetricCard label="Remapped route viewed" value={formatCount(report.trackedSteps.remappedRouteViewed)} />
+        </div>
       </section>
 
       <BreakdownTable

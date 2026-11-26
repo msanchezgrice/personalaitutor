@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { getAuthSeed } from "@/lib/auth";
 import { linkAnonymousAssessmentsToProfile } from "@/lib/anonymous-assessment";
+import { linkCareerMapsForLearner, readCareerMapCookieFromRequest } from "@/lib/career-map-linking";
 import {
   jsonError,
   jsonOk,
@@ -52,6 +53,17 @@ export async function POST(req: NextRequest) {
         "[assessment] anonymous assessment link failed",
         error instanceof Error ? error.message : "unknown",
       );
+    }
+
+    // Attach career maps drawn before sign-up (map cookie + same email). Never throws.
+    try {
+      await linkCareerMapsForLearner({
+        learnerProfileId: claimed.user.id,
+        email: seed.email ?? null,
+        cookieToken: readCareerMapCookieFromRequest(req),
+      });
+    } catch (error) {
+      console.warn("[career-map] map link failed", error instanceof Error ? error.message : "unknown");
     }
 
     return jsonOk({

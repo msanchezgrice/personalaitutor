@@ -4,6 +4,7 @@ import { experimental__simple as clerkSimple } from "@clerk/themes";
 import { BRAND_NAME, getSiteUrl } from "@/lib/site";
 import { AuthPageTracking } from "@/components/auth-page-tracking";
 import { AuthWidgetFallback } from "@/components/auth-widget-fallback";
+import { SignUpMapPanel, isSignUpFromMap } from "@/app/sign-up/sign-up-map-panel";
 
 export const metadata: Metadata = {
   title: `${BRAND_NAME} | Sign Up`,
@@ -29,14 +30,18 @@ function safeRedirect(input?: string) {
 export default async function SignUpPage({
   searchParams,
 }: {
-  searchParams: Promise<{ redirect_url?: string }>;
+  searchParams: Promise<{ redirect_url?: string; from?: string | string[] }>;
 }) {
   const params = await searchParams;
   const forceRedirectUrl = safeRedirect(params?.redirect_url);
+  // Visitors coming from a career map (?from=map) see what happens to their
+  // map and what Proof Studio builds next; everyone else sees the default panel.
+  const fromMap = isSignUpFromMap(params?.from);
 
   return (
     <main className="min-h-screen bg-[#eef3f2] text-[#0f172a] px-4 py-6 sm:px-6 sm:py-10">
       <div className="mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-6xl items-center gap-6 sm:gap-10 lg:min-h-[calc(100vh-5rem)] lg:grid-cols-[minmax(0,1fr),auto]">
+        {fromMap ? <SignUpMapPanel /> : (
         <section className="max-w-xl space-y-4 sm:space-y-6">
           <span className="inline-flex items-center rounded-full border border-emerald-200 bg-white/80 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 shadow-sm sm:px-4 sm:py-2 sm:text-xs">
             AI-readiness score
@@ -77,6 +82,7 @@ export default async function SignUpPage({
             </div>
           </div>
         </section>
+        )}
 
         <div className="flex flex-col items-center">
           <SignUp

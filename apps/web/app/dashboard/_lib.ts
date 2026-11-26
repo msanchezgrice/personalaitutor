@@ -1,6 +1,7 @@
 import { getAuthSeed } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin-access";
 import { linkAnonymousAssessmentsToProfile } from "@/lib/anonymous-assessment";
+import { linkCareerMapsForLearner, readCareerMapCookieToken } from "@/lib/career-map-linking";
 import {
   runtimeClaimOnboardingSession,
   runtimeGetBillingAccessState,
@@ -107,6 +108,20 @@ async function getDashboardBillingState(
         "[assessment] anonymous assessment link failed",
         error instanceof Error ? error.message : "unknown",
       );
+    }
+  }
+
+  // Attach career maps drawn before sign-up (the map cookie, plus maps saved
+  // with the same email). Never throws; memoised so repeat loads stay cheap.
+  if (billing.profile?.id) {
+    try {
+      await linkCareerMapsForLearner({
+        learnerProfileId: billing.profile.id,
+        email: seed?.email ?? null,
+        cookieToken: await readCareerMapCookieToken(),
+      });
+    } catch (error) {
+      console.warn("[career-map] map link failed", error instanceof Error ? error.message : "unknown");
     }
   }
 
