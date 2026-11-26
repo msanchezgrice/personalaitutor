@@ -15,7 +15,12 @@ export const themeBootScript = `
     // stayed on the first-paint hold forever when the runtime never flipped
     // data-runtime-ready).
     var isAdminDashboardPath = p === "/dashboard/admin" || p.indexOf("/dashboard/admin/") === 0;
-    var shouldHoldForRuntime = isDashboardPath && !isAdminDashboardPath;
+    // Career Map and Proof Studio pages are server-rendered React as well:
+    // the runtime only marks them ready, so never hold their first paint on it.
+    var isServerRenderedDashboardPath =
+      p === "/dashboard/map" || p.indexOf("/dashboard/map/") === 0 ||
+      p === "/dashboard/proof" || p.indexOf("/dashboard/proof/") === 0;
+    var shouldHoldForRuntime = isDashboardPath && !isAdminDashboardPath && !isServerRenderedDashboardPath;
 
     document.documentElement.setAttribute("data-path", p);
     document.documentElement.setAttribute("data-runtime-ready", shouldHoldForRuntime ? "0" : "1");

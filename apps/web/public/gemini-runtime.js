@@ -5390,6 +5390,19 @@
     }
 
     if (
+      currentPath === "/dashboard/map" ||
+      currentPath.indexOf("/dashboard/map/") === 0 ||
+      currentPath === "/dashboard/proof" ||
+      currentPath.indexOf("/dashboard/proof/") === 0
+    ) {
+      // Career Map and Proof Studio pages are server-rendered React (like the
+      // admin pages): nothing to hydrate, just release the first-paint hold.
+      document.documentElement.setAttribute("data-runtime-ready", "1");
+      captureEvent("app_route_hydrate_completed", { path: currentPath, mode: "server_rendered_noop" });
+      return;
+    }
+
+    if (
       currentPath.indexOf("/dashboard/") === 0 &&
       currentPath.indexOf("/dashboard/admin") !== 0
     ) {

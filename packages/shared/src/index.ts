@@ -16,3 +16,5 @@ export * from "./briefing-rescore";
 export * from "./streaks";
 export * from "./weekly-report-email";
 export * from "./winback-email";
+export * from "./career-map";
+export * from "./proof-studio";

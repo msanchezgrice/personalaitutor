@@ -18,6 +18,7 @@ import {
 import { attributionCaptureScript } from "@/lib/attribution";
 import { buildGoogleTagInitScript } from "@/lib/google-ads";
 import { themeBootScript } from "@/lib/theme-script";
+import "./remap.css";
 import "./globals.css";
 const appBaseUrl = getSiteUrl();
 const facebookAppId = process.env.FACEBOOK_APP_ID?.trim() || process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();

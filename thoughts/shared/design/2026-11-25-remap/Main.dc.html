@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>My AI Skill Tutor landing page</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap">
+<style>
+body{margin:0;background:#F6F8F7;color:#0F172A;font-family:Inter,system-ui,sans-serif}
+a{color:#047857}a:hover{color:#065F46}
+</style>
+</helmet>
+<div style="background: #F6F8F7; color: #0F172A; font-family: Inter, system-ui, sans-serif; font-size: 1rem; line-height: 1.55;">
+
+<!-- Nav -->
+<header style="border-bottom: 1.5px solid #E2E8E5; background: #F6F8F7;">
+<div style="max-width: 1200px; margin: 0 auto; padding: 16px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px 32px;">
+<a href="#top" style="display: flex; align-items: center; gap: 12px; text-decoration: none; color: #0F172A;">
+<img src="/_blob/17740a343fcedf0281a187e2ab297a51" alt="" style="width: 40px; height: 40px;">
+<span style="font-family: Outfit, sans-serif; font-weight: 700; font-size: 1.375rem; letter-spacing: -0.02em;">My AI Skill Tutor</span>
+</a>
+<nav aria-label="Main" style="display: flex; flex-wrap: wrap; gap: 8px 28px; flex-grow: 1; font-weight: 500; font-size: 0.9375rem;">
+<a href="#how" style="color: #334155; text-decoration: none; padding: 12px 0;">How it works</a>
+<a href="#proof" style="color: #334155; text-decoration: none; padding: 12px 0;">Proof</a>
+<a href="#remapped" style="color: #334155; text-decoration: none; padding: 12px 0;">Remapped</a>
+<a href="#pricing" style="color: #334155; text-decoration: none; padding: 12px 0;">Pricing</a>
+</nav>
+<div style="display: flex; gap: 12px; align-items: center;">
+<a href="#login" style="color: #0F172A; text-decoration: none; font-weight: 600; font-size: 0.9375rem; padding: 12px 16px;">Log in</a>
+<a href="#map" style="background: #047857; color: #FFFFFF; text-decoration: none; font-weight: 600; font-size: 0.9375rem; padding: 12px 20px; border-radius: 10px;">Find your new title</a>
+</div>
+</div>
+</header>
+
+<!-- Hero -->
+<section id="top" style="max-width: 1200px; margin: 0 auto; padding: 72px 24px 56px; display: flex; flex-wrap: wrap; gap: 48px; align-items: center;">
+<div style="flex: 1 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
+<p style="margin: 0; font-weight: 600; font-size: 0.9375rem; color: #047857;">For people whose job title is disappearing</p>
+<h1 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 700; font-size: clamp(2.5rem, 5.2vw, 4.25rem); line-height: 1.02; letter-spacing: -0.03em;">Your experience isn't obsolete. It's <span style="color: #047857;">unmapped.</span></h1>
+<p style="margin: 0; font-size: 1.1875rem; line-height: 1.55; color: #334155; max-width: 34em;">Tell us what you did before. We map it to the AI-era job it fits, then help you prove it in public: a live site, a model tuned on your own work, and a build log.</p>
+<form id="map" style="background: #FFFFFF; border: 1.5px solid #E2E8E5; border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 24px 60px rgba(15,23,42,0.10);">
+<label for="hero-background" style="font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.25rem;">What did you do before?</label>
+<textarea id="hero-background" rows="4" placeholder="Paste your résumé, or describe your last job in a few lines" style="font: inherit; font-size: 1rem; color: #0F172A; border: 1.5px solid #CBD5E1; border-radius: 12px; padding: 14px 16px; resize: vertical; min-height: 112px; background: #FFFFFF;"></textarea>
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+<button type="submit" style="font: inherit; font-weight: 600; font-size: 1.0625rem; background: #047857; color: #FFFFFF; border: 0; border-radius: 10px; padding: 14px 26px; min-height: 48px; cursor: pointer;">Map my career</button>
+<button type="button" style="font: inherit; font-weight: 600; font-size: 1rem; background: #FFFFFF; color: #0F172A; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 12px 20px; min-height: 48px; cursor: pointer;">Upload résumé (PDF or Word)</button>
+</div>
+<p style="margin: 0; font-size: 0.875rem; color: #475569;">Free. No account needed. Takes about a minute.</p>
+</form>
+</div>
+<div style="flex: 1 1 480px; min-width: 0;">
+<svg role="img" aria-label="A transit map of careers. Grey lines on the left hold old jobs such as QA Tester, Marketing Manager and Copywriter. Green lines on the right hold new jobs such as Go-to-Market Engineer and Model Evaluator. A green route connects Marketing Manager to Go-to-Market Engineer." viewBox="0 0 720 520" style="width: 100%; height: auto; display: block;">
+<g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="9">
+<path d="M24,130 L112,130 L142,100 L300,100" stroke="#98A2AD"/>
+<path d="M24,260 L300,260" stroke="#7C8794"/>
+<path d="M24,420 L120,420 L150,390 L300,390" stroke="#B3BBC4"/>
+<path d="M440,100 L590,100 L620,130 L700,130" stroke="#0D9488"/>
+<path d="M440,260 L700,260" stroke="#10B981"/>
+<path d="M440,390 L560,390 L590,420 L700,420" stroke="#047857"/>
+</g>
+<g fill="#7C8794"><rect x="298" y="84" width="8" height="32" rx="2" fill="#98A2AD"/><rect x="298" y="244" width="8" height="32" rx="2"/><rect x="298" y="374" width="8" height="32" rx="2" fill="#B3BBC4"/></g>
+<g><rect x="434" y="84" width="8" height="32" rx="2" fill="#0D9488"/><rect x="434" y="244" width="8" height="32" rx="2" fill="#10B981"/><rect x="434" y="374" width="8" height="32" rx="2" fill="#047857"/></g>
+<path d="M150,260 L206,318 L424,318 L480,260" fill="none" stroke="#F6F8F7" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M150,260 L206,318 L424,318 L480,260" fill="none" stroke="#10B981" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+<g stroke-width="5" fill="#FFFFFF">
+<circle cx="64" cy="130" r="11" fill="#D5DADF" stroke="#C3CAD1"/><circle cx="220" cy="100" r="11" stroke="#98A2AD"/>
+<circle cx="64" cy="260" r="11" fill="#D5DADF" stroke="#C3CAD1"/><circle cx="150" cy="260" r="11" stroke="#10B981"/><circle cx="244" cy="260" r="11" stroke="#7C8794"/>
+<circle cx="70" cy="420" r="11" stroke="#B3BBC4"/><circle cx="232" cy="390" r="11" fill="#D5DADF" stroke="#C3CAD1"/>
+<circle cx="500" cy="100" r="11" stroke="#0D9488"/><circle cx="664" cy="130" r="11" stroke="#0D9488"/>
+<circle cx="480" cy="260" r="11" fill="#10B981" stroke="#10B981"/><circle cx="626" cy="260" r="11" stroke="#10B981"/>
+<circle cx="500" cy="390" r="11" stroke="#047857"/><circle cx="650" cy="420" r="11" stroke="#047857"/>
+</g>
+<g font-family="Outfit, sans-serif" font-weight="600" font-size="15" fill="#0F172A" text-anchor="middle">
+<text x="64" y="162" fill="#64748B">Copywriter</text><text x="220" y="78">Brand Designer</text>
+<text x="64" y="236" fill="#64748B">QA Tester</text><text x="150" y="236">Marketing Manager</text><text x="244" y="292">Producer</text>
+<text x="70" y="452">Recruiter</text><text x="232" y="366" fill="#64748B">Paralegal</text>
+<text x="500" y="78">AI Product Manager</text><text x="650" y="162">Agent Ops</text>
+<text x="506" y="236">Go-to-Market Engineer</text><text x="626" y="292">Lifecycle Automation</text>
+<text x="500" y="366">Model Evaluator</text><text x="650" y="452">AI Trainer</text>
+</g>
+<g><rect x="449" y="282" width="62" height="28" rx="7" fill="#0F172A"/><text x="480" y="301" font-family="Inter, sans-serif" font-weight="600" font-size="14" fill="#FFFFFF" text-anchor="middle">Maya</text></g>
+<text x="370" y="212" font-family="Outfit, sans-serif" font-weight="600" font-size="15" fill="#64748B" text-anchor="middle">No route, until now</text>
+</svg>
+<p style="margin: 8px 0 0; font-size: 0.875rem; color: #475569; text-align: center;">Example: Maya, a game-studio marketing manager, remapped to Go-to-Market Engineer.</p>
+</div>
+</section>
+
+<!-- Video -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 24px 24px 72px;">
+<div style="display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: baseline; margin-bottom: 20px;">
+<h2 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 700; font-size: 1.75rem; letter-spacing: -0.02em;">The 65-second version</h2>
+<p style="margin: 0; color: #475569;">Maya's studio closed. 140 applications, 0 callbacks. Then someone drew her a map.</p>
+</div>
+<div style="position: relative; border-radius: 18px; overflow: hidden; border: 1.5px solid #E2E8E5; box-shadow: 0 24px 60px rgba(15,23,42,0.12); background: #FFFFFF;">
+<img src="/_blob/341eb5d3a2d77a43109b0a342f6210d1" alt="Frame from the launch film: a career transit map with a green route crossing from old jobs to new jobs" style="display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover;">
+<button type="button" aria-label="Play the film" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 88px; height: 88px; border-radius: 50%; border: 0; background: #047857; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 30px rgba(4,120,87,0.35);">
+<svg aria-hidden="true" width="30" height="34" viewBox="0 0 30 34"><path d="M4 2 L28 17 L4 32 Z" fill="#FFFFFF"/></svg>
+</button>
+</div>
+</section>
+
+<!-- The gap, in three numbers -->
+<section style="background: #FFFFFF; border-top: 1.5px solid #E2E8E5; border-bottom: 1.5px solid #E2E8E5;">
+<div style="max-width: 1200px; margin: 0 auto; padding: 72px 24px; display: flex; flex-direction: column; gap: 40px;">
+<h2 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 700; font-size: clamp(1.875rem, 3.4vw, 2.75rem); line-height: 1.08; letter-spacing: -0.025em; max-width: 20em;">Old jobs are closing. New ones are opening. Nobody drew the map between them.</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 32px 48px;">
+<div style="flex: 1 1 260px; border-top: 6px solid #7C8794; padding-top: 20px; display: flex; flex-direction: column; gap: 8px;">
+<div style="font-family: Outfit, sans-serif; font-weight: 700; font-size: 4rem; line-height: 1; letter-spacing: -0.03em;">1 in 3</div>
+<p style="margin: 0; font-size: 1.125rem; color: #1E293B;">U.S. game workers were laid off in the last two years.</p>
+<p style="margin: 0; font-size: 0.875rem; color: #475569;">GDC State of the Game Industry 2026</p>
+</div>
+<div style="flex: 1 1 260px; border-top: 6px solid #10B981; padding-top: 20px; display: flex; flex-direction: column; gap: 8px;">
+<div style="font-family: Outfit, sans-serif; font-weight: 700; font-size: 4rem; line-height: 1; letter-spacing: -0.03em;">170M</div>
+<p style="margin: 0; font-size: 1.125rem; color: #1E293B;">new jobs are expected worldwide by 2030.</p>
+<p style="margin: 0; font-size: 0.875rem; color: #475569;">World Economic Forum, Future of Jobs Report 2025</p>
+</div>
+<div style="flex: 1 1 260px; border-top: 6px solid #047857; padding-top: 20px; display: flex; flex-direction: column; gap: 8px;">
+<div style="font-family: Outfit, sans-serif; font-weight: 700; font-size: 4rem; line-height: 1; letter-spacing: -0.03em;">62%</div>
+<p style="margin: 0; font-size: 1.125rem; color: #1E293B;">average pay premium for workers with AI skills.</p>
+<p style="margin: 0; font-size: 0.875rem; color: #475569;">PwC 2026 Global AI Jobs Barometer</p>
+</div>
+</div>
+</div>
+</section>
+
+<!-- How it works -->
+<section id="how" style="max-width: 1200px; margin: 0 auto; padding: 88px 24px; display: flex; flex-direction: column; gap: 48px;">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 44em;">
+<h2 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 700; font-size: clamp(1.875rem, 3.4vw, 2.75rem); line-height: 1.08; letter-spacing: -0.025em;">How the map gets drawn</h2>
+<p style="margin: 0; font-size: 1.125rem; color: #334155;">Three steps, in this order. The first two are free.</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 32px;">
+<div style="flex: 1 1 300px; display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; align-items: center; gap: 12px;"><span style="width: 36px; height: 36px; border-radius: 50%; border: 6px solid #7C8794; background: #FFFFFF; box-sizing: border-box;"></span><span style="font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.375rem;">1. Tell us what you did</span></div>
+<p style="margin: 0; color: #334155;">Paste your résumé or describe your last job. We read what you actually did, line by line, and ignore the title.</p>
+</div>
+<div style="flex: 1 1 300px; display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; align-items: center; gap: 12px;"><span style="width: 36px; height: 36px; border-radius: 50%; border: 6px solid #10B981; background: #FFFFFF; box-sizing: border-box;"></span><span style="font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.375rem;">2. We translate it</span></div>
+<p style="margin: 0; color: #334155;">Each thing you did is matched to the AI-era skill it has become, with the line from your résumé that backs it up.</p>
+</div>
+<div style="flex: 1 1 300px; display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; align-items: center; gap: 12px;"><span style="width: 36px; height: 36px; border-radius: 50%; border: 6px solid #10B981; background: #10B981; box-sizing: border-box;"></span><span style="font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.375rem;">3. You get a new title and a route</span></div>
+<p style="margin: 0; color: #334155;">One title that fits best, two alternates, the gaps to close, and the three pieces of proof that will make it believable.</p>
+</div>
+</div>
+
+<!-- Example translation -->
+<div style="background: #FFFFFF; border: 1.5px solid #E2E8E5; border-radius: 18px; padding: 32px; display: flex; flex-direction: column; gap: 24px; box-shadow: 0 24px 60px rgba(15,23,42,0.08);">
+<div style="display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline; justify-content: space-between;">
+<h3 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.5rem;">Maya's translation</h3>
+<p style="margin: 0; font-size: 0.875rem; color: #475569;">Example. Senior Marketing Manager at a game studio, 2018 to 2025.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 0;">
+<div style="display: flex; flex-wrap: wrap; gap: 4px 24px; padding: 0 0 10px; font-family: Outfit, sans-serif; font-weight: 600; font-size: 1rem;">
+<span style="flex: 1 1 260px; color: #475569;">Before</span><span style="flex: 1 1 260px; color: #047857;">Now</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 4px 24px; padding: 16px 0; border-top: 1.5px solid #E2E8E5; font-size: 1.1875rem;">
+<span style="flex: 1 1 260px; color: #334155;">Planned 4 global game launches</span><span style="flex: 1 1 260px; font-weight: 600;">Builds AI launch workflows</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 4px 24px; padding: 16px 0; border-top: 1.5px solid #E2E8E5; font-size: 1.1875rem;">
+<span style="flex: 1 1 260px; color: #334155;">Wrote player emails to 12M players</span><span style="flex: 1 1 260px; font-weight: 600;">Writes brand-voice prompts</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 4px 24px; padding: 16px 0; border-top: 1.5px solid #E2E8E5; font-size: 1.1875rem;">
+<span style="flex: 1 1 260px; color: #334155;">Grew a 90k-member Discord</span><span style="flex: 1 1 260px; font-weight: 600;">Designs community agents</span>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: center; border-top: 6px solid #10B981; padding-top: 24px;">
+<div style="flex: 1 1 360px; display: flex; flex-direction: column; gap: 4px;">
+<span style="font-size: 0.9375rem; font-weight: 600; color: #475569;">Her new title</span>
+<span style="font-family: Outfit, sans-serif; font-weight: 700; font-size: clamp(1.875rem, 3.6vw, 2.75rem); line-height: 1.05; letter-spacing: -0.025em;">Go-to-Market Engineer</span>
+</div>
+<a href="#map" style="background: #047857; color: #FFFFFF; text-decoration: none; font-weight: 600; font-size: 1.0625rem; padding: 14px 26px; border-radius: 10px;">Find yours</a>
+</div>
+</div>
+</section>
+
+<!-- Proof -->
+<section id="proof" style="background: #FFFFFF; border-top: 1.5px solid #E2E8E5; border-bottom: 1.5px solid #E2E8E5;">
+<div style="max-width: 1200px; margin: 0 auto; padding: 88px 24px; display: flex; flex-direction: column; gap: 48px;">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 44em;">
+<h2 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 700; font-size: clamp(1.875rem, 3.4vw, 2.75rem); line-height: 1.08; letter-spacing: -0.025em;">Then we help you prove it</h2>
+<p style="margin: 0; font-size: 1.125rem; color: #334155;">A new title on a résumé is a claim. These are three things a hiring manager can open and check.</p>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 32px 48px; align-items: center;">
+<div style="flex: 1 1 340px; display: flex; flex-direction: column; gap: 12px;">
+<h3 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.625rem;">A site of your own</h3>
+<p style="margin: 0; color: #334155;">Your new title, your translated skills and your projects on one public page. We draft it from your map; you edit and publish.</p>
+</div>
+<div style="flex: 1.4 1 420px; min-width: 0; background: #FFFFFF; border: 1.5px solid #E2E8E5; border-radius: 18px; overflow: hidden; box-shadow: 0 24px 60px rgba(15,23,42,0.10);">
+<div style="background: #EEF2F0; border-bottom: 1.5px solid #E2E8E5; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+<span style="flex: 1 1 200px; background: #FFFFFF; border: 1.5px solid #E2E8E5; border-radius: 8px; padding: 6px 12px; font-size: 0.875rem; color: #334155; overflow-wrap: anywhere;">myaiskilltutor.com/u/maya-ortiz</span>
+<span style="background: #D1FAE5; color: #065F46; font-weight: 600; font-size: 0.875rem; border-radius: 8px; padding: 6px 12px;">Live</span>
+</div>
+<div style="padding: 28px; display: flex; flex-direction: column; gap: 10px;">
+<span style="font-family: Outfit, sans-serif; font-weight: 700; font-size: 2.25rem; line-height: 1; letter-spacing: -0.03em;">Maya Ortiz</span>
+<span style="font-family: Outfit, sans-serif; font-weight: 500; font-size: 1.25rem; color: #334155;">Go-to-market engineer for game studios</span>
+<p style="margin: 0; color: #475569; font-size: 0.9375rem;">I turn launch plans into AI workflows, player emails into brand-voice prompts, and communities into agents.</p>
+</div>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap-reverse; gap: 32px 48px; align-items: center;">
+<div style="flex: 1.4 1 420px; min-width: 0; background: #FFFFFF; border: 1.5px solid #E2E8E5; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 24px 60px rgba(15,23,42,0.10);">
+<div style="display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between;">
+<span style="font-family: Outfit, sans-serif; font-weight: 700; font-size: 1.5rem;">maya-voice-v1</span>
+<span style="font-size: 0.875rem; color: #475569;">Tuned on 24 of her launch emails</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<span style="font-size: 0.875rem; font-weight: 600; color: #475569;">Base model</span>
+<span style="font-size: 1.0625rem; color: #475569;">Exciting update coming soon!</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; border-top: 1.5px solid #E2E8E5; padding-top: 16px;">
+<span style="font-size: 0.875rem; font-weight: 600; color: #047857;">maya-voice-v1</span>
+<span style="font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.5rem; line-height: 1.15;">Squad up. Season 4 drops Friday.</span>
+</div>
+</div>
+<div style="flex: 1 1 340px; display: flex; flex-direction: column; gap: 12px;">
+<h3 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.625rem;">A model tuned on your work</h3>
+<p style="margin: 0; color: #334155;">Give it samples of your writing. It learns your voice, and visitors can try it on your page next to the untuned model. The model card says exactly how it was tuned.</p>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 32px 48px; align-items: center;">
+<div style="flex: 1 1 340px; display: flex; flex-direction: column; gap: 12px;">
+<h3 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.625rem;">A build log that shows the work</h3>
+<p style="margin: 0; color: #334155;">Short posts about what you built this week: the prompt, the setup, what broke. Your tutor drafts from your notes; you publish and share.</p>
+</div>
+<div style="flex: 1.4 1 420px; min-width: 0; background: #FFFFFF; border: 1.5px solid #E2E8E5; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 24px 60px rgba(15,23,42,0.10);">
+<span style="font-size: 0.875rem; font-weight: 600; color: #475569;">Maya Ortiz · Build log · Week 3</span>
+<span style="font-family: Outfit, sans-serif; font-weight: 700; font-size: 1.625rem; line-height: 1.12; letter-spacing: -0.02em;">I turned our launch checklist into one agent workflow</span>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-weight: 600; font-size: 0.9375rem;">
+<span style="border: 2px solid #CBD5E1; background: #F8FAFC; border-radius: 10px; padding: 10px 16px;">Brief</span>
+<span aria-hidden="true" style="width: 28px; height: 4px; border-radius: 2px; background: #10B981;"></span>
+<span style="border: 2px solid #CBD5E1; background: #F8FAFC; border-radius: 10px; padding: 10px 16px;">Agent drafts</span>
+<span aria-hidden="true" style="width: 28px; height: 4px; border-radius: 2px; background: #10B981;"></span>
+<span style="border: 2px solid #10B981; background: #ECFDF5; border-radius: 10px; padding: 10px 16px;">Maya reviews</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Remapped -->
+<section id="remapped" style="max-width: 1200px; margin: 0 auto; padding: 88px 24px; display: flex; flex-wrap: wrap; gap: 40px 64px;">
+<div style="flex: 1 1 360px; display: flex; flex-direction: column; gap: 16px;">
+<p style="margin: 0; font-weight: 600; font-size: 0.9375rem; color: #047857;">Remapped</p>
+<h2 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 700; font-size: clamp(1.875rem, 3.4vw, 2.75rem); line-height: 1.08; letter-spacing: -0.025em;">One new career, remapped every week</h2>
+<p style="margin: 0; font-size: 1.125rem; color: #334155;">Each week we take one job that is shrinking and draw its route: which skills carry over, what the new title is, and what to build first.</p>
+<a href="#remapped-all" style="align-self: flex-start; background: #FFFFFF; color: #0F172A; border: 1.5px solid #CBD5E1; text-decoration: none; font-weight: 600; padding: 12px 20px; border-radius: 10px;">See every route</a>
+</div>
+<ul style="flex: 1.3 1 420px; min-width: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column;">
+<li style="border-top: 1.5px solid #E2E8E5;"><a href="#r1" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 18px 0; text-decoration: none; color: #0F172A; font-family: Outfit, sans-serif; font-size: 1.25rem;"><span style="flex: 1 1 160px; color: #475569; font-weight: 500;">QA Tester</span><span aria-hidden="true" style="width: 40px; height: 6px; border-radius: 3px; background: #10B981;"></span><span style="flex: 1.3 1 200px; font-weight: 600;">Model Evaluator</span></a></li>
+<li style="border-top: 1.5px solid #E2E8E5;"><a href="#r2" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 18px 0; text-decoration: none; color: #0F172A; font-family: Outfit, sans-serif; font-size: 1.25rem;"><span style="flex: 1 1 160px; color: #475569; font-weight: 500;">Game Designer</span><span aria-hidden="true" style="width: 40px; height: 6px; border-radius: 3px; background: #10B981;"></span><span style="flex: 1.3 1 200px; font-weight: 600;">AI Environment Designer</span></a></li>
+<li style="border-top: 1.5px solid #E2E8E5;"><a href="#r3" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 18px 0; text-decoration: none; color: #0F172A; font-family: Outfit, sans-serif; font-size: 1.25rem;"><span style="flex: 1 1 160px; color: #475569; font-weight: 500;">Producer</span><span aria-hidden="true" style="width: 40px; height: 6px; border-radius: 3px; background: #10B981;"></span><span style="flex: 1.3 1 200px; font-weight: 600;">AI Product Manager</span></a></li>
+<li style="border-top: 1.5px solid #E2E8E5;"><a href="#r4" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 18px 0; text-decoration: none; color: #0F172A; font-family: Outfit, sans-serif; font-size: 1.25rem;"><span style="flex: 1 1 160px; color: #475569; font-weight: 500;">Concept Artist</span><span aria-hidden="true" style="width: 40px; height: 6px; border-radius: 3px; background: #10B981;"></span><span style="flex: 1.3 1 200px; font-weight: 600;">AI Art Director</span></a></li>
+<li style="border-top: 1.5px solid #E2E8E5; border-bottom: 1.5px solid #E2E8E5;"><a href="#r5" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 18px 0; text-decoration: none; color: #0F172A; font-family: Outfit, sans-serif; font-size: 1.25rem;"><span style="flex: 1 1 160px; color: #475569; font-weight: 500;">Recruiter</span><span aria-hidden="true" style="width: 40px; height: 6px; border-radius: 3px; background: #10B981;"></span><span style="flex: 1.3 1 200px; font-weight: 600;">AI Trainer</span></a></li>
+</ul>
+</section>
+
+<!-- Along the route -->
+<section style="background: #FFFFFF; border-top: 1.5px solid #E2E8E5; border-bottom: 1.5px solid #E2E8E5;">
+<div style="max-width: 1200px; margin: 0 auto; padding: 72px 24px; display: flex; flex-direction: column; gap: 36px;">
+<h2 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 700; font-size: clamp(1.625rem, 3vw, 2.25rem); line-height: 1.1; letter-spacing: -0.02em;">A tutor for the whole route</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 28px 48px;">
+<div style="flex: 1 1 280px; display: flex; flex-direction: column; gap: 8px;"><h3 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.25rem;">A weekly plan for your new title</h3><p style="margin: 0; color: #334155;">Short modules that end in something you can show, in the order your route needs them.</p></div>
+<div style="flex: 1 1 280px; display: flex; flex-direction: column; gap: 8px;"><h3 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.25rem;">An AI tutor, any hour</h3><p style="margin: 0; color: #334155;">Stuck on a step? Ask. It knows your background, your map and what you built last.</p></div>
+<div style="flex: 1 1 280px; display: flex; flex-direction: column; gap: 8px;"><h3 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.25rem;">Daily AI news for your field</h3><p style="margin: 0; color: #334155;">One briefing a day, filtered to the job you are moving into, with one small action.</p></div>
+</div>
+</div>
+</section>
+
+<!-- Pricing -->
+<section id="pricing" style="max-width: 1200px; margin: 0 auto; padding: 88px 24px; display: flex; flex-direction: column; gap: 40px;">
+<h2 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 700; font-size: clamp(1.875rem, 3.4vw, 2.75rem); line-height: 1.08; letter-spacing: -0.025em;">The map is free. Building the proof is one plan.</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 24px;">
+<div style="flex: 1 1 340px; background: #FFFFFF; border: 1.5px solid #E2E8E5; border-radius: 18px; padding: 32px; display: flex; flex-direction: column; gap: 18px;">
+<h3 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.5rem;">Career map</h3>
+<div style="font-family: Outfit, sans-serif; font-weight: 700; font-size: 3rem; line-height: 1; letter-spacing: -0.03em;">Free</div>
+<ul style="margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 8px; color: #334155;">
+<li>Your new title and two alternates</li><li>Every skill translated, with the résumé line behind it</li><li>The gaps to close and what to build first</li><li>A link to your map you can keep and share</li>
+</ul>
+<a href="#map" style="margin-top: auto; text-align: center; background: #FFFFFF; color: #0F172A; border: 1.5px solid #CBD5E1; text-decoration: none; font-weight: 600; padding: 14px 20px; border-radius: 10px;">Map my career</a>
+</div>
+<div style="flex: 1 1 340px; background: #FFFFFF; border: 3px solid #10B981; border-radius: 18px; padding: 32px; display: flex; flex-direction: column; gap: 18px; box-shadow: 0 24px 60px rgba(16,185,129,0.14);">
+<h3 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.5rem;">Career Builder</h3>
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;"><span style="font-family: Outfit, sans-serif; font-weight: 700; font-size: 3rem; line-height: 1; letter-spacing: -0.03em;">$49.99</span><span style="color: #475569;">per month, after a 7-day free trial</span></div>
+<ul style="margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 8px; color: #334155;">
+<li>Proof Studio: your site, your tuned model, your build log</li><li>A weekly plan built for your new title</li><li>The AI tutor, any hour</li><li>Daily AI news for your field</li>
+</ul>
+<a href="#trial" style="margin-top: auto; text-align: center; background: #047857; color: #FFFFFF; text-decoration: none; font-weight: 600; padding: 14px 20px; border-radius: 10px;">Start 7-day free trial</a>
+<p style="margin: 0; font-size: 0.875rem; color: #475569;">Card required to start the trial. Cancel any time before day 7 and you pay nothing.</p>
+</div>
+</div>
+</section>
+
+<!-- FAQ -->
+<section style="background: #FFFFFF; border-top: 1.5px solid #E2E8E5;">
+<div style="max-width: 1200px; margin: 0 auto; padding: 88px 24px; display: flex; flex-wrap: wrap; gap: 32px 64px;">
+<h2 style="flex: 1 1 280px; margin: 0; font-family: Outfit, sans-serif; font-weight: 700; font-size: clamp(1.875rem, 3.4vw, 2.75rem); line-height: 1.08; letter-spacing: -0.025em;">Questions people ask first</h2>
+<div style="flex: 2 1 520px; min-width: 0; display: flex; flex-direction: column;">
+<div style="border-top: 1.5px solid #E2E8E5; padding: 22px 0; display: flex; flex-direction: column; gap: 8px;"><h3 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.25rem;">Will this get me a job?</h3><p style="margin: 0; color: #334155;">Nobody can promise that. What you get is a title that fits what you have actually done, and proof a hiring manager can open and check.</p></div>
+<div style="border-top: 1.5px solid #E2E8E5; padding: 22px 0; display: flex; flex-direction: column; gap: 8px;"><h3 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.25rem;">How do you choose the new title?</h3><p style="margin: 0; color: #334155;">From the work in your résumé, not from your old title. Every translated skill shows the line it came from, so you can see the reasoning and disagree with it.</p></div>
+<div style="border-top: 1.5px solid #E2E8E5; padding: 22px 0; display: flex; flex-direction: column; gap: 8px;"><h3 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.25rem;">Is the model really tuned on my work?</h3><p style="margin: 0; color: #334155;">Yes, in context: we build a voice profile from your samples and run a base model with your examples. Your model card states the method, the base model and the number of samples.</p></div>
+<div style="border-top: 1.5px solid #E2E8E5; padding: 22px 0; display: flex; flex-direction: column; gap: 8px;"><h3 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.25rem;">Do I need to know how to code?</h3><p style="margin: 0; color: #334155;">No. The routes start from marketing, design, production, QA, support and recruiting work. Your tutor walks you through each build.</p></div>
+<div style="border-top: 1.5px solid #E2E8E5; border-bottom: 1.5px solid #E2E8E5; padding: 22px 0; display: flex; flex-direction: column; gap: 8px;"><h3 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 600; font-size: 1.25rem;">What happens to my résumé?</h3><p style="margin: 0; color: #334155;">We use it to draw your map and nothing else. Your map is private until you choose to share the link.</p></div>
+</div>
+</div>
+</section>
+
+<!-- Final CTA -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 24px; align-items: flex-start;">
+<div aria-hidden="true" style="width: 160px; height: 10px; border-radius: 5px; background: #10B981;"></div>
+<h2 style="margin: 0; font-family: Outfit, sans-serif; font-weight: 700; font-size: clamp(2.25rem, 4.6vw, 3.75rem); line-height: 1.02; letter-spacing: -0.03em;">Find your new title</h2>
+<p style="margin: 0; font-size: 1.1875rem; color: #334155; max-width: 32em;">Paste your résumé and see where your experience goes next. It takes about a minute and costs nothing.</p>
+<a href="#map" style="background: #047857; color: #FFFFFF; text-decoration: none; font-weight: 600; font-size: 1.125rem; padding: 16px 30px; border-radius: 10px;">Map my career</a>
+</section>
+
+<footer style="border-top: 1.5px solid #E2E8E5;">
+<div style="max-width: 1200px; margin: 0 auto; padding: 32px 24px; display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: center; font-size: 0.9375rem; color: #475569;">
+<span style="flex: 1 1 240px; display: flex; align-items: center; gap: 10px; color: #0F172A; font-family: Outfit, sans-serif; font-weight: 600;"><img src="/_blob/17740a343fcedf0281a187e2ab297a51" alt="" style="width: 28px; height: 28px;">My AI Skill Tutor</span>
+<a href="#remapped" style="padding: 12px 0;">Remapped</a><a href="#learn" style="padding: 12px 0;">Guides</a><a href="#employers" style="padding: 12px 0;">For employers</a><a href="#privacy" style="padding: 12px 0;">Privacy</a>
+</div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":7000}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

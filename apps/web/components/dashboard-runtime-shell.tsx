@@ -6,7 +6,7 @@ import { DashboardRoutePrefetcher } from "@/components/dashboard-route-prefetche
 import { DashboardRouteHydrator } from "@/components/dashboard-route-hydrator";
 import { DashboardSettingsMenu } from "@/components/dashboard-settings-menu";
 
-type DashboardTab = "home" | "chat" | "projects" | "social" | "ai-news" | "activity" | "profile";
+type DashboardTab = "home" | "map" | "proof" | "chat" | "projects" | "social" | "ai-news" | "activity" | "profile";
 
 type DashboardShellProps = {
   activeTab: DashboardTab;
@@ -35,6 +35,8 @@ type DashboardShellProps = {
 
 type DashboardHref =
   | "/dashboard"
+  | "/dashboard/map"
+  | "/dashboard/proof"
   | "/dashboard/chat"
   | "/dashboard/projects"
   | "/dashboard/social"
@@ -56,6 +58,22 @@ const navItems: NavItem[] = [
     href: "/dashboard",
     label: "Home",
     icon: "fa-house",
+    activeClassName: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
+    iconClassName: "text-emerald-400",
+  },
+  {
+    key: "map",
+    href: "/dashboard/map",
+    label: "Career Map",
+    icon: "fa-route",
+    activeClassName: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
+    iconClassName: "text-emerald-400",
+  },
+  {
+    key: "proof",
+    href: "/dashboard/proof",
+    label: "Proof Studio",
+    icon: "fa-award",
     activeClassName: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
     iconClassName: "text-emerald-400",
   },

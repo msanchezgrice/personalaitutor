@@ -14,6 +14,19 @@ const isPublicRoute = createRouteMatcher([
   "/employers(.*)",
   "/learn(.*)",
   "/tools/career-remapping",
+  // Career Map + Proof Studio public surfaces (2026-11-25). Route handlers
+  // under /api/career-map and /api/voice-models/public enforce their own
+  // limits; anything owner-only checks auth inside the handler.
+  "/map(.*)",
+  "/remapped(.*)",
+  "/video/(.*)",
+  "/api/career-map(.*)",
+  "/api/voice-models/public/(.*)",
+  // Agent-facing static files: the matcher does not skip .txt/.md/.json, so
+  // they must be listed or signed-out agents get redirected to sign-in.
+  "/llms.txt",
+  "/agents.md",
+  "/.well-known/(.*)",
   "/downloads/career-remapping-workbook.pdf",
   "/learning(.*)",
   "/generated/(.*)",
