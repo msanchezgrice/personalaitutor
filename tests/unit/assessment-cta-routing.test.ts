@@ -1,25 +1,47 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, test } from "vitest";
+import * as React from "react";
+import { renderToStaticMarkup } from "../../apps/web/node_modules/react-dom/server.node.js";
+import { describe, expect, test, vi } from "vitest";
+
+import { LandingPage } from "@/components/landing/landing-page";
+
+vi.stubGlobal("React", React);
 
 function read(relativePath: string) {
   return readFileSync(path.resolve(process.cwd(), relativePath), "utf8");
 }
 
 describe("anonymous assessment routing", () => {
-  test("landing CTAs no longer gate the assessment behind sign-up", () => {
+  test("landing CTAs lead to the free career map, not to a sign-up gate", () => {
     const source = read("apps/web/app/page.tsx");
+    const landing = read("apps/web/components/landing/landing-page.tsx");
+    const hero = read("apps/web/components/landing/hero-form.tsx");
 
     expect(source).not.toContain("/sign-up?redirect_url=/onboarding/");
-    // Signed-in users still get the dashboard shortcut.
-    expect(source).toContain('href="/dashboard/?welcome=1"');
+    expect(landing).not.toContain("/sign-up?redirect_url=/onboarding/");
+    expect(landing).toContain('href="/map"');
+    expect(hero).toContain('"/map?from=home"');
+    expect(hero).toContain('"/map?upload=1"');
   });
 
-  test("landing CTA click tracking follows the assessment links", () => {
+  test("signed-in visitors keep the dashboard shortcut in the landing header", () => {
+    const html = renderToStaticMarkup(React.createElement(LandingPage, { signedIn: true, remappedRoutes: [], guides: [] }));
+    expect(html).toContain('href="/dashboard/?welcome=1"');
+    expect(html).not.toContain("Log in");
+
+    const signedOut = renderToStaticMarkup(React.createElement(LandingPage, { signedIn: false, remappedRoutes: [], guides: [] }));
+    expect(signedOut).not.toContain('href="/dashboard/?welcome=1"');
+    expect(signedOut).toContain("Log in");
+  });
+
+  test("landing CTA click tracking follows the career map links", () => {
     const source = read("apps/web/components/home-page-tracking.tsx");
 
-    expect(source).toContain("a[href$='/assessment/']");
+    expect(source).toContain("a[href^='/map']");
+    expect(source).toContain("[data-testid^='cta-']");
     expect(source).toContain('"landing_cta_clicked"');
+    expect(source).toContain('"landing_page_viewed"');
   });
 
   test("the shared Gemini template renderer no longer rewrites assessment links to sign-up", () => {
@@ -30,9 +52,9 @@ describe("anonymous assessment routing", () => {
     expect(source).not.toContain("/sign-up?redirect_url=/onboarding/");
   });
 
-  test("landing template CTAs point at the assessment", () => {
-    const template = read("mockups/high_fidelity/index.html");
-    expect(template).toContain('href="/assessment');
+  test("the assessment stays reachable from the landing page footer", () => {
+    const html = renderToStaticMarkup(React.createElement(LandingPage, { signedIn: false, remappedRoutes: [], guides: [] }));
+    expect(html).toContain('href="/assessment"');
   });
 
   test("/assessment hosts the anonymous flow instead of redirecting to onboarding", () => {

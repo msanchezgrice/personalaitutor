@@ -1,23 +1,40 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("hard gate browser verification", () => {
-  test("landing keeps legacy copy removed and light mode enforced", async ({ page }) => {
+  test("landing shows the career map page, keeps forbidden claims out and light mode enforced", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("link", { name: /take the ai assessment/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /build ai skills that actually fit your career/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Career-Based AI Skill Modules" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "24/7 AI Tutor for Your Career" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Daily AI News for Your Career" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Build Your AI Presence" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /your experience isn.t obsolete\. it.s unmapped\./i })).toBeVisible();
+    await expect(page.getByTestId("cta-map-career-hero")).toBeVisible();
+    await expect(page.getByTestId("cta-map-career-nav")).toHaveAttribute("href", "/map");
+    await expect(page.getByTestId("cta-upload-resume-hero")).toHaveAttribute("href", "/map?upload=1");
+    await expect(page.getByTestId("cta-play-film")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "How the map gets drawn" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Then we help you prove it" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "A tutor for the whole route" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Questions people ask first" })).toBeVisible();
     await expect(page.getByText("$49.99")).toBeVisible();
     await expect(page.locator("body")).toContainText(/7-day free trial/i);
+    for (const source of ["GDC State of the Game Industry 2026", "World Economic Forum, Future of Jobs Report 2025", "PwC 2026 Global AI Jobs Barometer"]) {
+      await expect(page.getByText(source)).toBeVisible();
+    }
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     await expect(page.locator("#theme-toggle")).toHaveCount(0);
+    await expect(page.locator("[data-shell-loader='1']")).toBeHidden();
     await expect(page.locator("body")).not.toContainText(/cryptographically verified/i);
     await expect(page.locator("body")).not.toContainText(/cryptographic/i);
     await expect(page.locator("body")).not.toContainText(/system verified proof/i);
     await expect(page.locator("body")).not.toContainText(/public proof/i);
+  });
+
+  test("landing hero hands the draft to /map", async ({ page }) => {
+    await page.goto("/");
+    await page.getByLabel("What did you do before?").fill("Senior marketing manager at a game studio for seven years.");
+    await page.getByTestId("cta-map-career-hero").click();
+    await expect(page).toHaveURL(/\/map\?from=home$/);
+    // /map reads and clears the draft on mount, so only check that it was written when it is still there.
+    const draft = await page.evaluate(() => window.sessionStorage.getItem("mast_cm_draft"));
+    if (draft) expect(JSON.parse(draft)).toEqual({ text: "Senior marketing manager at a game studio for seven years.", source: "paste" });
   });
 
   test("onboarding route enforces auth-first gate and onboarding options come from matrix API", async ({ page }) => {
