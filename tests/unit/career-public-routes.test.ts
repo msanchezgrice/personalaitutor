@@ -45,3 +45,12 @@ test("career map, Remapped, the launch film and agent files are public", async (
   const privateApi = await request(async () => ({ userId: null }), makeRequest("/api/proof/site"));
   expect(privateApi.status).toBe(401);
 });
+
+test("a client-supplied x-user-id header never reaches route handlers", async () => {
+  const spoofed = { ...makeRequest("/api/career-map"), headers: new Headers({ "x-user-id": "user_victim" }) };
+  const response = await request(async () => ({ userId: null }), spoofed);
+  expect(response.status).toBe(200);
+  expect(response.headers.get("x-middleware-request-x-user-id")).toBeNull();
+  const override = response.headers.get("x-middleware-override-headers") ?? "";
+  expect(override.split(",")).not.toContain("x-user-id");
+});

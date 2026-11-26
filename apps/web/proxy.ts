@@ -63,6 +63,10 @@ export default clerkMiddleware(async (auth, req) => {
   const { userId } = await auth();
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-pathname", req.nextUrl.pathname);
+  // x-user-id is set by this proxy only. Drop any client-supplied value so a
+  // signed-out caller on a public route cannot impersonate another user
+  // (route handlers fall back to this header via getUserId/getAuthUserId).
+  requestHeaders.delete("x-user-id");
 
   if (!isPublicRoute(req) && !userId) {
     if (isApiRoute(req)) {
