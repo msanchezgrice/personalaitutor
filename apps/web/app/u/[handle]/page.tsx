@@ -7,10 +7,23 @@ import { getAuthSeed } from "@/lib/auth";
 import { runtimeFindUserByHandle, runtimeFindUserById, runtimeListProjectsByUser } from "@/lib/runtime";
 import { getTutorSessionForProject } from "@/lib/tutor-session";
 import {
+  collectPublicArtifacts,
   getPublicProfileProof,
   isPublicArtifact,
   type PublicProfileProof,
 } from "@/lib/public-profile-proof";
+import { getProofSite } from "@/lib/proof/site-store";
+import { ProofSitePage, type ProofSitePageData } from "@/components/proof/site-page";
+import {
+  EXAMPLE_PROOF_SITE_FOOTER,
+  EXAMPLE_PROOF_SITE_HANDLE,
+  ExampleBuildLogSection,
+  ExampleVoiceModelSection,
+  exampleProofSiteData,
+} from "@/components/proof/example-profile";
+import { ProfileVoiceModelSection } from "@/components/proof/profile-voice-model-section";
+import { ProfileBuildLogSection } from "@/components/proof/profile-build-log-section";
+import type { Project, ProofSite, UserProfile } from "@aitutor/shared";
 import {
   BRAND_NAME,
   BRAND_X_HANDLE,
@@ -43,6 +56,9 @@ async function resolveProfileView(handle: string) {
       isExample: true,
     };
   }
+  if (handle === EXAMPLE_PROOF_SITE_HANDLE && (!profile || !profile.published)) {
+    return { profile: null, projects: [], canView: true, isExample: true, isProofSiteExample: true };
+  }
 
   let canView = false;
   if (profile && !profile.published) {
@@ -68,6 +84,9 @@ async function resolveProfileView(handle: string) {
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
   const { handle } = await params;
   const view = await resolveProfileView(handle);
+  if ("isProofSiteExample" in view && view.isProofSiteExample) {
+    return proofSiteExampleMetadata();
+  }
   const profile = view.profile;
   if (!profile) {
     return {
@@ -77,6 +96,11 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
         follow: false,
       },
     };
+  }
+
+  const proofSite = await findProofSite(view);
+  if (proofSite) {
+    return proofSiteMetadata(profile, proofSite);
   }
 
   return {
@@ -117,6 +141,173 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   };
 }
 
+/**
+ * Proof site (Proof Studio) for this learner, or null. A failed read falls
+ * back to the profile page every learner already had, which is real data, so
+ * a proof_sites outage never takes a public profile down.
+ */
+async function findProofSite(view: { profile: UserProfile | null; isExample: boolean }): Promise<ProofSite | null> {
+  if (!view.profile || view.isExample) return null;
+  try {
+    return await getProofSite(view.profile.id);
+  } catch (error) {
+    console.error("[u/handle] proof site read failed", error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
+function proofSiteTitle(name: string, newTitle: string) {
+  return `${name}, ${newTitle} | ${BRAND_NAME}`;
+}
+
+function proofSiteMetadata(profile: UserProfile, site: ProofSite): Metadata {
+  const title = proofSiteTitle(profile.name, site.newTitle);
+  const description = site.tagline || site.bio;
+  return {
+    title,
+    description,
+    alternates: { canonical: `/u/${profile.handle}` },
+    openGraph: {
+      title,
+      description,
+      url: `/u/${profile.handle}`,
+      type: "profile",
+      images: [
+        {
+          url: DEFAULT_OG_IMAGE_PATH,
+          width: DEFAULT_OG_IMAGE_WIDTH,
+          height: DEFAULT_OG_IMAGE_HEIGHT,
+          alt: DEFAULT_OG_IMAGE_ALT,
+          type: "image/png",
+        },
+        {
+          url: `/api/og/profile/${profile.handle}`,
+          width: DEFAULT_OG_IMAGE_WIDTH,
+          height: DEFAULT_OG_IMAGE_HEIGHT,
+          alt: `${profile.name} profile preview`,
+          type: "image/svg+xml",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      site: BRAND_X_HANDLE,
+      title,
+      description,
+      images: [DEFAULT_OG_IMAGE_PATH],
+    },
+    robots: profile.published ? undefined : { index: false, follow: false },
+  };
+}
+
+function proofSiteExampleMetadata(): Metadata {
+  const data = exampleProofSiteData();
+  const title = `Example profile: ${proofSiteTitle(data.name, data.newTitle)}`;
+  const description = `An example proof page on ${BRAND_NAME}. ${data.tagline}`;
+  return {
+    title,
+    description,
+    alternates: { canonical: `/u/${EXAMPLE_PROOF_SITE_HANDLE}` },
+    openGraph: {
+      title,
+      description,
+      url: `/u/${EXAMPLE_PROOF_SITE_HANDLE}`,
+      type: "profile",
+      images: [
+        {
+          url: DEFAULT_OG_IMAGE_PATH,
+          width: DEFAULT_OG_IMAGE_WIDTH,
+          height: DEFAULT_OG_IMAGE_HEIGHT,
+          alt: DEFAULT_OG_IMAGE_ALT,
+          type: "image/png",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      site: BRAND_X_HANDLE,
+      title,
+      description,
+      images: [DEFAULT_OG_IMAGE_PATH],
+    },
+  };
+}
+
+/** "Things I built": real projects that have at least one public artifact, artifacts as links. */
+function builtItemsFor(handle: string, projects: Project[]): ProofSitePageData["built"] {
+  const artifacts = collectPublicArtifacts(projects);
+  const items: ProofSitePageData["built"] = [];
+  for (const project of projects) {
+    const links = artifacts.filter((artifact) => artifact.projectSlug === project.slug);
+    if (!links.length) continue;
+    items.push({
+      title: project.title,
+      description: project.description,
+      href: `/u/${handle}/projects/${project.slug}/`,
+      steps: links.map((artifact) => ({ label: artifact.label, href: safeArtifactHref(artifact.url) })),
+    });
+  }
+  return items;
+}
+
+function safeArtifactHref(url: string) {
+  if (url.startsWith("/") && !url.startsWith("//")) return url;
+  return safeHttpUrl(url);
+}
+
+async function renderProofSite(profile: UserProfile, site: ProofSite, projects: Project[]) {
+  const data: ProofSitePageData = {
+    handle: profile.handle,
+    name: profile.name,
+    newTitle: site.newTitle,
+    previousRole: site.previousRole,
+    tagline: site.tagline,
+    bio: site.bio,
+    translations: site.translations,
+    contactEmail: site.contactEmail,
+    linkedinUrl: safeHttpUrl(site.linkedinUrl ?? undefined),
+    built: builtItemsFor(profile.handle, projects),
+  };
+  const sectionProps = { learnerProfileId: profile.id, handle: profile.handle, displayName: profile.name };
+  const personLd = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: profile.name,
+    jobTitle: site.newTitle,
+    description: site.tagline || site.bio,
+    url: `${getSiteUrl()}/u/${profile.handle}`,
+    sameAs: [data.linkedinUrl].filter(Boolean),
+    knowsAbout: site.translations.map((row) => row.now),
+  };
+
+  return (
+    <>
+      <ProofSitePage
+        data={data}
+        variant={profile.published ? "public" : "preview"}
+        voiceSection={<ProfileVoiceModelSection {...sectionProps} />}
+        buildLogSection={<ProfileBuildLogSection {...sectionProps} />}
+        footerNote={`${profile.name} wrote and published this page with ${BRAND_NAME}.`}
+      />
+      {profile.published ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personLd).replace(/</g, "\\u003c") }} />
+      ) : null}
+    </>
+  );
+}
+
+function renderProofSiteExample() {
+  return (
+    <ProofSitePage
+      data={exampleProofSiteData()}
+      variant="example"
+      voiceSection={<ExampleVoiceModelSection />}
+      buildLogSection={<ExampleBuildLogSection />}
+      footerNote={EXAMPLE_PROOF_SITE_FOOTER}
+    />
+  );
+}
+
 function formatDate(value: string | null | undefined) {
   if (!value) return null;
   const parsed = new Date(value);
@@ -134,12 +325,19 @@ function readinessDeltaText(readiness: NonNullable<PublicProfileProof["readiness
 export default async function PublicProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
   const view = await resolveProfileView(handle);
+  if ("isProofSiteExample" in view && view.isProofSiteExample) {
+    return renderProofSiteExample();
+  }
   const profile = view.profile;
   if (!profile || !view.canView) {
     notFound();
   }
 
   const projects = view.projects;
+  const proofSite = await findProofSite(view);
+  if (proofSite) {
+    return renderProofSite(profile, proofSite, projects);
+  }
   // Every proof number is assembled from real tables (or, for the labeled
   // example profile, through the same gated assembly) — nothing on this page
   // is fabricated at render time.
