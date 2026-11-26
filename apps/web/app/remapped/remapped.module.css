@@ -41,7 +41,7 @@
   color: var(--rm-muted);
 }
 .routeFrom {
-  flex: 1 1 160px;
+  flex: 0 1 300px;
   min-width: 0;
   color: var(--rm-muted);
   font-weight: 500;
@@ -55,7 +55,7 @@
   transition: width 0.2s ease;
 }
 .routeTo {
-  flex: 1.3 1 200px;
+  flex: 1 1 200px;
   min-width: 0;
   font-weight: 600;
 }
@@ -100,6 +100,15 @@
   }
   .routeArrow {
     display: none;
+  }
+  .routeFrom {
+    flex-basis: 100%;
+  }
+  .routeBar {
+    width: 24px;
+  }
+  .routeTo {
+    flex-basis: 0;
   }
 }
 
