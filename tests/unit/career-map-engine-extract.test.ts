@@ -287,3 +287,31 @@ describe("POST /api/career-map/extract", () => {
     expect(((await res.json()) as Record<string, any>).error.code).toBe("INVALID_BODY");
   });
 });
+
+describe("unwrapSoftLineBreaks", () => {
+  test("joins a wrapped sentence and leaves titles, bullets and short lines alone", async () => {
+    const { unwrapSoftLineBreaks } = await import("../../apps/web/lib/career-map/resume-extract");
+    const input = [
+      "Priya Raman",
+      "QA Lead",
+      "- Wrote and maintained 1,400 regression test cases in TestRail and reviewed every new case",
+      "before it shipped.",
+      "- Triaged incoming bug reports each morning, set severity, and wrote reproduction steps",
+      "engineers could follow.",
+      "python",
+      "sql",
+      "- Built the certification checklist for PlayStation and Xbox submissions and ran sign-off.",
+      "next line starts lowercase but the one before ended a sentence",
+    ].join("\n");
+    expect(unwrapSoftLineBreaks(input).split("\n")).toEqual([
+      "Priya Raman",
+      "QA Lead",
+      "- Wrote and maintained 1,400 regression test cases in TestRail and reviewed every new case before it shipped.",
+      "- Triaged incoming bug reports each morning, set severity, and wrote reproduction steps engineers could follow.",
+      "python",
+      "sql",
+      "- Built the certification checklist for PlayStation and Xbox submissions and ran sign-off.",
+      "next line starts lowercase but the one before ended a sentence",
+    ]);
+  });
+});

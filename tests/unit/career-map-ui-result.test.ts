@@ -88,7 +88,7 @@ describe("career map result view", () => {
     expect(html).toContain("Your proof plan");
     expect(html).toContain("1. Site");
     expect(html).toContain(EXAMPLE_CAREER_MAP.proofPlan.site.headline);
-    expect(html).toContain("2. Tuned model");
+    expect(html).toContain("2. Voice model");
     expect(html).toContain("maya-voice, tuned on your launch emails");
     expect(html).toContain(VOICE_MODEL_METHOD_LABEL.toLowerCase());
     expect(html).toContain("3. Build log");

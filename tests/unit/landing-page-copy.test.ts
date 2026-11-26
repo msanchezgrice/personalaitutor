@@ -87,7 +87,7 @@ describe("landing page copy", () => {
   test("shows exactly the three sourced statistics, each with its source", () => {
     const body = text(render());
     expect(LANDING_STATS.map((stat) => stat.value)).toEqual(["1 in 3", "170M", "62%"]);
-    expect(body).toContain("1 in 3 U.S. game workers were laid off in the last two years. Source: GDC State of the Game Industry 2026");
+    expect(body).toContain("1 in 3 U.S. game workers surveyed were laid off in the last two years. Source: GDC State of the Game Industry 2026");
     expect(body).toContain("170M new jobs are expected worldwide by 2030. Source: World Economic Forum, Future of Jobs Report 2025");
     expect(body).toContain("62% average pay premium for workers with AI skills. Source: PwC 2026 Global AI Jobs Barometer");
   });

@@ -36,7 +36,7 @@ export type LandingStat = { value: string; label: string; source: string; tone: 
 
 /** The only statistics allowed on public pages, each with its source. */
 export const LANDING_STATS: readonly LandingStat[] = [
-  { value: "1 in 3", label: "U.S. game workers were laid off in the last two years.", source: "GDC State of the Game Industry 2026", tone: "old" },
+  { value: "1 in 3", label: "U.S. game workers surveyed were laid off in the last two years.", source: "GDC State of the Game Industry 2026", tone: "old" },
   { value: "170M", label: "new jobs are expected worldwide by 2030.", source: "World Economic Forum, Future of Jobs Report 2025", tone: "new" },
   { value: "62%", label: "average pay premium for workers with AI skills.", source: "PwC 2026 Global AI Jobs Barometer", tone: "deep" },
 ];

@@ -118,6 +118,33 @@ export function normalizeExtractedText(text: string): string {
     .trim();
 }
 
+/**
+ * A PDF stores where each visual line ends, not where a sentence does, so a
+ * long bullet arrives split in two. Join a line to the one before it when it
+ * plainly continues the sentence: the earlier line is long, does not end a
+ * sentence, and the next starts with a lowercase letter. Short lines (titles,
+ * one-word skills) and bullets are left alone.
+ */
+export function unwrapSoftLineBreaks(text: string): string {
+  const lines = text.split("\n");
+  const out: string[] = [];
+  for (const raw of lines) {
+    const line = raw.trim();
+    const previous = out.length ? out[out.length - 1] : "";
+    const continues =
+      previous.length >= 40 &&
+      line.length > 0 &&
+      !/[.!?:;]$/.test(previous) &&
+      /^\p{Ll}/u.test(line);
+    if (continues) {
+      out[out.length - 1] = previous.endsWith("-") && !previous.endsWith(" -") ? `${previous}${line}` : `${previous} ${line}`;
+    } else {
+      out.push(line);
+    }
+  }
+  return out.join("\n");
+}
+
 async function extractPdfText(bytes: Uint8Array): Promise<string> {
   const { getDocumentProxy } = await import("unpdf");
   let doc: Awaited<ReturnType<typeof getDocumentProxy>>;
@@ -151,7 +178,7 @@ async function extractPdfText(bytes: Uint8Array): Promise<string> {
       total += pageText.length;
       if (total > CAREER_MAP_INPUT_MAX_CHARS * 1.5) break;
     }
-    return pages.join("\n\n");
+    return pages.map(unwrapSoftLineBreaks).join("\n\n");
   } catch {
     throw new ResumeExtractError("RESUME_TEXT_NOT_FOUND", "We could not read the text in this PDF. Paste the text instead.");
   } finally {

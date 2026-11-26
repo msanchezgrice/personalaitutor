@@ -234,7 +234,7 @@ export function CareerMapResult({ mapId, token, map, source, hasEmail, signedIn,
               <p className="rm-p">{plan.site.summary}</p>
             </li>
             <li className={styles.proofCard}>
-              <span className={styles.fieldLabelNew}>2. Tuned model</span>
+              <span className={styles.fieldLabelNew}>2. Voice model</span>
               <h3 className={styles.h3}>
                 {plan.model.name}, tuned on your {plan.model.sampleType}
               </h3>
