@@ -8,8 +8,9 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/employers", "/employers/talent", "/u/"],
-        disallow: ["/dashboard", "/onboarding", "/sign-in", "/sign-up", "/api/"],
+        allow: ["/", "/employers", "/employers/talent", "/u/", "/map", "/remapped"],
+        // "/map/" holds tokenised personal career maps; "/map" itself (the input page) stays crawlable.
+        disallow: ["/dashboard", "/onboarding", "/sign-in", "/sign-up", "/api/", "/map/"],
       },
     ],
     sitemap: `${appBaseUrl}/sitemap.xml`,
