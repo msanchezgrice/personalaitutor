@@ -1,0 +1,363 @@
+/* Layout for /remapped and /remapped/[slug]. Colours and type come from the rm system (app/remap.css). */
+
+/* Shared: route rows ("old title -line- new title") */
+.routeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.routeItem {
+  border-top: 1.5px solid var(--rm-hairline);
+}
+.routeItem:last-child {
+  border-bottom: 1.5px solid var(--rm-hairline);
+}
+.routeLink {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 20px 0;
+  text-decoration: none;
+  font-family: var(--rm-display);
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+.routeList .routeLink,
+.routeList .routeLink:hover {
+  color: var(--rm-ink);
+}
+.routeMeta {
+  flex: 0 0 168px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  font-family: var(--rm-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--rm-muted);
+}
+.routeFrom {
+  flex: 1 1 160px;
+  min-width: 0;
+  color: var(--rm-muted);
+  font-weight: 500;
+}
+.routeBar {
+  flex: none;
+  width: 40px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--rm-green);
+  transition: width 0.2s ease;
+}
+.routeTo {
+  flex: 1.3 1 200px;
+  min-width: 0;
+  font-weight: 600;
+}
+.routeArrow {
+  flex: none;
+  font-family: var(--rm-text);
+  font-size: 1.125rem;
+  color: var(--rm-green-deep);
+  transition: transform 0.2s ease;
+}
+.routeLink:hover .routeTo {
+  color: var(--rm-green-deep);
+}
+.routeLink:hover .routeArrow {
+  transform: translateX(4px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .routeLink:hover .routeBar {
+    width: 56px;
+  }
+}
+.latest {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--rm-green-tint);
+  color: var(--rm-green-ink);
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+@media (max-width: 640px) {
+  .routeMeta {
+    flex-basis: 100%;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+  .routeLink {
+    font-size: 1.125rem;
+    padding: 18px 0;
+  }
+  .routeArrow {
+    display: none;
+  }
+}
+
+/* Index */
+.indexHero {
+  padding-top: clamp(48px, 7vw, 80px);
+  padding-bottom: clamp(32px, 4vw, 48px);
+}
+.indexIntro {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 46rem;
+}
+.indexTitle {
+  font-size: clamp(2.25rem, 5vw, 3.75rem);
+}
+.indexList {
+  padding-bottom: clamp(48px, 7vw, 80px);
+}
+
+/* CTA card (both pages) */
+.ctaCard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 24px 48px;
+}
+.ctaText {
+  flex: 1 1 420px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ctaBar {
+  width: 120px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--rm-green);
+}
+.ctaAction {
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+/* Route page */
+.hero {
+  padding-top: clamp(48px, 7vw, 72px);
+  padding-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.hero h1 {
+  max-width: 18em;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.mapSection {
+  padding-bottom: clamp(48px, 7vw, 72px);
+}
+.mapCard {
+  padding: clamp(12px, 2.4vw, 24px);
+}
+.destination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px 64px;
+  margin-top: 40px;
+}
+.destinationMain {
+  flex: 1.2 1 380px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.destinationBlurb {
+  margin: 0;
+  font-family: var(--rm-display);
+  font-weight: 500;
+  font-size: clamp(1.25rem, 2.2vw, 1.5rem);
+  line-height: 1.35;
+  color: var(--rm-ink);
+  max-width: 30em;
+}
+.nearby {
+  flex: 1 1 320px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.nearbyList > li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-block: 14px;
+}
+.nearbyTitle {
+  font-family: var(--rm-display);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  color: var(--rm-ink);
+}
+
+.sectionHead {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 44em;
+  margin-bottom: 24px;
+}
+.translationsCard {
+  padding-block: 12px;
+}
+
+.split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px 64px;
+}
+.splitHead {
+  flex: 1 1 300px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.splitBody {
+  flex: 1.6 1 440px;
+  min-width: 0;
+}
+
+.gapItem {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.gapRing {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 4px;
+  border-radius: 50%;
+  border: 4px solid var(--rm-old-2);
+}
+.gapText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.gapTitle {
+  font-weight: 600;
+  font-size: 1.0625rem;
+  color: var(--rm-ink);
+}
+.gapClose {
+  color: var(--rm-body);
+}
+.gapCloseLabel {
+  font-weight: 600;
+  color: var(--rm-green-deep);
+}
+
+.projectCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.steps {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  counter-reset: rm-step;
+  display: flex;
+  flex-direction: column;
+}
+.step {
+  counter-increment: rm-step;
+  position: relative;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding-block: 14px;
+  color: var(--rm-body);
+  font-size: 1.0625rem;
+}
+.step::before {
+  content: counter(rm-step);
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2.5px solid var(--rm-green);
+  background: var(--rm-surface);
+  color: var(--rm-green-ink);
+  font-family: var(--rm-display);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  position: relative;
+  z-index: 1;
+}
+.step::after {
+  content: "";
+  position: absolute;
+  left: 15px;
+  top: 46px;
+  bottom: -14px;
+  width: 2.5px;
+  background: var(--rm-green-tint);
+}
+.step:last-child::after {
+  display: none;
+}
+.stepText {
+  padding-top: 3px;
+  min-width: 0;
+}
+
+.watchItem {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  color: var(--rm-body);
+}
+.watchMark {
+  flex: none;
+  width: 18px;
+  height: 6px;
+  margin-top: 11px;
+  border-radius: 3px;
+  background: var(--rm-old-1);
+}
+
+.disclaimer {
+  margin-top: 16px;
+  max-width: 52em;
+}
+.related {
+  padding-bottom: clamp(56px, 8vw, 88px);
+}
+.relatedHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+  margin-bottom: 20px;
+}

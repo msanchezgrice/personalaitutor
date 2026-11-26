@@ -1,32 +1,40 @@
 {
   "name": "My AI Skill Tutor",
-  "description": "AI upskilling platform for working professionals: role-based AI learning modules, a 24/7 AI tutor, daily AI news filtered to the user's field, and public proof-of-skill profiles.",
+  "description": "Helps working professionals find the AI-era job their experience fits and prove it in public: a free career map, the Remapped library of career routes, Proof Studio (public site, voice model tuned in context, build log), learning modules, a 24/7 AI tutor and daily AI news.",
   "url": "https://www.myaiskilltutor.com",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "capabilities": [
+    "career-map",
+    "remapped-career-routes",
+    "proof-studio",
+    "public-proof-pages",
     "ai-skills-assessment",
     "role-based-learning-modules",
     "ai-tutor-chat",
     "daily-ai-news",
-    "public-proof-of-skill-profiles",
     "talent-directory"
   ],
   "guardrails": {
     "allowed_actions": [
-      "Read and cite any public route (/, /assessment/, /learn, /learn/{slug}, /employers, /employers/talent, /u/{handle}).",
+      "Read and cite any public route (/, /map, /remapped, /remapped/{slug}, /assessment/, /learn, /learn/{slug}, /employers, /employers/talent, /u/{handle}, /u/{handle}/log/{slug}).",
       "Follow links listed in /sitemap.xml within robots-allowed paths.",
-      "Use data-testid and data-agent-action attributes as stable selectors for automation.",
+      "Use data-testid and data-agent-action attributes as stable selectors for automation (home: cta-map-career-nav, cta-map-career-hero, cta-upload-resume-hero, cta-start-trial-pricing, cta-map-career-pricing, cta-map-career-bottom, cta-play-film).",
+      "Open /map and help a user prepare their own résumé text, submitting it only after the user explicitly confirms.",
       "Start the anonymous assessment at /assessment/ on behalf of a user who explicitly asked."
     ],
     "disallowed_actions": [
-      "Do not create accounts, start paid trials, or enter payment details without explicit per-action user confirmation.",
-      "Do not access /dashboard/*, /onboarding/*, /sign-in, /sign-up, or /api/* with guessed or scripted credentials.",
-      "Do not submit forms that send messages or publish content (including social drafts) without explicit user approval.",
+      "Never submit a résumé, file or job description to the career map without the user's explicit confirmation for that submission.",
+      "Never create accounts, start trials or enter payment details without explicit per-action user confirmation.",
+      "Never publish a proof site, voice model or build log post, or send any message, without the user's explicit approval for that action.",
+      "Do not submit another person's résumé, and do not share or republish /map/{token} links; they are private to their owner.",
+      "Do not access /dashboard/*, /onboarding/*, /sign-in, /sign-up or /api/* with guessed or scripted credentials.",
       "Do not scrape at high volume; respect robots.txt and standard crawl etiquette."
     ],
+    "resume_submission_requires_confirmation": true,
+    "publishing_requires_confirmation": true,
     "payment_actions_require_confirmation": true,
     "destructive_actions_require_confirmation": true,
-    "notes": "The subscription plan ($49.99/month) begins with a 7-day free trial; a card is required at signup but not charged until the trial ends. Any step that collects payment details must be confirmed by the human user."
+    "notes": "The career map is free and needs no account; it is a starting hypothesis, not a hiring prediction. The Career Builder plan ($49.99/month) begins with a 7-day free trial; a card is required to start and is not charged if the user cancels before the trial ends. Any step that submits a résumé, collects payment details or publishes content must be confirmed by the human user."
   },
   "documentation": {
     "llms": "https://www.myaiskilltutor.com/llms.txt",

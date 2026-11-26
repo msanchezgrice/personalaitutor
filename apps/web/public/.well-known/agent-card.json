@@ -1,21 +1,51 @@
 {
   "name": "My AI Skill Tutor",
-  "description": "AI upskilling platform for working professionals: role-based AI learning modules, a 24/7 AI tutor, daily AI news filtered to the user's field, and public proof-of-skill profiles that employers can inspect.",
+  "description": "Helps working professionals find the AI-era job their experience fits and prove it in public: a free career map from a résumé, a public library of career routes, and Proof Studio (a public site, a voice model tuned in context on the person's own writing, and a build log), plus role-based learning modules, a 24/7 AI tutor and daily AI news.",
   "url": "https://www.myaiskilltutor.com",
   "provider": {
     "organization": "My AI Skill Tutor",
     "url": "https://www.myaiskilltutor.com"
   },
-  "version": "1.0.0",
+  "version": "2.0.0",
   "capabilities": [
+    "career-map",
+    "remapped-career-routes",
+    "proof-studio",
+    "public-proof-pages",
     "ai-skills-assessment",
     "role-based-learning-modules",
     "ai-tutor-chat",
     "daily-ai-news",
-    "public-proof-of-skill-profiles",
     "talent-directory"
   ],
   "skills": [
+    {
+      "id": "career-map",
+      "name": "Career Map",
+      "description": "Free, no account. Turns a pasted or uploaded résumé (PDF, DOCX or TXT), or a description of a past job, into a new AI-era job title, two alternates, skill translations each tied to a résumé line, the gaps and a three-piece proof plan. A starting hypothesis, not a hiring prediction. Results are private links at /map/{token}.",
+      "url": "https://www.myaiskilltutor.com/map",
+      "requires_user_confirmation": true
+    },
+    {
+      "id": "remapped",
+      "name": "Remapped",
+      "description": "Public library of career routes, one new route every Monday. Each route shows an old job, the AI-era title it maps to, skill translations, gaps, a first project and what stays hard.",
+      "url": "https://www.myaiskilltutor.com/remapped"
+    },
+    {
+      "id": "proof-studio",
+      "name": "Proof Studio",
+      "description": "Part of the Career Builder plan ($49.99/month, 7-day free trial, card required). Builds three public proof pieces: a site at /u/{handle}, a voice model tuned in context (voice profile plus examples, not fine-tuned) that visitors compare with the untuned base model, and build log posts at /u/{handle}/log/{slug}. Nothing is public until the user publishes it.",
+      "url": "https://www.myaiskilltutor.com/dashboard/proof",
+      "requires_account": true,
+      "requires_user_confirmation": true
+    },
+    {
+      "id": "public-proof-pages",
+      "name": "Public Proof Pages",
+      "description": "Per-user public pages with a new title, skill translations, things built, a voice model comparison and build log posts.",
+      "url": "https://www.myaiskilltutor.com/u/"
+    },
     {
       "id": "ai-skills-assessment",
       "name": "AI Skills Assessment",
@@ -25,22 +55,36 @@
     {
       "id": "learning-guides",
       "name": "AI Upskilling Guides",
-      "description": "Public editorial guides on building AI skills, portfolios, and career proof.",
+      "description": "Public editorial guides on building AI skills, changing careers, portfolios and career proof.",
       "url": "https://www.myaiskilltutor.com/learn"
     },
     {
       "id": "talent-directory",
       "name": "Talent Directory",
-      "description": "Public directory of professionals with proof-based AI skill profiles.",
+      "description": "Public directory of published proof profiles.",
       "url": "https://www.myaiskilltutor.com/employers/talent"
-    },
-    {
-      "id": "public-profiles",
-      "name": "Public Proof Profiles",
-      "description": "Per-user public pages showcasing verified skills and projects.",
-      "url": "https://www.myaiskilltutor.com/u/"
     }
   ],
+  "pricing": {
+    "career_map": "free",
+    "plan": "Career Builder",
+    "price": "$49.99/month",
+    "trial": "7-day free trial, card required to start, no charge if cancelled before the trial ends"
+  },
+  "selectors": {
+    "attribute": "data-testid",
+    "home": [
+      "cta-map-career-nav",
+      "cta-map-career-hero",
+      "cta-upload-resume-hero",
+      "cta-start-trial-pricing",
+      "cta-map-career-pricing",
+      "cta-map-career-bottom",
+      "cta-play-film"
+    ],
+    "remapped": ["cta-map-career-remapped", "cta-map-career-route"],
+    "action_attribute": "data-agent-action"
+  },
   "documentation": {
     "llms": "https://www.myaiskilltutor.com/llms.txt",
     "agents": "https://www.myaiskilltutor.com/agents.md",
