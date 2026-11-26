@@ -318,3 +318,64 @@ describe("career map prompt", () => {
     expect(extractNumbers("12,000 players, 4.5 stars, 90k members, 2018 - 2025")).toEqual(["12000", "4.5", "90", "2018", "2025"]);
   });
 });
+
+describe("locateEvidence", () => {
+  const resume = [
+    "Dana Whitfield",
+    "Senior Product Manager, Live Operations — Emberline Studios (2019–2026)",
+    "- Ran weekly A/B tests on event pacing and store offers; wrote the test plans.",
+    "- Tagged 3,000+ support tickets per month into themes for the roadmap.",
+    "- Cut churn by 30% in two quarters.",
+  ].join("\n");
+
+  it("returns the person's own wording for an exact quote", async () => {
+    const { locateEvidence } = await import("../../apps/web/lib/career-map/generate");
+    expect(locateEvidence("ran weekly a/b tests on event pacing", resume)).toBe("Ran weekly A/B tests on event pacing");
+  });
+
+  it("repairs a near-quote by cutting the shared run from the input", async () => {
+    const { locateEvidence } = await import("../../apps/web/lib/career-map/generate");
+    // The model swapped the semicolon for "and" and added a word at the end.
+    const located = locateEvidence("Ran weekly A/B tests on event pacing and store offers and wrote the plans", resume);
+    expect(located).toBe("Ran weekly A/B tests on event pacing and store offers");
+    expect(resume).toContain(located as string);
+  });
+
+  it("keeps the symbols that belong to a number", async () => {
+    const { locateEvidence } = await import("../../apps/web/lib/career-map/generate");
+    expect(locateEvidence("Tagged 3000 support tickets", resume)).toBeNull();
+    expect(locateEvidence("Tagged 3,000", resume)).toBe("Tagged 3,000+");
+    expect(locateEvidence("Cut churn by 30", resume)).toBe("Cut churn by 30%");
+  });
+
+  it("does not join two lines into one quote", async () => {
+    const { locateEvidence } = await import("../../apps/web/lib/career-map/generate");
+    expect(locateEvidence("wrote the test plans tagged 3,000+ support tickets", resume)).toBeNull();
+    expect(locateEvidence("the test plans tagged 3,000+ support tickets per month into themes", resume)).toBe(
+      "Tagged 3,000+ support tickets per month into themes",
+    );
+  });
+
+  it("returns null for invented work", async () => {
+    const { locateEvidence } = await import("../../apps/web/lib/career-map/generate");
+    expect(locateEvidence("Led a team of twelve engineers through a platform migration", resume)).toBeNull();
+    expect(locateEvidence("store offers", "nothing here")).toBeNull();
+  });
+});
+
+describe("tidying model output", () => {
+  it("capitalises an all-lowercase title and leaves others alone", async () => {
+    const { tidyTitle } = await import("../../apps/web/lib/career-map/generate");
+    expect(tidyTitle("concept artist")).toBe("Concept Artist");
+    expect(tidyTitle("  qa tester / build-engineer ")).toBe("Qa Tester / Build-Engineer");
+    expect(tidyTitle("Senior PM, Live Ops")).toBe("Senior PM, Live Ops");
+  });
+
+  it("drops a date range given as a duration", async () => {
+    const { tidyDuration } = await import("../../apps/web/lib/career-map/generate");
+    expect(tidyDuration("2016–2026")).toBeNull();
+    expect(tidyDuration("about six years")).toBe("about six years");
+    expect(tidyDuration("7 years")).toBe("7 years");
+    expect(tidyDuration(null)).toBeNull();
+  });
+});

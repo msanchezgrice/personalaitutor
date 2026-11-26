@@ -57,7 +57,7 @@ const JSON_SHAPE = `{
     "displayName": string | null,      // the person's name if the text clearly gives it, else null (max 80 chars)
     "previousTitle": string,           // most recent job title, as written in the text (2-80 chars)
     "previousField": string,           // 1-3 word label for the old line of work, e.g. "Game Studio", "Agency", "Newsroom", "Hospital" (2-28 chars)
-    "yearsExperience": string | null   // e.g. "7 years", only when stated or given as date ranges, else null (max 24 chars)
+    "yearsExperience": string | null   // a duration such as "7 years" or "about six years", never a date range like "2016-2026"; null when the text gives neither a duration nor dates (max 24 chars)
   },
   "primary": {
     "titleId": string,                 // an id from the catalog
@@ -71,7 +71,7 @@ const JSON_SHAPE = `{
     {
       "before": string,                // what they did, in plain words (4-110 chars)
       "evidence": string,              // an exact quote from the text (4-240 chars)
-      "now": string,                   // the AI-era skill it has become, a present-tense verb phrase (4-70 chars)
+      "now": string,                   // the AI-era skill it has become, a present-tense verb phrase of 3 to 7 words (max 60 chars)
       "explanation": string            // 1-2 sentences on why the old work maps to the new skill (12-260 chars)
     }
   ],
@@ -131,7 +131,7 @@ export function buildCareerMapPrompt(input: { inputText: string; problems?: stri
     "10. primary.titleId is the catalog title the quoted work supports best. fit is \"strong\" when most of their work carries over directly, \"good\" when it carries over with one or two clear gaps, \"stretch\" when only part of it does.",
     "11. alternates are the next two best catalog titles. Each reason starts with when it is the better pick, e.g. \"Fits if you would rather ...\", and names which part of their work it leans on.",
     "12. gaps are what the new title needs that the text does not show yet, usually missing proof (something public, something built, a way to check AI output). closeWith is one concrete thing they can do in a week or two.",
-    "13. proofPlan: site.headline is their new title plus who they would do it for, based on their old field. model.name is a short lowercase slug ending in -voice, from their first name when given, else from their old role (e.g. \"maya-voice\", \"qa-voice\"). model.sampleType is a kind of writing their old job produced, per the text (e.g. \"launch emails\", \"bug reports\"). model.summary tells them what to paste, for example 10 or more samples. buildLog.firstPostTitle is a first-person title for a first project that closes their biggest gap.",
+    "13. proofPlan: site.headline is their new title plus who they would do it for, based on their old field. model.name is a short lowercase slug ending in -voice, from their first name when given, else from their old role (e.g. \"maya-voice\", \"qa-voice\"). The model is a voice model tuned on the person's own WRITING, so model.sampleType is always a kind of written text their old job produced, per the text (e.g. \"launch emails\", \"bug reports\", \"art feedback notes\", \"product specs\"); never images, designs, audio or code. model.summary tells them what to paste: 10 or more samples of that writing. buildLog.firstPostTitle is a first-person title for a first project that closes their biggest gap.",
     "14. neighbors are up to 3 other common job titles from the same old line of work (e.g. for a game marketing manager: \"Community Manager\", \"Producer\"). Do not repeat previousTitle.",
     "",
     "VOICE: plain, short sentences. Speak to the person as \"you\" in summary, reasons, gaps and the proof plan. No hype words (unlock, seamless, supercharge, game-changer, leverage, synergy). No emoji.",
@@ -203,6 +203,19 @@ function nullableText(value: unknown): unknown {
   const trimmed = value.trim();
   if (!trimmed || /^(null|none|unknown|n\/a|not stated)$/i.test(trimmed)) return null;
   return trimmed;
+}
+
+/** "concept artist" -> "Concept Artist". Titles that already carry capitals are left as written. */
+export function tidyTitle(value: string): string {
+  const text = value.trim().replace(/\s+/g, " ");
+  if (text !== text.toLowerCase()) return text;
+  return text.replace(/(^|[\s/-])(\p{L})/gu, (_match, lead: string, letter: string) => `${lead}${letter.toUpperCase()}`);
+}
+
+/** A duration is shown next to the old title; a date range ("2016-2026") is not a duration, so it is dropped. */
+export function tidyDuration(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  return /\b(19|20)\d{2}\b/.test(value) ? null : value;
 }
 
 /** Every digit run in a text, without thousands separators ("12,000" -> "12000", "4.5" -> "4.5"). */
@@ -417,7 +430,7 @@ export function evaluateCareerMapOutput(raw: string, inputText: string): CareerM
     return { ok: false, code: "UNGROUNDED", problems: dedupe(problems) };
   }
 
-  const previousTitle = typeof person.previousTitle === "string" ? person.previousTitle.trim() : person.previousTitle;
+  const previousTitle = typeof person.previousTitle === "string" ? tidyTitle(person.previousTitle) : person.previousTitle;
   const neighbors = (Array.isArray(parsed.neighbors) ? parsed.neighbors : [])
     .filter((entry): entry is string => typeof entry === "string")
     .map((entry) => entry.trim())
@@ -430,7 +443,7 @@ export function evaluateCareerMapOutput(raw: string, inputText: string): CareerM
       displayName: nullableText(person.displayName),
       previousTitle,
       previousField: person.previousField,
-      yearsExperience: nullableText(person.yearsExperience),
+      yearsExperience: tidyDuration(nullableText(person.yearsExperience)),
     },
     primary: {
       titleId: primaryTitleId,
