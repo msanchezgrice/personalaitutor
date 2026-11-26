@@ -1,0 +1,122 @@
+[
+  {
+    "id": "M-01",
+    "severity": "major",
+    "area": "map-result",
+    "page": "/map/7slwQUqpuSvc1YX_VUzWE3Dd_u4TZmX6",
+    "screenshot": "12-map-result-full.png",
+    "what": "The result credits the person with AI experience the description never mentions: the translations say they 'Design AI conversation flows' and 'Run AI-assisted community platforms', and the headline says the title 'aligns well with running AI-assisted community operations'. The same page then says there is 'No evidence of designing or tuning AI agents or conversation flows.'",
+    "expected": "Translations should only restate what the input says, or flag a stretch clearly. The headline and the 'doesn't show yet' section should not contradict the translations.",
+    "evidence": "Now: 'Designs AI conversation flows for player support' (from 'answered player questions about balance changes'); 'No evidence of designing or tuning AI agents or conversation flows.'; headline body: 'which aligns well with running AI-assisted community operations.'"
+  },
+  {
+    "id": "M-02",
+    "severity": "major",
+    "area": "map-result",
+    "page": "/map/7slwQUqpuSvc1YX_VUzWE3Dd_u4TZmX6",
+    "screenshot": "12-map-result-full.png",
+    "what": "Proof plan item 2 is titled 'Tuned model' and says to 'Train a voice model', but the same card says nothing is retrained. The word 'tuned' is used for something that is only prompting with examples.",
+    "expected": "The item should say plainly what is built (for example 'voice profile from your samples, used in prompts') and drop 'tuned' and 'train' if no training happens.",
+    "evidence": "'2. Tuned model / community-manager-voice, tuned on your weekly patch notes and player newsletters' / 'Train a voice model on your written patch notes...' / 'How it is tuned: voice profile + examples in context. Nothing is retrained.'"
+  },
+  {
+    "id": "M-03",
+    "severity": "major",
+    "area": "landing",
+    "page": "/",
+    "screenshot": "02-home-full.png (slices home-04 and home-07 in mobile/slices)",
+    "what": "The landing page promises 'a model tuned on your own work' and the FAQ answers 'Is the model really tuned on my work?' with 'Yes', then describes in-context prompting. The example model card's base-model line reads like placeholder copy.",
+    "expected": "State in plain words that personalization is done with examples in the prompt and no weights are trained. The example's base-model output should be a real sample, not a teaser line.",
+    "evidence": "FAQ: 'Yes, in context: we build a voice profile from your samples and run a base model with your examples.' Example card: 'Base model / Exciting update coming soon!' and 'Tuned on 24 of her launch emails. Method: Voice profile + examples in context.'"
+  },
+  {
+    "id": "M-04",
+    "severity": "major",
+    "area": "other",
+    "page": "/zz-qa-nonexistent-page-12345",
+    "screenshot": "35-404-page.png",
+    "what": "An unknown URL does not show a not-found page. It redirects (307) to the sign-in page and renders the sign-in widget. A mistyped link therefore looks like a broken sign-in wall. Unknown map links (/map/<bad token>) do return a correct 'We couldn't find that map' page with status 404.",
+    "expected": "Unknown paths return HTTP 404 with a not-found page that links back to the career map.",
+    "evidence": "curl: '307 https://www.myaiskilltutor.com/sign-in?redirect_url=https%3A%2F%2Fwww.myaiskilltutor.com%2Fzz-qa-nonexistent-page-12345'; walk step not-found-pages: 'unknown page status 200'; '/map/zz-nope' -> 404."
+  },
+  {
+    "id": "m-01",
+    "severity": "minor",
+    "area": "landing",
+    "page": "/",
+    "screenshot": "01-home-top.png",
+    "what": "At 390px the top nav row is clipped: the last item shows only a stray 'G' and cannot be scrolled to or seen. 'Log in' appears at 768px but is absent on phones, so a returning signed-out user has no visible login link in the header.",
+    "expected": "All nav items reachable at phone width (wrap, menu, or scrollable row with a visible cue), and a login entry point visible on phone.",
+    "evidence": "Nav row at 390px: 'How it works  Proof  Remapped  Pricing  G'. At 768px (x-tab768-home-top.png): 'Log in' and 'Guides' visible."
+  },
+  {
+    "id": "m-02",
+    "severity": "minor",
+    "area": "map-result",
+    "page": "/map/7slwQUqpuSvc1YX_VUzWE3Dd_u4TZmX6",
+    "screenshot": "11-map-result-top.png",
+    "what": "The result calls the pasted text a résumé even when the person described a job in a few lines (the walk used a description, not a résumé).",
+    "expected": "Copy should say 'your input' or 'what you wrote' when the source was a description.",
+    "evidence": "'Your career map · drawn from your résumé'; 'Backed by 5 lines of your résumé'; 'From your résumé' on each translation."
+  },
+  {
+    "id": "m-03",
+    "severity": "minor",
+    "area": "existing-pages",
+    "page": "/employers",
+    "screenshot": "32-existing-employers.png",
+    "what": "The header is cramped at 390px: the site name wraps onto two lines and the 'Browse Talent Pool' button wraps onto two lines.",
+    "expected": "Single-line name and button, or a shorter label, at phone width.",
+    "evidence": "Header shows 'My AI Skill / Tutor' on two lines and 'Browse / Talent Pool' on two lines."
+  },
+  {
+    "id": "p-01",
+    "severity": "polish",
+    "area": "landing",
+    "page": "/",
+    "screenshot": "02-home-full.png (slice home-00)",
+    "what": "Route labels in the hero illustration (Copywriter, Recruiter, QA Tester, Paralegal) are very small on phone and hard to read.",
+    "expected": "Minimum label size that reads at 390px, or fewer labels.",
+    "evidence": "Labels render at roughly 9-10px in the 390px screenshot."
+  },
+  {
+    "id": "p-02",
+    "severity": "polish",
+    "area": "landing",
+    "page": "/",
+    "screenshot": "01-home-top.png",
+    "what": "The logo link in the header is 34x34px, under the 40px target size used for the other controls.",
+    "expected": "At least 40px tap target.",
+    "evidence": "extra.js tap-target scan: 'My AI Skill Tutor' A 34x34 at top 14."
+  },
+  {
+    "id": "p-03",
+    "severity": "polish",
+    "area": "remapped",
+    "page": "/remapped/ (route 'Marketing Manager to Go-to-Market Engineer'; exact slug not recorded)",
+    "screenshot": "23-remapped-route-top.png",
+    "what": "The route headline breaks 'Go-to-' and 'Market Engineer' across lines, so the hyphenated title splits awkwardly.",
+    "expected": "Keep 'Go-to-Market' together (non-breaking hyphens) or allow the line to break before 'Go-to-Market'.",
+    "evidence": "'Marketing Manager to Go-to- / Market Engineer'."
+  },
+  {
+    "id": "p-04",
+    "severity": "polish",
+    "area": "remapped",
+    "page": "/remapped/ (route 'Marketing Manager to Go-to-Market Engineer'; exact slug not recorded)",
+    "screenshot": "24-remapped-route-full.png (slice 24-01)",
+    "what": "The 'What the old job becomes' comparison stacks its two column labels ('In the old job', 'In the new one') above a single list, so on a phone it is not clear which side each item belongs to.",
+    "expected": "Clear before/after pairing on phone (for example 'Was:' and 'Now:' labels on each row).",
+    "evidence": "Column labels rendered as two stacked lines above the list."
+  },
+  {
+    "id": "p-05",
+    "severity": "polish",
+    "area": "existing-pages",
+    "page": "/assessment/",
+    "screenshot": "30-existing-assessment.png",
+    "what": "The assessment page uses a dark theme and a different header from the light landing and map pages, so the product looks like two sites.",
+    "expected": "Consistent visual system, or a deliberate reason for the difference.",
+    "evidence": "Dark background with 'Your Role / STEP 1/5' form versus the light landing page."
+  }
+]
