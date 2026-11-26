@@ -97,18 +97,24 @@ export const CAREER_MAP_FIT_LABELS: Record<CareerMapFit, string> = {
 export const CAREER_MAP_INPUT_MIN_CHARS = 60;
 export const CAREER_MAP_INPUT_MAX_CHARS = 20000;
 
+/*
+ * Length limits here are the hard ceilings the UI can lay out. The generation
+ * prompt asks for noticeably shorter text (see JSON_SHAPE in
+ * apps/web/lib/career-map/generate.ts), because models overshoot character
+ * counts; a slightly long sentence should not fail a whole map.
+ */
 const titleId = z.string().refine((value) => CAREER_MAP_TITLE_IDS.includes(value), "UNKNOWN_TITLE_ID");
 const trimmed = (min: number, max: number) => z.string().trim().min(min).max(max);
 
 export const careerMapTranslationSchema = z.object({
   /** What they did, in their own terms. Short, no invented numbers. */
-  before: trimmed(4, 110),
+  before: trimmed(4, 160),
   /** A verbatim quote from the input that backs `before`. Checked against the input text. */
   evidence: trimmed(4, 240),
   /** The AI-era skill it has become, as a present-tense verb phrase. */
-  now: trimmed(4, 70),
+  now: trimmed(4, 90),
   /** One or two plain sentences on why the old work maps to the new skill. */
-  explanation: trimmed(12, 260),
+  explanation: trimmed(12, 420),
 });
 
 export const careerMapSchema = z
@@ -117,21 +123,21 @@ export const careerMapSchema = z
       displayName: trimmed(1, 80).nullable(),
       previousTitle: trimmed(2, 80),
       /** Label for the old line on the map, e.g. "Game Studio", "Agency", "Newsroom". */
-      previousField: trimmed(2, 28),
+      previousField: trimmed(2, 36),
       yearsExperience: trimmed(1, 24).nullable(),
     }),
     primary: z.object({
       titleId,
       fit: z.enum(CAREER_MAP_FITS),
-      summary: trimmed(20, 320),
+      summary: trimmed(20, 480),
     }),
-    alternates: z.array(z.object({ titleId, reason: trimmed(12, 260) })).length(2),
+    alternates: z.array(z.object({ titleId, reason: trimmed(12, 400) })).length(2),
     translations: z.array(careerMapTranslationSchema).min(3).max(6),
-    gaps: z.array(z.object({ gap: trimmed(8, 160), closeWith: trimmed(8, 200) })).min(2).max(4),
+    gaps: z.array(z.object({ gap: trimmed(8, 240), closeWith: trimmed(8, 320) })).min(2).max(4),
     proofPlan: z.object({
-      site: z.object({ headline: trimmed(8, 90), summary: trimmed(12, 240) }),
-      model: z.object({ name: trimmed(3, 40), sampleType: trimmed(3, 60), summary: trimmed(12, 240) }),
-      buildLog: z.object({ firstPostTitle: trimmed(8, 110), summary: trimmed(12, 240) }),
+      site: z.object({ headline: trimmed(8, 140), summary: trimmed(12, 360) }),
+      model: z.object({ name: trimmed(3, 40), sampleType: trimmed(3, 80), summary: trimmed(12, 360) }),
+      buildLog: z.object({ firstPostTitle: trimmed(8, 160), summary: trimmed(12, 360) }),
     }),
     /** Up to three neighbouring old titles on the same old line, for the map drawing. */
     neighbors: z.array(trimmed(2, 40)).max(3),

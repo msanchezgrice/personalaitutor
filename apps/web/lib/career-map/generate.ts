@@ -232,6 +232,102 @@ function shorten(text: string, max = 60) {
   return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
 }
 
+// --- evidence location -------------------------------------------------------
+
+type InputToken = { norm: string; start: number; end: number };
+
+const WORD_PATTERN = /[\p{L}\p{N}]+/gu;
+/** Never equal to a real token, so a matched run cannot cross a line break. */
+const LINE_BREAK_TOKEN = "\n";
+
+function tokenizeWithOffsets(text: string): InputToken[] {
+  const tokens: InputToken[] = [];
+  let previousEnd = 0;
+  for (const match of text.matchAll(WORD_PATTERN)) {
+    const start = match.index ?? 0;
+    if (tokens.length && text.slice(previousEnd, start).includes("\n")) {
+      tokens.push({ norm: LINE_BREAK_TOKEN, start: previousEnd, end: previousEnd });
+    }
+    tokens.push({ norm: match[0].toLowerCase(), start, end: start + match[0].length });
+    previousEnd = start + match[0].length;
+  }
+  return tokens;
+}
+
+/**
+ * Finds the span of the input that a model-written quote points at and returns
+ * that span exactly as the person wrote it, or null when there is none.
+ *
+ * Models often get a quote almost right: they drop a bullet, change a dash,
+ * fix a typo or tack on a word. Rejecting the whole map for that helps nobody,
+ * and showing the model's version would break the promise that every quote is
+ * the person's own words. So the quote is matched word by word against each
+ * line of the input, and what is shown is always cut from the input itself:
+ * the longest run of consecutive words the two share. A run counts when it
+ * covers the whole quote, or at least 3 words and 60% of the quote.
+ */
+export function locateEvidence(evidence: string, inputText: string): string | null {
+  const quote = Array.from(evidence.matchAll(WORD_PATTERN), (match) => match[0].toLowerCase());
+  if (!quote.length) return null;
+  const tokens = tokenizeWithOffsets(inputText);
+  if (!tokens.length) return null;
+
+  // Longest common run of consecutive tokens (classic DP, one rolling row).
+  let previous = new Array<number>(quote.length + 1).fill(0);
+  let bestLength = 0;
+  let bestEnd = -1;
+  for (let i = 0; i < tokens.length; i += 1) {
+    const current = new Array<number>(quote.length + 1).fill(0);
+    const norm = tokens[i].norm;
+    if (norm !== LINE_BREAK_TOKEN) {
+      for (let j = 0; j < quote.length; j += 1) {
+        if (quote[j] === norm) {
+          const run = previous[j] + 1;
+          current[j + 1] = run;
+          if (run > bestLength) {
+            bestLength = run;
+            bestEnd = i;
+          }
+        }
+      }
+    }
+    previous = current;
+  }
+  if (bestLength === 0) return null;
+
+  const coversQuote = bestLength === quote.length;
+  const closeEnough = bestLength >= 3 && bestLength >= Math.ceil(quote.length * 0.6);
+  if (!coversQuote && !closeEnough) return null;
+
+  let start = tokens[bestEnd - bestLength + 1].start;
+  let end = tokens[bestEnd].end;
+  // Keep symbols that belong to a number: "$40k", "30%", "3,000+".
+  while (start > 0 && "$#~".includes(inputText[start - 1])) start -= 1;
+  while (end < inputText.length && "%+".includes(inputText[end])) end += 1;
+  const span = inputText.slice(start, end).trim();
+  return span.length >= 4 ? span : null;
+}
+
+/** Cuts over-long prose at the last sentence end that fits; leaves it alone when there is none. */
+export function clampProse(value: unknown, max: number): unknown {
+  if (typeof value !== "string") return value;
+  const text = value.trim();
+  if (text.length <= max) return text;
+  const head = text.slice(0, max);
+  const cut = Math.max(head.lastIndexOf(". "), head.lastIndexOf("! "), head.lastIndexOf("? "));
+  if (cut >= max * 0.4) return head.slice(0, cut + 1);
+  return text;
+}
+
+function clampFields<T extends Record<string, unknown>>(value: unknown, limits: Partial<Record<string, number>>): unknown {
+  if (!isRecord(value)) return value;
+  const next: Record<string, unknown> = { ...value };
+  for (const [key, max] of Object.entries(limits)) {
+    if (typeof max === "number") next[key] = clampProse(next[key], max);
+  }
+  return next as T;
+}
+
 export type CareerMapEvaluation =
   | { ok: true; map: CareerMap; droppedTranslations: number }
   | { ok: false; code: string; problems: string[] };
@@ -279,18 +375,23 @@ export function evaluateCareerMapOutput(raw: string, inputText: string): CareerM
   const seenNow = new Set<string>();
   let dropped = 0;
   for (const entry of rawTranslations) {
-    const result = careerMapTranslationSchema.safeParse(entry);
+    const result = careerMapTranslationSchema.safeParse(clampFields(entry, { explanation: 420 }));
     if (!result.success) {
       dropped += 1;
-      problems.push("A translation was missing a field or broke a length limit.");
+      const issue = result.error.issues[0];
+      problems.push(`A translation was missing a field or broke a length limit (${issue?.path.join(".") || "shape"}: ${issue?.message ?? "invalid"}).`);
       continue;
     }
-    const translation = result.data;
-    if (!isEvidenceGrounded(translation.evidence, groundingText)) {
+    // What is kept as evidence is always cut from the input itself, never the model's wording.
+    const located = isEvidenceGrounded(result.data.evidence, groundingText)
+      ? (locateEvidence(result.data.evidence, groundingText) ?? result.data.evidence)
+      : locateEvidence(result.data.evidence, groundingText);
+    if (!located || !isEvidenceGrounded(located, groundingText)) {
       dropped += 1;
-      problems.push(`evidence "${shorten(translation.evidence)}" is not an exact quote from the text.`);
+      problems.push(`evidence "${shorten(result.data.evidence)}" is not an exact quote from the text.`);
       continue;
     }
+    const translation = { ...result.data, evidence: located };
     const invented = inventedNumbers(`${translation.before} ${translation.now} ${translation.explanation}`, inputNumbers);
     if (invented.length) {
       dropped += 1;
@@ -334,12 +435,18 @@ export function evaluateCareerMapOutput(raw: string, inputText: string): CareerM
     primary: {
       titleId: primaryTitleId,
       fit: CAREER_MAP_FITS.includes(fit as never) ? fit : primary.fit,
-      summary: primary.summary,
+      summary: clampProse(primary.summary, 480),
     },
-    alternates,
+    alternates: alternates.map((entry) => clampFields(entry, { reason: 400 })),
     translations: translations.slice(0, MAX_TRANSLATIONS),
-    gaps: Array.isArray(parsed.gaps) ? parsed.gaps.slice(0, 4) : parsed.gaps,
-    proofPlan: parsed.proofPlan,
+    gaps: Array.isArray(parsed.gaps) ? parsed.gaps.slice(0, 4).map((entry) => clampFields(entry, { gap: 240, closeWith: 320 })) : parsed.gaps,
+    proofPlan: isRecord(parsed.proofPlan)
+      ? {
+          site: clampFields(parsed.proofPlan.site, { summary: 360 }),
+          model: clampFields(parsed.proofPlan.model, { summary: 360 }),
+          buildLog: clampFields(parsed.proofPlan.buildLog, { summary: 360 }),
+        }
+      : parsed.proofPlan,
     neighbors,
   };
 
@@ -417,10 +524,23 @@ export async function generateCareerMap(input: { inputText: string }): Promise<{
 
   const first = evaluateCareerMapOutput(await callModel(buildCareerMapPrompt({ inputText: input.inputText }), model, 0.3), input.inputText);
   if (first.ok) return { map: first.map, model };
+  logRejectedAttempt(1, model, first);
 
   const retryPrompt = buildCareerMapPrompt({ inputText: input.inputText, problems: first.problems });
   const second = evaluateCareerMapOutput(await callModel(retryPrompt, model, 0.2), input.inputText);
   if (second.ok) return { map: second.map, model };
+  logRejectedAttempt(2, model, second);
 
   throw new Error(`CAREER_MAP_INVALID_OUTPUT:${second.code}`);
+}
+
+/**
+ * One log line per rejected answer, so a failing prompt can be diagnosed.
+ * Problems can quote a few words of the visitor's text, so in production the
+ * quoted parts are blanked and only the shape of the problem is kept.
+ */
+function logRejectedAttempt(attempt: number, model: string, evaluation: Extract<CareerMapEvaluation, { ok: false }>) {
+  const production = process.env.VERCEL_ENV === "production" || (!process.env.VERCEL_ENV && process.env.NODE_ENV === "production");
+  const problems = evaluation.problems.slice(0, 10).map((problem) => (production ? problem.replace(/"[^"]*"/g, '"…"') : problem));
+  console.warn("[career-map] answer rejected", JSON.stringify({ attempt, model, code: evaluation.code, problems }));
 }
