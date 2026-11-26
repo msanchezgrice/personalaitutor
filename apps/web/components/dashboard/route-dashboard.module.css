@@ -146,7 +146,13 @@
 
 .homeGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
-  gap: 20px 32px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px 40px;
   align-items: start;
+}
+
+@media (min-width: 1180px) {
+  .homeGrid {
+    grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  }
 }

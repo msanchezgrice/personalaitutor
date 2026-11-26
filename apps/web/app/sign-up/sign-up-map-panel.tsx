@@ -17,7 +17,7 @@ const PIECES = [
 
 export function SignUpMapPanel() {
   return (
-    <section className="max-w-xl space-y-4 sm:space-y-6" data-testid="sign-up-from-map">
+    <section className="min-w-0 max-w-xl space-y-4 sm:space-y-6" data-testid="sign-up-from-map">
       <span className="inline-flex items-center rounded-full border border-emerald-200 bg-white/80 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 shadow-sm sm:px-4 sm:py-2 sm:text-xs">
         Career map saved
       </span>
