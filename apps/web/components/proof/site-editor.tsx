@@ -11,6 +11,8 @@ import styles from "./site-editor.module.css";
  *  - no career map and no site: send them to /map (or start blank)
  *  - map, no site: "Draft it from my map"
  *  - saved, not published: edit, preview, publish
+ *  - profile already public, site saved but never published from here:
+ *    visitors still see the earlier page; preview, publish to replace it
  *  - published: public URL, copy link, view page, unpublish
  */
 
@@ -18,6 +20,8 @@ export type SiteEditorInitial = {
   site: ProofSite | null;
   profile: { handle: string; name: string; published: boolean };
   map: CareerMapView | null;
+  /** Visitors see this site. False while it is a draft, even when the profile itself is public. */
+  siteLive: boolean;
   siteUrl: string;
 };
 
@@ -138,6 +142,7 @@ export function SiteEditor({ initial }: { initial: SiteEditorInitial }) {
   const formId = useId();
   const [site, setSite] = useState<ProofSite | null>(initial.site);
   const [published, setPublished] = useState(initial.profile.published);
+  const [siteLive, setSiteLive] = useState(initial.siteLive);
   const [savedHandle, setSavedHandle] = useState(initial.profile.handle);
   const [form, setForm] = useState<FormState | null>(initial.site ? fromSite(initial.site, initial.profile.handle) : null);
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(form ? JSON.stringify(form) : null);
@@ -221,7 +226,7 @@ export function SiteEditor({ initial }: { initial: SiteEditorInitial }) {
       contactEmail: form.contactEmail.trim() || null,
       linkedinUrl: form.linkedinUrl.trim() || null,
     };
-    const result = await callApi<{ site: ProofSite; profile: { handle: string; published: boolean } }>("/api/proof/site", {
+    const result = await callApi<{ site: ProofSite; siteLive: boolean; profile: { handle: string; published: boolean } }>("/api/proof/site", {
       method: "PUT",
       body: JSON.stringify(body),
     });
@@ -236,9 +241,16 @@ export function SiteEditor({ initial }: { initial: SiteEditorInitial }) {
     setSite(result.data.site);
     setSavedHandle(result.data.profile.handle);
     setPublished(result.data.profile.published);
+    setSiteLive(Boolean(result.data.siteLive));
     setForm(next);
     setSavedSnapshot(JSON.stringify(next));
-    setNotice(result.data.profile.published ? "Saved. Your public page is updated." : "Saved. Preview it, then publish when you are ready.");
+    setNotice(
+      result.data.siteLive
+        ? "Saved. Your public page is updated."
+        : result.data.profile.published
+          ? "Saved as a draft. Visitors still see your earlier page until you publish this one."
+          : "Saved. Preview it, then publish when you are ready.",
+    );
     return true;
   }
 
@@ -254,7 +266,7 @@ export function SiteEditor({ initial }: { initial: SiteEditorInitial }) {
     }
     setBusy("publish");
     setError(null);
-    const result = await callApi<{ profile: { handle: string; published: boolean }; publicUrl: string }>("/api/profile/publish", {
+    const result = await callApi<{ profile: { handle: string; published: boolean }; publicUrl: string }>("/api/proof/site/publish", {
       method: "POST",
       body: "{}",
     });
@@ -264,6 +276,7 @@ export function SiteEditor({ initial }: { initial: SiteEditorInitial }) {
       return;
     }
     setPublished(true);
+    setSiteLive(true);
     setSavedHandle(result.data.profile.handle);
     setNotice("Published. Your page is live.");
     captureAnalyticsEvent("proof_site_published", { handle: result.data.profile.handle, source: "dashboard_proof_site" });
@@ -282,7 +295,9 @@ export function SiteEditor({ initial }: { initial: SiteEditorInitial }) {
     setNotice("Unpublished. Your page is private again.");
   }
 
-  const status = published ? "live" : site ? "draft" : "empty";
+  const status = published && siteLive ? "live" : site ? "draft" : "empty";
+  /** The profile is public but shows the earlier page: publishing replaces it. */
+  const replacesEarlierPage = status === "draft" && published;
 
   return (
     <div className={styles.editor}>
@@ -297,7 +312,11 @@ export function SiteEditor({ initial }: { initial: SiteEditorInitial }) {
           <div className={styles.statusHead}>
             <span className={status === "live" ? "rm-chip rm-chip--green" : "rm-chip"}>{status === "live" ? "Live" : "Not published"}</span>
             <p className="rm-p">
-              {status === "live" ? "Anyone with the link can see your page." : "Only you can see your page. Preview it, then publish."}
+              {status === "live"
+                ? "Anyone with the link can see your page."
+                : replacesEarlierPage
+                  ? "Visitors still see your earlier profile page. Only you can see this site. Preview it, then publish to replace that page."
+                  : "Only you can see your page. Preview it, then publish."}
             </p>
           </div>
           {status === "live" ? (

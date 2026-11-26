@@ -13,6 +13,7 @@ import {
   type PublicProfileProof,
 } from "@/lib/public-profile-proof";
 import { getProofSite } from "@/lib/proof/site-store";
+import { isProofSiteLive } from "@/lib/proof/site-publication";
 import { ProofSitePage, type ProofSitePageData } from "@/components/proof/site-page";
 import {
   EXAMPLE_PROOF_SITE_FOOTER,
@@ -98,9 +99,10 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
     };
   }
 
-  const proofSite = await findProofSite(view);
+  // No owner preview for metadata: a draft's title and tagline never reach crawlers.
+  const proofSite = await resolveProofSite(view, { allowOwnerPreview: false });
   if (proofSite) {
-    return proofSiteMetadata(profile, proofSite);
+    return proofSiteMetadata(profile, proofSite.site);
   }
 
   return {
@@ -154,6 +156,35 @@ async function findProofSite(view: { profile: UserProfile | null; isExample: boo
     console.error("[u/handle] proof site read failed", error instanceof Error ? error.message : error);
     return null;
   }
+}
+
+type ProofSiteVariant = "public" | "preview";
+
+async function viewerOwnsProfile(profile: UserProfile): Promise<boolean> {
+  const seed = await getAuthSeed();
+  if (!seed?.userId) return false;
+  const viewerProfile = await runtimeFindUserById(seed.userId);
+  return Boolean(viewerProfile && viewerProfile.id === profile.id);
+}
+
+/**
+ * Which proof site, if any, this request renders:
+ *  - unpublished profile (only the owner gets this far): the draft, as a preview
+ *  - published profile and the site was published from the editor: public
+ *  - published profile but the site is still a draft (the learner was public
+ *    before they used the editor): visitors get the earlier page; the owner
+ *    gets a preview of the draft
+ */
+async function resolveProofSite(
+  view: { profile: UserProfile | null; isExample: boolean },
+  options: { allowOwnerPreview: boolean },
+): Promise<{ site: ProofSite; variant: ProofSiteVariant } | null> {
+  const site = await findProofSite(view);
+  if (!site || !view.profile) return null;
+  if (!view.profile.published) return { site, variant: "preview" };
+  if (await isProofSiteLive({ site, profilePublished: true })) return { site, variant: "public" };
+  if (options.allowOwnerPreview && (await viewerOwnsProfile(view.profile))) return { site, variant: "preview" };
+  return null;
 }
 
 function proofSiteTitle(name: string, newTitle: string) {
@@ -255,7 +286,7 @@ function safeArtifactHref(url: string) {
   return safeHttpUrl(url);
 }
 
-async function renderProofSite(profile: UserProfile, site: ProofSite, projects: Project[]) {
+async function renderProofSite(profile: UserProfile, site: ProofSite, projects: Project[], variant: ProofSiteVariant) {
   const data: ProofSitePageData = {
     handle: profile.handle,
     name: profile.name,
@@ -284,12 +315,12 @@ async function renderProofSite(profile: UserProfile, site: ProofSite, projects: 
     <>
       <ProofSitePage
         data={data}
-        variant={profile.published ? "public" : "preview"}
+        variant={variant}
         voiceSection={<ProfileVoiceModelSection {...sectionProps} />}
         buildLogSection={<ProfileBuildLogSection {...sectionProps} />}
         footerNote={`${profile.name} wrote and published this page with ${BRAND_NAME}.`}
       />
-      {profile.published ? (
+      {variant === "public" ? (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personLd).replace(/</g, "\\u003c") }} />
       ) : null}
     </>
@@ -334,9 +365,9 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   }
 
   const projects = view.projects;
-  const proofSite = await findProofSite(view);
+  const proofSite = await resolveProofSite(view, { allowOwnerPreview: true });
   if (proofSite) {
-    return renderProofSite(profile, proofSite, projects);
+    return renderProofSite(profile, proofSite.site, projects, proofSite.variant);
   }
   // Every proof number is assembled from real tables (or, for the labeled
   // example profile, through the same gated assembly) — nothing on this page

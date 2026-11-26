@@ -37,6 +37,7 @@ import { GET, PUT } from "@/app/api/proof/site/route";
 import { POST as DRAFT } from "@/app/api/proof/site/draft/route";
 import { POST as UNPUBLISH } from "@/app/api/proof/site/unpublish/route";
 import { POST as PUBLISH } from "@/app/api/profile/publish/route";
+import { POST as PUBLISH_SITE } from "@/app/api/proof/site/publish/route";
 import { getProofSite, resetProofSiteStateForTests } from "@/lib/proof/site-store";
 
 const USER_ID = "user_proof_site_1";
@@ -311,6 +312,51 @@ describe("publish and unpublish", () => {
 
     mocks.getAuthSeed.mockResolvedValue(null);
     const anonymous = await UNPUBLISH(new MockNextRequest("http://localhost/api/proof/site/unpublish", { method: "POST" }) as never);
+    expect(anonymous.status).toBe(401);
+  });
+});
+
+describe("draft vs live (POST /api/proof/site/publish)", () => {
+  test("a profile that was already public: saving keeps the site a draft until it is published from the editor", async () => {
+    seedUser({ published: true });
+    const saved = await PUT(request("PUT", VALID_BODY));
+    expect(saved.status).toBe(200);
+    const savedJson = await saved.json();
+    expect(savedJson.profile.published).toBe(true);
+    expect(savedJson.siteLive).toBe(false);
+    expect((await (await GET(request("GET"))).json()).siteLive).toBe(false);
+
+    const published = await PUBLISH_SITE(request("POST", {}, "/api/proof/site/publish"));
+    expect(published.status).toBe(200);
+    expect(await published.json()).toMatchObject({ siteLive: true, publicUrl: "/u/pat-rivera", profile: { published: true } });
+    expect((await (await GET(request("GET"))).json()).siteLive).toBe(true);
+
+    // After that, saves are live straight away, as the editor says.
+    const again = await PUT(request("PUT", { ...VALID_BODY, tagline: "I turn launch plans into AI agents." }));
+    expect((await again.json()).siteLive).toBe(true);
+  });
+
+  test("an unpublished profile is published by the editor's publish", async () => {
+    seedUser({ published: false });
+    await PUT(request("PUT", VALID_BODY));
+    const response = await PUBLISH_SITE(request("POST", {}, "/api/proof/site/publish"));
+    expect(response.status).toBe(200);
+    expect(findUserById(USER_ID)?.published).toBe(true);
+    expect((await (await GET(request("GET"))).json()).siteLive).toBe(true);
+  });
+
+  test("needs a saved site, an active plan and a signed-in user", async () => {
+    seedUser({ published: true });
+    const unsaved = await PUBLISH_SITE(request("POST", {}, "/api/proof/site/publish"));
+    expect(unsaved.status).toBe(409);
+    expect((await unsaved.json()).error.code).toBe("PROOF_SITE_NOT_SAVED");
+
+    resetStateForTests();
+    seedUser({ billing: "none", published: true });
+    expect((await PUBLISH_SITE(request("POST", {}, "/api/proof/site/publish"))).status).toBe(402);
+
+    mocks.getAuthSeed.mockResolvedValue(null);
+    const anonymous = await PUBLISH_SITE(new MockNextRequest("http://localhost/api/proof/site/publish", { method: "POST" }) as never);
     expect(anonymous.status).toBe(401);
   });
 });

@@ -2,6 +2,7 @@ import "server-only";
 import { upsertUserProfile } from "@aitutor/shared";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 import { runtimeFindUserByHandle, runtimeFindUserById } from "@/lib/runtime";
+import { isReservedProfileHandle } from "@/lib/reserved-handles";
 
 /**
  * Learner-profile helpers for the proof site: handle rules and unpublishing.
@@ -11,8 +12,8 @@ import { runtimeFindUserByHandle, runtimeFindUserById } from "@/lib/runtime";
 export const PROOF_SITE_HANDLE_MIN = 3;
 export const PROOF_SITE_HANDLE_MAX = 40;
 
-/** Handles that serve built-in example pages and can never be claimed. */
-export const RESERVED_PROFILE_HANDLES = ["alex-chen-ai", "maya-ortiz", "example", "examples", "admin", "dashboard", "api"] as const;
+/** Handles that serve built-in example pages and can never be claimed (one list, in lib/reserved-handles.ts). */
+export { RESERVED_PROFILE_HANDLES } from "@/lib/reserved-handles";
 
 export type HandleCheck =
   | { ok: true; handle: string }
@@ -50,7 +51,7 @@ export function validateProfileHandleFormat(input: string): HandleCheck {
 export async function checkProfileHandleAvailable(input: { handle: string; learnerProfileId: string }): Promise<HandleCheck> {
   const format = validateProfileHandleFormat(input.handle);
   if (!format.ok) return format;
-  if ((RESERVED_PROFILE_HANDLES as readonly string[]).includes(format.handle)) {
+  if (isReservedProfileHandle(format.handle)) {
     return { ok: false, code: "HANDLE_TAKEN", message: `The address /u/${format.handle} is taken. Try another one.` };
   }
   const holder = await runtimeFindUserByHandle(format.handle);

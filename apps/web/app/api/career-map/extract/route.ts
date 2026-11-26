@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { jsonError, jsonOk } from "@/lib/runtime";
 import { RESUME_MAX_BYTES, ResumeExtractError, extractResumeText } from "@/lib/career-map/resume-extract";
+import { checkResumeExtractRateLimit } from "@/lib/career-map/extract-rate-limit";
+import { hashRequestIp } from "@/lib/career-map/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +23,20 @@ const RECOVERY_BY_CODE = {
 /** POST multipart `file` -> `{ ok, text, chars, truncated }`. Nothing is stored. */
 export async function POST(req: NextRequest) {
   try {
+    // Per server instance only (in-process window): a speed bump, not a guarantee.
+    const limit = checkResumeExtractRateLimit(hashRequestIp(req));
+    if (!limit.ok) {
+      const minutes = Math.max(1, Math.ceil(limit.retryAfterSeconds / 60));
+      const response = jsonError(
+        "RESUME_EXTRACT_RATE_LIMITED",
+        `You have uploaded ${limit.limit} files in the last few minutes. Wait about ${minutes} ${minutes === 1 ? "minute" : "minutes"} and try again, or paste the text instead.`,
+        429,
+        { retryAfterSeconds: limit.retryAfterSeconds, recoveryAction: "Paste the text of your résumé instead." },
+      );
+      response.headers.set("retry-after", String(limit.retryAfterSeconds));
+      return response;
+    }
+
     const declaredLength = Number(req.headers.get("content-length") ?? "0");
     // Multipart framing adds a little; anything far past the cap is rejected before parsing.
     if (Number.isFinite(declaredLength) && declaredLength > RESUME_MAX_BYTES + 64 * 1024) {

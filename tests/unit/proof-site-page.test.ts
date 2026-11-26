@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import React, { createElement } from "react";
 // eslint-disable-next-line import/no-relative-packages -- matches existing test convention
 import { renderToStaticMarkup } from "../../apps/web/node_modules/react-dom/server.node.js";
-import { createProject, recordProjectArtifact, resetStateForTests, upsertUserProfile, VOICE_MODEL_METHOD_LABEL } from "@aitutor/shared";
+import { createProject, publishProfile, recordProjectArtifact, resetStateForTests, upsertUserProfile, VOICE_MODEL_METHOD_LABEL } from "@aitutor/shared";
 
 /**
  * /u/[handle] branches: a learner with a proof site gets the new page, a
@@ -28,6 +28,7 @@ vi.mock("@/components/proof/profile-build-log-section", () => ({
 
 import PublicProfilePage, { generateMetadata } from "@/app/u/[handle]/page";
 import { resetProofSiteStateForTests, upsertProofSite } from "@/lib/proof/site-store";
+import { recordProofSitePublished } from "@/lib/proof/site-publication";
 import { initialsFor, routeFromTitle } from "@/components/proof/site-page";
 
 async function render(handle: string) {
@@ -50,7 +51,15 @@ function seedLearner(options: { published?: boolean } = {}) {
   });
 }
 
+/** A saved site the learner then published from the editor (the normal live state). */
 async function seedSite(overrides: Partial<Parameters<typeof upsertProofSite>[0]> = {}) {
+  const site = await seedDraftSite(overrides);
+  await recordProofSitePublished({ learnerProfileId: "learner-site-1", handle: "jordan-lee" });
+  return site;
+}
+
+/** A saved site that was never published from the editor. */
+async function seedDraftSite(overrides: Partial<Parameters<typeof upsertProofSite>[0]> = {}) {
   return upsertProofSite({
     learnerProfileId: "learner-site-1",
     careerMapId: null,
@@ -181,6 +190,63 @@ describe("learner with a proof site", () => {
     expect(metadata.description).toBe("I write the tests that show where an AI system fails.");
     expect(metadata.alternates?.canonical).toBe("/u/jordan-lee");
     expect(JSON.stringify(metadata.openGraph)).toContain("/api/og/profile/jordan-lee");
+  });
+});
+
+describe("profile public before the proof site existed (draft vs live)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test("a saved but never published site does not replace the public page, and its contact email stays private", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-20T10:00:00.000Z"));
+    seedLearner();
+    publishProfile("learner-site-1"); // published long before the proof site
+    vi.setSystemTime(new Date("2026-11-25T10:00:00.000Z"));
+    await seedDraftSite();
+
+    const html = await render("jordan-lee");
+    expect(html).not.toContain('data-testid="proof-site-page"');
+    expect(html).toContain("Legacy bio that the old page shows.");
+    expect(html).not.toContain("jordan@example.com");
+    expect(html).not.toContain("I write the tests that show where an AI system fails.");
+    const metadata = await generateMetadata({ params: Promise.resolve({ handle: "jordan-lee" }) });
+    expect(metadata.title).toBe("Jordan Lee | My AI Skill Tutor Profile");
+  });
+
+  test("the owner previews the draft; no JSON-LD", async () => {
+    seedLearner();
+    await seedDraftSite();
+    mocks.getAuthSeed.mockResolvedValue({ userId: "learner-site-1" });
+    const html = await render("jordan-lee");
+    expect(html).toContain('data-variant="preview"');
+    expect(html).toContain("Private preview");
+    expect(html).not.toContain("application/ld+json");
+    // Metadata never uses the draft, even for the owner.
+    const metadata = await generateMetadata({ params: Promise.resolve({ handle: "jordan-lee" }) });
+    expect(metadata.title).toBe("Jordan Lee | My AI Skill Tutor Profile");
+  });
+
+  test("after an explicit publish the site is the public page; a later publish of the profile also counts", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-25T10:00:00.000Z"));
+    seedLearner();
+    await seedDraftSite();
+    vi.setSystemTime(new Date("2026-11-25T10:05:00.000Z"));
+    await recordProofSitePublished({ learnerProfileId: "learner-site-1", handle: "jordan-lee" });
+    const html = await render("jordan-lee");
+    expect(html).toContain('data-variant="public"');
+    expect(html).toContain('href="mailto:jordan@example.com"');
+
+    resetStateForTests();
+    resetProofSiteStateForTests();
+    vi.setSystemTime(new Date("2026-11-25T11:00:00.000Z"));
+    seedLearner();
+    await seedDraftSite();
+    vi.setSystemTime(new Date("2026-11-25T11:05:00.000Z"));
+    publishProfile("learner-site-1");
+    expect(await render("jordan-lee")).toContain('data-variant="public"');
   });
 });
 

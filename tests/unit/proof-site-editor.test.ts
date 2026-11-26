@@ -32,6 +32,7 @@ function render(overrides: Partial<SiteEditorInitial>) {
     site: null,
     profile: { handle: "pat-rivera", name: "Pat Rivera", published: false },
     map: null,
+    siteLive: false,
     siteUrl: "https://www.myaiskilltutor.com",
     ...overrides,
   };
@@ -68,7 +69,7 @@ describe("proof site editor states", () => {
   });
 
   test("published: public URL, copy link, view page, unpublish", () => {
-    const html = render({ site: SITE, profile: { handle: "pat-rivera", name: "Pat Rivera", published: true } });
+    const html = render({ site: SITE, siteLive: true, profile: { handle: "pat-rivera", name: "Pat Rivera", published: true } });
     expect(html).toContain('data-state="live"');
     expect(html).toContain("https://www.myaiskilltutor.com/u/pat-rivera");
     expect(html).toContain("Copy link");
@@ -77,10 +78,21 @@ describe("proof site editor states", () => {
     expect(html).not.toContain('data-testid="proof-site-publish"');
   });
 
+  test("profile already public, site never published from the editor: still a draft, publish replaces the earlier page", () => {
+    const html = render({ site: SITE, map: MAP_VIEW, siteLive: false, profile: { handle: "pat-rivera", name: "Pat Rivera", published: true } });
+    expect(html).toContain('data-state="draft"');
+    expect(html).toContain("Not published");
+    expect(html).toContain("Visitors still see your earlier profile page.");
+    expect(html).toContain('data-testid="proof-site-publish"');
+    expect(html).toContain(">Preview<");
+    expect(html).not.toContain('data-testid="proof-site-unpublish"');
+    expect(html).not.toContain("Anyone with the link can see your page.");
+  });
+
   test("fires proof_site_published only after a successful publish call", () => {
     const source = readFileSync(path.resolve(process.cwd(), "apps/web/components/proof/site-editor.tsx"), "utf8");
     const publishBody = source.slice(source.indexOf("async function publish()"), source.indexOf("async function unpublish()"));
-    expect(publishBody).toContain('"/api/profile/publish"');
+    expect(publishBody).toContain('"/api/proof/site/publish"');
     expect(publishBody.indexOf("if (!result.ok)")).toBeLessThan(publishBody.indexOf('captureAnalyticsEvent("proof_site_published"'));
   });
 });
