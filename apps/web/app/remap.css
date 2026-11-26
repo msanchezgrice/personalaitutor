@@ -199,32 +199,38 @@
   cursor: not-allowed;
 }
 .rm a.rm-btn--primary,
+.rm .rm-btn--primary,
 .rm-btn--primary {
   background: var(--rm-green-deep);
   color: #ffffff;
 }
 .rm a.rm-btn--primary:hover,
+.rm .rm-btn--primary:hover,
 .rm-btn--primary:hover {
   background: var(--rm-green-ink);
   color: #ffffff;
 }
 .rm a.rm-btn--secondary,
+.rm .rm-btn--secondary,
 .rm-btn--secondary {
   background: var(--rm-surface);
   color: var(--rm-ink);
   border-color: var(--rm-border);
 }
 .rm a.rm-btn--secondary:hover,
+.rm .rm-btn--secondary:hover,
 .rm-btn--secondary:hover {
   border-color: var(--rm-faint);
   color: var(--rm-ink);
 }
 .rm a.rm-btn--ink,
+.rm .rm-btn--ink,
 .rm-btn--ink {
   background: var(--rm-ink);
   color: #ffffff;
 }
 .rm a.rm-btn--ink:hover,
+.rm .rm-btn--ink:hover,
 .rm-btn--ink:hover {
   background: var(--rm-ink-2);
   color: #ffffff;
@@ -464,14 +470,62 @@
   color: var(--rm-green-deep);
 }
 
-@media (max-width: 720px) {
-  .rm-nav {
+/*
+ * Below 960px the header is two short rows: brand and actions, then one
+ * horizontally scrollable nav row. Left to wrap freely it grows to three rows
+ * (about 220px of sticky chrome on a phone).
+ */
+@media (max-width: 960px) {
+  .rm .rm-header__inner {
+    justify-content: space-between;
+    gap: 0 12px;
+    padding-top: 10px;
+    padding-bottom: 0;
+  }
+  .rm .rm-brand {
+    font-size: 1.125rem;
+    gap: 10px;
+  }
+  .rm .rm-brand img {
+    width: 34px;
+    height: 34px;
+  }
+  .rm .rm-header__actions .rm-btn {
+    min-height: 42px;
+    padding: 8px 14px;
+  }
+  .rm .rm-nav {
     order: 3;
     flex-basis: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
     gap: 0 20px;
+    margin-inline: -4px;
+    padding-inline: 4px;
   }
-  .rm-header__actions .rm-btn--secondary {
+  .rm .rm-nav::-webkit-scrollbar {
     display: none;
+  }
+  .rm .rm-nav a {
+    flex: none;
+    padding: 10px 0;
+  }
+}
+@media (max-width: 720px) {
+  .rm .rm-header__actions .rm-btn--secondary {
+    display: none;
+  }
+}
+@media (max-width: 400px) {
+  /* Keep the brand's accessible name, show only the icon. */
+  .rm .rm-brand span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
 }
 

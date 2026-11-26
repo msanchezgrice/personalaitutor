@@ -57,7 +57,7 @@ describe("career map input validation", () => {
     expect(shouldAutoStart(null, "home")).toBe(false);
   });
 
-  test("upload pre-check rejects legacy .doc and files over 5 MB", () => {
+  test("upload pre-check rejects legacy .doc and files over 4 MB", () => {
     expect(checkUploadFile({ name: "Resume.PDF", size: 1000 })).toEqual({ ok: true });
     expect(checkUploadFile({ name: "resume.docx", size: 1000 })).toEqual({ ok: true });
     expect(checkUploadFile({ name: "resume.txt", size: 1000 })).toEqual({ ok: true });

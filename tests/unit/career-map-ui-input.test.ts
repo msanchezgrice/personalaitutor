@@ -39,7 +39,7 @@ describe("/map input", () => {
     const html = renderToStaticMarkup(createElement(CareerMapInput, { startWithUpload: true }));
     expect(html).toMatch(/id="career-map-mode-upload"[^>]*checked/);
     expect(html).toContain("Choose a file");
-    expect(html).toContain("up to 5 MB");
+    expect(html).toContain("up to 4 MB");
     expect(html).toContain('accept=".pdf,.docx,.txt');
   });
 

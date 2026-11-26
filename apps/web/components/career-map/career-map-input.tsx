@@ -366,7 +366,7 @@ export function CareerMapInput({ from = null, startWithUpload = false }: CareerM
           onDrop={onDrop}
         >
           <h2 className={styles.fieldTitle}>Upload your résumé</h2>
-          <p className="rm-p">PDF, Word (.docx) or plain text, up to 5 MB. We pull out the text and show it to you before anything else happens.</p>
+          <p className="rm-p">PDF, Word (.docx) or plain text, up to 4 MB. We pull out the text and show it to you before anything else happens.</p>
           <button
             ref={uploadButtonRef}
             type="button"

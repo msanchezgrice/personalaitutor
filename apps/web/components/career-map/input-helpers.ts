@@ -8,7 +8,7 @@ import { CAREER_MAP_INPUT_MAX_CHARS, CAREER_MAP_INPUT_MIN_CHARS, CAREER_MAP_TITL
  */
 
 /** Same cap the extract route enforces. */
-export const CAREER_MAP_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+export const CAREER_MAP_UPLOAD_MAX_BYTES = 4 * 1024 * 1024;
 export const CAREER_MAP_UPLOAD_ACCEPT = ".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain";
 
 const numberFormat = new Intl.NumberFormat("en-US");
@@ -215,7 +215,7 @@ export function describeCareerMapError(input: ApiErrorInput): CareerMapErrorCopy
       return {
         code,
         title: "That file is too large",
-        message: "We can read files up to 5 MB. Export a copy without images, or paste the text instead.",
+        message: "We can read files up to 4 MB. Export a copy without images, or paste the text instead.",
         action: "upload",
         actionLabel: "Choose another file",
       };

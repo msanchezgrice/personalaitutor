@@ -197,7 +197,7 @@ describe("resume text extraction", () => {
     expect(() => detectResumeFileKind({ fileName: "a.txt", mimeType: "text/plain", bytes: binary })).toThrow(ResumeExtractError);
   });
 
-  test("files over 5 MB are RESUME_FILE_TOO_LARGE; empty files have no text", async () => {
+  test("files over 4 MB are RESUME_FILE_TOO_LARGE; empty files have no text", async () => {
     const big = new Uint8Array(RESUME_MAX_BYTES + 1).fill(0x61);
     await expectExtractError(extractResumeText({ fileName: "big.txt", mimeType: "text/plain", bytes: big }), "RESUME_FILE_TOO_LARGE");
     await expectExtractError(

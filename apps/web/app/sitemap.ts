@@ -36,6 +36,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     `${appBaseUrl}/learn`,
     `${appBaseUrl}/tools/career-remapping`,
     `${appBaseUrl}/u/${EXAMPLE_PROFILE_HANDLE}`,
+    // The worked example of a finished proof page (fictional person, labelled as an example).
+    `${appBaseUrl}/u/maya-ortiz`,
   ]);
 
   for (const route of remappedRoutes) {

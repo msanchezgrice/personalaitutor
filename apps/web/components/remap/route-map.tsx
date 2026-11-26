@@ -119,7 +119,7 @@ export function RouteMap({ fromTitle, fromField, neighbors = [], toTitle, toLine
           <text x={425} y={222} fill="#047857">
             Your route
           </text>
-          <text x={250} y={150} fill={MUTED}>
+          <text x={270} y={178} fill={MUTED} textAnchor="end">
             You were here
           </text>
           {tag ? (

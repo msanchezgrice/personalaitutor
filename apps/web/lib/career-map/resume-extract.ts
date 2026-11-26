@@ -12,7 +12,8 @@ import { CAREER_MAP_INPUT_MAX_CHARS } from "@aitutor/shared";
  * RESUME_TEXT_NOT_FOUND (422: scans, empty, encrypted or corrupt files).
  */
 
-export const RESUME_MAX_BYTES = 5 * 1024 * 1024;
+/** Under the hosting platform's 4.4 MB request body limit, so an over-size file gets our message, not a bare 413. */
+export const RESUME_MAX_BYTES = 4 * 1024 * 1024;
 /** Pages read from a PDF before we stop (the text is capped anyway). */
 const PDF_MAX_PAGES = 40;
 /** Fewer letters than this means there is no usable text (e.g. a scanned PDF). */
@@ -178,7 +179,7 @@ export async function extractResumeText(input: {
   bytes: Uint8Array;
 }): Promise<ResumeExtractResult> {
   if (input.bytes.byteLength > RESUME_MAX_BYTES) {
-    throw new ResumeExtractError("RESUME_FILE_TOO_LARGE", "That file is over 5 MB. Upload a smaller file, or paste the text.");
+    throw new ResumeExtractError("RESUME_FILE_TOO_LARGE", "That file is over 4 MB. Upload a smaller file, or paste the text.");
   }
   if (input.bytes.byteLength === 0) {
     throw new ResumeExtractError("RESUME_TEXT_NOT_FOUND", "That file is empty. Upload another file, or paste the text.");

@@ -198,7 +198,11 @@ describe("POST /api/career-map", () => {
   test("502 CAREER_MAP_FAILED with an add-more-detail recovery when output is ungrounded", async () => {
     const ungrounded = {
       ...EXAMPLE_CAREER_MAP,
-      translations: EXAMPLE_CAREER_MAP.translations.map((entry) => ({ ...entry, evidence: `${entry.evidence} for many years` })),
+      // Work the input never mentions. (A near-quote would be repaired from the input, not rejected.)
+      translations: EXAMPLE_CAREER_MAP.translations.map((entry, index) => ({
+        ...entry,
+        evidence: ["Led a platform migration for the finance team", "Negotiated enterprise vendor contracts", "Taught a weekly analytics seminar", "Audited the payroll ledger"][index % 4],
+      })),
     };
     const { openAiCalls } = mockFetch([ungrounded, ungrounded]);
     const res = await postMap(VALID_BODY);

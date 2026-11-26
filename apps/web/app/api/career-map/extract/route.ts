@@ -13,7 +13,7 @@ const STATUS_BY_CODE = {
 } as const;
 
 const RECOVERY_BY_CODE = {
-  RESUME_FILE_TOO_LARGE: "Upload a file under 5 MB, or paste the text.",
+  RESUME_FILE_TOO_LARGE: "Upload a file under 4 MB, or paste the text.",
   RESUME_FILE_UNSUPPORTED: "Upload a PDF, .docx or .txt file, or paste the text.",
   RESUME_TEXT_NOT_FOUND: "Paste the text of your résumé instead.",
 } as const;
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     const declaredLength = Number(req.headers.get("content-length") ?? "0");
     // Multipart framing adds a little; anything far past the cap is rejected before parsing.
     if (Number.isFinite(declaredLength) && declaredLength > RESUME_MAX_BYTES + 64 * 1024) {
-      return jsonError("RESUME_FILE_TOO_LARGE", "That file is over 5 MB. Upload a smaller file, or paste the text.", 413, {
+      return jsonError("RESUME_FILE_TOO_LARGE", "That file is over 4 MB. Upload a smaller file, or paste the text.", 413, {
         maxBytes: RESUME_MAX_BYTES,
         recoveryAction: RECOVERY_BY_CODE.RESUME_FILE_TOO_LARGE,
       });
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       });
     }
     if (file.size > RESUME_MAX_BYTES) {
-      return jsonError("RESUME_FILE_TOO_LARGE", "That file is over 5 MB. Upload a smaller file, or paste the text.", 413, {
+      return jsonError("RESUME_FILE_TOO_LARGE", "That file is over 4 MB. Upload a smaller file, or paste the text.", 413, {
         maxBytes: RESUME_MAX_BYTES,
         recoveryAction: RECOVERY_BY_CODE.RESUME_FILE_TOO_LARGE,
       });

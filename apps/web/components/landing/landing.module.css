@@ -27,62 +27,6 @@
   display: none;
 }
 
-/*
- * Phone header. The shared header wraps to three rows (brand, button, nav) on
- * phones (about 220px of sticky chrome at 390px) and puts the buttons on their
- * own row on tablets. On the landing page keep it to two short rows below
- * 960px: brand and actions, then one scrollable nav row.
- */
-@media (max-width: 960px) {
-  .page :global(.rm-header__inner) {
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 0 12px;
-    padding-top: 10px;
-    padding-bottom: 0;
-  }
-  .page :global(.rm-brand) {
-    font-size: 1.125rem;
-    gap: 10px;
-  }
-  .page :global(.rm-brand img) {
-    width: 34px;
-    height: 34px;
-  }
-  .page :global(.rm-header__actions .rm-btn) {
-    min-height: 42px;
-    padding: 8px 14px;
-  }
-  .page :global(.rm-nav) {
-    order: 3;
-    flex-basis: 100%;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-    gap: 0 20px;
-    margin-inline: -4px;
-    padding-inline: 4px;
-  }
-  .page :global(.rm-nav)::-webkit-scrollbar {
-    display: none;
-  }
-  .page :global(.rm-nav a) {
-    flex: none;
-    padding: 10px 0;
-  }
-}
-@media (max-width: 400px) {
-  /* Keep the brand's accessible name, show only the icon. */
-  .page :global(.rm-brand span) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-  }
-}
-
 /* Shared section rhythm */
 .section {
   display: flex;
