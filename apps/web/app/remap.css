@@ -512,9 +512,17 @@
     padding: 10px 0;
   }
 }
+.rm .rm-nav .rm-nav__auth {
+  display: none;
+}
 @media (max-width: 720px) {
   .rm .rm-header__actions .rm-btn--secondary {
     display: none;
+  }
+  .rm .rm-nav .rm-nav__auth {
+    display: inline;
+    color: var(--rm-green-deep);
+    font-weight: 600;
   }
 }
 @media (max-width: 400px) {

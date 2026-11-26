@@ -263,18 +263,31 @@ export async function findCareerMapByToken(token: string): Promise<CareerMapReco
   return data ? fromRow(data as CareerMapRow) : null;
 }
 
-/** Saves the email on the map. Returns null when the token is unknown. */
+/** Thrown when a map already has a different email, or already belongs to an account. */
+export const CAREER_MAP_EMAIL_LOCKED = "CAREER_MAP_EMAIL_LOCKED";
+
+/**
+ * Saves the email on the map. Returns null when the token is unknown.
+ *
+ * An email is set once: a map that already has a different address, or that
+ * is already linked to an account, is not changed (`CAREER_MAP_EMAIL_LOCKED`).
+ * The write is conditional in the database, so two concurrent requests cannot
+ * both set an address.
+ */
 export async function captureCareerMapEmail(input: { token: string; email: string }): Promise<CareerMapRecord | null> {
   const email = normalizeCareerMapEmail(input.email);
   if (!email) return null;
   const existing = await findCareerMapByToken(input.token);
   if (!existing) return null;
+  if (existing.email === email) return existing;
+  if (existing.email || existing.learnerProfileId) throw new Error(CAREER_MAP_EMAIL_LOCKED);
 
   const now = new Date().toISOString();
 
   if (mode() === "memory") {
     const record = memoryMaps.get(existing.id);
     if (!record) return null;
+    if (record.email || record.learnerProfileId) throw new Error(CAREER_MAP_EMAIL_LOCKED);
     const next: CareerMapRecord = {
       ...record,
       email,
@@ -290,12 +303,29 @@ export async function captureCareerMapEmail(input: { token: string; email: strin
     .from(TABLE)
     .update({ email, email_captured_at: existing.emailCapturedAt ?? now, updated_at: now })
     .eq("id", existing.id)
+    .is("email", null)
+    .is("learner_profile_id", null)
     .select(SELECT_FIELDS)
-    .single();
-  if (error || !data) {
-    throw new Error(`CAREER_MAP_EMAIL_CAPTURE_FAILED:${error?.message ?? "NO_ROW"}`);
+    .maybeSingle();
+  if (error) {
+    throw new Error(`CAREER_MAP_EMAIL_CAPTURE_FAILED:${error.message}`);
   }
+  // No row: another request set an address (or linked the map) first.
+  if (!data) throw new Error(CAREER_MAP_EMAIL_LOCKED);
   return fromRow(data as CareerMapRow);
+}
+
+/** Removes a record that was created and then refused (over a rate limit). */
+export async function deleteCareerMapRecord(id: string): Promise<void> {
+  if (mode() === "memory") {
+    memoryMaps.delete(id);
+    return;
+  }
+  const supabase = getSupabaseAdminClient();
+  const { error } = await supabase.from(TABLE).delete().eq("id", id);
+  if (error) {
+    throw new Error(`CAREER_MAP_DELETE_FAILED:${error.message}`);
+  }
 }
 
 export async function markCareerMapEmailSent(id: string): Promise<void> {

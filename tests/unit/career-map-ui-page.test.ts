@@ -18,6 +18,10 @@ vi.mock("@/lib/auth", () => ({ getAuthSeed: mockGetAuthSeed }));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => (mockCookieValue.current ? { value: mockCookieValue.current } : undefined) }),
 }));
+// The page resolves `next` from apps/web/node_modules, so mock that exact file too.
+vi.mock("../../apps/web/node_modules/next/headers.js", () => ({
+  cookies: async () => ({ get: () => (mockCookieValue.current ? { value: mockCookieValue.current } : undefined) }),
+}));
 // Components resolve `next` from apps/web/node_modules, so mock that exact file.
 vi.mock("../../apps/web/node_modules/next/navigation.js", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -84,13 +88,22 @@ describe("/map/[token] page", () => {
     expect(mockFind).not.toHaveBeenCalled();
   });
 
-  test("renders a completed map with the signed-out CTA and the email form", async () => {
+  test("renders a completed map with the signed-out CTA; the owner gets the email form", async () => {
     mockFind.mockResolvedValue(record());
+    mockCookieValue.current = TOKEN;
     const html = await renderPage(TOKEN);
     expect(html).toContain("Go-to-Market Engineer");
     expect(html).toContain("Email me my map");
     expect(html).toContain("/sign-up?redirect_url=%2Fdashboard%2Fproof&amp;from=map");
     expect(html).not.toContain(EXAMPLE_CAREER_MAP_INPUT.split("\n")[2]); // never leaks raw input beyond quotes
+  });
+
+  test("a visitor on a shared link sees the map but cannot save it by email", async () => {
+    mockFind.mockResolvedValue(record());
+    mockCookieValue.current = null;
+    const html = await renderPage(TOKEN);
+    expect(html).toContain("Go-to-Market Engineer");
+    expect(html).not.toContain("Email me my map");
   });
 
   test("signed-in viewer gets the dashboard CTA and no email form", async () => {

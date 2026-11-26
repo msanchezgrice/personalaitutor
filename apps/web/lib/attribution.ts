@@ -39,6 +39,23 @@ export type AttributionEnvelope = {
   last?: AcquisitionAttribution;
 };
 
+/**
+ * A career map URL carries a token that opens the map, so the token must not
+ * end up in analytics rows or attribution cookies. "/map/abc123" -> "/map/:token".
+ */
+export function redactPrivatePath(value: string): string {
+  return value.replace(/(\/map\/)[A-Za-z0-9_%.~-]{8,}/g, "$1:token").replace(/(\/api\/(?:career-map|og\/map)\/)[A-Za-z0-9_%.~-]{8,}/g, "$1:token");
+}
+
+function redactOptional<T>(value: T): T {
+  return (typeof value === "string" ? redactPrivatePath(value) : value) as T;
+}
+
+function cleanPath(value: unknown, maxLen = 300) {
+  const cleaned = cleanString(value, maxLen);
+  return typeof cleaned === "string" ? redactPrivatePath(cleaned) : cleaned;
+}
+
 function cleanString(value: unknown, maxLen = 300) {
   if (typeof value !== "string") return undefined;
   const normalized = value.trim();
@@ -75,8 +92,8 @@ export function sanitizeAttribution(input: Partial<AcquisitionAttribution> | nul
     liFatId: cleanString(input.liFatId, 200),
     gclid: cleanString(input.gclid, 200),
     msclkid: cleanString(input.msclkid, 200),
-    referrer: cleanString(input.referrer, 500),
-    landingPath: cleanString(input.landingPath, 300),
+    referrer: cleanPath(input.referrer, 500),
+    landingPath: cleanPath(input.landingPath, 300),
     capturedAt: cleanString(input.capturedAt, 40),
   };
 
@@ -100,7 +117,7 @@ function fromSearchParams(params: URLSearchParams, fallbackPath?: string | null)
     liFatId: normalizeSearchValue(params, "li_fat_id"),
     gclid: normalizeSearchValue(params, "gclid"),
     msclkid: normalizeSearchValue(params, "msclkid"),
-    landingPath: cleanString(fallbackPath, 300),
+    landingPath: cleanPath(fallbackPath, 300),
     capturedAt: new Date().toISOString(),
   };
 
@@ -237,8 +254,8 @@ export const attributionCaptureScript = `
     liFatId: clean(params.get("li_fat_id"), 200),
     gclid: clean(params.get("gclid"), 200),
     msclkid: clean(params.get("msclkid"), 200),
-    landingPath: clean(window.location.pathname, 300),
-    referrer: clean(document.referrer, 500),
+    landingPath: redactOptional(clean(window.location.pathname, 300)),
+    referrer: redactOptional(clean(document.referrer, 500)),
     capturedAt: new Date().toISOString(),
   };
 

@@ -105,7 +105,8 @@ export function CareerMapResult({ mapId, token, map, source, hasEmail, signedIn,
     return <CareerMapFailedState reason="CAREER_MAP_INVALID_OUTPUT:UNKNOWN_TITLE_ID" />;
   }
   const { primary, line, alternates } = resolved;
-  const showEmailForm = !hasEmail && !signedIn;
+  // Only the person who drew the map can save it by email; a visitor on a shared link cannot.
+  const showEmailForm = !hasEmail && !signedIn && viewer === "owner";
   const ctaHref = signupHref(signedIn);
   const evidenceCount = map.translations.length;
   const plan = map.proofPlan;
@@ -165,8 +166,9 @@ export function CareerMapResult({ mapId, token, map, source, hasEmail, signedIn,
             What you did, translated
           </h2>
           <p className={styles.intro}>
-            Each row starts with a line from {sourceNoun(source)}. If a translation looks wrong, it probably is: you can edit every line when you
-            build your site.
+            Each row starts with a line from {sourceNoun(source)}. &ldquo;Now&rdquo; is the AI-era skill that work points to, not a claim that
+            you have done it yet; the gaps below say what you still have to show. If a translation looks wrong, it probably is: you can edit
+            every line when you build your site.
           </p>
           <ul className={styles.translations} data-testid="career-map-translations">
             {map.translations.map((row, index) => (

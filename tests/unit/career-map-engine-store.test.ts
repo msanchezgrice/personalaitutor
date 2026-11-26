@@ -75,9 +75,12 @@ describe("career map store (memory mode)", () => {
     const record = await completedMap();
     const first = await captureCareerMapEmail({ token: record.token, email: "  Maya@Example.COM " });
     expect(first?.email).toBe("maya@example.com");
-    const second = await captureCareerMapEmail({ token: record.token, email: "other@example.com" });
-    expect(second?.email).toBe("other@example.com");
+    // The same address again is a no-op; a different one is refused (an address is set once).
+    const second = await captureCareerMapEmail({ token: record.token, email: "MAYA@example.com" });
+    expect(second?.email).toBe("maya@example.com");
     expect(second?.emailCapturedAt).toBe(first?.emailCapturedAt);
+    await expect(captureCareerMapEmail({ token: record.token, email: "other@example.com" })).rejects.toThrow("CAREER_MAP_EMAIL_LOCKED");
+    expect((await findCareerMapByToken(record.token))?.email).toBe("maya@example.com");
     expect(await captureCareerMapEmail({ token: record.token, email: "not-an-email" })).toBeNull();
     expect(await captureCareerMapEmail({ token: "missing", email: "a@example.com" })).toBeNull();
     await markCareerMapEmailSent(record.id);
@@ -103,7 +106,8 @@ describe("career map store (memory mode)", () => {
     const d = await completedMap();
     await captureCareerMapEmail({ token: a.token, email: "maya@example.com" });
     await captureCareerMapEmail({ token: b.token, email: "MAYA@example.com" });
-    await captureCareerMapEmail({ token: c.token, email: "maya@example.com" });
+    // A map that already belongs to an account cannot be given an email at all.
+    await expect(captureCareerMapEmail({ token: c.token, email: "maya@example.com" })).rejects.toThrow("CAREER_MAP_EMAIL_LOCKED");
     await captureCareerMapEmail({ token: d.token, email: "other@example.com" });
     expect(await linkCareerMapsByEmail({ email: "Maya@Example.com", learnerProfileId: "profile-1" })).toBe(2);
     expect(await linkCareerMapsByEmail({ email: "maya@example.com", learnerProfileId: "profile-1" })).toBe(0);

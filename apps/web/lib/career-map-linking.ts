@@ -76,6 +76,17 @@ function reason(error: unknown) {
   return error instanceof Error ? error.message : "unknown";
 }
 
+/**
+ * Linking by email is OFF. Neither side of the match is proven: the address on
+ * a map is whatever was typed into "Keep this map", and nothing here checks
+ * that the account's address is verified. With it on, anyone could put a
+ * stranger's address on a map of their own and have it appear in that
+ * stranger's dashboard. Maps are linked by the browser cookie only. Turn this
+ * back on only together with a confirm-by-email step (a signed link sent to
+ * the address) and a verified-address check on the account.
+ */
+export const CAREER_MAP_LINK_BY_EMAIL: boolean = false;
+
 export async function linkCareerMapsForLearner(input: {
   learnerProfileId: string | null | undefined;
   email?: string | null;
@@ -106,7 +117,7 @@ export async function linkCareerMapsForLearner(input: {
       }
     }
 
-    if (emailKey && !isFresh(handledEmails, emailKey, now)) {
+    if (CAREER_MAP_LINK_BY_EMAIL && emailKey && !isFresh(handledEmails, emailKey, now)) {
       result.skipped = false;
       try {
         const linked = await linkCareerMapsByEmail({ email: email as string, learnerProfileId });

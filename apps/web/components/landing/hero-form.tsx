@@ -23,7 +23,9 @@ export function submitHeroDraft(rawText: string, storage: Pick<Storage, "setItem
   if (!text) return HERO_MAP_PATH;
   if (!storage) return HERO_MAP_PATH;
   try {
-    storage.setItem(CAREER_MAP_DRAFT_STORAGE_KEY, JSON.stringify({ text, source: "paste" }));
+    // The box takes either; a few lines of prose is a description, not a résumé, and the result page words itself accordingly.
+    const lines = text.split("\n").filter((line) => line.trim().length > 0).length;
+    storage.setItem(CAREER_MAP_DRAFT_STORAGE_KEY, JSON.stringify({ text, source: lines >= 5 ? "paste" : "describe" }));
     return HERO_MAP_FROM_HOME_PATH;
   } catch {
     return HERO_MAP_PATH;

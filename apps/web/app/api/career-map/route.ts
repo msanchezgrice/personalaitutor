@@ -10,7 +10,7 @@ import { getAuthSeed } from "@/lib/auth";
 import { jsonError, jsonOk, runtimeGetBillingAccessState } from "@/lib/runtime";
 import { CAREER_MAP_UNGROUNDED_ERROR, generateCareerMap } from "@/lib/career-map/generate";
 import { checkCareerMapRateLimit, hashRequestIp } from "@/lib/career-map/rate-limit";
-import { completeCareerMapRecord, createCareerMapRecord, failCareerMapRecord } from "@/lib/career-map/store";
+import { completeCareerMapRecord, createCareerMapRecord, deleteCareerMapRecord, failCareerMapRecord } from "@/lib/career-map/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,8 +61,35 @@ async function resolveSignedInProfileId(): Promise<string | null> {
   }
 }
 
+/**
+ * The response sets the owner cookie, so this must be a request our own page
+ * made. A cross-site form post (`text/plain` or urlencoded, no preflight)
+ * could otherwise plant a map, and its cookie, in someone else's browser.
+ */
+function isSameSiteJsonRequest(req: NextRequest): boolean {
+  const contentType = req.headers.get("content-type")?.toLowerCase() ?? "";
+  if (!contentType.startsWith("application/json")) return false;
+  const fetchSite = req.headers.get("sec-fetch-site");
+  if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "same-site" && fetchSite !== "none") return false;
+  const origin = req.headers.get("origin");
+  if (origin) {
+    const ownHosts = [req.headers.get("host"), req.headers.get("x-forwarded-host"), req.nextUrl.host];
+    try {
+      if (!ownHosts.includes(new URL(origin).host)) return false;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
 export async function POST(req: NextRequest) {
   try {
+    if (!isSameSiteJsonRequest(req)) {
+      return jsonError("INVALID_REQUEST", "Send this request from the career map page", 415, {
+        recoveryAction: "Open /map and try again.",
+      });
+    }
     const parsed = schema.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) {
       return jsonError("INVALID_BODY", parsed.error.issues[0]?.message ?? "Invalid request", 400, {
@@ -80,8 +107,23 @@ export async function POST(req: NextRequest) {
     }
 
     const ipHash = hashRequestIp(req);
-    const limit = await checkCareerMapRateLimit(ipHash);
+    const learnerProfileId = await resolveSignedInProfileId();
+
+    // Record first, then count including this record. Counting first would let
+    // a burst of parallel requests all pass before any of them is recorded.
+    const record = await createCareerMapRecord({
+      source: parsed.data.source,
+      inputText: text,
+      visitorId: parsed.data.visitorId ?? null,
+      ipHash,
+      learnerProfileId,
+    });
+
+    const limit = await checkCareerMapRateLimit(ipHash, new Date(), { includesCurrent: true });
     if (!limit.ok) {
+      await deleteCareerMapRecord(record.id).catch((error) => {
+        console.warn("[career-map] could not remove a rate-limited record", error instanceof Error ? error.message : "unknown");
+      });
       const response = jsonError(
         "CAREER_MAP_RATE_LIMITED",
         limit.scope === "global"
@@ -93,16 +135,6 @@ export async function POST(req: NextRequest) {
       response.headers.set("retry-after", String(limit.retryAfterSeconds));
       return response;
     }
-
-    const learnerProfileId = await resolveSignedInProfileId();
-
-    const record = await createCareerMapRecord({
-      source: parsed.data.source,
-      inputText: text,
-      visitorId: parsed.data.visitorId ?? null,
-      ipHash,
-      learnerProfileId,
-    });
 
     // HARD FAILURE contract: no fallback map. The record is marked failed and
     // the caller gets a clear reason and what to do next.

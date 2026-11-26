@@ -277,6 +277,10 @@ export function describeCareerMapEmailError(input: ApiErrorInput): string {
       return "That email address does not look right. Check it and try again.";
     case "CAREER_MAP_NOT_FOUND":
       return "We could not find this map to save it. Reload the page and try again.";
+    case "CAREER_MAP_NOT_OWNER":
+      return "This map can only be saved from the browser it was made in. Open it there, or draw your own map.";
+    case "CAREER_MAP_EMAIL_LOCKED":
+      return "This map is already saved to another address or to an account.";
     case "NETWORK_ERROR":
       return "We could not reach the server. Check your connection and try again.";
     default:

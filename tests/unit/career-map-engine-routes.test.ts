@@ -19,7 +19,7 @@ import { POST as createPost } from "../../apps/web/app/api/career-map/route";
 import { GET as tokenGet } from "../../apps/web/app/api/career-map/[token]/route";
 import { POST as emailPost } from "../../apps/web/app/api/career-map/[token]/email/route";
 import {
-  findCareerMapByToken,
+  findCareerMapByToken, linkCareerMapByToken,
   getLatestCareerMapForProfile,
   resetCareerMapStateForTests,
 } from "../../apps/web/lib/career-map/store";
@@ -69,11 +69,12 @@ function getMap(token: string) {
   return tokenGet(new Request(`http://localhost/api/career-map/${token}`), { params: Promise.resolve({ token }) });
 }
 
-function postEmail(token: string, email: unknown) {
+/** By default the request carries the owner cookie for that map, as the browser that drew it would. */
+function postEmail(token: string, email: unknown, cookieToken: string | null = token) {
   return emailPost(
     new Request(`http://localhost/api/career-map/${token}/email`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...(cookieToken ? { cookie: `mast_cm=${encodeURIComponent(cookieToken)}` } : {}) },
       body: JSON.stringify({ email }),
     }),
     { params: Promise.resolve({ token }) },
@@ -319,9 +320,31 @@ describe("POST /api/career-map/[token]/email", () => {
 
     const again = (await (await postEmail(token, "maya@example.com")).json()) as Json;
     expect(again).toMatchObject({ captured: true, emailed: true });
-    const otherAddress = (await (await postEmail(token, "someone.else@example.com")).json()) as Json;
-    expect(otherAddress).toMatchObject({ captured: true, emailed: false });
+    // An address is set once: a second address is refused and nothing is sent to it.
+    const otherAddress = await postEmail(token, "someone.else@example.com");
+    expect(otherAddress.status).toBe(409);
+    expect(((await otherAddress.json()) as Json).error.code).toBe("CAREER_MAP_EMAIL_LOCKED");
+    expect((await findCareerMapByToken(token))?.email).toBe("maya@example.com");
     expect(resendCalls).toHaveLength(1);
+  });
+
+  test("only the browser that drew the map can save an email on it", async () => {
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    const { resendCalls } = mockFetch([]);
+    const noCookie = await postEmail(token, "attacker@example.com", null);
+    expect(noCookie.status).toBe(403);
+    expect(((await noCookie.json()) as Json).error.code).toBe("CAREER_MAP_NOT_OWNER");
+    const otherCookie = await postEmail(token, "attacker@example.com", "some-other-map-token");
+    expect(otherCookie.status).toBe(403);
+    expect((await findCareerMapByToken(token))?.email).toBeNull();
+    expect(resendCalls).toHaveLength(0);
+  });
+
+  test("a map that already belongs to an account cannot be given an email", async () => {
+    await linkCareerMapByToken({ token, learnerProfileId: "profile-owner" });
+    const res = await postEmail(token, "maya@example.com");
+    expect(res.status).toBe(409);
+    expect((await findCareerMapByToken(token))?.email).toBeNull();
   });
 
   test("a Resend failure still counts as captured", async () => {
@@ -339,5 +362,52 @@ describe("POST /api/career-map/[token]/email", () => {
     const missing = await postEmail("unknown-token", "maya@example.com");
     expect(missing.status).toBe(404);
     expect(((await missing.json()) as Json).error.code).toBe("CAREER_MAP_NOT_FOUND");
+  });
+});
+
+describe("POST /api/career-map request guards", () => {
+  beforeEach(() => {
+    resetCareerMapStateForTests();
+    vi.unstubAllEnvs();
+    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    mockGetAuthSeed.mockReset();
+    mockGetAuthSeed.mockResolvedValue(null);
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  function rawPost(headers: Record<string, string>, body: string) {
+    return createPost(new MockNextRequest("http://localhost/api/career-map", { method: "POST", headers: { "x-forwarded-for": "203.0.113.77", ...headers }, body }) as never);
+  }
+
+  test("a cross-site form post cannot create a map or set the owner cookie", async () => {
+    const { openAiCalls } = mockFetch([EXAMPLE_CAREER_MAP]);
+    const body = JSON.stringify(VALID_BODY);
+    const formPost = await rawPost({ "content-type": "text/plain" }, body);
+    expect(formPost.status).toBe(415);
+    expect(formPost.headers.get("set-cookie")).toBeNull();
+    const crossSite = await rawPost({ "content-type": "application/json", "sec-fetch-site": "cross-site" }, body);
+    expect(crossSite.status).toBe(415);
+    const foreignOrigin = await rawPost({ "content-type": "application/json", origin: "https://evil.example" }, body);
+    expect(foreignOrigin.status).toBe(415);
+    expect(openAiCalls).toHaveLength(0);
+    const sameOrigin = await rawPost({ "content-type": "application/json", origin: "http://localhost", "sec-fetch-site": "same-origin" }, body);
+    expect(sameOrigin.status).toBe(200);
+  });
+
+  test("the hourly limit holds under a burst of parallel requests", async () => {
+    vi.stubEnv("CAREER_MAP_LIMIT_HOUR", "3");
+    mockFetch(Array.from({ length: 12 }, () => EXAMPLE_CAREER_MAP));
+    const responses = await Promise.all(Array.from({ length: 12 }, () => postMap(VALID_BODY)));
+    const ok = responses.filter((res) => res.status === 200).length;
+    const limited = responses.filter((res) => res.status === 429).length;
+    expect(ok).toBeLessThanOrEqual(3);
+    expect(ok + limited).toBe(12);
+    // A refused attempt leaves no record behind, so it does not count against the visitor later.
+    vi.stubEnv("CAREER_MAP_LIMIT_HOUR", "50");
+    mockFetch([EXAMPLE_CAREER_MAP]);
+    expect((await postMap(VALID_BODY)).status).toBe(200);
   });
 });

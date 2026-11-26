@@ -17,6 +17,7 @@ vi.mock("../../apps/web/node_modules/next/headers.js", () => ({
 }));
 
 import {
+  CAREER_MAP_LINK_BY_EMAIL,
   CAREER_MAP_LINK_MEMO_TTL_MS,
   linkCareerMapsForLearner,
   readCareerMapCookieFromRequest,
@@ -62,20 +63,21 @@ describe("linkCareerMapsForLearner", () => {
     expect(result.linkedByToken).toBe(false);
   });
 
-  test("email path: links maps captured with the same email, normalised", async () => {
+  test("email path is off: an email alone never links a map (neither address is verified)", async () => {
     mockLinkByEmail.mockResolvedValue(2);
     const result = await linkCareerMapsForLearner({ learnerProfileId: "profile_1", email: "  Maya@Example.com ", cookieToken: null });
-    expect(mockLinkByEmail).toHaveBeenCalledWith({ email: "maya@example.com", learnerProfileId: "profile_1" });
+    expect(CAREER_MAP_LINK_BY_EMAIL).toBe(false);
+    expect(mockLinkByEmail).not.toHaveBeenCalled();
     expect(mockLinkByToken).not.toHaveBeenCalled();
-    expect(result).toMatchObject({ skipped: false, linkedByToken: false, linkedByEmail: 2 });
+    expect(result).toMatchObject({ skipped: true, linkedByToken: false, linkedByEmail: 0 });
   });
 
-  test("cookie and email together: both are linked in one call", async () => {
+  test("cookie and email together: only the cookie's map is linked", async () => {
     mockLinkByEmail.mockResolvedValue(1);
     const result = await linkCareerMapsForLearner({ learnerProfileId: "profile_1", email: "maya@example.com", cookieToken: "tok_abc" });
     expect(mockLinkByToken).toHaveBeenCalledTimes(1);
-    expect(mockLinkByEmail).toHaveBeenCalledTimes(1);
-    expect(result).toMatchObject({ linkedByToken: true, linkedByEmail: 1 });
+    expect(mockLinkByEmail).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ linkedByToken: true, linkedByEmail: 0 });
   });
 
   test("fast path: nothing to link means no store call at all", async () => {
@@ -98,7 +100,7 @@ describe("linkCareerMapsForLearner", () => {
     const second = await linkCareerMapsForLearner(input);
     const third = await linkCareerMapsForLearner({ ...input, cookieToken: null });
     expect(mockLinkByToken).toHaveBeenCalledTimes(1);
-    expect(mockLinkByEmail).toHaveBeenCalledTimes(1);
+    expect(mockLinkByEmail).not.toHaveBeenCalled();
     expect(second.skipped).toBe(true);
     expect(third.skipped).toBe(true);
   });
@@ -110,30 +112,29 @@ describe("linkCareerMapsForLearner", () => {
     expect(mockLinkByToken).toHaveBeenLastCalledWith({ token: "tok_two", learnerProfileId: "profile_1" });
   });
 
-  test("the memo expires so maps saved later by email are still picked up", async () => {
+  test("the memo expires so the cookie's map is tried again later", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-11-25T12:00:00.000Z"));
-    await linkCareerMapsForLearner({ learnerProfileId: "profile_1", email: "maya@example.com" });
+    await linkCareerMapsForLearner({ learnerProfileId: "profile_1", cookieToken: "tok_abc" });
     vi.setSystemTime(new Date(Date.parse("2026-11-25T12:00:00.000Z") + CAREER_MAP_LINK_MEMO_TTL_MS + 1000));
-    await linkCareerMapsForLearner({ learnerProfileId: "profile_1", email: "maya@example.com" });
-    expect(mockLinkByEmail).toHaveBeenCalledTimes(2);
+    await linkCareerMapsForLearner({ learnerProfileId: "profile_1", cookieToken: "tok_abc" });
+    expect(mockLinkByToken).toHaveBeenCalledTimes(2);
   });
 
   test("never throws: store failures are logged with console.warn and reported", async () => {
     mockLinkByToken.mockRejectedValue(new Error("SUPABASE_DOWN"));
     mockLinkByEmail.mockRejectedValue(new Error("SUPABASE_DOWN"));
     const result = await linkCareerMapsForLearner({ learnerProfileId: "profile_1", email: "maya@example.com", cookieToken: "tok_abc" });
-    expect(result.failures).toEqual(["token", "email"]);
+    expect(result.failures).toEqual(["token"]);
     expect(result.linkedByToken).toBe(false);
     expect(warn).toHaveBeenCalledWith("[career-map] cookie map link failed", "SUPABASE_DOWN");
-    expect(warn).toHaveBeenCalledWith("[career-map] email map link failed", "SUPABASE_DOWN");
   });
 
-  test("never throws: a failing token link does not stop the email link", async () => {
+  test("never throws: a failing token link is reported and nothing else is attempted", async () => {
     mockLinkByToken.mockRejectedValue(new Error("boom"));
     mockLinkByEmail.mockResolvedValue(3);
     const result = await linkCareerMapsForLearner({ learnerProfileId: "profile_1", email: "maya@example.com", cookieToken: "tok_abc" });
-    expect(result.linkedByEmail).toBe(3);
+    expect(result.linkedByEmail).toBe(0);
     expect(result.failures).toEqual(["token"]);
   });
 

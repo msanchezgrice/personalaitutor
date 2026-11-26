@@ -76,8 +76,19 @@ async function retryAfter(input: { ipHash?: string; sinceIso: string; windowMs: 
   return Math.max(1, Math.ceil((freesAt - input.now) / 1000));
 }
 
-export async function checkCareerMapRateLimit(ipHash: string, now: Date = new Date()): Promise<CareerMapRateLimitResult> {
+/**
+ * `includesCurrent`: the caller has already recorded this attempt, so the
+ * counts include it and an attempt is refused when a count goes OVER its limit
+ * (the Nth of N allowed attempts still passes). Recording first is what makes
+ * the limit hold under parallel requests.
+ */
+export async function checkCareerMapRateLimit(
+  ipHash: string,
+  now: Date = new Date(),
+  options: { includesCurrent?: boolean } = {},
+): Promise<CareerMapRateLimitResult> {
   const limits = resolveCareerMapLimits();
+  const own = options.includesCurrent ? 1 : 0;
   const nowMs = now.getTime();
   const hourAgo = new Date(nowMs - HOUR_MS).toISOString();
   const dayAgo = new Date(nowMs - DAY_MS).toISOString();
@@ -88,7 +99,7 @@ export async function checkCareerMapRateLimit(ipHash: string, now: Date = new Da
     countRecentCareerMaps({ sinceIso: dayAgo }),
   ]);
 
-  if (globalCount >= limits.globalDay) {
+  if (globalCount - own >= limits.globalDay) {
     return {
       ok: false,
       scope: "global",
@@ -96,7 +107,7 @@ export async function checkCareerMapRateLimit(ipHash: string, now: Date = new Da
       retryAfterSeconds: await retryAfter({ sinceIso: dayAgo, windowMs: DAY_MS, now: nowMs }),
     };
   }
-  if (dayCount >= limits.day) {
+  if (dayCount - own >= limits.day) {
     return {
       ok: false,
       scope: "day",
@@ -104,7 +115,7 @@ export async function checkCareerMapRateLimit(ipHash: string, now: Date = new Da
       retryAfterSeconds: await retryAfter({ ipHash, sinceIso: dayAgo, windowMs: DAY_MS, now: nowMs }),
     };
   }
-  if (hourCount >= limits.hour) {
+  if (hourCount - own >= limits.hour) {
     return {
       ok: false,
       scope: "hour",

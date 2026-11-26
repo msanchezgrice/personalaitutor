@@ -1,4 +1,4 @@
-import { readClientAttributionEnvelope, type AttributionEnvelope } from "@/lib/attribution";
+import { readClientAttributionEnvelope, redactPrivatePath, type AttributionEnvelope } from "@/lib/attribution";
 import { shouldPersistClientFunnelEvent } from "@/lib/funnel-events";
 
 type PosthogCaptureProperties = Record<string, unknown>;
@@ -172,8 +172,9 @@ export function buildAnalyticsEventProps(properties?: PosthogCaptureProperties) 
   return {
     app: "web",
     visitor_id: getOrCreateFunnelVisitorId(),
-    path: location?.pathname ?? null,
-    page_url: location?.href ?? null,
+    // A /map/{token} URL opens the map, so the token is never sent with an event.
+    path: location?.pathname ? redactPrivatePath(location.pathname) : null,
+    page_url: location?.href ? redactPrivatePath(location.href) : null,
     posthog_distinct_id: getAnalyticsDistinctId(),
     ...eventAttributionProps(attribution),
     ...(properties ?? {}),

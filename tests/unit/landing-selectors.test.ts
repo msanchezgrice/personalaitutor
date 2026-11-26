@@ -133,7 +133,11 @@ describe("hero draft hand-off to /map", () => {
     const storage = memoryStorage();
     expect(submitHeroDraft("  Senior marketing manager at a game studio  ", storage)).toBe(HERO_MAP_FROM_HOME_PATH);
     expect(HERO_MAP_FROM_HOME_PATH).toBe("/map?from=home");
-    expect(JSON.parse(storage.data.get(CAREER_MAP_DRAFT_STORAGE_KEY)!)).toEqual({ text: "Senior marketing manager at a game studio", source: "paste" });
+    // One line of prose is a description; a multi-line résumé is a paste.
+    expect(JSON.parse(storage.data.get(CAREER_MAP_DRAFT_STORAGE_KEY)!)).toEqual({ text: "Senior marketing manager at a game studio", source: "describe" });
+    const resume = ["Maya Ortiz", "Senior Marketing Manager", "- Planned 4 launches", "- Wrote player emails", "- Grew a Discord community"].join("\n");
+    submitHeroDraft(resume, storage);
+    expect(JSON.parse(storage.data.get(CAREER_MAP_DRAFT_STORAGE_KEY)!)).toEqual({ text: resume, source: "paste" });
   });
 
   test("empty text goes to /map and stores nothing", () => {

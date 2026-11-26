@@ -45,6 +45,10 @@ export function RemapSiteHeader({ active = null, signedIn = false, primaryAction
       <div className="rm-container rm-header__inner">
         <RemapBrand />
         <nav className="rm-nav" aria-label="Main">
+          {/* The header button is hidden on phones; this keeps a way in for returning users. */}
+          <a href={signedIn ? "/dashboard/?welcome=1" : "/sign-in?redirect_url=/dashboard/"} className="rm-nav__auth" data-testid="nav-auth-mobile">
+            {signedIn ? "Dashboard" : "Log in"}
+          </a>
           {NAV.map((item) => (
             <a key={item.key} href={item.href} aria-current={active === item.key ? "page" : undefined}>
               {item.label}
