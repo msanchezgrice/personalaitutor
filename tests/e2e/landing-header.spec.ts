@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 const landingViewports = [
   { name: "desktop", width: 1440, height: 1100 },
+  { name: "tablet", width: 768, height: 1024 },
   { name: "mobile", width: 390, height: 844 },
 ];
 
@@ -12,6 +13,7 @@ for (const viewport of landingViewports) {
 
     const header = page.locator("header").first();
     await expect(header).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("unmapped.");
 
     const beforeScroll = await page.evaluate(() => {
       const headerEl = document.querySelector("header");
@@ -53,5 +55,9 @@ for (const viewport of landingViewports) {
 
     expect(afterScroll.scrollY).toBeGreaterThan(100);
     expect(Math.abs(afterScroll.headerTop)).toBeLessThanOrEqual(1);
+
+    // The page never scrolls sideways.
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
   });
 }
