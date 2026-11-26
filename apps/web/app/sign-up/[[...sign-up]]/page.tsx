@@ -14,9 +14,12 @@ export const metadata: Metadata = {
   },
 };
 
+const fallbackRedirect = "/onboarding/";
+
 function safeRedirect(input?: string) {
   if (!input || typeof input !== "string") return "/onboarding/";
-  if (input.startsWith("/")) return input;
+  // "//host" and "/\\host" are read by browsers as another site, so only a single leading slash is a local path.
+  if (input.startsWith("/")) return /^\/[/\\]/.test(input) ? fallbackRedirect : input;
   try {
     const url = new URL(input);
     const site = new URL(getSiteUrl());
