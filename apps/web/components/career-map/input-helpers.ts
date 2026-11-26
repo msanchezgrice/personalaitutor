@@ -219,6 +219,16 @@ export function describeCareerMapError(input: ApiErrorInput): CareerMapErrorCopy
         action: "upload",
         actionLabel: "Choose another file",
       };
+    case "RESUME_EXTRACT_RATE_LIMITED": {
+      const seconds = typeof input.retryAfterSeconds === "number" && input.retryAfterSeconds > 0 ? input.retryAfterSeconds : 600;
+      return {
+        code,
+        title: "That is a lot of uploads in a few minutes",
+        message: `You can upload another file ${formatRetryAfter(seconds)}. Pasting the text works right now.`,
+        action: "paste",
+        actionLabel: "Paste the text instead",
+      };
+    }
     case "RESUME_FILE_UNSUPPORTED":
       return {
         code,
