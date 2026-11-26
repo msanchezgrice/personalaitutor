@@ -15,6 +15,10 @@ const config: NextConfig = {
   typedRoutes: true,
   outputFileTracingRoot: repoRoot,
   poweredByHeader: false,
+  // Résumé parsing (app/api/career-map/extract). unpdf loads its bundled pdf.js
+  // through a dynamic self-import and mammoth is CommonJS with its own zip and
+  // XML deps; both are required from node_modules at runtime instead of bundled.
+  serverExternalPackages: ["unpdf", "mammoth"],
   async headers() {
     const csp = [
       "default-src 'self'",
